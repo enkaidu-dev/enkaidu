@@ -1,8 +1,7 @@
 require "option_parser"
 require "markterm"
 
-require "./llm/azure_openai"
-require "./llm/ollama"
+require "./llm"
 require "./tools"
 
 provider_name = nil

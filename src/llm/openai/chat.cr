@@ -2,6 +2,7 @@ require "http"
 require "json"
 
 require "./converters"
+require "../chat"
 
 module LLM::OpenAI
   alias MessageValue = String | JSON::Any | Array(JSON::Any)

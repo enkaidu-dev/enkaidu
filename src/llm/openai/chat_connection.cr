@@ -1,4 +1,5 @@
 require "./chat"
+require "../chat_connection"
 
 module LLM::OpenAI
   abstract class ChatConnection < LLM::ChatConnection

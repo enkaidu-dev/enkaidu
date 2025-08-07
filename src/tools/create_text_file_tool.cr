@@ -1,6 +1,6 @@
 require "json"
 
-require "./tools"
+require "../tools"
 require "./file_helper"
 
 class CreateTextFileTool < LLM::Function

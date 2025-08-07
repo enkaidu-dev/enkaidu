@@ -1,6 +1,6 @@
 require "json"
 
-require "../llm"
+require "../function"
 
 module LLM::OpenAI
   private module Converters
