@@ -1,0 +1,100 @@
+require "json"
+
+require "../llm"
+
+module LLM::OpenAI
+  private module Converters
+    protected def param_type_label(pt : LLM::ParamType)
+      case pt
+      in .obj?  then "object"
+      in .bool? then "boolean"
+      in .num?  then "number"
+      in .arr?  then "array"
+      in .str?  then "string"
+      end
+    end
+
+    protected def param_to_json(p : LLM::Param, json : JSON::Builder)
+      json.field p.name do
+        json.object do
+          json.field "type", param_type_label(p.type)
+          json.field "description", p.description
+        end
+      end
+    end
+
+    protected def function_to_json(f : LLM::Function.class, json : JSON::Builder)
+      json.object do
+        json.field "type", "function"
+        json.field "function" do
+          json.object do
+            json.field "name", f.function_name
+            json.field "description", f.description
+            json.field "parameters" do
+              json.object do
+                required = [] of String
+                json.field "type", "object"
+                json.field "properties" do
+                  json.object do
+                    f.each_param do |p|
+                      param_to_json(p, json)
+                      required << p.name if p.required?
+                    end
+                  end
+                end
+                unless required.empty?
+                  json.field "required" do
+                    json.array do
+                      required.each do |req|
+                        json.string req
+                      end
+                    end
+                  end
+                end
+              end
+            end
+            # json.field "additionalProperties", false
+          end
+        end
+      end
+    end
+
+    private def chat_to_json(json : JSON::Builder, model, system_message, stream, messages, tools)
+      json.object do
+        json.field "model", model if model
+        json.field "stream", stream
+        json.field "messages" do
+          json.array do
+            if (sm = system_message)
+              json.object do
+                json.field "role", "system"
+                json.field "content", sm
+              end
+            end
+            messages.each do |m|
+              json.object do
+                m.each do |k, v|
+                  json.field k.to_s, v
+                end
+              end
+            end
+          end
+        end
+        json.field "tool_choice", "auto"
+        json.field "tools" do
+          json.array do
+            tools.each do |f|
+              function_to_json(f, json)
+            end
+          end
+        end
+      end
+    end
+
+    protected def function_to_s(f : LLM::Function.class, io : IO)
+      JSON.build(io) do |json|
+        function_to_json(f, json)
+      end
+    end
+  end
+end

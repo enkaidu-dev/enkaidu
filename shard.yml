@@ -1,0 +1,23 @@
+name: enkaidu
+version: 0.1.0
+license: MPL-2.0
+description: Command line tool that can use local and remote AI models to assist with local editing and refinement tasks.
+authors:
+  - nogginly <nogginly@icloud.com>
+repository: https://github.com/nogginly/enkaidu
+
+development_dependencies:
+  ameba:
+    github: crystal-ameba/ameba
+  spectator:
+    gitlab: arctic-fox/spectator
+
+dependencies:
+  markterm:
+    github: ralsina/markterm
+  todo_or_diehard:
+    github: nogginly/todo_or_diehard
+
+targets:
+  enkaidu:
+    main: src/main.cr

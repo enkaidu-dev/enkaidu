@@ -1,0 +1,11 @@
+.DS_Store
+config/dev
+/bin/
+/doc/
+/docs/
+/libs/
+/lib/
+/.crystal/
+/.shards/
+out/
+tmp*

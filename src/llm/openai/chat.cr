@@ -1,0 +1,199 @@
+require "http"
+require "json"
+
+require "./converters"
+
+module LLM::OpenAI
+  alias MessageValue = String | JSON::Any | Array(JSON::Any)
+  alias Message = Hash(Symbol, MessageValue)
+
+  private class Chat < LLM::Chat
+    include Converters
+
+    @conn : ChatConnection
+
+    def initialize(@conn)
+      super()
+      @messages = [] of Message
+    end
+
+    private def call_tool(tool : LLM::Function.class, tool_call : JSON::Any)
+      id = tool_call.dig("id").as_s
+      args = if args_str = tool_call.dig("function", "arguments").as_s?
+               JSON.parse(args_str)
+             else
+               JSON::Any.new(nil)
+             end
+      reply = tool.run(args)
+      Message{
+        :role         => "tool",
+        :tool_call_id => id,
+        :name         => tool.function_name,
+        :content      => reply,
+      }
+    end
+
+    def call_tools_and_ask(tools : Array(JSON::Any), & : LLM::ChatEvent ->)
+      calls = 0
+      tools.each do |tc|
+        name = tc.dig("function", "name").as_s
+        if (tool = find_tool? name)
+          @messages << call_tool tool, tc
+          calls += 1
+        else
+          yield unknown_tool_call(tc)
+        end
+      end
+      if calls.positive?
+        ask_post do |m|
+          yield m
+        end
+      end
+    end
+
+    private def unknown_tool_call(tool_call : JSON::Any)
+      {type: "error/unknown", content: tool_call}
+    end
+
+    def ask(content : String, & : LLM::ChatEvent ->)
+      @messages << Message{
+        :role    => "user",
+        :content => content,
+      }
+      ask_post do |m|
+        yield m
+      end
+    end
+
+    private def ask_post(& : LLM::ChatEvent ->)
+      body = to_body
+
+      yield({type: "debug/request", content: JSON.parse(body)}) if debug?
+
+      STDERR.puts ">>> #{body}" if TRACE
+      @conn.post_and_stream(body) do |resp|
+        STDERR.puts "<<< #{resp.headers}" if TRACE
+        case resp.content_type
+        when "text/event-stream" then handle_text_event_stream(resp) { |m| yield m }
+        when "application/json"  then handle_app_json(resp) { |m| yield m }
+        else
+          # we don't know what to do if it's not SSE or JSON
+          yield unexpected_response(resp)
+        end
+      end
+    end
+
+    private def handle_text_event_stream(resp, &)
+      # Yield each line from the stream, skipping blank lines
+      stream_io = resp.body_io
+      aggr_msg = prepare_message_from_streamed_data(stream_io) do |msg|
+        yield msg
+      end
+      STDERR.puts "+++ #{aggr_msg.to_json}" if TRACE
+      @messages << aggr_msg
+    end
+
+    private def handle_app_json(resp, &)
+      # Read the entire body and parse as JSON to determine what to do
+      data = JSON.parse(resp.body_io.gets_to_end)
+      if data["error"]?
+        STDERR.puts "~~~ #{data}" if TRACE
+        yield({type: "error/server", content: data})
+      else
+        process_data(data) do |msg|
+          yield msg
+        end
+        @messages << prepare_message_from(data)
+      end
+    end
+
+    private def unexpected_response(resp)
+      {type: "error/unexpected", content: JSON::Any.new(Hash{
+        "headers" => JSON.parse(resp.headers.to_json),
+        "body"    => JSON::Any.new(resp.body_io.gets_to_end),
+      })}
+    end
+
+    private def message_key_to_sym(k : String)
+      case k
+      when "role"       then :role
+      when "content"    then :content
+      when "tool_calls" then :tool_calls
+      else                   nil
+      end
+    end
+
+    private def prepare_message_from(data)
+      msg = Message.new
+      m = data.dig("choices", 0, "message").as_h
+      m.each do |k, v|
+        if v
+          sym = message_key_to_sym(k)
+          msg[sym] = v if sym
+        end
+      end
+      msg
+    end
+
+    private def prepare_message_from_streamed_data(stream_io, &)
+      message = Message.new
+      tool_calls = [] of JSON::Any
+      content = String.build do |text_io|
+        stream_io.each_line do |line|
+          next if line.empty?
+
+          if line.ends_with? "[DONE]"
+            yield({type: "done", content: JSON::Any.new(nil)})
+          else
+            STDERR.puts "*** #{line}" if TRACE
+            data = JSON.parse(line.lchop("data: "))
+            process_data(data, from_stream: true) do |msg|
+              yield msg
+              # gather up the stream chunks
+              case msg["type"]
+              when "text"
+                text_io << msg["content"]
+              when "tool_call"
+                tool_calls << msg["content"]
+              end
+            end
+          end
+        end
+      end
+      message[:role] = "assistant"
+      message[:content] = content
+      message[:tool_calls] = tool_calls unless tool_calls.empty?
+      message
+    end
+
+    private def process_data(data : JSON::Any, from_stream = false, &)
+      yield({type: "debug/data", content: data}) if debug?
+
+      selector = from_stream ? "delta" : "message"
+
+      # check for text content
+      c = data.dig?("choices", 0, selector, "content")
+      if (c && c.raw && c.raw != "") # in case property exists with null value
+        yield({type: "text", content: c})
+      end
+
+      # check for tool calling
+      if (t = data.dig?("choices", 0, selector, "tool_calls"))
+        t.as_a.each do |tc|
+          if tc.dig?("function", "name") # in case function block is a dud
+            yield({type: "tool_call", content: tc})
+          end
+        end
+      end
+    end
+
+    private def to_body
+      JSON.build do |json|
+        chat_to_json(json, model, system_message,
+          stream: streaming?,
+          messages: @messages,
+          tools: @tools.each_value)
+      end
+    end
+  end
+end

@@ -1,0 +1,34 @@
+dependencies:
+  brew:
+    - crystal
+  custom:
+    - shards
+hooks:
+  before:
+    - mkdir -p bin/release bin/debug
+actions:
+  build-release:
+    command: SHARDS_BIN_PATH=bin/release shards build $APP --release
+    description: Build for release
+    alias: br
+  build-debug:
+    command: SHARDS_BIN_PATH=bin/debug shards build $APP --debug
+    description: Build for development (debugging)
+    alias: bd
+  run:
+    command: ops build-debug && bin/debug/$APP  
+    load_secrets: true
+  run_release:
+    command: ops build-release && bin/release/$APP 
+    alias: rr
+    description: Build for release and then run the app
+    load_secrets: true
+  clean:
+    command: rm -rf bin/debug/* && rm -rf bin/release/*
+    description: Clear prior builds
+  wipe:
+    command: crystal clear_cache && ops clean
+    description: Clear build caches and prior builds
+options:
+  environment:
+    APP: enkaidu
