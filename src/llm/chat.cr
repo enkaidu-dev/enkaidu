@@ -10,7 +10,7 @@ module LLM
     getter? streaming = false
 
     def initialize
-      @tools = {} of String => LLM::Function.class
+      @tools = {} of String => LLM::Function
     end
 
     def with_debug
@@ -29,8 +29,8 @@ module LLM
       @system_message = content
     end
 
-    def with_tool(fun_class : LLM::Function.class)
-      @tools[fun_class.function_name] = fun_class
+    def with_tool(function : LLM::Function)
+      @tools[function.name] = function
     end
 
     def find_tool?(name)

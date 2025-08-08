@@ -3,9 +3,7 @@ require "json"
 require "../tools"
 require "./file_helper"
 
-class CreateTextFileTool < LLM::Function
-  include FileHelper
-
+class CreateTextFileTool < LLM::LocalFunction
   name "create_text_file"
 
   description "Creates a text file at the specified path with the given content. " \
@@ -14,32 +12,34 @@ class CreateTextFileTool < LLM::Function
   param "file_path", type: LLM::ParamType::Str, description: "The relative path where the text file will be created.", required: true
   param "content", type: LLM::ParamType::Str, description: "The content to write into the text file.", required: true
 
-  def execute(args : JSON::Any) : String
-    file_path = args["file_path"].as_s? || return error_response("The required file_path was not specified")
-    content = args["content"].as_s? || return error_response("The required content was not specified")
+  runner Runner
 
-    resolved_path = resolve_path(file_path)
+  class Runner < LLM::Function::Runner
+    include FileHelper
 
-    return error_response("Access to the specified path '#{file_path}' is not allowed.") unless within_current_directory?(resolved_path)
-    return error_response("The file '#{file_path}' already exists.") if file_exists?(resolved_path)
+    def execute(f : LLM::Function, args : JSON::Any) : String
+      file_path = args["file_path"].as_s? || return error_response("The required file_path was not specified")
+      content = args["content"].as_s? || return error_response("The required content was not specified")
 
-    begin
-      File.write(resolved_path, content)
-      success_response(file_path)
-    rescue ex
-      error_response("An error occurred while creating the file: #{ex.message}")
+      resolved_path = resolve_path(file_path)
+
+      return error_response("Access to the specified path '#{file_path}' is not allowed.") unless within_current_directory?(resolved_path)
+      return error_response("The file '#{file_path}' already exists.") if file_exists?(resolved_path)
+
+      begin
+        File.write(resolved_path, content)
+        success_response(file_path)
+      rescue ex
+        error_response("An error occurred while creating the file: #{ex.message}")
+      end
     end
-  end
 
-  private def file_exists?(path)
-    File.exists?(path)
-  end
+    private def success_response(file_path)
+      {message: "File '#{file_path}' created successfully."}.to_json
+    end
 
-  private def success_response(file_path)
-    {message: "File '#{file_path}' created successfully."}.to_json
-  end
-
-  private def error_response(message)
-    {error: message}.to_json
+    private def error_response(message)
+      {error: message}.to_json
+    end
   end
 end

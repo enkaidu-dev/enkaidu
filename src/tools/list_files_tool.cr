@@ -3,9 +3,7 @@ require "json"
 require "../tools"
 require "./file_helper"
 
-class ListFilesTool < LLM::Function
-  include FileHelper
-
+class ListFilesTool < LLM::LocalFunction
   name "list_files"
 
   # Provide a description for the tool
@@ -14,52 +12,57 @@ class ListFilesTool < LLM::Function
   # Define the acceptable parameter using the `param` method
   param "folder", description: "The relative path to the folder to list. Defaults to the current directory if not provided."
 
-  # Define the method that executes the tool's functionality
-  def execute(args : JSON::Any) : String
-    path = if args.as_s?
-             args.as_s
-           elsif args["folder"]?
-             args["folder"].as_s
-           else
-             "."
-           end
+  runner Runner
 
-    requested_path = resolve_path(path)
+  class Runner < LLM::Function::Runner
+    include FileHelper
 
-    return error_response("Access to the specified path '#{path}' is not allowed.") unless within_current_directory?(requested_path)
-    return error_response("The specified path '#{path}' does not exist or is not a directory.") unless valid_directory?(requested_path)
+    def execute(f : LLM::Function, args : JSON::Any) : String
+      path = if args.as_s?
+               args.as_s
+             elsif args["folder"]?
+               args["folder"].as_s
+             else
+               "."
+             end
 
-    entries = list_entries(requested_path)
-    files, directories = separate_files_and_directories(entries, requested_path)
+      requested_path = resolve_path(path)
 
-    success_response(path, files, directories)
-  end
+      return error_response("Access to the specified path '#{path}' is not allowed.") unless within_current_directory?(requested_path)
+      return error_response("The specified path '#{path}' does not exist or is not a directory.") unless valid_directory?(requested_path)
 
-  # List all entries in the specified directory
-  private def list_entries(requested_path)
-    Dir.entries(requested_path)
-  end
+      entries = list_entries(requested_path)
+      files, directories = separate_files_and_directories(entries, requested_path)
 
-  # Separate entries into files and directories
-  private def separate_files_and_directories(entries, requested_path)
-    files = entries.reject { |entry| File.directory?(File.join(requested_path, entry)) }
-    directories = entries.select do |entry|
-      File.directory?(File.join(requested_path, entry)) && entry != "." && entry != ".."
+      success_response(path, files, directories)
     end
-    [files, directories]
-  end
 
-  # Create a success response as a JSON string
-  private def success_response(path, files, directories)
-    {
-      path:        path,
-      files:       files,
-      directories: directories,
-    }.to_json
-  end
+    # List all entries in the specified directory
+    private def list_entries(requested_path)
+      Dir.entries(requested_path)
+    end
 
-  # Create an error response as a JSON string
-  private def error_response(message)
-    {error: message}.to_json
+    # Separate entries into files and directories
+    private def separate_files_and_directories(entries, requested_path)
+      files = entries.reject { |entry| File.directory?(File.join(requested_path, entry)) }
+      directories = entries.select do |entry|
+        File.directory?(File.join(requested_path, entry)) && entry != "." && entry != ".."
+      end
+      [files, directories]
+    end
+
+    # Create a success response as a JSON string
+    private def success_response(path, files, directories)
+      {
+        path:        path,
+        files:       files,
+        directories: directories,
+      }.to_json
+    end
+
+    # Create an error response as a JSON string
+    private def error_response(message)
+      {error: message}.to_json
+    end
   end
 end

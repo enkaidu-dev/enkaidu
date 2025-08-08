@@ -3,6 +3,10 @@ module FileHelper
     File.expand_path(path)
   end
 
+  private def file_exists?(path)
+    File.exists?(path)
+  end
+
   def within_current_directory?(requested_path)
     current_dir = File.expand_path(".")
     requested_path.starts_with?(current_dir)

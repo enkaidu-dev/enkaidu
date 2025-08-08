@@ -65,11 +65,11 @@ chat = connection.new_chat do
   with_debug if debug_on
   with_streaming if stream_on
   with_system_message "You are a capable coding assistant with the ability to use tool calling."
-  with_tool ListFilesTool
-  with_tool ReadTextFileTool
-  with_tool CreateTextFileTool
-  with_tool ReplaceTextInTextFileTool
-  with_tool RenameFileTool
+  with_tool ListFilesTool.new
+  with_tool ReadTextFileTool.new
+  with_tool CreateTextFileTool.new
+  with_tool ReplaceTextInTextFileTool.new
+  with_tool RenameFileTool.new
 end
 
 macro log(s)

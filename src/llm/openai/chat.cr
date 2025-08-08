@@ -18,7 +18,7 @@ module LLM::OpenAI
       @messages = [] of Message
     end
 
-    private def call_tool(tool : LLM::Function.class, tool_call : JSON::Any)
+    private def call_tool(tool : LLM::Function, tool_call : JSON::Any)
       id = tool_call.dig("id").as_s
       args = if args_str = tool_call.dig("function", "arguments").as_s?
                JSON.parse(args_str)
@@ -29,7 +29,7 @@ module LLM::OpenAI
       Message{
         :role         => "tool",
         :tool_call_id => id,
-        :name         => tool.function_name,
+        :name         => tool.name,
         :content      => reply,
       }
     end

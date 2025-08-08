@@ -23,12 +23,12 @@ module LLM::OpenAI
       end
     end
 
-    protected def function_to_json(f : LLM::Function.class, json : JSON::Builder)
+    protected def function_to_json(f : LLM::Function, json : JSON::Builder)
       json.object do
         json.field "type", "function"
         json.field "function" do
           json.object do
-            json.field "name", f.function_name
+            json.field "name", f.name
             json.field "description", f.description
             json.field "parameters" do
               json.object do

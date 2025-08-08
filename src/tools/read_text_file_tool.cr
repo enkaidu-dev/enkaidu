@@ -3,9 +3,7 @@ require "json"
 require "../tools"
 require "./file_helper"
 
-class ReadTextFileTool < LLM::Function
-  include FileHelper
-
+class ReadTextFileTool < LLM::LocalFunction
   name "read_text_file"
 
   # Provide a description for the tool
@@ -16,34 +14,39 @@ class ReadTextFileTool < LLM::Function
   # Define the acceptable parameter using the `param` method
   param "file_path", type: LLM::ParamType::Str, description: "The relative path to the text file to read.", required: true
 
-  # Define the method that executes the tool's functionality
-  def execute(args : JSON::Any) : String
-    file_path = args["file_path"].as_s? || return error_response("The required file_path was not specified")
+  runner Runner
 
-    resolved_path = resolve_path(file_path)
+  class Runner < LLM::Function::Runner
+    include FileHelper
 
-    return error_response("Access to the specified path '#{file_path}' is not allowed.") unless within_current_directory?(resolved_path)
-    return error_response("The specified file '#{file_path}' does not exist.") unless valid_file?(resolved_path)
-    return error_response("The specified file '#{file_path}' is not a text-based file.") unless text_file?(resolved_path)
+    def execute(f : LLM::Function, args : JSON::Any) : String
+      file_path = args["file_path"].as_s? || return error_response("The required file_path was not specified")
 
-    begin
-      content = File.read(resolved_path)
-      success_response(file_path, content)
-    rescue e
-      error_response("An error occurred while reading the file: #{e.message}")
+      resolved_path = resolve_path(file_path)
+
+      return error_response("Access to the specified path '#{file_path}' is not allowed.") unless within_current_directory?(resolved_path)
+      return error_response("The specified file '#{file_path}' does not exist.") unless valid_file?(resolved_path)
+      return error_response("The specified file '#{file_path}' is not a text-based file.") unless text_file?(resolved_path)
+
+      begin
+        content = File.read(resolved_path)
+        success_response(file_path, content)
+      rescue e
+        error_response("An error occurred while reading the file: #{e.message}")
+      end
     end
-  end
 
-  # Create a success response as a JSON string
-  def success_response(file_path, content)
-    {
-      file_path: file_path,
-      content:   content,
-    }.to_json
-  end
+    # Create a success response as a JSON string
+    def success_response(file_path, content)
+      {
+        file_path: file_path,
+        content:   content,
+      }.to_json
+    end
 
-  # Create an error response as a JSON string
-  private def error_response(message)
-    {error: message}.to_json
+    # Create an error response as a JSON string
+    private def error_response(message)
+      {error: message}.to_json
+    end
   end
 end
