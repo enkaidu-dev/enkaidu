@@ -1,7 +1,7 @@
 require "./param"
 
 module LLM
-  # Define custom function tool
+  # Defines custom function tool
   abstract class Function
     abstract def name : String
     abstract def description : String

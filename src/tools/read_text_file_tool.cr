@@ -16,6 +16,7 @@ class ReadTextFileTool < LLM::LocalFunction
 
   runner Runner
 
+  # The Runner class executes the function
   class Runner < LLM::Function::Runner
     include FileHelper
 

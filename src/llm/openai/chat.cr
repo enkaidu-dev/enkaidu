@@ -180,11 +180,10 @@ module LLM::OpenAI
       end
 
       # check for tool calling
-      if tool_calls = data.dig?("choices", 0, selector, "tool_calls")
-        tool_calls.as_a.each do |call|
-          if call.dig?("function", "name") # in case function block is a dud
-            yield({type: "tool_call", content: call})
-          end
+      return unless tool_calls = data.dig?("choices", 0, selector, "tool_calls")
+      tool_calls.as_a.each do |call|
+        if call.dig?("function", "name") # in case function block is a dud
+          yield({type: "tool_call", content: call})
         end
       end
     end

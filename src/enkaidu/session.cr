@@ -8,6 +8,8 @@ require "./logger"
 require "./options"
 
 module Enkaidu
+  # The Session class manages connection setup, logging, and the processing of
+  # different types of events for user queries via the command line app
   class Session
     include Helpers
 
@@ -32,7 +34,9 @@ module Enkaidu
         end
         with_debug if opts.debug?
         with_streaming if opts.stream?
-        with_system_message "You are a capable coding assistant with the ability to use tool calling to solve complicated multi-step tasks."
+        with_system_message "You are a capable coding assistant with " \
+                            "the ability to use tool calling to solve " \
+                            "complicated multi-step tasks."
         with_tool ListFilesTool.new
         with_tool ReadTextFileTool.new
         with_tool CreateTextFileTool.new
@@ -46,7 +50,8 @@ module Enkaidu
       when "tool_call"
         tools << r["content"]
         print "  CALL".colorize(:green)
-        puts " #{r["content"].dig("function", "name").as_s.colorize(:red)} with #{r["content"].dig("function", "arguments").colorize(:red)}" unless chat.streaming?
+        puts " #{r["content"].dig("function", "name").as_s.colorize(:red)} " \
+             "with #{r["content"].dig("function", "arguments").colorize(:red)}" unless chat.streaming?
       when "text"
         puts "----".colorize(:green)
         puts Markd.to_term(r["content"].as_s) unless chat.streaming?

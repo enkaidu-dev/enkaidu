@@ -7,13 +7,16 @@ class ListFilesTool < LLM::LocalFunction
   name "list_files"
 
   # Provide a description for the tool
-  description "Lists all files and directories in a specified folder (or the current folder if no path is provided), separating them into categories. Ensures the path stays within the current directory."
+  description "Lists all files and directories in a specified folder (or the current folder " \
+              "if no path is provided), separating them into categories. " \
+              "Ensures the path stays within the current directory."
 
   # Define the acceptable parameter using the `param` method
   param "folder", description: "The relative path to the folder to list. Defaults to the current directory if not provided."
 
   runner Runner
 
+  # The Runner class executes the function
   class Runner < LLM::Function::Runner
     include FileHelper
 
@@ -28,8 +31,10 @@ class ListFilesTool < LLM::LocalFunction
 
       requested_path = resolve_path(path)
 
-      return error_response("Access to the specified path '#{path}' is not allowed.") unless within_current_directory?(requested_path)
-      return error_response("The specified path '#{path}' does not exist or is not a directory.") unless valid_directory?(requested_path)
+      return error_response("Access to the specified" \
+                            " path '#{path}' is not allowed.") unless within_current_directory?(requested_path)
+      return error_response("The specified path '#{path}' does" \
+                            " not exist or is not a directory.") unless valid_directory?(requested_path)
 
       entries = list_entries(requested_path)
       files, directories = separate_files_and_directories(entries, requested_path)

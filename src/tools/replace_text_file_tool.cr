@@ -3,7 +3,7 @@ require "json"
 require "../tools"
 require "./file_helper"
 
-# The ReplaceTextInTextFileTool class defines a tool for replacing specified
+# The `ReplaceTextInTextFileTool` class defines a tool for replacing specified
 # text in text-based files, ensuring the operation is performed within
 # the current directory.
 class ReplaceTextInTextFileTool < LLM::LocalFunction
