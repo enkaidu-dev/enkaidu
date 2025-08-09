@@ -4,8 +4,8 @@ require "../tools"
 require "./file_helper"
 
 # The `ReplaceTextInTextFileTool` class defines a tool for replacing specified
-# text in text-based files, ensuring the operation is performed within
-# the current directory.
+# text in text-based files. It ensures the operation is performed securely within the
+# allowed directory, avoiding access to unauthorized paths.
 class ReplaceTextInTextFileTool < LLM::LocalFunction
   name "replace_text_in_text_file"
 

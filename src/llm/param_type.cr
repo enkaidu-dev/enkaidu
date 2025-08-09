@@ -1,4 +1,6 @@
 module LLM
+  # The `ParamType` defines an enumeration of supported types for
+  # tool calling parameters
   enum ParamType
     Obj
     Bool

@@ -45,6 +45,7 @@ module LLM
       @@params << LLM::Param.new({{name}}, {{type}}, {{description}}, {{required}})
     end
 
+    # Define the method that is used to create the Runner
     macro runner(runner_type)
       # Return an instance of this function's Runner
       def new_runner : Runner

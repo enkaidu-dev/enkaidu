@@ -3,6 +3,9 @@ require "json"
 require "../tools"
 require "./file_helper"
 
+# The `ReadTextFileTool` class defines a tool for reading all the text
+# from a file. It ensures the operation is performed securely within the
+# allowed directory, avoiding access to unauthorized paths.
 class ReadTextFileTool < LLM::LocalFunction
   name "read_text_file"
 

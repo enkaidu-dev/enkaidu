@@ -1,6 +1,7 @@
 require "./param_type"
 
 module LLM
+  # The `Param` class defines the schema for a single parameter
   class Param
     getter name : String
     getter type : ParamType

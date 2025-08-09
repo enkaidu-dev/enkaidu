@@ -3,6 +3,9 @@ require "json"
 require "../tools"
 require "./file_helper"
 
+# The `ListFilesTool` defines a tool that lists all files and directories in a specified folder.
+# It ensures the operation is performed securely within the allowed directory,
+# avoiding access to unauthorized paths.
 class ListFilesTool < LLM::LocalFunction
   name "list_files"
 

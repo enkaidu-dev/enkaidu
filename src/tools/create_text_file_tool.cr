@@ -3,6 +3,8 @@ require "json"
 require "../tools"
 require "./file_helper"
 
+# The `CreateTextFileTool` class defines a tool for a new file, ensuring the operation is performed within
+# the current directory.
 class CreateTextFileTool < LLM::LocalFunction
   name "create_text_file"
 
