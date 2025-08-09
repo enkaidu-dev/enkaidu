@@ -23,7 +23,7 @@ class ListFilesTool < LLM::LocalFunction
   class Runner < LLM::Function::Runner
     include FileHelper
 
-    def execute(f : LLM::Function, args : JSON::Any) : String
+    def execute(args : JSON::Any) : String
       path = if args.as_s?
                args.as_s
              elsif args["folder"]?

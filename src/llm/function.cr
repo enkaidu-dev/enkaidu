@@ -12,7 +12,7 @@ module LLM
     abstract class Runner
       # Implement this method to handle the LLM function call, and return a
       # String with the JSON value.
-      abstract def execute(f : Function, args : JSON::Any) : String
+      abstract def execute(args : JSON::Any) : String
     end
 
     # Return an instance of this function's Runner
@@ -20,7 +20,7 @@ module LLM
 
     # Call this method to clone and execute this function
     def run(args : JSON::Any) : String
-      self.new_runner.execute(self, args)
+      self.new_runner.execute(args)
     end
   end
 end

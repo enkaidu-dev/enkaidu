@@ -21,7 +21,7 @@ class RenameFileTool < LLM::LocalFunction
   class Runner < LLM::Function::Runner
     include FileHelper
 
-    def execute(f : LLM::Function, args : JSON::Any) : String
+    def execute(args : JSON::Any) : String
       current_path = args["current_path"].as_s? || return error_response("The required current_path was not specified")
       new_name = args["new_name"].as_s? || return error_response("The required new_name was not specified")
 

@@ -20,7 +20,7 @@ class CreateTextFileTool < LLM::LocalFunction
   class Runner < LLM::Function::Runner
     include FileHelper
 
-    def execute(f : LLM::Function, args : JSON::Any) : String
+    def execute(args : JSON::Any) : String
       file_path = args["file_path"].as_s? || return error_response("The required file_path was not specified")
       content = args["content"].as_s? || return error_response("The required content was not specified")
 
