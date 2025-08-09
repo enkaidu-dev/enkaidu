@@ -64,12 +64,12 @@ module Enkaidu
         puts "QUERY".colorize(:yellow)
         puts query
       end
-      chat.ask query do |r|
-        unless r["type"] == "done"
+      chat.ask query do |event|
+        unless event["type"] == "done"
           log "," if ix.positive?
-          log r.to_json
+          log event.to_json
           ix += 1
-          process_event(r, tools)
+          process_event(event, tools)
         end
       end
       # deal with any tool calls and subsequent events repeatedly until
@@ -77,12 +77,12 @@ module Enkaidu
       until tools.empty?
         calls = tools
         tools = [] of JSON::Any
-        chat.call_tools_and_ask calls do |r|
-          unless r["type"] == "done"
+        chat.call_tools_and_ask calls do |event|
+          unless event["type"] == "done"
             log "," if ix.positive?
-            log r.to_json
+            log event.to_json
             ix += 1
-            process_event(r, tools)
+            process_event(event, tools)
           end
         end
       end

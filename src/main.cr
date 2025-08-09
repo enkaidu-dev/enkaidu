@@ -8,9 +8,9 @@ module Enkaidu
 
     def initialize
       @session = Session.new
-      if session.streaming?
-        puts "WARNING: No chat output when streaming is enabled (for now). Sorry.".colorize(:yellow)
-      end
+
+      return unless session.streaming?
+      puts "WARNING: No chat output when streaming is enabled (for now). Sorry.".colorize(:yellow)
     end
 
     private def commands(q)
@@ -29,25 +29,23 @@ module Enkaidu
     end
 
     def run
-      begin
-        session.log "["
-        while !done?
-          print "----\nQUERY > ".colorize(:yellow)
-          if (q = gets)
-            case (q = q.strip)
-            when .starts_with?("/") then commands(q)
-            else
-              query(q)
-            end
+      session.log "["
+      while !done?
+        print "----\nQUERY > ".colorize(:yellow)
+        if q = gets
+          case q = q.strip
+          when .starts_with?("/") then commands(q)
           else
-            session.warning("ERROR: Unexpected end of input IO")
-            @done = true
+            query(q)
           end
+        else
+          session.warning("ERROR: Unexpected end of input IO")
+          @done = true
         end
-        session.log "]"
-      ensure
-        session.log_close
       end
+      session.log "]"
+    ensure
+      session.log_close
     end
   end
 end

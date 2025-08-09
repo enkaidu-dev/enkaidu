@@ -34,21 +34,22 @@ module LLM::OpenAI
       }
     end
 
-    def call_tools_and_ask(tools : Array(JSON::Any), & : LLM::ChatEvent ->)
+    def call_tools_and_ask(tool_calls : Array(JSON::Any), & : LLM::ChatEvent ->)
       calls = 0
-      tools.each do |tc|
-        name = tc.dig("function", "name").as_s
-        if (tool = find_tool? name)
-          @messages << call_tool tool, tc
+      tool_calls.each do |call|
+        name = call.dig("function", "name").as_s
+        if tool = find_tool? name
+          @messages << call_tool tool, call
           calls += 1
         else
-          yield unknown_tool_call(tc)
+          yield unknown_tool_call(call)
         end
       end
-      if calls.positive?
-        ask_post do |m|
-          yield m
-        end
+
+      return unless calls.positive?
+
+      ask_post do |msg|
+        yield msg
       end
     end
 
@@ -61,8 +62,8 @@ module LLM::OpenAI
         :role    => "user",
         :content => content,
       }
-      ask_post do |m|
-        yield m
+      ask_post do |msg|
+        yield msg
       end
     end
 
@@ -75,8 +76,8 @@ module LLM::OpenAI
       @conn.post_and_stream(body) do |resp|
         STDERR.puts "<<< #{resp.headers}" if TRACE
         case resp.content_type
-        when "text/event-stream" then handle_text_event_stream(resp) { |m| yield m }
-        when "application/json"  then handle_app_json(resp) { |m| yield m }
+        when "text/event-stream" then handle_text_event_stream(resp) { |msg| yield msg }
+        when "application/json"  then handle_app_json(resp) { |msg| yield msg }
         else
           # we don't know what to do if it's not SSE or JSON
           yield unexpected_response(resp)
@@ -173,16 +174,16 @@ module LLM::OpenAI
       selector = from_stream ? "delta" : "message"
 
       # check for text content
-      c = data.dig?("choices", 0, selector, "content")
-      if (c && c.raw && c.raw != "") # in case property exists with null value
-        yield({type: "text", content: c})
+      content = data.dig?("choices", 0, selector, "content")
+      if content && content.raw && content.raw != "" # in case property exists with null value
+        yield({type: "text", content: content})
       end
 
       # check for tool calling
-      if (t = data.dig?("choices", 0, selector, "tool_calls"))
-        t.as_a.each do |tc|
-          if tc.dig?("function", "name") # in case function block is a dud
-            yield({type: "tool_call", content: tc})
+      if tool_calls = data.dig?("choices", 0, selector, "tool_calls")
+        tool_calls.as_a.each do |call|
+          if call.dig?("function", "name") # in case function block is a dud
+            yield({type: "tool_call", content: call})
           end
         end
       end

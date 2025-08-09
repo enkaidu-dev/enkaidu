@@ -36,9 +36,9 @@ module LLM::OpenAI
                 json.field "type", "object"
                 json.field "properties" do
                   json.object do
-                    f.each_param do |p|
-                      param_to_json(p, json)
-                      required << p.name if p.required?
+                    f.each_param do |param|
+                      param_to_json(param, json)
+                      required << param.name if param.required?
                     end
                   end
                 end
@@ -65,15 +65,15 @@ module LLM::OpenAI
         json.field "stream", stream
         json.field "messages" do
           json.array do
-            if (sm = system_message)
+            if sm = system_message
               json.object do
                 json.field "role", "system"
                 json.field "content", sm
               end
             end
-            messages.each do |m|
+            messages.each do |msg|
               json.object do
-                m.each do |k, v|
+                msg.each do |k, v|
                   json.field k.to_s, v
                 end
               end
@@ -83,8 +83,8 @@ module LLM::OpenAI
         json.field "tool_choice", "auto"
         json.field "tools" do
           json.array do
-            tools.each do |f|
-              function_to_json(f, json)
+            tools.each do |tool|
+              function_to_json(tool, json)
             end
           end
         end

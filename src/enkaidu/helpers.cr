@@ -17,5 +17,4 @@ module Enkaidu
       exit(1)
     end
   end
-
 end

@@ -3,17 +3,25 @@ require "json"
 require "../tools"
 require "./file_helper"
 
+# The ReplaceTextInTextFileTool class defines a tool for replacing specified
+# text in text-based files, ensuring the operation is performed within
+# the current directory.
 class ReplaceTextInTextFileTool < LLM::LocalFunction
   name "replace_text_in_text_file"
 
-  description "Replaces specified text in a text-based file with new text. Ensures the file is within the current directory and is a text file."
+  description "Replaces specified text in a text-based file with new text. " +
+              "Ensures the file is within the current directory and is a text file."
 
-  param "file_path", type: LLM::ParamType::Str, description: "The relative path to the file where you want to perform the replacement.", required: true
-  param "search_text", type: LLM::ParamType::Str, description: "The text to search for in the file.", required: true
-  param "replacement_text", type: LLM::ParamType::Str, description: "The text to replace the search_text with in the file.", required: true
+  param "file_path", type: LLM::ParamType::Str,
+    description: "The relative path to the file where you want to perform the replacement.", required: true
+  param "search_text", type: LLM::ParamType::Str,
+    description: "The text to search for in the file.", required: true
+  param "replacement_text", type: LLM::ParamType::Str,
+    description: "The text to replace the search_text with in the file.", required: true
 
   runner Runner
 
+  # The Runner class executes the function
   class Runner < LLM::Function::Runner
     include FileHelper
 

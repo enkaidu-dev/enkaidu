@@ -6,15 +6,13 @@ module Enkaidu
     end
 
     def log(s)
-      if (log_io = io)
-        log_io.puts s
-      end
+      return unless log_io = io
+      log_io.puts s
     end
 
     def log_close
-      if (log_io = io)
-        log_io.close
-      end
+      return unless log_io = io
+      log_io.close
     end
   end
 end

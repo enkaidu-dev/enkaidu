@@ -38,8 +38,8 @@ module LLM
     end
 
     def each_tool(&)
-      @tools.each_value do |t|
-        yield t
+      @tools.each_value do |tool|
+        yield tool
       end
     end
 

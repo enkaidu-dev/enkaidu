@@ -17,15 +17,13 @@ module FileHelper
   end
 
   def text_file?(resolved_path)
-    begin
-      File.open(resolved_path, "r") do |file|
-        buffer = uninitialized UInt8[1024]
-        bytes_read = file.read_utf8(buffer.to_slice)
-        String.new(buffer.to_slice[0, bytes_read], "UTF-8").valid_encoding?
-      end
-    rescue
-      false
+    File.open(resolved_path, "r") do |file|
+      buffer = uninitialized UInt8[1024]
+      bytes_read = file.read_utf8(buffer.to_slice)
+      String.new(buffer.to_slice[0, bytes_read], "UTF-8").valid_encoding?
     end
+  rescue
+    false
   end
 
   def valid_directory?(requested_path)

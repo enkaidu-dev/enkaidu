@@ -9,8 +9,8 @@ module LLM
 
     # Iterate through each parameter
     def each_param(& : LLM::Param ->)
-      @@params.each do |p|
-        yield p
+      @@params.each do |param|
+        yield param
       end
     end
 
