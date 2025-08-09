@@ -29,6 +29,8 @@ actions:
   wipe:
     command: crystal clear_cache && ops clean
     description: Clear build caches and prior builds
+  lint:
+    command: bin/ameba --all 
 options:
   environment:
     APP: enkaidu
