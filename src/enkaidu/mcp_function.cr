@@ -34,14 +34,15 @@ module Enkaidu
                   else
                     [] of String
                   end
-      props = tool_def.dig("inputSchema", "properties").as_h
-      props.each do |p_name, p_def|
-        @params << LLM::Param.new(
-          name: p_name,
-          description: (tmp = p_def["description"]?) ? tmp.as_s : p_name,
-          type: LLM::ParamType.from(label: p_def["type"]),
-          required: requireds != nil && requireds.includes?(p_name)
-        )
+      if props = tool_def.dig?("inputSchema", "properties")
+        props.as_h.each do |p_name, p_def|
+          @params << LLM::Param.new(
+            name: p_name,
+            description: (tmp = p_def["description"]?) ? tmp.as_s : p_name,
+            type: LLM::ParamType.from(label: p_def["type"]),
+            required: requireds != nil && requireds.includes?(p_name)
+          )
+        end
       end
     end
 
