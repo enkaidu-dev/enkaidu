@@ -3,8 +3,9 @@ require "markterm"
 
 require "../llm"
 require "../tools"
-require "./logger"
 
+require "./mcp_function"
+require "./logger"
 require "./options"
 
 module Enkaidu
@@ -17,6 +18,9 @@ module Enkaidu
     private getter connection : LLM::ChatConnection
     private getter chat : LLM::Chat
     private getter logger : Logger
+
+    private getter mcp_functions = [] of MCPFunction
+    private getter mcp_connections = [] of MCPC::HttpConnection
 
     def initialize
       @logger = Logger.new(opts.log_file)
@@ -57,6 +61,32 @@ module Enkaidu
         puts Markd.to_term(r["content"].as_s) unless chat.streaming?
       when .starts_with? "error"
         warning("ERROR:\n#{r["content"].to_json}")
+      end
+    end
+
+    def use_mcp_server(url : String)
+      mcpc = MCPC::HttpConnection.new(url)
+      puts "  INIT MCP connection: #{mcpc.uri}".colorize(:green)
+      mcp_connections << mcpc
+      if tool_defs = mcpc.list_tools
+        tool_defs = tool_defs.as_a
+        puts "  FOUND #{tool_defs.size} tools".colorize(:green)
+        tool_defs.each do |tool|
+          func = MCPFunction.new(tool, mcpc, cli: self)
+          mcp_functions << func
+          puts "  ADDED function: #{func.name}".colorize(:green)
+          chat.with_tool(func)
+        end
+      end
+    rescue ex
+      handle_mcpc_error(ex)
+    end
+
+    def handle_mcpc_error(ex)
+      STDERR.puts "ERROR: #{ex.class}: #{ex}".colorize(:red)
+      case ex
+      when MCPC::ResponseError then STDERR.puts(JSON.build(indent: 2) { |builder| ex.details.to_json(builder) })
+      when MCPC::ResultError   then STDERR.puts(JSON.build(indent: 2) { |builder| ex.data.to_json(builder) })
       end
     end
 

@@ -1,6 +1,8 @@
 # Enkaidu
 
-Your trusted second-in-command (line tool) for coding and creativity. Inspired by Enkidu, the loyal and dynamic companion from Mesopotamian mythology, Enkaidu embodies collaboration, adaptability, and a touch of chaos to spark innovation. With the use of AI large language models Enkaidu is designed to assist you with writing & maintaining code (and other text-based content).
+Your trusted second-in-command (line tool) for coding and creativity. Inspired by Enkidu, the loyal and dynamic companion from Mesopotamian mythology, Enkaidu embodies collaboration, adaptability, and a touch of chaos to spark innovation. 
+
+With the use of AI large language models Enkaidu is designed to assist you with writing & maintaining code (and other text-based content). Additionally, by integrating with MCP servers Enkaidu can help do even more.
 
 ## Install
 
