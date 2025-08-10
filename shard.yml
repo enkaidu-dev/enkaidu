@@ -15,8 +15,6 @@ development_dependencies:
 dependencies:
   markterm:
     github: ralsina/markterm
-  todo_or_diehard:
-    github: nogginly/todo_or_diehard
 
 targets:
   enkaidu:
