@@ -1,8 +1,21 @@
 # NOTES
 
+## TODO
+
+- [ ] Write test specs
+- [ ] Document the code classes (viz. fix `ops lint` warnings)
+
+### MCPC
+
+- [ ] Figure out how to support authentication (a) oAuth2 per spec? (b) API key? (c) Basic auth over HTTPS?
+- [ ] Detect when MCP connection needs to be reset; there are some rules for this.
+- [ ] Find a canonical server to run locally to test the protocol better
+- [ ] Figure out how to improve MCP transport responsiveness. The MCP Inspector seems be deal with HTTP streaming much more responsively. My implementation, which needs `io.skip_to_end` after handling every response, seems sluggish.
+
 ## MCP Support
 
-Currently we only support HTTP + Streaming via POST method. We do not support the deprecated SSE transport.
+Currently we only support HTTP + Streaming via POST method. Also support non-streaming HTTP but I haven't found a good server to test this. 
+We do not support the deprecated SSE transport.
 
 ### Some MCP servers with tools
 
@@ -40,6 +53,8 @@ Can you find any code that refers to handling timeouts in an MCP client from the
 - Pending
 
 ## Future
+
+These are major changes I'd like to make to Enkaidu
 
 ### Interactivity
 
