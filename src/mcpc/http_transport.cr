@@ -18,7 +18,7 @@ module MCPC
 
     private getter last_request_headers : HTTP::Headers? = nil
 
-    def initialize(url : String | URI, timeout_seconds = 5)
+    def initialize(url : String | URI)
       @uri = url.is_a?(URI) ? url : URI.parse(url)
       @httpc = HTTP::Client.new(@uri)
       @httpc.before_request do |request|
@@ -31,11 +31,6 @@ module MCPC
         # Remember
         @last_request_headers = request.headers
       end
-      set_timeout(seconds: timeout_seconds)
-    end
-
-    private def set_timeout(seconds)
-      # @httpc.read_timeout = Time::Span.new(seconds: seconds) if seconds.positive?
     end
 
     # Interprets the response line by line per the SSE spec and return
@@ -74,10 +69,8 @@ module MCPC
     alias ErrorDetails = Hash(String, String | JSON::Any)
 
     # Send a request. Yields a `JSON::Any` for valid data: in the response, or `ErrorDetails` for unknown
-    # response. Expect an `IO::TimeoutError` when the server gets stuck, in which case you'll need to
-    # start a new transport/session pair.
-    def post(body, timeout_seconds = -1, & : JSON::Any | ErrorDetails ->)
-      set_timeout(timeout_seconds)
+    # response.
+    def post(body, & : JSON::Any | ErrorDetails ->)
       @httpc.post(uri.path, HEADERS, body: body) do |resp|
         io = resp.body_io
         ok = false

@@ -67,8 +67,7 @@ module MCPC
       end
     end
 
-    # Calls a tool and returns the content from the reply on success, with optionally longer
-    # timeout to allow for slow tools
+    # Calls a tool and returns the content from the reply on success
     def call_tool(name : String,
                   args : Hash(String, String | Number | Bool | JSON::Any)) : JSON::Any?
       transport.post(session.body_tools_call(name, args)) do |reply|
@@ -107,9 +106,8 @@ module MCPC
       end
     end
 
-    # If you ever get an IO::TimeoutError exception, reset the connection
-    # to start over again; sets up a new transport and session, and initializes the
-    # session.
+    # Reset to re-initialize the connection whenever calls fail with a 404 error; sets up a new transport and session, and initializes the
+    # session. TODO better handling of reset scenarios.
     def reset
       @transport = HttpTransport.new(uri)
       @session = Session.new
