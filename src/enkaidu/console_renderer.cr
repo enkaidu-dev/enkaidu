@@ -12,10 +12,9 @@ module Enkaidu
 
     def error_with(message, help = nil)
       STDERR.puts message.colorize(:red)
-      if help
-        STDERR.puts
-        STDERR.puts help
-      end
+      return unless help
+      STDERR.puts
+      STDERR.puts help
     end
 
     def user_query(query)

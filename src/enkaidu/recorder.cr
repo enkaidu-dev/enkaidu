@@ -10,9 +10,8 @@ module Enkaidu
       return unless io = rec_io
       io.puts s
       @count_since_flush += 1
-      if count_since_flush >= FLUSH_AFTER
-        flush
-      end
+      return unless count_since_flush >= FLUSH_AFTER
+      flush
     end
 
     def flush

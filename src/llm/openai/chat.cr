@@ -233,11 +233,9 @@ module LLM::OpenAI
       end
 
       # check if we have a finish reason
-      if fini = data.dig?("choices", 0, "finish_reason")
-        unless fini.raw.nil?
-          yield({type: "finish_reason", content: fini})
-        end
-      end
+      return unless fini = data.dig?("choices", 0, "finish_reason")
+      return if fini.raw.nil?
+      yield({type: "finish_reason", content: fini})
     end
 
     private def to_body

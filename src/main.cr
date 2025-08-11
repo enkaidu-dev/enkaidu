@@ -19,10 +19,10 @@ module Enkaidu
     end
 
     WELCOME = <<-TEXT
-    # Welcome to **Enkaidu**, 
-    This is your second-in-command(-line) designed to assist you with 
-    writing & maintaining code and other text-based content. 
-    
+    # Welcome to **Enkaidu**,
+    This is your second-in-command(-line) designed to assist you with
+    writing & maintaining code and other text-based content.
+
     Furthermore, by connecting with MCP servers Enkaidu can assist you with much more.
 
     Use `/help` to see the `/` commands available.
@@ -38,9 +38,9 @@ module Enkaidu
       - Shows this information
 
     `/use_mcp URL`
-      - Connect with the specified MCP server and register any available tools 
+      - Connect with the specified MCP server and register any available tools
         for use with subsequent queries
-    
+
     HELP
 
     private def commands(q)
