@@ -1,6 +1,7 @@
 require "json"
 
 require "../function"
+require "../function_call"
 
 module LLM::OpenAI
   private module Converters
@@ -19,6 +20,19 @@ module LLM::OpenAI
         json.object do
           json.field "type", param_type_label(p.type)
           json.field "description", p.description
+        end
+      end
+    end
+
+    protected def function_call_to_json(f : LLM::FunctionCall, json : JSON::Builder)
+      json.object do
+        json.field "type", "function"
+        json.field "id", f.id
+        json.field "function" do
+          json.object do
+            json.field "arguments", f.args_json
+            json.field "name", f.name
+          end
         end
       end
     end

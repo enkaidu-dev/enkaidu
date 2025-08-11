@@ -3,6 +3,7 @@ require "json"
 
 require "./converters"
 require "../chat"
+require "../function_call"
 
 module LLM::OpenAI
   alias MessageValue = String | JSON::Any | Array(JSON::Any)
@@ -140,6 +141,7 @@ module LLM::OpenAI
     private def prepare_message_from_streamed_data(stream_io, &)
       message = Message.new
       tool_calls = [] of JSON::Any
+      recent_tool_call = nil
       content = String.build do |text_io|
         stream_io.each_line do |line|
           next if line.empty?
@@ -150,13 +152,45 @@ module LLM::OpenAI
             STDERR.puts "*** #{line}" if TRACE
             data = JSON.parse(line.lchop("data: "))
             process_data(data, from_stream: true) do |msg|
-              yield msg
               # gather up the stream chunks
               case msg["type"]
               when "text"
                 text_io << msg["content"]
+                yield msg
               when "tool_call"
-                tool_calls << msg["content"]
+                if recent_tool_call
+                  call = jsonify_function_call(recent_tool_call)
+                  tool_calls << call
+                  yield({type: "tool_call", content: call})
+                end
+                # AWFUL?
+                # This FunctionCall object is used to aggregate the
+                # tool call when streaming, after which it is
+                # retrograded back to its JSON::Any representation
+                # as if it had been parsed from a whole incoming
+                # tool call.
+                tool_call = msg["content"]
+                recent_tool_call = LLM::FunctionCall.new(
+                  name: tool_call.dig("function", "name").as_s,
+                  id: tool_call["id"].as_s,
+                  args_json: tool_call.dig("function", "arguments").as_s
+                )
+              when "tool_call_merge"
+                if recent_tool_call
+                  tool_call = msg["content"]
+                  if args = tool_call.dig?("function", "arguments")
+                    recent_tool_call.append_args_json(args.as_s)
+                  end
+                end
+              when "finish_reason"
+                if recent_tool_call
+                  call = jsonify_function_call(recent_tool_call)
+                  tool_calls << call
+                  recent_tool_call = nil
+                  yield({type: "tool_call", content: call})
+                end
+              else
+                yield msg
               end
             end
           end
@@ -166,6 +200,13 @@ module LLM::OpenAI
       message[:content] = content
       message[:tool_calls] = tool_calls unless tool_calls.empty?
       message
+    end
+
+    private def jsonify_function_call(f : LLM::FunctionCall)
+      f.append_args_json(nil, complete: true)
+      JSON.parse(JSON.build do |json|
+        function_call_to_json(f, json)
+      end)
     end
 
     private def process_data(data : JSON::Any, from_stream = false, &)
@@ -180,10 +221,21 @@ module LLM::OpenAI
       end
 
       # check for tool calling
-      return unless tool_calls = data.dig?("choices", 0, selector, "tool_calls")
-      tool_calls.as_a.each do |call|
-        if call.dig?("function", "name") # in case function block is a dud
-          yield({type: "tool_call", content: call})
+      if tool_calls = data.dig?("choices", 0, selector, "tool_calls")
+        tool_calls.as_a.each do |call|
+          if call.dig?("function", "name") # in case function block is a dud
+            yield({type: "tool_call", content: call})
+          else
+            # chunks to merge with last tool_call with name
+            yield({type: "tool_call_merge", content: call})
+          end
+        end
+      end
+
+      # check if we have a finish reason
+      if fini = data.dig?("choices", 0, "finish_reason")
+        unless fini.raw.nil?
+          yield({type: "finish_reason", content: fini})
         end
       end
     end
