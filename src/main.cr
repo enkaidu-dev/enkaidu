@@ -1,16 +1,21 @@
 require "./enkaidu/session"
+require "./enkaidu/console_renderer"
 
 module Enkaidu
   class Main
     private getter session
     private getter? done = false
     private getter count = 0
+    private getter renderer : ConsoleRenderer
+
+    delegate recorder, to: @session
 
     def initialize
-      @session = Session.new
+      @renderer = ConsoleRenderer.new
+      @session = Session.new(renderer)
 
       return unless session.streaming?
-      puts "WARNING: No chat output when streaming is enabled (for now). Sorry.".colorize(:yellow)
+      puts "WARNING: Markdown formatted rendering is not supported when streaming is enabled (for now). Sorry.\n".colorize(:yellow)
     end
 
     WELCOME = <<-TEXT
@@ -49,12 +54,12 @@ module Enkaidu
         url = cmd.last.strip
         session.use_mcp_server url
       else
-        session.warning("ERROR: Unknown command: #{q}")
+        renderer.warning("ERROR: Unknown command: #{q}")
       end
     end
 
     private def query(q)
-      session.log "," if count.positive?
+      recorder << "," if count.positive?
       session.ask(query: q)
       @count += 1
       puts
@@ -62,7 +67,7 @@ module Enkaidu
 
     def run
       puts Markd.to_term(WELCOME)
-      session.log "["
+      recorder << "["
       while !done?
         print "----\nQUERY > ".colorize(:yellow)
         if q = gets
@@ -72,13 +77,13 @@ module Enkaidu
             query(q)
           end
         else
-          session.warning("ERROR: Unexpected end of input IO")
+          renderer.warning("ERROR: Unexpected end of input IO")
           @done = true
         end
       end
-      session.log "]"
+      recorder << "]"
     ensure
-      session.log_close
+      recorder.close
     end
   end
 end

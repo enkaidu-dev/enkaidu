@@ -5,31 +5,33 @@ require "../llm"
 require "../tools"
 
 require "./mcp_function"
-require "./logger"
+require "./recorder"
 require "./options"
+require "./session_renderer"
 
 module Enkaidu
   # The Session class manages connection setup, logging, and the processing of
   # different types of events for user queries via the command line app
   class Session
-    include Helpers
-
-    private getter opts = Options.new
+    private getter opts : Options
     private getter connection : LLM::ChatConnection
     private getter chat : LLM::Chat
-    private getter logger : Logger
 
     private getter mcp_functions = [] of MCPFunction
     private getter mcp_connections = [] of MCPC::HttpConnection
 
-    def initialize
-      @logger = Logger.new(opts.log_file)
+    getter recorder : Recorder
+    getter renderer : SessionRenderer
+
+    def initialize(@renderer)
+      @opts = Options.new(@renderer)
+      @recorder = Recorder.new(opts.recorder_file)
 
       @connection = case opts.provider_name
                     when "azure_openai" then LLM::AzureOpenAI::ChatConnection.new
                     when "ollama"       then LLM::Ollama::ChatConnection.new
                     else
-                      error_with "ERROR: Unknown provider: #{opts.provider_name}"
+                      opts.error_and_exit_with "FATAL: Unknown provider: #{opts.provider_name}", opts.help
                     end
 
       @chat = connection.new_chat do
@@ -47,34 +49,44 @@ module Enkaidu
         with_tool ReplaceTextInTextFileTool.new
         with_tool RenameFileTool.new
       end
+
+      @renderer.streaming = chat.streaming?
     end
 
     private def process_event(r, tools)
       case r["type"]
       when "tool_call"
         tools << r["content"]
-        print "  CALL".colorize(:green)
-        puts " #{r["content"].dig("function", "name").as_s.colorize(:red)} " \
-             "with #{r["content"].dig("function", "arguments").colorize(:red)}" unless chat.streaming?
+        # print "  CALL".colorize(:green)
+        # puts " #{r["content"].dig("function", "name").as_s.colorize(:red)} " \
+        #      "with #{r["content"].dig("function", "arguments").colorize(:red)}" unless chat.streaming?
+        renderer.llm_tool_call(
+          name: r["content"].dig("function", "name").as_s,
+          args: r["content"].dig("function", "arguments"))
       when "text"
-        puts "----".colorize(:green)
-        puts Markd.to_term(r["content"].as_s) unless chat.streaming?
+        renderer.llm_text(r["content"].as_s)
+        # puts "----".colorize(:green)
+        # puts Markd.to_term(r["content"].as_s) unless chat.streaming?
       when .starts_with? "error"
-        warning("ERROR:\n#{r["content"].to_json}")
+        renderer.llm_error(r["content"])
+        # warning("ERROR:\n#{r["content"].to_json}")
       end
     end
 
     def use_mcp_server(url : String)
       mcpc = MCPC::HttpConnection.new(url)
-      puts "  INIT MCP connection: #{mcpc.uri}".colorize(:green)
+      # puts "  INIT MCP connection: #{mcpc.uri}".colorize(:green)
+      renderer.mcp_initialized(mcpc.uri)
       mcp_connections << mcpc
       if tool_defs = mcpc.list_tools
         tool_defs = tool_defs.as_a
-        puts "  FOUND #{tool_defs.size} tools".colorize(:green)
+        # puts "  FOUND #{tool_defs.size} tools".colorize(:green)
+        renderer.mcp_tools_found(tool_defs.size)
         tool_defs.each do |tool|
           func = MCPFunction.new(tool, mcpc, cli: self)
           mcp_functions << func
-          puts "  ADDED function: #{func.name}".colorize(:green)
+          renderer.mcp_tool_ready(func)
+          # puts "  ADDED function: #{func.name}".colorize(:green)
           chat.with_tool(func)
         end
       end
@@ -83,26 +95,19 @@ module Enkaidu
     end
 
     def handle_mcpc_error(ex)
-      STDERR.puts "ERROR: #{ex.class}: #{ex}".colorize(:red)
-      case ex
-      when MCPC::ResponseError then STDERR.puts(JSON.build(indent: 2) { |builder| ex.details.to_json(builder) })
-      when MCPC::ResultError   then STDERR.puts(JSON.build(indent: 2) { |builder| ex.data.to_json(builder) })
-      end
+      renderer.mcp_error(ex)
     end
 
     def ask(query, render_query = false)
-      log "["
+      recorder << "["
       ix = 0
       tools = [] of JSON::Any
       # ask and handle the initial query and its events
-      if render_query
-        puts "QUERY".colorize(:yellow)
-        puts query
-      end
+      renderer.user_query(query) if render_query
       chat.ask query do |event|
         unless event["type"] == "done"
-          log "," if ix.positive?
-          log event.to_json
+          recorder << "," if ix.positive?
+          recorder << event.to_json
           ix += 1
           process_event(event, tools)
         end
@@ -112,21 +117,22 @@ module Enkaidu
       until tools.empty?
         calls = tools
         tools = [] of JSON::Any
+        ev_count = 0
         chat.call_tools_and_ask calls do |event|
+          renderer.user_calling_tools if ev_count.zero?
+          ev_count += 1
           unless event["type"] == "done"
-            log "," if ix.positive?
-            log event.to_json
+            recorder << "," if ix.positive?
+            recorder << event.to_json
             ix += 1
             process_event(event, tools)
           end
         end
       end
-      log "]"
+      recorder << "]"
     end
 
     delegate streaming?, to: @chat
     delegate debug?, to: @opts
-    delegate log, to: @logger
-    delegate log_close, to: @logger
   end
 end

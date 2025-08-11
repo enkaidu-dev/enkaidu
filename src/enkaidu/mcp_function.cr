@@ -56,11 +56,11 @@ module Enkaidu
       # Implement this method to handle the LLM function call, and return a
       # String with the JSON value.
       def execute(args : JSON::Any) : String
-        STDERR.puts "INFO: Attempting to call \"#{func.name}\" at server #{func.mcpc.uri}.".colorize(:yellow)
-        STDERR.puts "      with #{args.to_json}".colorize(:yellow)
+        func.cli.renderer.mcp_calling_tool(func.mcpc.uri, func.name, args)
         if result = func.mcpc.call_tool(func.name, args.as_h)
-          # STDERR.puts "INFO: Call result: #{result.to_json}".colorize(:green)
-          result.to_json
+          result = result.to_json
+          func.cli.renderer.mcp_calling_tool_result(func.mcpc.uri, func.name, result)
+          result
         else
           "null"
         end
