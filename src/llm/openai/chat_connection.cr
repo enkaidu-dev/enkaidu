@@ -10,7 +10,11 @@ module LLM::OpenAI
     end
 
     def url : String
-      ENV["OPENAI_ENDPOINT"]
+      if ENV.includes?("OPENAI_ENDPOINT")
+        ENV["OPENAI_ENDPOINT"]
+      else
+        "https://api.openai.com/v1/chat/completions"
+      end
     end
 
     def api_key : String | Nil
