@@ -1,5 +1,6 @@
 require "./enkaidu/session"
 require "./enkaidu/console_renderer"
+require "./query_reader"
 
 module Enkaidu
   class Main
@@ -69,8 +70,8 @@ module Enkaidu
       puts Markd.to_term(WELCOME)
       recorder << "["
       while !done?
-        print "----\nQUERY > ".colorize(:yellow)
-        if q = gets
+        puts "----".colorize(:yellow)
+        if q = reader.read_next
           case q = q.strip
           when .starts_with?("/") then commands(q)
           else
@@ -84,6 +85,10 @@ module Enkaidu
       recorder << "]"
     ensure
       recorder.close
+    end
+
+    private def reader
+      @reader ||= QueryReader.new
     end
   end
 end
