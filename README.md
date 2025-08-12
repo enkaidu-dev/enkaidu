@@ -23,7 +23,7 @@ Run `enkaidu -p openai` after setting up the following environment variables:
 Env var | Description
 ----|----
 `OPENAI_MODEL` | For example, `gpt-oss:20b`.
-`OPENAI_ENDPOINT` | For example, `http://localhost:1234` for LM Studio; defaults to `https://api.openai.com/v1/chat/completions`.
+`OPENAI_ENDPOINT` | For example, `http://localhost:1234` for LM Studio; defaults to `https://api.openai.com`.
 `OPENAI_API_KEY` | Optional; for example, `sk-...`
 
 ### With Azure OpenAI
