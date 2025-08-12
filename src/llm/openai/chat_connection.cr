@@ -2,11 +2,37 @@ require "./chat"
 require "../chat_connection"
 
 module LLM::OpenAI
-  abstract class ChatConnection < LLM::ChatConnection
+  class ChatConnection < LLM::ChatConnection
     def new_chat(&) : LLM::Chat
       chat = Chat.new(self)
       with chat yield
       chat
+    end
+
+    def url : String
+      ENV.fetch("OPENAI_ENDPOINT", "https://api.openai.com")
+    end
+
+    def api_key : String | Nil
+      ENV.fetch("OPENAI_API_KEY", nil)
+    end
+
+    def model
+      ENV["OPENAI_MODEL"]
+    end
+
+    protected def path : String
+      "/v1/chat/completions"
+    end
+
+    protected def headers : HTTP::Headers
+      headers = HTTP::Headers{
+        "Content-Type" => "application/json",
+      }
+
+      headers["Authorization"] = "Bearer #{api_key}" unless api_key.nil?
+
+      headers
     end
   end
 end

@@ -28,6 +28,7 @@ module Enkaidu
       @recorder = Recorder.new(opts.recorder_file)
 
       @connection = case opts.provider_name
+                    when "openai"       then LLM::OpenAI::ChatConnection.new
                     when "azure_openai" then LLM::AzureOpenAI::ChatConnection.new
                     when "ollama"       then LLM::Ollama::ChatConnection.new
                     else

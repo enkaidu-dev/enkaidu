@@ -12,7 +12,7 @@ module Enkaidu
     def initialize(@renderer)
       @opts = OptionParser.parse do |parser|
         parser.banner = "Usage: #{PROGRAM_NAME} [arguments]\n\nOptions"
-        parser.on("-p NAME", "--provider=NAME", "The name of the provider: azure_openai, ollama") { |name| @provider_name = name }
+        parser.on("-p NAME", "--provider=NAME", "The name of the provider: azure_openai, openai, or ollama") { |name| @provider_name = name }
         parser.on("-m NAME", "--model=NAME", "Some providers require a model.") { |name| @model_name = name }
         parser.on("-R FILEPATH", "--recorder-file=FILEPATH", "Record chat processing events to a JSON file") do |path|
           @recorder_file = File.open(path, "w")

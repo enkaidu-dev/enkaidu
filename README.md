@@ -16,6 +16,16 @@ See "Development" section for how to build `enkaidu`
 
 Run `enkaidu -p ollama -m M` with the model `M` you want to use. (Expects the local server to be at `http://localhost:11434`.)
 
+### With OpenAI
+
+Run `enkaidu -p openai` after setting up the following environment variables:
+
+Env var | Description
+----|----
+`OPENAI_MODEL` | For example, `gpt-oss:20b`.
+`OPENAI_ENDPOINT` | For example, `http://localhost:1234` for LM Studio; defaults to `https://api.openai.com`.
+`OPENAI_API_KEY` | Optional; for example, `sk-...`
+
 ### With Azure OpenAI
 
 Run `enkaidu -p azure_openai` after setting up the following environment variables:
