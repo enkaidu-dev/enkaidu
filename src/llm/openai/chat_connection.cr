@@ -10,15 +10,11 @@ module LLM::OpenAI
     end
 
     def url : String
-      if ENV.includes?("OPENAI_ENDPOINT")
-        ENV["OPENAI_ENDPOINT"]
-      else
-        "https://api.openai.com/v1/chat/completions"
-      end
+      ENV.fetch("OPENAI_ENDPOINT", "https://api.openai.com/v1/chat/completions")
     end
 
     def api_key : String | Nil
-      ENV["OPENAI_API_KEY"] if ENV.includes?("OEPNAI_API_KEY")
+      ENV.fetch("OPENAI_API_KEY", nil)
     end
 
     def model
