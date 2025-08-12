@@ -10,7 +10,7 @@ module LLM::OpenAI
     end
 
     def url : String
-      ENV.fetch("OPENAI_ENDPOINT", "https://api.openai.com/v1/chat/completions")
+      ENV.fetch("OPENAI_ENDPOINT", "https://api.openai.com")
     end
 
     def api_key : String | Nil
