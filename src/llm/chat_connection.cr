@@ -5,8 +5,6 @@ require "./chat"
 
 module LLM
   abstract class ChatConnection
-    @api_key : String?
-
     def initialize
       @client = HTTP::Client.new(URI.parse(url))
     end

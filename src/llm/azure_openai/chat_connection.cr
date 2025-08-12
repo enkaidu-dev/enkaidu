@@ -5,27 +5,30 @@ require "../openai"
 
 module LLM::AzureOpenAI
   class ChatConnection < OpenAI::ChatConnection
-    def initialize
-      @url = ENV["AZURE_OPENAI_ENDPOINT"]
-      super()
+    def api_ver
+      ENV["AZURE_OPENAI_API_VER"]
+    end
 
-      @api_ver = ENV["AZURE_OPENAI_API_VER"]
-      @api_key = ENV["AZURE_OPENAI_API_KEY"]
-      @model = ENV["AZURE_OPENAI_MODEL"]
+    def api_key
+      ENV["AZURE_OPENAI_API_KEY"]
+    end
+
+    def model
+      ENV["AZURE_OPENAI_MODEL"]
     end
 
     protected def url : String
-      @url
+      ENV["AZURE_OPENAI_ENDPOINT"]
     end
 
     protected def path : String
-      "/openai/deployments/#{@model}/chat/completions?api-version=#{@api_ver}"
+      "/openai/deployments/#{model}/chat/completions?api-version=#{api_ver}"
     end
 
     protected def headers : HTTP::Headers
       HTTP::Headers{
         "Content-Type"  => "application/json",
-        "Authorization" => "Bearer #{@api_key}",
+        "Authorization" => "Bearer #{api_key}",
       }
     end
   end
