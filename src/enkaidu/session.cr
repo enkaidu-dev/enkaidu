@@ -48,6 +48,7 @@ module Enkaidu
         with_tool CreateTextFileTool.new
         with_tool ReplaceTextInTextFileTool.new
         with_tool RenameFileTool.new
+        with_tool CreateDirectoryTool.new
       end
 
       @renderer.streaming = chat.streaming?
