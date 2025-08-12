@@ -7,10 +7,11 @@ module LLM::AzureOpenAI
   class ChatConnection < OpenAI::ChatConnection
     def initialize
       @url = ENV["AZURE_OPENAI_ENDPOINT"]
+      super()
+
       @api_ver = ENV["AZURE_OPENAI_API_VER"]
       @api_key = ENV["AZURE_OPENAI_API_KEY"]
       @model = ENV["AZURE_OPENAI_MODEL"]
-      super()
     end
 
     protected def url : String

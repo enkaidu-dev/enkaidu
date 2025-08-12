@@ -5,9 +5,10 @@ module LLM::OpenAI
   class ChatConnection < LLM::ChatConnection
     def initialize
       @url = ENV["OPENAI_ENDPOINT"]
+      super()
+
       @api_key = ENV["OPENAI_API_KEY"] if ENV.includes?("OPENAI_API_KEY")
       @model = ENV["OPENAI_MODEL"]
-      super()
     end
 
     def new_chat(&) : LLM::Chat
