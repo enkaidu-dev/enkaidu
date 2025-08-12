@@ -78,7 +78,6 @@ module Enkaidu
             query(q)
           end
         else
-          renderer.warning("ERROR: Unexpected end of input IO")
           @done = true
         end
       end
