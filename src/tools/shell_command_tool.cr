@@ -16,8 +16,8 @@ class ShellCommandTool < LLM::LocalFunction
 
   # Provide a description for the tool
   description "Executes one of the allowed shell commands (
-        #{ALLOWED_COMMANDS.join(", ")} within the current project's root directory and " \
-              "returns the shell command's output."
+    #{ALLOWED_COMMANDS.join(", ")} within the current project's root directory and
+    returns the shell command's output."
 
   # Define the acceptable parameter using the `param` method
   param "command", type: LLM::ParamType::Str, description: "The shell command to execute.", required: true
@@ -30,11 +30,6 @@ class ShellCommandTool < LLM::LocalFunction
       command = args["command"].as_s? || return error_response("The required 'command' was not specified.")
 
       begin
-        # Execute the shell command and capture its output
-        
-          return error_response("Invalid command. Only the following commands are allowed: #{ALLOWED_COMMANDS.join(", ")}")
-        end
-
         if requires_confirmation?(command)
           raise PermissionError.new("User denied execution.") unless user_confirms?(command)
         end
