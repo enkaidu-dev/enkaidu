@@ -9,14 +9,17 @@ class ShellCommandTool < LLM::LocalFunction
 
   class SafetyError < Exception; end
 
-  ALLOWED_EXECUTABLES = ["ls", "cat", "grep", "whoami", "file", "wc", "find"]
-  UNSAFE_STRINGS      = ["..", "|", "<", ">", ";", "&"]
+  UNSAFE_STRINGS = ["..", "|", "<", ">", ";", "&"]
+
+  def self.allowed_executables : Array(String)
+    ENV.fetch("ENKAIDU_ALLOWED_EXECUTABLES", "ls cat grep whoami file wc find").split(" ")
+  end
 
   name "shell_command"
 
   # Provide a description for the tool
   description "Executes one of the allowed shell commands (
-    #{ALLOWED_EXECUTABLES.join(", ")} within the current project's root directory and
+    #{ShellCommandTool.allowed_executables.join(", ")} within the current project's root directory and
     returns the shell command's output."
 
   # Define the acceptable parameter using the `param` method
@@ -44,8 +47,8 @@ class ShellCommandTool < LLM::LocalFunction
     end
 
     def check_safety(command)
-      unless ALLOWED_EXECUTABLES.any? { |cmd| command.index("#{cmd} ") == 0 }
-        raise SafetyError.new("Only the following commands are allowed: #{ALLOWED_EXECUTABLES.join(", ")}.")
+      unless ShellCommandTool.allowed_executables.any? { |cmd| command.index("#{cmd} ") == 0 }
+        raise SafetyError.new("Only the following commands are allowed: #{ShellCommandTool.allowed_executables.join(", ")}.")
       end
 
       UNSAFE_STRINGS.each do |str|
