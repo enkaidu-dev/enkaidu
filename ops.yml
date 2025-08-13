@@ -18,12 +18,12 @@ actions:
   install:
     command: |
       BRANCH=$(git branch --show-current)
-      [ "$BRANCH" == "main" ] || echo 1>&2 "$0: WARNING: not on 'main' branch."
+      [ "$BRANCH" == "main" ] || echo 1>&2 "ops: WARNING: not on 'main' branch."
 
       if [ -e "$INSTALL_DIR" ]; then
         ops build-release && cp bin/release/enkaidu "$INSTALL_DIR/"
       else
-        echo 1>&2 "$0: The directory '$INSTALL_DIR' does not exist."
+        echo 1>&2 "ops: The directory '$INSTALL_DIR' does not exist."
       fi
   run:
     command: ops build-debug && bin/debug/$APP
