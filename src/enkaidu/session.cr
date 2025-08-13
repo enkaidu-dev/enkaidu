@@ -13,6 +13,10 @@ module Enkaidu
   # The Session class manages connection setup, logging, and the processing of
   # different types of events for user queries via the command line app
   class Session
+    DEFAULT_SYSTEM_PROMPT = "You are a capable coding assistant with " \
+                            "the ability to use tool calling to solve " \
+                            "complicated multi-step tasks."
+
     private getter opts : Options
     private getter connection : LLM::ChatConnection
     private getter chat : LLM::Chat
@@ -41,9 +45,7 @@ module Enkaidu
         end
         with_debug if opts.debug?
         with_streaming if opts.stream?
-        with_system_message "You are a capable coding assistant with " \
-                            "the ability to use tool calling to solve " \
-                            "complicated multi-step tasks."
+        with_system_message ENV.fetch("ENKAIDU_SYSTEM_PROMPT", DEFAULT_SYSTEM_PROMPT)
         with_tool ListFilesTool.new
         with_tool ReadTextFileTool.new
         with_tool CreateTextFileTool.new
