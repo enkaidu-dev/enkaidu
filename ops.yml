@@ -14,12 +14,23 @@ actions:
   build-debug:
     command: SHARDS_BIN_PATH=bin/debug shards build $APP --debug
     description: Build for development (debugging)
-    alias: bd
+    aliases: [build, bd]
+  install:
+    quiet: true
+    command: |
+      BRANCH=$(git branch --show-current)
+      [ "$BRANCH" == "main" ] || echo 1>&2 "ops: WARNING: not on 'main' branch."
+
+      if [ -e "$INSTALL_DIR" ]; then
+        ops build-release && cp bin/release/$APP "$INSTALL_DIR/"
+      else
+        echo 1>&2 "ops: The directory '$INSTALL_DIR' does not exist."
+      fi
   run:
-    command: ops build-debug && bin/debug/$APP  
+    command: ops build-debug && bin/debug/$APP
     load_secrets: true
   run_release:
-    command: ops build-release && bin/release/$APP 
+    command: ops build-release && bin/release/$APP
     alias: rr
     description: Build for release and then run the app
     load_secrets: true
@@ -30,7 +41,8 @@ actions:
     command: crystal clear_cache && ops clean
     description: Clear build caches and prior builds
   lint:
-    command: bin/ameba --all 
+    command: bin/ameba --all
 options:
   environment:
     APP: enkaidu
+    INSTALL_DIR: "$HOME/bin"
