@@ -1,6 +1,7 @@
 require "json"
 
 require "../tools"
+require "../enkaidu/session_renderer"
 
 # The `ShellCommandTool` class defines a tool for executing shell commands within the
 # current project directory. Note: This implementation assumes a protected environment (e.g., chroot).
@@ -25,10 +26,21 @@ class ShellCommandTool < LLM::LocalFunction
   # Define the acceptable parameter using the `param` method
   param "command", type: LLM::ParamType::Str, description: "The shell command to execute.", required: true
 
-  runner Runner
+  protected getter ui : Enkaidu::SessionRenderer
+
+  def initialize(@ui); end
+
+  # Replace `runner` macro to create with self
+  def new_runner : Runner
+    Runner.new(self)
+  end
 
   # The Runner class executes the function
   class Runner < LLM::Function::Runner
+    private getter func : ShellCommandTool
+
+    def initialize(@func); end
+
     def execute(args : JSON::Any) : String
       command = args["command"].as_s? || return error_response("The required 'command' was not specified.")
 
@@ -65,13 +77,7 @@ class ShellCommandTool < LLM::LocalFunction
     end
 
     def user_confirms?(command)
-      puts "The assistant wants to run the following command:\n\n"
-      puts "> #{command}\n\n".colorize(:red).bold
-      print "Allow? [y/N] "
-      response = STDIN.raw &.read_char
-      puts response
-
-      ['y', 'Y'].includes?(response)
+      func.ui.user_confirm_shell_command?(command)
     end
 
     # Create a success response as a JSON string
