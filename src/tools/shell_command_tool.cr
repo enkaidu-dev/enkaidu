@@ -9,14 +9,14 @@ class ShellCommandTool < LLM::LocalFunction
 
   class SafetyError < Exception; end
 
-  ALLOWED_COMMANDS  = ["ls", "cat", "grep", "whoami", "file", "wc", "find"]
-  UNSAFE_CHARACTERS = ['|', '<', '>', ';', '&']
+  ALLOWED_EXECUTABLES = ["ls", "cat", "grep", "whoami", "file", "wc", "find"]
+  UNSAFE_STRINGS      = ["..", "|", "<", ">", ";", "&"]
 
   name "shell_command"
 
   # Provide a description for the tool
   description "Executes one of the allowed shell commands (
-    #{ALLOWED_COMMANDS.join(", ")} within the current project's root directory and
+    #{ALLOWED_EXECUTABLES.join(", ")} within the current project's root directory and
     returns the shell command's output."
 
   # Define the acceptable parameter using the `param` method
@@ -30,6 +30,8 @@ class ShellCommandTool < LLM::LocalFunction
       command = args["command"].as_s? || return error_response("The required 'command' was not specified.")
 
       begin
+        check_safety(command)
+
         if requires_confirmation?(command)
           raise PermissionError.new("User denied execution.") unless user_confirms?(command)
         end
@@ -42,12 +44,14 @@ class ShellCommandTool < LLM::LocalFunction
     end
 
     def check_safety(command)
-      unless ALLOWED_COMMANDS.any? { |cmd| command.index("#{cmd} ") == 0 }
-        raise SafetyError.new("Only the following commands are allowed: #{ALLOWED_COMMANDS.join(", ")}.")
+      unless ALLOWED_EXECUTABLES.any? { |cmd| command.index("#{cmd} ") == 0 }
+        raise SafetyError.new("Only the following commands are allowed: #{ALLOWED_EXECUTABLES.join(", ")}.")
       end
 
-      unsafe_characters.each do |char|
-        raise SafetypError.new("The following characters are not allowed: #{UNSAFE_CHARACTERS.join(", ")}") if command.includes?(char)
+      UNSAFE_STRINGS.each do |str|
+        if command.includes?(str)
+          raise SafetyError.new("The following strings are not allowed: #{UNSAFE_STRINGS.join(", ")}")
+        end
       end
 
       true
