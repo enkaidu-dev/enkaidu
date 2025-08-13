@@ -27,6 +27,16 @@ module Enkaidu
       puts "----".colorize(:green)
     end
 
+    def user_confirm_shell_command?(command)
+      puts "  CONFIRM: The assistant wants to run the following command:\n\n"
+      puts "  > #{command}\n\n".colorize(:red).bold
+      print "  Allow? [y/N] "
+      response = STDIN.raw &.read_char
+      puts response
+
+      ['y', 'Y'].includes?(response)
+    end
+
     def llm_tool_call(name, args)
       print "  CALL".colorize(:green)
       puts " #{name.colorize(:red)} " \

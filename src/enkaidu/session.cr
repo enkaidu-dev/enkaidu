@@ -52,6 +52,7 @@ module Enkaidu
         with_tool ReplaceTextInTextFileTool.new
         with_tool RenameFileTool.new
         with_tool CreateDirectoryTool.new
+        with_tool ShellCommandTool.new(renderer) if opts.enable_shell_command?
       end
 
       @renderer.streaming = chat.streaming?
