@@ -87,7 +87,7 @@ module MCPC
         message = extract_sse_event(io)
         if data = message["data"]?
           # check for notifications to skip
-          if data.includes?("\"notification/")
+          if data.includes?("\"notification/") || data.includes?("\"ping\"/")
             # skip these also
             STDERR.puts "~~    skipping SSE message: #{data}".colorize(:yellow) if tracing?
             message = nil
