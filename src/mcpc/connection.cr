@@ -17,7 +17,7 @@ module MCPC
   # This `ResponseError` exception is raised for errors due to the
   # server's HTTP response contents.
   class ResponseError < Exception
-    getter details : HttpTransport::ErrorDetails
+    getter details : Transport::ErrorDetails
 
     def initialize(message, @details)
       super(message)
@@ -41,15 +41,23 @@ module MCPC
     getter server_name : String = "UNKNOWN"
     getter server_version : String = "UNKNOWN"
 
-    private getter transport : HttpTransport
+    private getter transport : Transport
     private getter session : Session
 
     # Sets up the MCP connection
     def initialize(url)
       @uri = URI.parse(url)
-      @transport = HttpTransport.new(uri)
+      @transport = choose_transport(uri)
       @session = Session.new
       get_ready
+    end
+
+    # This will try to use the legacy transport and then fall back to
+    # standard one. (Yes, this is ass backwards, but that's what the spec wants.)
+    private def choose_transport(uri)
+      HttpLegacyTransport.new(uri)
+    rescue
+      HttpTransport.new(uri)
     end
 
     # Returns an array of tools, if any
@@ -109,7 +117,7 @@ module MCPC
     # Reset to re-initialize the connection whenever calls fail with a 404 error; sets up a new transport and session, and initializes the
     # session. TODO better handling of reset scenarios.
     def reset
-      @transport = HttpTransport.new(uri)
+      @transport = @transport.class.new(uri)
       @session = Session.new
       get_ready
     end
@@ -139,10 +147,9 @@ module MCPC
           raise ResponseError.new("Unexpected transport response; see .details.", reply)
         end
       end
-
       # notify init success
       return unless init_ok
-      transport.post(session.body_notify_initialized) do |_|
+      transport.notify(session.body_notify_initialized) do |_|
       end
     end
   end

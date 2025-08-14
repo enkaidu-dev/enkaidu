@@ -11,48 +11,24 @@
 - [ ] Detect when MCP connection needs to be reset; there are some rules for this.
 - [ ] Find a canonical server to run locally to test the protocol better
 - [ ] Figure out how to improve MCP transport responsiveness. The MCP Inspector seems be deal with HTTP streaming much more responsively. My implementation, which needs `io.skip_to_end` after handling every response, seems sluggish.
-- [ ] Support the deprecated SSE transport 'cuz there are so many servers out there.
-
+- [x] Support the deprecated SSE transport 'cuz there are so many servers out there.
+- [ ] Support more complex tool JSON schema for complex objects etc.
 ## MCP Support
 
-Currently we only support HTTP + Streaming via POST method. Also support non-streaming HTTP but I haven't found a good server to test this. 
-
-> FYI. We do not yet support the deprecated SSE transport.
+Now supports legacy (deprecated) SSE over dual-http connections as well as the modern HTTP streaming. Also support non-streaming HTTP but I haven't found a good server to test this. 
 
 ### Some MCP servers with tools
 
-#### https://remote.mcpservers.org/fetch/mcp
-
-- Works
-
-#### https://echo.mcp.inevitable.fyi/mcp
-
-- Works
-
-#### https://time.mcp.inevitable.fyi/mcp
-
-- Works
-- Occasionally fails but I think this is a server problem
-
-#### https://gitmcp.io/ANYGITHUBUSER/REPO
-
-E.g. `https://gitmcp.io/nickthecook/ops` provides MCP tools for that repo. Amazing.
-
-- Works after a fix to support tools without parameters
-
-#### https://gitmcp.io/docs
-
-- Worked when I removed timeout handling in the HttpTransport ... !??
-- When using this MCP server try the following prompt.
-
-```
-Can you find any code that refers to handling timeouts in an MCP client from the following repository? https://github.com/modelcontextprotocol/inspector
-```
-
-#### https://hf.co/mcp
-
-- Doesn't work since it uses HTTP but not streaming
-- Pending
+Server | Type | Comment
+-----|-----|-----
+https://remote.mcpservers.org/fetch/mcp | Modern | Works
+https://echo.mcp.inevitable.fyi/mcp | Modern | Works
+https://time.mcp.inevitable.fyi/mcp | Modern | Works; occasionally fails but I think this is a server problem
+https://gitmcp.io/ANYGITHUBUSER/REPO | Modern | Works for any Github repo
+https://gitmcp.io/nickthecook/ops | Modern | Provides MCP tools for that repo. Amazing.
+https://mcp.llmtxt.dev/sse | Legacy (SSE) | Can retrieve `llms.txt` for domains
+https://hf.co/mcp | Modern | Doesn't work; uses HTTP but not streaming
+https://mcp.semgrep.ai/sse | Legacy (SSE) | Partially works; has complex JSON schema which we don't support yet
 
 ## Future
 
