@@ -73,19 +73,36 @@ module MCPC
       message
     end
 
+    # For legacy SSE transport only
+    private def find_sse_event_after_skipping_spuriosa(io) : Hash(String, String)
+      # HACK to see this is even a solution for dealing with spurious records that build up
+      #     because of the legacy protocol's behaviour.
+      #     This should skip Empty and Ping responses
+      # WARNING
+      #     we might get real notifications here but I'll
+      #     fight that dragon later
+      message = nil
+      while message.nil? || message.empty?
+        STDERR.puts "~~    skipping empty SSE message".colorize(:yellow) if tracing? && message
+        message = extract_sse_event(io)
+      end
+      message
+    end
+
     # Yields a `JSON::Any` for valid data: in the response, or `ErrorDetails` for unknown
     # response. Called
-    private def handle_sse_response(resp, skip_to_end = true, & : JSON::Any | ErrorDetails ->)
+    private def handle_sse_response(resp, legacy_sse = false, skip_to_end = true, & : JSON::Any | ErrorDetails ->)
       trace_message("start", label = trace_label("handle_sse_response")) if tracing?
       io = resp.body_io
       ok = false
       begin
-        # Remember and reuse the MCP session ID
-        resp.headers.each do |key, value|
-          STDERR.puts "~~    <[ #{key}: #{value}".colorize(:yellow)
-          if key.downcase == "mcp-session-id"
-            @mcp_session_id = value.first
-            break
+        unless legacy_sse
+          # Remember and reuse the MCP session ID
+          resp.headers.each do |key, value|
+            if key.downcase == "mcp-session-id"
+              @mcp_session_id = value.first
+              break
+            end
           end
         end
         # Use content type to determine how to process response
@@ -93,22 +110,18 @@ module MCPC
         if ct = resp.content_type
           case ct
           when .starts_with?("text/event-stream")
-            # HACK to see this is even a solution for dealing with spurious records that build up
-            #     because of the legacy protocol's behaviour.
-            #     This should skip Empty and Ping responses
-            # WARNING
-            #     we might get real notifications here but I'll
-            #     fight that dragon later
-            message = {} of String => String
-            while message.empty?
-              message = extract_sse_event(io)
-            end
+            message = if legacy_sse
+                        find_sse_event_after_skipping_spuriosa(io)
+                      else
+                        extract_sse_event(io)
+                      end
 
             # If the field name is "event"
             #     Set the event type buffer to the field value.
             # If the field name is "data"
             #     Append the field value to the data buffer, then append a single U+000A LINE FEED (LF) character to the data buffer.
-            if message["event"] == "message" && (data = message["data"])
+            type = message["event"]? || "message"
+            if type == "message" && (data = message["data"])
               # NOTE: We currently only support one data: per event:
               # NOTE: We currently ignore id: and retry:
               event = JSON.parse(data)
