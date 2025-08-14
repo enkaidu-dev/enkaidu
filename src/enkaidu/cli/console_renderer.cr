@@ -87,6 +87,8 @@ module Enkaidu::CLI
       case ex
       when MCPC::ResponseError then STDERR.puts(JSON.build(indent: 2) { |builder| ex.details.to_json(builder) })
       when MCPC::ResultError   then STDERR.puts(JSON.build(indent: 2) { |builder| ex.data.to_json(builder) })
+      else
+        STDERR.puts ex.inspect_with_backtrace
       end
     end
   end
