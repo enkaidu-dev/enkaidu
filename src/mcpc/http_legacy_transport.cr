@@ -65,7 +65,8 @@ module MCPC
             end
           when 200
             if ctype.starts_with?("text/event-stream")
-              message = extract_sse_event(resp.body_io)
+              message = find_sse_event_after_skipping_spuriosa(resp.body_io)
+
               if message["event"] == "endpoint"
                 # This is a legacy SSE protocol; keep the response.
                 return {resp: resp, path: message["data"]}
@@ -83,13 +84,15 @@ module MCPC
       nil
     end
 
+    OK_STATUS = [200, 202]
+
     # With the legacy transport tool calling posts seem to fail and require
     # a new sending client instance.
     private def retryable_post(body, & : JSON::Any | ErrorDetails ->)
       @httpc_send.post(session_path, HEADERS, body: body) do |resp|
         trace_response(resp, label: trace_label("#retryable_post"), req_body: body) if tracing?
-        if resp.status_code == 202
-          handle_sse_response(@httpc_recv_resp, skip_to_end: false) do |message|
+        if OK_STATUS.includes? resp.status_code
+          handle_sse_response(@httpc_recv_resp, legacy_sse: true, skip_to_end: false) do |message|
             if message.is_a? Transport::ErrorDetails
               message["request_body"] = JSON.parse(body)
             end
@@ -117,7 +120,7 @@ module MCPC
     def notify(body, & : JSON::Any | ErrorDetails ->)
       @httpc_send.post(session_path, HEADERS, body: body) do |resp|
         trace_response(resp, label: trace_label("#notify"), req_body: body) if tracing?
-        unless resp.status_code == 202
+        unless OK_STATUS.includes? resp.status_code
           yield Hash{
             "type"             => "error",
             "request_headers"  => JSON.parse(last_request_headers.to_json),

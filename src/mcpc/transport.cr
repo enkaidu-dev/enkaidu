@@ -58,30 +58,59 @@ module MCPC
         pair = line.split(':', limit: 2)
         left = pair.first.strip
         right = pair.last.strip
-        if left.blank?
-          # Otherwise, the string is not empty but does not contain a U+003A COLON character (:)
-          #     Process the field using the steps described below, using the whole line as the field name,
-          #       and the empty string as the field value.
-          left = right
-          right = ""
-        end
-        message[left] = right
+        # HACK - ignore spurious responses (for now? forever? oh, I wish.)
+        #        so that we get an empty Hash
+        # if left.blank?
+        #   # Otherwise, the string is not empty but does not contain a U+003A COLON character (:)
+        #   #     Process the field using the steps described below, using the whole line as the field name,
+        #   #       and the empty string as the field value.
+        #   left = right
+        #   right = ""
+        # end
+        message[left] = right unless left.blank?
       end
       STDERR.puts("~~    return #{message}") if tracing?
       message
     end
 
+    # For legacy SSE transport only
+    private def find_sse_event_after_skipping_spuriosa(io) : Hash(String, String)
+      # HACK to see this is even a solution for dealing with spurious records that build up
+      #     because of the legacy protocol's behaviour.
+      #     This should skip Empty and Ping responses
+      # WARNING
+      #     we might get real notifications here but I'll
+      #     fight that dragon later
+      message = nil
+      while message.nil? || message.empty?
+        STDERR.puts "~~    skipping empty SSE message".colorize(:yellow) if tracing? && message
+        message = extract_sse_event(io)
+        if data = message["data"]?
+          # check for notifications to skip
+          if data.includes?("\"notification/")
+            # skip these also
+            STDERR.puts "~~    skipping SSE message: #{data}".colorize(:yellow) if tracing?
+            message = nil
+          end
+        end
+      end
+      message
+    end
+
     # Yields a `JSON::Any` for valid data: in the response, or `ErrorDetails` for unknown
     # response. Called
-    private def handle_sse_response(resp, skip_to_end = true, & : JSON::Any | ErrorDetails ->)
+    private def handle_sse_response(resp, legacy_sse = false, skip_to_end = true, & : JSON::Any | ErrorDetails ->)
+      trace_message("start", label = trace_label("handle_sse_response")) if tracing?
       io = resp.body_io
       ok = false
       begin
-        # Remember and reuse the MCP session ID
-        resp.headers.each do |key, value|
-          if key.downcase == "mcp-session-id"
-            @mcp_session_id = value.first
-            break
+        unless legacy_sse
+          # Remember and reuse the MCP session ID
+          resp.headers.each do |key, value|
+            if key.downcase == "mcp-session-id"
+              @mcp_session_id = value.first
+              break
+            end
           end
         end
         # Use content type to determine how to process response
@@ -89,15 +118,23 @@ module MCPC
         if ct = resp.content_type
           case ct
           when .starts_with?("text/event-stream")
-            message = extract_sse_event(io)
+            message = if legacy_sse
+                        find_sse_event_after_skipping_spuriosa(io)
+                      else
+                        extract_sse_event(io)
+                      end
+
             # If the field name is "event"
             #     Set the event type buffer to the field value.
             # If the field name is "data"
             #     Append the field value to the data buffer, then append a single U+000A LINE FEED (LF) character to the data buffer.
-            if message["event"] == "message" && (data = message["data"])
+            type = message["event"]? || "message"
+            if type == "message" && (data = message["data"])
               # NOTE: We currently only support one data: per event:
               # NOTE: We currently ignore id: and retry:
-              yield JSON.parse(data)
+              event = JSON.parse(data)
+              trace_message("yield #{event.as_h}", label = trace_label("handle_sse_response")) if tracing?
+              yield event
               ok = true
             end
           when .starts_with?("application/json")
@@ -133,11 +170,11 @@ module MCPC
 
     private def trace_response(resp, label = self.class.name, req_body = nil)
       return unless tracing?
+      STDERR.puts "~~ MCP request body: #{req_body}".colorize(:blue) if req_body
       STDERR.puts "~~ MCP (#{label}) response #{resp.status_code} #{resp.status}".colorize(:blue)
       resp.headers.each do |k, v|
         STDERR.puts "~~    < #{k}: #{v}".colorize(:blue)
       end
-      STDERR.puts "~~    #{req_body}".colorize(:blue) if req_body
       STDERR.puts "~~~~~~~~~~~".colorize(:blue)
     end
 
