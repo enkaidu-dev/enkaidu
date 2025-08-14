@@ -58,14 +58,16 @@ module MCPC
         pair = line.split(':', limit: 2)
         left = pair.first.strip
         right = pair.last.strip
-        if left.blank?
-          # Otherwise, the string is not empty but does not contain a U+003A COLON character (:)
-          #     Process the field using the steps described below, using the whole line as the field name,
-          #       and the empty string as the field value.
-          left = right
-          right = ""
-        end
-        message[left] = right
+        # HACK - ignore spurious responses (for now? forever? oh, I wish.)
+        #        so that we get an empty Hash
+        # if left.blank?
+        #   # Otherwise, the string is not empty but does not contain a U+003A COLON character (:)
+        #   #     Process the field using the steps described below, using the whole line as the field name,
+        #   #       and the empty string as the field value.
+        #   left = right
+        #   right = ""
+        # end
+        message[left] = right unless left.blank?
       end
       STDERR.puts("~~    return #{message}") if tracing?
       message
@@ -89,7 +91,17 @@ module MCPC
         if ct = resp.content_type
           case ct
           when .starts_with?("text/event-stream")
-            message = extract_sse_event(io)
+            # HACK to see this is even a solution for dealing with spurious records that build up
+            #     because of the legacy protocol's behaviour.
+            #     This should skip Empty and Ping responses
+            # WARNING
+            #     we might get real notifications here but I'll
+            #     fight that dragon later
+            message = {} of String => String
+            while message.empty?
+              message = extract_sse_event(io)
+            end
+
             # If the field name is "event"
             #     Set the event type buffer to the field value.
             # If the field name is "data"
