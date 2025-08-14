@@ -82,7 +82,7 @@ module Enkaidu
     end
 
     def use_mcp_server(url : String)
-      mcpc = MCPC::HttpConnection.new(url)
+      mcpc = MCPC::HttpConnection.new(url, tracing: opts.trace_mcp?)
       # puts "  INIT MCP connection: #{mcpc.uri}".colorize(:green)
       renderer.mcp_initialized(mcpc.uri)
       mcp_connections << mcpc

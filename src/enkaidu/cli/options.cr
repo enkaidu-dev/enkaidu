@@ -8,6 +8,7 @@ module Enkaidu::CLI
     getter model_name : String? = nil
     getter? debug = false
     getter? stream = false
+    getter? trace_mcp = false
     getter? enable_shell_command = true
     getter recorder_file : IO? = nil
     getter renderer : SessionRenderer
@@ -30,6 +31,8 @@ module Enkaidu::CLI
           "Enable debug mode by sending raw responses to the recorder if configure (via -R)") { @debug = true }
         parser.on("--disable-shell-command",
           "Disable the shell command tool") { @enable_shell_command = false }
+        parser.on("--trace-mcp",
+          "Enable transport traces for MCP networking") { @trace_mcp = true }
         parser.on("--help", "Show this help") do
           puts parser
           exit

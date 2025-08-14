@@ -22,6 +22,9 @@ module MCPC
       "User-Agent"   => "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:141.0) Gecko/20100101 Firefox/141.0",
     }
 
+    # Control network traffic tracing sent to STDERR
+    property? tracing = false
+
     # Send a request. Yields a `JSON::Any` for valid data: in the response, or `ErrorDetails` for unknown
     # response.
     abstract def post(body, & : JSON::Any | ErrorDetails ->)
@@ -36,7 +39,9 @@ module MCPC
       message = {} of String => String
       # Rules below are from the SSE specification
       # https://html.spec.whatwg.org/multipage/server-sent-events.html#event-stream-interpretation
+      STDERR.puts("~~ MCP (#{self.class}) ##extract_sse_event").colorize(:cyan) if tracing?
       io.each_line do |line|
+        STDERR.puts("~~    #{line}").colorize(:cyan) if tracing?
         # If the line starts with a U+003A COLON character (:)
         #     Ignore the line.
         next if line.starts_with?(':')
@@ -60,6 +65,7 @@ module MCPC
         end
         message[left] = right
       end
+      STDERR.puts("~~    return #{message}").colorize(:cyan) if tracing?
       message
     end
 
@@ -111,6 +117,24 @@ module MCPC
         end
       ensure
         io.skip_to_end if skip_to_end
+      end
+    end
+
+    private def trace_response(resp, label = self.class.name, req_body = nil)
+      return unless tracing?
+      STDERR.puts "~~ MCP (#{label}) response #{resp.status_code} #{resp.status}".colorize(:blue)
+      resp.headers.each do |k, v|
+        STDERR.puts "~~    < #{k}: #{v}".colorize(:blue)
+      end
+      STDERR.puts "~~    #{req_body}".colorize(:blue) if req_body
+      STDERR.puts "~~~~~~~~~~~".colorize(:blue)
+    end
+
+    private def trace_request(req, label = self.class.name)
+      return unless tracing?
+      STDERR.puts "~~ MCP (#{label}) request #{req.method} #{req.hostname} #{req.path}".colorize(:magenta)
+      req.headers.each do |k, v|
+        STDERR.puts "~~    > #{k}: #{v}".colorize(:magenta)
       end
     end
   end

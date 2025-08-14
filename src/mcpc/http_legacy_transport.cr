@@ -30,6 +30,7 @@ module MCPC
       @httpc_send.before_request do |request|
         # Remember
         @last_request_headers = request.headers
+        trace_request(request) if tracing?
       end
     end
 
@@ -43,6 +44,7 @@ module MCPC
 
     private def setup_receiver_response
       @httpc_recv.get(uri.path, HEADERS) do |resp|
+        trace_response(resp) if tracing?
         if ctype = resp.content_type
           case resp.status_code
           when 405
@@ -73,6 +75,7 @@ module MCPC
     # a new sending client instance.
     private def retryable_post(body, & : JSON::Any | ErrorDetails ->)
       @httpc_send.post(session_path, HEADERS, body: body) do |resp|
+        trace_response(resp, req_body: body) if tracing?
         if resp.status_code == 202
           handle_sse_response(@httpc_recv_resp, skip_to_end: false) do |message|
             if message.is_a? Transport::ErrorDetails

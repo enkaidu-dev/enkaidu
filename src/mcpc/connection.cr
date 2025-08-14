@@ -40,12 +40,13 @@ module MCPC
     getter? supports_prompts = false
     getter server_name : String = "UNKNOWN"
     getter server_version : String = "UNKNOWN"
+    getter? tracing = false
 
     private getter transport : Transport
     private getter session : Session
 
     # Sets up the MCP connection
-    def initialize(url)
+    def initialize(url, @tracing = false)
       @uri = URI.parse(url)
       @transport = choose_transport(uri)
       @session = Session.new
@@ -124,6 +125,7 @@ module MCPC
 
     # Initializes the session and collects properties
     private def get_ready
+      transport.tracing = tracing?
       init_ok = false
       transport.post(session.body_initialize) do |reply|
         case reply
