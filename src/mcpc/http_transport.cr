@@ -16,7 +16,8 @@ module MCPC
 
     private getter session_path : String? = nil
 
-    def initialize(url : String | URI)
+    def initialize(url : String | URI, tracing = false)
+      super(tracing: tracing)
       @uri = url.is_a?(URI) ? url : URI.parse(url)
       @httpc = HTTP::Client.new(@uri)
       @httpc.before_request do |request|
@@ -28,6 +29,7 @@ module MCPC
         end
         # Remember
         @last_request_headers = request.headers
+        trace_request(request) if tracing?
       end
     end
 
@@ -35,6 +37,7 @@ module MCPC
     # response.
     def post(body, & : JSON::Any | ErrorDetails ->)
       @httpc.post(uri.path, HEADERS, body: body) do |resp|
+        trace_response(resp, label: trace_label("#post"), req_body: body) if tracing?
         handle_sse_response(resp) do |message|
           if message.is_a? Transport::ErrorDetails
             message["request_body"] = JSON.parse(body)
@@ -45,6 +48,7 @@ module MCPC
     end
 
     def notify(body, & : JSON::Any | ErrorDetails ->)
+      trace_message("redirect to ##post", label: trace_label("#notify")) if tracing?
       post body do |msg|
         yield msg
       end

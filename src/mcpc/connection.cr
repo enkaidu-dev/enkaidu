@@ -53,12 +53,21 @@ module MCPC
       get_ready
     end
 
+    # Enable / disable tracing from this point on
+    def tracing=(trace : Bool)
+      @tracing = trace
+      @transport.tracing = trace
+    end
+
     # This will try to use the legacy transport and then fall back to
     # standard one. (Yes, this is ass backwards, but that's what the spec wants.)
     private def choose_transport(uri)
-      HttpLegacyTransport.new(uri)
-    rescue
-      HttpTransport.new(uri)
+      STDERR.puts "~~ MCP (Connection#choose_transport) #{uri}".colorize(:yellow) if tracing?
+      HttpLegacyTransport.new(uri, tracing: tracing?)
+    rescue ex
+      STDERR.puts "~~ MCP (Connection) #{ex}".colorize(:yellow) if tracing?
+      STDERR.puts "~~    Switch to modern".colorize(:yellow) if tracing?
+      HttpTransport.new(uri, tracing: tracing?)
     end
 
     # Returns an array of tools, if any
@@ -125,7 +134,6 @@ module MCPC
 
     # Initializes the session and collects properties
     private def get_ready
-      transport.tracing = tracing?
       init_ok = false
       transport.post(session.body_initialize) do |reply|
         case reply

@@ -19,13 +19,21 @@ module MCPC
     private getter session_path : String
     private getter httpc_recv_resp : HTTP::Client::Response
 
-    def initialize(url : String | URI)
+    def initialize(url : String | URI, tracing = false)
+      super(tracing: tracing)
       @uri = url.is_a?(URI) ? url : URI.parse(url)
       # Setup the GET connection
       @httpc_recv = HTTP::Client.new(uri)
-      raise UnsupportedTransportError.new("Not a legacy SSE server.") unless result = setup_receiver_response
-      @httpc_recv_resp = result[:resp] # Setup the POST connection
-      @session_path = result[:path]
+      @httpc_recv.before_request do |request|
+        trace_request(request, trace_label("#initialize")) if tracing?
+      end
+      # Check if this is legacy or not
+      setup_result = setup_receiver_response
+      raise UnsupportedTransportError.new("Not a legacy SSE server.") unless setup_result
+      # Legacy it is
+      trace_message("Legacy SSE!", label: trace_label("#initialize")) if tracing?
+      @httpc_recv_resp = setup_result[:resp] # Setup the POST connection
+      @session_path = setup_result[:path]
       @httpc_send = HTTP::Client.new(uri)
       @httpc_send.before_request do |request|
         # Remember
@@ -44,7 +52,7 @@ module MCPC
 
     private def setup_receiver_response
       @httpc_recv.get(uri.path, HEADERS) do |resp|
-        trace_response(resp) if tracing?
+        trace_response(resp, label: trace_label("#setup_receiver_response")) if tracing?
         if ctype = resp.content_type
           case resp.status_code
           when 405
@@ -67,6 +75,10 @@ module MCPC
         end
       end
     rescue ex
+      if tracing?
+        STDERR.puts "~~   #{ex.class}: #{ex}".colorize(:red)
+        STDERR.puts ex.inspect_with_backtrace
+      end
     ensure
       nil
     end
@@ -75,7 +87,7 @@ module MCPC
     # a new sending client instance.
     private def retryable_post(body, & : JSON::Any | ErrorDetails ->)
       @httpc_send.post(session_path, HEADERS, body: body) do |resp|
-        trace_response(resp, req_body: body) if tracing?
+        trace_response(resp, label: trace_label("#retryable_post"), req_body: body) if tracing?
         if resp.status_code == 202
           handle_sse_response(@httpc_recv_resp, skip_to_end: false) do |message|
             if message.is_a? Transport::ErrorDetails
@@ -104,6 +116,7 @@ module MCPC
     # This matters in the legacy transport.
     def notify(body, & : JSON::Any | ErrorDetails ->)
       @httpc_send.post(session_path, HEADERS, body: body) do |resp|
+        trace_response(resp, label: trace_label("#notify"), req_body: body) if tracing?
         unless resp.status_code == 202
           yield Hash{
             "type"             => "error",

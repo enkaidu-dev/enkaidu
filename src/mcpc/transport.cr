@@ -22,6 +22,8 @@ module MCPC
       "User-Agent"   => "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:141.0) Gecko/20100101 Firefox/141.0",
     }
 
+    def initialize(@tracing = false); end
+
     # Control network traffic tracing sent to STDERR
     property? tracing = false
 
@@ -39,7 +41,7 @@ module MCPC
       message = {} of String => String
       # Rules below are from the SSE specification
       # https://html.spec.whatwg.org/multipage/server-sent-events.html#event-stream-interpretation
-      STDERR.puts("~~ MCP (#{self.class}) ##extract_sse_event").colorize(:cyan) if tracing?
+      STDERR.puts("~~ MCP (#{self.class}) #extract_sse_event") if tracing?
       io.each_line do |line|
         STDERR.puts("~~    #{line}").colorize(:cyan) if tracing?
         # If the line starts with a U+003A COLON character (:)
@@ -65,7 +67,7 @@ module MCPC
         end
         message[left] = right
       end
-      STDERR.puts("~~    return #{message}").colorize(:cyan) if tracing?
+      STDERR.puts("~~    return #{message}") if tracing?
       message
     end
 
@@ -118,6 +120,15 @@ module MCPC
       ensure
         io.skip_to_end if skip_to_end
       end
+    end
+
+    private def trace_label(method)
+      "#{self.class.name}#{method.starts_with?('#') ? "" : "#"}#{method}"
+    end
+
+    private def trace_message(message, label = self.class.name)
+      return unless tracing?
+      STDERR.puts "~~ MCP (#{label}) \"#{message}\"".colorize(:yellow)
     end
 
     private def trace_response(resp, label = self.class.name, req_body = nil)
