@@ -1,7 +1,9 @@
 require "option_parser"
 
-module Enkaidu
-  class Options
+require "../session_options"
+
+module Enkaidu::CLI
+  class Options < SessionOptions
     getter provider_name : String? = nil
     getter model_name : String? = nil
     getter? debug = false
@@ -21,7 +23,7 @@ module Enkaidu
         rescue ex
           error_and_exit_with "FATAL: Unable to create recorder file (\"#{path}\"): #{ex.message}", parser
         end
-        parser.on("-D", "--debug", "Enable debug mode by sending raw responses to the recorder if configure (via -R)") { @debug = true }
+        parser.on("--debug", "Enable debug mode by sending raw responses to the recorder if configure (via -R)") { @debug = true }
         parser.on("--disable-shell-command", "Disable the shell command tool") { @enable_shell_command = false }
         parser.on("--help", "Show this help") do
           puts parser

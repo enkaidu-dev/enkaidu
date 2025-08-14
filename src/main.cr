@@ -1,19 +1,20 @@
-require "./enkaidu/session"
-require "./enkaidu/console_renderer"
-require "./query_reader"
+require "./enkaidu/*"
+require "./enkaidu/cli/*"
 
 module Enkaidu
   class Main
     private getter session
     private getter? done = false
     private getter count = 0
-    private getter renderer : ConsoleRenderer
+    private getter renderer : CLI::ConsoleRenderer
+    private getter reader : CLI::QueryReader
 
     delegate recorder, to: @session
 
     def initialize
-      @renderer = ConsoleRenderer.new
-      @session = Session.new(renderer)
+      @renderer = CLI::ConsoleRenderer.new
+      @session = Session.new(renderer, opts: CLI::Options.new(@renderer))
+      @reader = CLI::QueryReader.new
 
       return unless session.streaming?
       puts "WARNING: Markdown formatted rendering is not supported when streaming is enabled (for now). Sorry.\n".colorize(:yellow)
@@ -84,10 +85,6 @@ module Enkaidu
       recorder << "]"
     ensure
       recorder.close
-    end
-
-    private def reader
-      @reader ||= QueryReader.new
     end
   end
 end

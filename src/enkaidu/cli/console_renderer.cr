@@ -1,6 +1,6 @@
-require "./session_renderer"
+require "../session_renderer"
 
-module Enkaidu
+module Enkaidu::CLI
   class ConsoleRenderer < SessionRenderer
     property? streaming = false
 

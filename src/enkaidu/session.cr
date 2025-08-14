@@ -6,7 +6,7 @@ require "../tools"
 
 require "./mcp_function"
 require "./recorder"
-require "./options"
+require "./session_options"
 require "./session_renderer"
 
 module Enkaidu
@@ -17,7 +17,7 @@ module Enkaidu
                             "the ability to use tool calling to solve " \
                             "complicated multi-step tasks."
 
-    private getter opts : Options
+    private getter opts : SessionOptions
     private getter connection : LLM::ChatConnection
     private getter chat : LLM::Chat
 
@@ -27,8 +27,7 @@ module Enkaidu
     getter recorder : Recorder
     getter renderer : SessionRenderer
 
-    def initialize(@renderer)
-      @opts = Options.new(@renderer)
+    def initialize(@renderer, @opts)
       @recorder = Recorder.new(opts.recorder_file)
 
       @connection = case opts.provider_name
@@ -45,7 +44,7 @@ module Enkaidu
         end
         with_debug if opts.debug?
         with_streaming if opts.stream?
-        with_system_message ENV.fetch("ENKAIDU_SYSTEM_PROMPT", DEFAULT_SYSTEM_PROMPT)
+        with_system_message system_prompt
         with_tool ListFilesTool.new
         with_tool ReadTextFileTool.new
         with_tool CreateTextFileTool.new
@@ -56,6 +55,10 @@ module Enkaidu
       end
 
       @renderer.streaming = chat.streaming?
+    end
+
+    private def system_prompt
+      ENV.fetch("ENKAIDU_SYSTEM_PROMPT", DEFAULT_SYSTEM_PROMPT)
     end
 
     private def process_event(r, tools)
