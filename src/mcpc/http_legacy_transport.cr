@@ -65,7 +65,18 @@ module MCPC
             end
           when 200
             if ctype.starts_with?("text/event-stream")
-              message = extract_sse_event(resp.body_io)
+              # HACK to see this is even a solution for dealing with spurious records that build up
+              #     because of the legacy protocol's behaviour.
+              #     This should skip Empty and Ping responses
+              # WARNING
+              #     we might get real notifications here but I'll
+              #     fight that dragon later
+              io = resp.body_io
+              message = {} of String => String
+              while message.empty?
+                message = extract_sse_event(io)
+              end
+
               if message["event"] == "endpoint"
                 # This is a legacy SSE protocol; keep the response.
                 return {resp: resp, path: message["data"]}
