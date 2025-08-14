@@ -85,6 +85,14 @@ module MCPC
       while message.nil? || message.empty?
         STDERR.puts "~~    skipping empty SSE message".colorize(:yellow) if tracing? && message
         message = extract_sse_event(io)
+        if data = message["data"]?
+          # check for notifications to skip
+          if data.includes?("\"notification/")
+            # skip these also
+            STDERR.puts "~~    skipping SSE message: #{data}".colorize(:yellow) if tracing?
+            message = nil
+          end
+        end
       end
       message
     end
