@@ -76,11 +76,13 @@ module MCPC
     # Yields a `JSON::Any` for valid data: in the response, or `ErrorDetails` for unknown
     # response. Called
     private def handle_sse_response(resp, skip_to_end = true, & : JSON::Any | ErrorDetails ->)
+      trace_message("start", label = trace_label("handle_sse_response")) if tracing?
       io = resp.body_io
       ok = false
       begin
         # Remember and reuse the MCP session ID
         resp.headers.each do |key, value|
+          STDERR.puts "~~    <[ #{key}: #{value}".colorize(:yellow)
           if key.downcase == "mcp-session-id"
             @mcp_session_id = value.first
             break
@@ -109,7 +111,9 @@ module MCPC
             if message["event"] == "message" && (data = message["data"])
               # NOTE: We currently only support one data: per event:
               # NOTE: We currently ignore id: and retry:
-              yield JSON.parse(data)
+              event = JSON.parse(data)
+              trace_message("yield #{event.as_h}", label = trace_label("handle_sse_response")) if tracing?
+              yield event
               ok = true
             end
           when .starts_with?("application/json")
@@ -145,11 +149,11 @@ module MCPC
 
     private def trace_response(resp, label = self.class.name, req_body = nil)
       return unless tracing?
+      STDERR.puts "~~ MCP request body: #{req_body}".colorize(:blue) if req_body
       STDERR.puts "~~ MCP (#{label}) response #{resp.status_code} #{resp.status}".colorize(:blue)
       resp.headers.each do |k, v|
         STDERR.puts "~~    < #{k}: #{v}".colorize(:blue)
       end
-      STDERR.puts "~~    #{req_body}".colorize(:blue) if req_body
       STDERR.puts "~~~~~~~~~~~".colorize(:blue)
     end
 
