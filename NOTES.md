@@ -4,6 +4,7 @@
 
 - [ ] Write test specs
 - [ ] Document the code classes (viz. fix `ops lint` warnings)
+- [ ] Add a tool to save an image where the provided image is in the `data:` base-64-encoded form
 
 ### MCPC
 
@@ -13,6 +14,7 @@
 - [ ] Figure out how to improve MCP transport responsiveness. The MCP Inspector seems be deal with HTTP streaming much more responsively. My implementation, which needs `io.skip_to_end` after handling every response, seems sluggish.
 - [x] Support the deprecated SSE transport 'cuz there are so many servers out there.
 - [ ] Support more complex tool JSON schema for complex objects etc.
+
 ## MCP Support
 
 Now supports legacy (deprecated) SSE over dual-http connections as well as the modern HTTP streaming. Also support non-streaming HTTP but I haven't found a good server to test this. 
@@ -61,3 +63,33 @@ And use [BakedFileSystem](https://github.com/ralsina/baked_file_system) to bundl
 
 And [Svelte](https://svelte.dev/docs/svelte/overview) with TypeScript (of course!) would be nice to write the web UI since it can be used to produce a SPA that can be "baked" into the binary.
 
+### Authentication for MCP servers
+
+Many MCP servers behind paywalls support `Bearer Authentication`.
+
+- Add ability to specify bearer auth
+- Where / how do we specify the API key per server?
+
+### Image generation
+
+Some image generation services offer MCP servers. It would be cool to be able to use them when working on games.
+
+https://modelcontextprotocol.io/specification/2025-06-18/schema#calltoolresult
+
+- Support the `Image` content type.
+- Support image file saving given `Image` content type so we can save generated images
+
+Known MCP servers:
+- Pixel Lab (`https://api.pixellab.ai/mcp`)
+
+### Complete [JSON Schema](https://json-schema.org/docs) support 
+
+When listing tools, the too definition has more than just simple parameter types: https://modelcontextprotocol.io/specification/2025-06-18/schema#tool
+
+Per `LLM::Function` (or do we need a derived `MCP::Function`?)
+- Support full JSON schema for input schema
+- Add support for output schema
+- Check out [json-schema](https://github.com/spider-gazelle/json-schema) shard 
+
+Questions
+- [ ] Does OpenAI protocol support input/output schema?
