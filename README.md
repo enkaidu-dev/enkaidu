@@ -14,7 +14,14 @@ See "Development" section for how to build `enkaidu`
 
 ### With Ollama
 
-Run `enkaidu -p ollama -m M` with the model `M` you want to use. (Expects the local server to be at `http://localhost:11434`.)
+Run `enkaidu -p ollama -m M` with the model `M` you want to use. Use the following environment variable if needed:
+
+Env var | Description
+----|----
+`OLLAMA_ENDPOINT` | Defaults to `http://localhost:1234`
+
+
+(Expects the local server to be at `http://localhost:11434`.)
 
 ### With OpenAI
 

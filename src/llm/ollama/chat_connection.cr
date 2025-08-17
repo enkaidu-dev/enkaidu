@@ -6,7 +6,7 @@ require "../openai"
 module LLM::Ollama
   class ChatConnection < OpenAI::ChatConnection
     protected def url : String
-      "http://localhost:11434"
+      ENV.fetch("OLLAMA_ENDPOINT", "http://localhost:11434")
     end
 
     protected def path : String
