@@ -6,6 +6,7 @@ dependencies:
 hooks:
   before:
     - mkdir -p bin/release bin/debug
+    - test -f "config/$environment/$APP.$CONFIG" && ln -sf config/$environment/$APP.$CONFIG
 actions:
   build-release:
     command: SHARDS_BIN_PATH=bin/release shards build $APP --release
@@ -35,14 +36,25 @@ actions:
     description: Build for release and then run the app
     load_secrets: true
   clean:
-    command: rm -rf bin/debug/* && rm -rf bin/release/*
+    command: rm -rf bin/debug/* && rm -rf bin/release/* && rm $APP.json $APP.yaml
     description: Clear prior builds
   wipe:
     command: crystal clear_cache && ops clean
     description: Clear build caches and prior builds
   lint:
     command: bin/ameba --all
+  just-run-debug:
+    alias: jrun
+    description: Run the debug build; make sure to run `ops build` before.
+    command: bin/debug/$APP
+    load_secrets: true
+  just-run-release:
+    alias: jrelrun
+    description: Run the release build; make sure to run `ops br` before.
+    command: bin/release/$APP
+    load_secrets: true
 options:
   environment:
     APP: enkaidu
+    CONFIG: yaml
     INSTALL_DIR: "$HOME/bin"

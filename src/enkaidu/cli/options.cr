@@ -1,22 +1,24 @@
 require "option_parser"
 
 require "../session_options"
-require "./config"
+require "../config"
 
 module Enkaidu::CLI
   class Options < SessionOptions
     @options = {} of Symbol => String
 
-    getter provider_name : String? = nil
+    getter provider_type : String? = nil
     getter model_name : String? = nil
     getter? debug = false
     getter? stream = false
     getter? trace_mcp = false
     getter? enable_shell_command = true
     getter recorder_file : IO? = nil
-    getter renderer : SessionRenderer
 
-    getter config : Config?
+    getter config_for_llm : Config::LLM?
+
+    private getter renderer : SessionRenderer
+    private getter config : Config?
 
     private def add(name : Symbol, value : String | Bool)
       @options[name] = value.to_s
@@ -56,21 +58,21 @@ module Enkaidu::CLI
 
       MODEL
 
-      parser.on("--provider=NAME", "-p NAME",
-        "If needed, one of \"azure_openai\", \"openai\", or \"ollama\".") do |name|
-        @provider_name = name
-        add(:provider, name)
+      parser.on("--provider=TYPE", "-p TYPE",
+        "If needed, one of \"azure_openai\", \"openai\", or \"ollama\".") do |type|
+        @provider_type = type
+        add(:provider_type, type)
       end
 
       parser.separator <<-PROVIDER
 
               If using a provider, different types depend on different environment
               variables.
-            
+
               ollama        OLLAMA_ENDPOINT (defaults to http://localhost:11434)
               openai        OPENAI_MODEL, OPENAI_API_KEY,
                                     OPENAI_ENDPOINT (defaults to https://api.openai.com)
-              azure_openai  AZURE_OPENAI_MODEL, AZURE_OPENAI_ENDPOINT, 
+              azure_openai  AZURE_OPENAI_MODEL, AZURE_OPENAI_ENDPOINT,
                                     AZURE_OPENAI_API_KEY, AZURE_OPENAI_API_VER
       PROVIDER
     end
@@ -83,7 +85,7 @@ module Enkaidu::CLI
         add(:enable_shell_command, false)
       end
       parser.on("--config=FILEPATH", "-C FILEPATH",
-        "Config #{Config::FORMAT} file path; defaults to \"#{DEFAULT_CONFIG_FILE}\" if present") do |path|
+        "Config #{Config::FORMATS.join(" or ")} file path; defaults to \"#{Config::DEFAULT_NAME}.{#{Config::EXTENSIONS.join('|')}}\"") do |path|
         add(:config_file, path)
       rescue ex
         error_and_exit_with "FATAL: Unable to open file (\"#{path}\"): #{ex.message}", parser
@@ -121,25 +123,25 @@ module Enkaidu::CLI
         @stream = default_opts.streaming? unless @options.has_key?(:stream)
         @trace_mcp = default_opts.trace_mcp? unless @options.has_key?(:trace_mcp)
         @enable_shell_command = default_opts.enable_shell_command? unless @options.has_key?(:enable_shell_command)
-        @provider_name = default_opts.provider if provider_name.nil?
+        @provider_type = default_opts.provider_type if provider_type.nil?
         @model_name = default_opts.model if model_name.nil?
       end
 
-      if model_name && provider_name.nil?
+      if model_name && provider_type.nil?
         # look up unique model name
-        if found = (config.try &.find_llm_by_model_name?(model_name))
-          STDERR.puts "... #{found.inspect}"
-          @provider_name = found[:provider]
-          @model_name = found[:model]
+        if llm = (config.try &.find_llm_by_model_name?(model_name))
+          STDERR.puts llm.to_yaml
+          @config_for_llm = llm
+          @provider_type = llm.provider
         end
       end
     end
 
     private def verify_required_options
       # Verify required options
-      if provider_name.nil?
+      if provider_type.nil?
         error_and_exit_with "FATAL: Provider required.", help
-      elsif provider_name == "ollama" && model_name.nil?
+      elsif provider_type == "ollama" && model_name.nil?
         error_and_exit_with "FATAL: Model required by Ollama provider.", help
       end
     end
@@ -147,23 +149,23 @@ module Enkaidu::CLI
     private def load_config
       config_file = @options[:config_file]?
       auto_config = config_file.nil?
-      config_file = DEFAULT_CONFIG_FILE unless config_file
+      config_file = Config.find_default_file unless config_file
 
       if file = config_file
-        begin
-          STDERR.puts "INFO: Reading config file: #{file}".colorize(:blue)
-          @config = Config.parse(File.read(file))
-        rescue IO::Error
-          # If we fail to find default config file, it's OK.
-          unless auto_config
-            # Only a problem if user specified one
-            error_and_exit_with "FATAL: Failed to open config file: #{file}", help
-          end
-        rescue ex : ConfigSerializableError
-          # Config parsing errors are always bad
-          error_and_exit_with "FATAL: Error parsing config file: #{file}\n#{ex}", help
-        end
+        STDERR.puts "INFO: Reading config file: #{file}".colorize(:blue)
+        @config = Config.parse(File.read(file), file)
       end
+    rescue IO::Error
+      # If we fail to find default config file, it's OK.
+      unless auto_config
+        # Only a problem if user specified one
+        error_and_exit_with "FATAL: Failed to open config file: #{file}", help
+      end
+    rescue ex : Config::TooManyDefaultFiles | Config::UnknownFileFormat
+      error_and_exit_with "FATAL: #{ex}", help
+    rescue ex : Config::ParseError
+      # Config parsing errors are always bad
+      error_and_exit_with "FATAL: Error parsing config file: #{file}\n#{ex}", help
     end
 
     def error_and_exit_with(message, help)

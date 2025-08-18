@@ -30,12 +30,12 @@ module Enkaidu
     def initialize(@renderer, @opts)
       @recorder = Recorder.new(opts.recorder_file)
 
-      @connection = case opts.provider_name
+      @connection = case opts.provider_type
                     when "openai"       then LLM::OpenAI::ChatConnection.new
                     when "azure_openai" then LLM::AzureOpenAI::ChatConnection.new
                     when "ollama"       then LLM::Ollama::ChatConnection.new
                     else
-                      opts.error_and_exit_with "FATAL: Unknown provider: #{opts.provider_name}", opts.help
+                      opts.error_and_exit_with "FATAL: Unknown provider type: #{opts.provider_type}", opts.help
                     end
 
       @chat = connection.new_chat do

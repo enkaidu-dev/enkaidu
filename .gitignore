@@ -9,3 +9,4 @@ config/dev
 /.shards/
 out/
 tmp*
+enkaidu.yaml
