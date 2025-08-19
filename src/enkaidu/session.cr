@@ -30,12 +30,13 @@ module Enkaidu
     def initialize(@renderer, @opts)
       @recorder = Recorder.new(opts.recorder_file)
 
-      @connection = case opts.provider_name
+      setup_envs_from_config
+      @connection = case opts.provider_type
                     when "openai"       then LLM::OpenAI::ChatConnection.new
                     when "azure_openai" then LLM::AzureOpenAI::ChatConnection.new
                     when "ollama"       then LLM::Ollama::ChatConnection.new
                     else
-                      opts.error_and_exit_with "FATAL: Unknown provider: #{opts.provider_name}", opts.help
+                      opts.error_and_exit_with "FATAL: Unknown provider type: #{opts.provider_type}", opts.help
                     end
 
       @chat = connection.new_chat do
@@ -55,6 +56,16 @@ module Enkaidu
       end
 
       @renderer.streaming = chat.streaming?
+    end
+
+    # Load the selected LLM's environment variable values into
+    # `ENV`; call this method before initializing an LLM connection
+    private def setup_envs_from_config
+      if env = opts.config_for_llm.try &.env
+        env.each do |name, value|
+          ENV[name] = value
+        end
+      end
     end
 
     private def system_prompt
