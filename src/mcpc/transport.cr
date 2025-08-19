@@ -4,25 +4,35 @@ require "uri"
 require "json"
 
 module MCPC
-  class UnsupportedTransportError < Exception
-    # getter details : Transport::ErrorDetails
+  alias AuthToken = SensitiveData(String)
 
-    # def initialize(message), @details)
-    #   super(message)
-    # end
+  class UnsupportedTransportError < Exception
   end
 
   # Base MCP protocol transport, with some helpers
   abstract class Transport
     alias ErrorDetails = Hash(String, String | JSON::Any)
 
-    HEADERS = HTTP::Headers{
+    private HEADERS_ = HTTP::Headers{
       "Content-Type" => "application/json",
       "Accept"       => ["application/json", "text/event-stream"],
-      "User-Agent"   => "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:141.0) Gecko/20100101 Firefox/141.0",
+      "User-Agent"   => "Enkaidu",
     }
 
-    def initialize(@tracing = false); end
+    private getter auth_token : AuthToken?
+
+    def initialize(@tracing = false, @auth_token = nil)
+      STDERR.puts "... #{auth_token}"
+    end
+
+    # Return headers, incorporate auth token if any
+    private def prepare_request_headers
+      return HEADERS_ unless bearer_auth = auth_token
+      h = HEADERS_.dup
+      h["Authorization"] = "Bearer #{bearer_auth.sensitive_data}"
+      STDERR.puts "... using #{bearer_auth}".colorize(:yellow)
+      h
+    end
 
     # Control network traffic tracing sent to STDERR
     property? tracing = false

@@ -19,8 +19,8 @@ module MCPC
     private getter session_path : String
     private getter httpc_recv_resp : HTTP::Client::Response
 
-    def initialize(url : String | URI, tracing = false)
-      super(tracing: tracing)
+    def initialize(url : String | URI, tracing = false, auth_token = nil)
+      super(tracing: tracing, auth_token: auth_token)
       @uri = url.is_a?(URI) ? url : URI.parse(url)
       # Setup the GET connection
       @httpc_recv = HTTP::Client.new(uri)
@@ -51,7 +51,7 @@ module MCPC
     end
 
     private def setup_receiver_response
-      @httpc_recv.get(uri.path, HEADERS) do |resp|
+      @httpc_recv.get(uri.path, prepare_request_headers) do |resp|
         trace_response(resp, label: trace_label("#setup_receiver_response")) if tracing?
         if ctype = resp.content_type
           case resp.status_code
@@ -89,7 +89,7 @@ module MCPC
     # With the legacy transport tool calling posts seem to fail and require
     # a new sending client instance.
     private def retryable_post(body, & : JSON::Any | ErrorDetails ->)
-      @httpc_send.post(session_path, HEADERS, body: body) do |resp|
+      @httpc_send.post(session_path, prepare_request_headers, body: body) do |resp|
         trace_response(resp, label: trace_label("#retryable_post"), req_body: body) if tracing?
         if OK_STATUS.includes? resp.status_code
           handle_sse_response(@httpc_recv_resp, legacy_sse: true, skip_to_end: false) do |message|
@@ -118,7 +118,7 @@ module MCPC
     # Like #post but used to send notifications without expecting any reply.
     # This matters in the legacy transport.
     def notify(body, & : JSON::Any | ErrorDetails ->)
-      @httpc_send.post(session_path, HEADERS, body: body) do |resp|
+      @httpc_send.post(session_path, prepare_request_headers, body: body) do |resp|
         trace_response(resp, label: trace_label("#notify"), req_body: body) if tracing?
         unless OK_STATUS.includes? resp.status_code
           yield Hash{

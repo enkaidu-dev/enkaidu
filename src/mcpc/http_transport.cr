@@ -16,8 +16,8 @@ module MCPC
 
     private getter session_path : String? = nil
 
-    def initialize(url : String | URI, tracing = false)
-      super(tracing: tracing)
+    def initialize(url : String | URI, tracing = false, auth_token = nil)
+      super(tracing: tracing, auth_token: auth_token)
       @uri = url.is_a?(URI) ? url : URI.parse(url)
       @httpc = HTTP::Client.new(@uri)
       @httpc.before_request do |request|
@@ -36,7 +36,7 @@ module MCPC
     # Send a request. Yields a `JSON::Any` for valid data: in the response, or `ErrorDetails` for unknown
     # response.
     def post(body, & : JSON::Any | ErrorDetails ->)
-      @httpc.post(uri.path, HEADERS, body: body) do |resp|
+      @httpc.post(uri.path, prepare_request_headers, body: body) do |resp|
         trace_response(resp, label: trace_label("#post"), req_body: body) if tracing?
         handle_sse_response(resp) do |message|
           if message.is_a? Transport::ErrorDetails

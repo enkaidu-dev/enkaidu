@@ -2,6 +2,7 @@ require "uri"
 
 require "./http_transport"
 require "./session"
+require "./sensitive_data"
 
 module MCPC
   # This `ResultError` exception is raised for errors within the
@@ -41,12 +42,12 @@ module MCPC
     getter server_name : String = "UNKNOWN"
     getter server_version : String = "UNKNOWN"
     getter? tracing = false
-
+    private getter auth_token : AuthToken?
     private getter transport : Transport
     private getter session : Session
 
     # Sets up the MCP connection
-    def initialize(url, @tracing = false)
+    def initialize(url, @tracing = false, @auth_token = nil)
       @uri = URI.parse(url)
       @transport = choose_transport(uri)
       @session = Session.new

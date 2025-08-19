@@ -1,6 +1,8 @@
 require "./enkaidu/*"
 require "./enkaidu/cli/*"
 
+require "option_parser"
+
 module Enkaidu
   class Main
     private getter session
@@ -45,6 +47,41 @@ module Enkaidu
 
     HELP
 
+    private C_USE_MCP = "/use_mcp"
+
+    private def handle_use_mcp_command(q)
+      ok = true
+      p_url = nil
+      p_auth_token = nil
+      args = Process.parse_arguments_posix(q)
+      opts = OptionParser.parse(args) do |op|
+        op.banner = "#{C_USE_MCP} URL [options]"
+        op.separator "\nOptions"
+        op.on("--auth-env=NAME", "-a NAME", "Specify the env var with the auth token") do |name|
+          unless p_auth_token = ENV[name]?
+            renderer.warning("ERROR: Unable to find environment variable: #{name}.")
+            ok = false
+          end
+          STDERR.puts "...#{name} = #{p_auth_token}"
+        end
+        op.invalid_option do |option|
+          renderer.warning("ERROR: Unknown parameter for #{C_USE_MCP}: #{option}")
+          ok = false
+        end
+      end
+      STDERR.puts "... #{args}"
+      if args.first == C_USE_MCP
+        p_url = args[1]?
+      end
+
+      if ok && (url = p_url)
+        session.use_mcp_server url,
+          auth_token: p_auth_token.try { |tok| MCPC::AuthToken.new(label: "MCP #{url}", value: tok) }
+      else
+        renderer.warning("ERROR: Invalid parameters for #{C_USE_MCP}\n#{opts}")
+      end
+    end
+
     private def commands(q)
       case q
       when "/bye"
@@ -52,9 +89,19 @@ module Enkaidu
       when "/help"
         puts Markd.to_term(COMMAND_HELP)
       when .starts_with? "/use_mcp"
-        cmd = q.split(' ', 2)
-        url = cmd.last.strip
-        session.use_mcp_server url
+        handle_use_mcp_command(q)
+        # params = extract_args_from(q)
+        # url = params["$1"] # expect first arg
+        # p_auth_token = nil
+        # if auth_env = params["auth_env"]?
+        #   if (auth_token = ENV[auth_env]?)
+        #     p_auth_token = MCPC::AuthToken.new(label: "MCP #{url}", value: auth_token)
+        #   else
+        #     renderer.warning("ERROR: Cannot use MCP server; unable to find environment variable: #{auth_env}.")
+        #     return
+        #   end
+        # end
+        # session.use_mcp_server url, auth_token: p_auth_token
       else
         renderer.warning("ERROR: Unknown command: #{q}")
       end
