@@ -30,6 +30,7 @@ module Enkaidu
     def initialize(@renderer, @opts)
       @recorder = Recorder.new(opts.recorder_file)
 
+      setup_envs_from_config
       @connection = case opts.provider_type
                     when "openai"       then LLM::OpenAI::ChatConnection.new
                     when "azure_openai" then LLM::AzureOpenAI::ChatConnection.new
@@ -55,6 +56,16 @@ module Enkaidu
       end
 
       @renderer.streaming = chat.streaming?
+    end
+
+    # Load the selected LLM's environment variable values into
+    # `ENV`; call this method before initializing an LLM connection
+    private def setup_envs_from_config
+      if env = opts.config_for_llm.try &.env
+        env.each do |name, value|
+          ENV[name] = value
+        end
+      end
     end
 
     private def system_prompt

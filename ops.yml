@@ -6,7 +6,7 @@ dependencies:
 hooks:
   before:
     - mkdir -p bin/release bin/debug
-    - test -f "config/$environment/$APP.$CONFIG" && ln -sf config/$environment/$APP.$CONFIG
+    - (test -f "config/$environment/$APP.$CONFIG" && ln -sf config/$environment/$APP.$CONFIG) || true
 actions:
   build-release:
     command: SHARDS_BIN_PATH=bin/release shards build $APP --release

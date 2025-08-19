@@ -130,7 +130,6 @@ module Enkaidu::CLI
       if model_name && provider_type.nil?
         # look up unique model name
         if llm = (config.try &.find_llm_by_model_name?(model_name))
-          STDERR.puts llm.to_yaml
           @config_for_llm = llm
           @provider_type = llm.provider
         end

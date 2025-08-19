@@ -1,19 +1,16 @@
-require "yaml"
+require "./config_serializable"
 
 module Enkaidu
-  class Config
-    include YAML::Serializable
+  # Configuration
+  class Config < ConfigSerializable
+    # ---------------------- start of content definition
 
-    class Model
-      include YAML::Serializable
-
+    class Model < ConfigSerializable
       getter name : String
       getter model : String
     end
 
-    class LLM
-      include YAML::Serializable
-
+    class LLM < ConfigSerializable
       getter provider : String
       getter models : Array(Model)?
       # Use this to populate environment variables for the specific
@@ -21,9 +18,7 @@ module Enkaidu
       getter env = {} of String => String
     end
 
-    class Options
-      include YAML::Serializable
-
+    class Options < ConfigSerializable
       getter provider_type : String?
       getter model : String?
       getter recording_file : String?
@@ -35,6 +30,10 @@ module Enkaidu
     getter default : Options?
     getter llms = {} of String => LLM
 
+    # ---------------------- end of content definition
+
+    # Look for a model by its unique name and, if one exists, return its
+    # model's enclosing LLM
     def find_llm_by_model_name?(unique_model_name) : LLM?
       llms.each do |name, llm|
         llm.models.try &.each do |model|
@@ -47,14 +46,18 @@ module Enkaidu
 
     # Config setup helpers and errors and so on
 
+    # Config parsing error
     alias ParseError = YAML::ParseException
 
+    # When more than one default config file is found, because we support
+    # more than one extension for YAML
     class TooManyDefaultFiles < Exception
       def initialize(files)
         super("Use one default config file format; only one allowed! Found: #{files.join(", ")}")
       end
     end
 
+    # Not a YAML config file (by extension)
     class UnknownFileFormat < Exception
       def initialize(file_name)
         super("Unknown config file format, only {#{Config::EXTENSIONS.join('|')}} supported! Cannot use: #{file_name}")
@@ -65,6 +68,7 @@ module Enkaidu
     EXTENSIONS   = [".yaml", ".yml"]
     FORMATS      = ["YAML"]
 
+    # Check if a default config file exists
     def self.find_default_file : String?
       exists = [] of String
       EXTENSIONS.each do |ext|
@@ -76,6 +80,8 @@ module Enkaidu
       exists[0]?
     end
 
+    # Parse a config file's contents, and include file name so we can check if
+    # it matches known format
     def self.parse(text : String, file_name : String)
       raise UnknownFileFormat.new(file_name) unless EXTENSIONS.any? { |ext| file_name.ends_with?(ext) }
       from_yaml(text)
