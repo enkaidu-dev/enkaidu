@@ -2,9 +2,11 @@
 # so that we can implement different rendering systems
 module Enkaidu
   abstract class SessionRenderer
-    abstract def warning(message)
+    abstract def info_with(message, help = nil, markdown = false)
 
-    abstract def error_with(message, help = nil)
+    abstract def warning_with(message, help = nil, markdown = false)
+
+    abstract def error_with(message, help = nil, markdown = false)
 
     abstract def user_query(query)
 
@@ -14,7 +16,7 @@ module Enkaidu
 
     abstract def llm_tool_call(name, args)
 
-    abstract def llm_text(text)
+    abstract def llm_text(text, streaming = false)
 
     abstract def llm_error(err)
 

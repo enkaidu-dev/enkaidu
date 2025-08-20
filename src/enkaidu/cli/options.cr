@@ -151,7 +151,7 @@ module Enkaidu::CLI
       config_file = Config.find_default_file unless config_file
 
       if file = config_file
-        STDERR.puts "INFO: Reading config file: #{file}".colorize(:blue)
+        renderer.info_with "INFO: Reading config file: #{file}"
         @config = Config.parse(File.read(file), file)
       end
     rescue IO::Error

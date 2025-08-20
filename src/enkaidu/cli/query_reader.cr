@@ -3,6 +3,11 @@ require "reply"
 module Enkaidu::CLI
   # Command-line query reader with editing and other capabilities.
   class QueryReader < Reply::Reader
+    def read_next
+      puts
+      super
+    end
+
     def prompt(io : IO, line_number : Int32, color : Bool) : Nil
       p = "QUERY > "
       p = p.colorize(:yellow) if color

@@ -1,6 +1,10 @@
 require "./enkaidu/*"
 require "./enkaidu/cli/*"
 
+require "./sucre/command_parser"
+
+require "option_parser"
+
 module Enkaidu
   class Main
     private getter session
@@ -28,35 +32,75 @@ module Enkaidu
     Furthermore, by connecting with MCP servers Enkaidu can assist you with much more.
 
     Use `/help` to see the `/` commands available.
+
     TEXT
 
+    C_BYE     = "/use_mcp"
+    C_USE_MCP = "/use_mcp"
+    C_HELP    = "/help"
+
+    H_C_BYE = <<-HELP1
+    `#{C_BYE}`
+    - Exit Enkaidu
+    HELP1
+
+    H_C_USE_MCP = <<-HELP2
+    `#{C_USE_MCP} URL [auth_env=ENVARNAME]`
+    - Connect with the specified MCP server and register any available tools
+      for use with subsequent queries
+    - Optionally specify name of environment variable that contains the
+      authentication token if needed.
+    HELP2
+
+    H_C_HELP = <<-HELP3
+    `#{C_HELP}`
+    - Shows this information
+    HELP3
+
     COMMAND_HELP = <<-HELP
-    **The following `/` (slash) commands available.**
+    #{H_C_BYE}
 
-    `/bye`
-      - Exit Enkaidu
+    #{H_C_HELP}
 
-    `/help`
-      - Shows this information
-
-    `/use_mcp URL`
-      - Connect with the specified MCP server and register any available tools
-        for use with subsequent queries
-
+    #{H_C_USE_MCP}
     HELP
 
+    private def handle_use_mcp_command(cmd)
+      error = nil
+      url = nil
+      auth_key = nil
+      # Check and extract what we want,
+      error = if (url = cmd.arg_at?(1)).nil?
+                "ERROR: Specify URL to the MCP server"
+              elsif (auth_env = cmd.arg_named?("auth_env")) && (auth_key = ENV[auth_env]?).nil?
+                "ERROR: Unable to find environment variable: #{auth_env}."
+              end
+      # Check if command meets expectation
+      unless error || cmd.expect?(C_USE_MCP, String, auth_env: String?)
+        error = "ERROR: Unexpected command / parameters"
+      end
+      # Report error if any
+      if error
+        renderer.warning_with(error, help: H_C_USE_MCP, markdown: true)
+        return
+      end
+      # All good
+      auth_token = MCPC::AuthToken.new(label: "MCP auth token: #{url}", value: auth_key) if auth_key
+      session.use_mcp_server url.as(String), auth_token: auth_token
+    end
+
     private def commands(q)
-      case q
+      cmd = CommandParser.new(q)
+      case cmd.arg_at?(0)
       when "/bye"
         @done = true
       when "/help"
-        puts Markd.to_term(COMMAND_HELP)
-      when .starts_with? "/use_mcp"
-        cmd = q.split(' ', 2)
-        url = cmd.last.strip
-        session.use_mcp_server url
+        renderer.info_with "**The following `/` (slash) commands available.**",
+          help: COMMAND_HELP, markdown: true
+      when "/use_mcp"
+        handle_use_mcp_command(cmd)
       else
-        renderer.warning("ERROR: Unknown command: #{q}")
+        renderer.warning_with("ERROR: Unknown command: #{q}")
       end
     end
 
@@ -64,14 +108,12 @@ module Enkaidu
       recorder << "," if count.positive?
       session.ask(query: q)
       @count += 1
-      puts
     end
 
     def run
-      puts Markd.to_term(WELCOME)
+      renderer.llm_text WELCOME
       recorder << "["
       while !done?
-        puts "----".colorize(:yellow)
         if q = reader.read_next
           case q = q.strip
           when .starts_with?("/") then commands(q)
