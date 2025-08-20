@@ -35,6 +35,10 @@ module Enkaidu::CLI
       true
     end
 
+    def history_file
+      ENV.fetch("ENKAIDU_HISTORY_FILE", ".enkaidu_history")
+    end
+
     # def auto_complete(name_filter : String, expression : String) : {String, Array(String)}
     #   # Return the auto-completion result from expression
     # end
