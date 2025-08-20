@@ -1,20 +1,33 @@
 require "../session_renderer"
+require "markterm"
 
 module Enkaidu::CLI
   class ConsoleRenderer < SessionRenderer
     property? streaming = false
 
-    def warning(message)
-      STDERR.puts "***".colorize(:red)
-      STDERR.puts message.colorize(:red)
-      STDERR.puts
+    private def prepare_text(help, markdown = false)
+      markdown ? Markd.to_term(help.to_s) : help
     end
 
-    def error_with(message, help = nil)
+    def info_with(message, help = nil, markdown = false)
+      STDERR.puts message.colorize(:cyan)
+      return unless help
+      STDERR.puts
+      STDERR.puts prepare_text(help, markdown)
+    end
+
+    def warning_with(message, help = nil, markdown = false)
+      STDERR.puts message.colorize(:light_red)
+      return unless help
+      STDERR.puts
+      STDERR.puts prepare_text(help, markdown)
+    end
+
+    def error_with(message, help = nil, markdown = false)
       STDERR.puts message.colorize(:red)
       return unless help
       STDERR.puts
-      STDERR.puts help
+      STDERR.puts prepare_text(help, markdown)
     end
 
     def user_query(query)
@@ -44,11 +57,11 @@ module Enkaidu::CLI
     end
 
     def llm_error(err)
-      warning("ERROR:\n#{err.to_json}")
+      warning_with("ERROR:\n#{err.to_json}")
     end
 
-    def llm_text(text)
-      if streaming?
+    def llm_text(text, streaming = false)
+      if streaming
         print text
       else
         puts Markd.to_term(text)

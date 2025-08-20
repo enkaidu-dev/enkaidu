@@ -64,11 +64,11 @@ module MCPC
     # standard one. (Yes, this is ass backwards, but that's what the spec wants.)
     private def choose_transport(uri)
       STDERR.puts "~~ MCP (Connection#choose_transport) #{uri}".colorize(:yellow) if tracing?
-      HttpLegacyTransport.new(uri, tracing: tracing?)
+      HttpLegacyTransport.new(uri, tracing: tracing?, auth_token: auth_token)
     rescue ex
       STDERR.puts "~~ MCP (Connection) #{ex}".colorize(:yellow) if tracing?
       STDERR.puts "~~    Switch to modern".colorize(:yellow) if tracing?
-      HttpTransport.new(uri, tracing: tracing?)
+      HttpTransport.new(uri, tracing: tracing?, auth_token: auth_token)
     end
 
     # Returns an array of tools, if any
@@ -130,7 +130,7 @@ module MCPC
     # Reset to re-initialize the connection whenever calls fail with a 404 error; sets up a new transport and session, and initializes the
     # session. TODO better handling of reset scenarios.
     def reset
-      @transport = @transport.class.new(uri)
+      @transport = @transport.class.new(uri, tracing: tracing?, auth_token: auth_token)
       @session = Session.new
       get_ready
     end
@@ -140,6 +140,7 @@ module MCPC
       init_ok = false
       STDERR.puts "---------- Connection#get_ready" if tracing?
       transport.post(session.body_initialize) do |reply|
+        STDERR.puts "~~~ reply: #{reply.inspect}"
         case reply
         when JSON::Any
           if value = reply.dig?("result", "protocolVersion")

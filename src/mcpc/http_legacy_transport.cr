@@ -12,8 +12,6 @@ module MCPC
     getter mcp_session_id : String? = nil
     property mcp_protocol_version : String? = nil
 
-    private getter last_request_headers : HTTP::Headers? = nil
-
     # This is the path used to POST requests to a session. This is obtained
     # by initiating the GET request
     private getter session_path : String
@@ -37,7 +35,7 @@ module MCPC
       @httpc_send = HTTP::Client.new(uri)
       @httpc_send.before_request do |request|
         # Remember
-        @last_request_headers = request.headers
+        last_request_headers = request.headers
         trace_request(request) if tracing?
       end
     end
@@ -46,12 +44,12 @@ module MCPC
       @httpc_send = HTTP::Client.new(uri)
       @httpc_send.before_request do |request|
         # Remember
-        @last_request_headers = request.headers
+        last_request_headers = request.headers
       end
     end
 
     private def setup_receiver_response
-      @httpc_recv.get(uri.path, prepare_request_headers) do |resp|
+      @httpc_recv.get(uri.path, prepare_get_request_headers) do |resp|
         trace_response(resp, label: trace_label("#setup_receiver_response")) if tracing?
         if ctype = resp.content_type
           case resp.status_code
@@ -65,11 +63,14 @@ module MCPC
             end
           when 200
             if ctype.starts_with?("text/event-stream")
-              message = find_sse_event_after_skipping_spuriosa(resp.body_io)
+              message = find_sse_event_after_skipping_spuriosa(resp.body_io, wait_time_ms: 500)
 
-              if message["event"] == "endpoint"
+              if message["event"]? == "endpoint"
                 # This is a legacy SSE protocol; keep the response.
                 return {resp: resp, path: message["data"]}
+              else
+                # Likely not SSE protocol?
+                return nil
               end
             end
           end

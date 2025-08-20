@@ -11,11 +11,11 @@ class SensitiveData(T)
 
   # Override to hide the value
   def to_s(io)
-    io << "Sensitive(" << label << ")"
+    io << "SENSITIVE(" << label << ")"
   end
 
   # Override to hide the value
   def inspect(io)
-    io << "Sensitive(label: \"" << label << "\", value: " << T.class.name ")"
+    io << "SENSITIVE(label: \"" << label << "\", value: " << T.class.name ")"
   end
 end

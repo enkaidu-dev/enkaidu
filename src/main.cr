@@ -30,56 +30,67 @@ module Enkaidu
     Furthermore, by connecting with MCP servers Enkaidu can assist you with much more.
 
     Use `/help` to see the `/` commands available.
+
     TEXT
 
+    C_BYE     = "/use_mcp"
+    C_USE_MCP = "/use_mcp"
+    C_HELP    = "/help"
+
+    H_C_BYE = <<-HELP1
+    `#{C_BYE}`
+    - Exit Enkaidu
+    HELP1
+
+    H_C_USE_MCP = <<-HELP2
+    `#{C_USE_MCP} URL [--auth-env ENVARNAME]`
+    - Connect with the specified MCP server and register any available tools
+      for use with subsequent queries
+    - Optionally specify name of environment variable that contains the
+      authentication token if needed.
+    HELP2
+
+    H_C_HELP = <<-HELP3
+    `#{C_HELP}`
+    - Shows this information
+    HELP3
+
     COMMAND_HELP = <<-HELP
-    **The following `/` (slash) commands available.**
+    #{H_C_BYE}
 
-    `/bye`
-      - Exit Enkaidu
+    #{H_C_HELP}
 
-    `/help`
-      - Shows this information
-
-    `/use_mcp URL`
-      - Connect with the specified MCP server and register any available tools
-        for use with subsequent queries
-
+    #{H_C_USE_MCP}
     HELP
 
-    private C_USE_MCP = "/use_mcp"
-
     private def handle_use_mcp_command(q)
-      ok = true
-      p_url = nil
+      error = nil
       p_auth_token = nil
       args = Process.parse_arguments_posix(q)
       opts = OptionParser.parse(args) do |op|
         op.banner = "#{C_USE_MCP} URL [options]"
         op.separator "\nOptions"
-        op.on("--auth-env=NAME", "-a NAME", "Specify the env var with the auth token") do |name|
+        op.on("--auth-env=NAME", "Specify the env var with the auth token") do |name|
           unless p_auth_token = ENV[name]?
-            renderer.warning("ERROR: Unable to find environment variable: #{name}.")
-            ok = false
+            error = "ERROR: Unable to find environment variable: #{name}."
           end
-          STDERR.puts "...#{name} = #{p_auth_token}"
         end
         op.invalid_option do |option|
-          renderer.warning("ERROR: Unknown parameter for #{C_USE_MCP}: #{option}")
-          ok = false
+          error = "ERROR: Unknown parameter for #{C_USE_MCP}: #{option}"
         end
       end
-      STDERR.puts "... #{args}"
-      if args.first == C_USE_MCP
-        p_url = args[1]?
+      error = "ERROR: Expected #{C_USE_MCP} command." unless args.first == C_USE_MCP
+      unless error
+        if url = args[1]?
+          auth_token = if tmp = p_auth_token
+                         MCPC::AuthToken.new(label: "MCP auth token: #{url}", value: tmp)
+                       end
+          session.use_mcp_server url, auth_token: auth_token
+        else
+          error = "ERROR: Specify URL to the MCP server"
+        end
       end
-
-      if ok && (url = p_url)
-        session.use_mcp_server url,
-          auth_token: p_auth_token.try { |tok| MCPC::AuthToken.new(label: "MCP #{url}", value: tok) }
-      else
-        renderer.warning("ERROR: Invalid parameters for #{C_USE_MCP}\n#{opts}")
-      end
+      renderer.warning_with(error, help: H_C_USE_MCP, markdown: true) if error
     end
 
     private def commands(q)
@@ -87,23 +98,12 @@ module Enkaidu
       when "/bye"
         @done = true
       when "/help"
-        puts Markd.to_term(COMMAND_HELP)
+        renderer.info_with "**The following `/` (slash) commands available.**",
+          help: COMMAND_HELP, markdown: true
       when .starts_with? "/use_mcp"
         handle_use_mcp_command(q)
-        # params = extract_args_from(q)
-        # url = params["$1"] # expect first arg
-        # p_auth_token = nil
-        # if auth_env = params["auth_env"]?
-        #   if (auth_token = ENV[auth_env]?)
-        #     p_auth_token = MCPC::AuthToken.new(label: "MCP #{url}", value: auth_token)
-        #   else
-        #     renderer.warning("ERROR: Cannot use MCP server; unable to find environment variable: #{auth_env}.")
-        #     return
-        #   end
-        # end
-        # session.use_mcp_server url, auth_token: p_auth_token
       else
-        renderer.warning("ERROR: Unknown command: #{q}")
+        renderer.warning_with("ERROR: Unknown command: #{q}")
       end
     end
 
@@ -111,14 +111,12 @@ module Enkaidu
       recorder << "," if count.positive?
       session.ask(query: q)
       @count += 1
-      puts
     end
 
     def run
-      puts Markd.to_term(WELCOME)
+      renderer.llm_text WELCOME
       recorder << "["
       while !done?
-        puts "----".colorize(:yellow)
         if q = reader.read_next
           case q = q.strip
           when .starts_with?("/") then commands(q)

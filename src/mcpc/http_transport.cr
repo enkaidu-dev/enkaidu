@@ -12,8 +12,6 @@ module MCPC
     getter mcp_session_id : String? = nil
     property mcp_protocol_version : String? = nil
 
-    private getter last_request_headers : HTTP::Headers? = nil
-
     private getter session_path : String? = nil
 
     def initialize(url : String | URI, tracing = false, auth_token = nil)
@@ -28,7 +26,7 @@ module MCPC
           request.headers["mcp-protocol-version"] = tmp
         end
         # Remember
-        @last_request_headers = request.headers
+        last_request_headers = request.headers
         trace_request(request) if tracing?
       end
     end

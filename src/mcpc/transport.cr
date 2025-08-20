@@ -13,25 +13,64 @@ module MCPC
   abstract class Transport
     alias ErrorDetails = Hash(String, String | JSON::Any)
 
-    private HEADERS_ = HTTP::Headers{
-      "Content-Type" => "application/json",
-      "Accept"       => ["application/json", "text/event-stream"],
-      "User-Agent"   => "Enkaidu",
+    private SENSITIVE_ = "<SENSITIVE / MASKED>"
+
+    private HEADERS_GET_ = HTTP::Headers{
+      "Accept"          => "text/event-stream",
+      "Accept-Language" => "en-CA,en-US;q=0.7,en;q=0.3",
+      "Content-Type"    => "application/json",
+      "Connection"      => "keep-alive",
+      "User-Agent"      => "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:141.0) Gecko/20100101 Firefox/141.0",
     }
 
+    private HEADERS_POST_ = HTTP::Headers{
+      "Accept"          => "application/json, text/event-stream",
+      "Accept-Language" => "en-CA,en-US;q=0.7,en;q=0.3",
+      "Content-Type"    => "application/json",
+      "Connection"      => "keep-alive",
+      "User-Agent"      => "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:141.0) Gecko/20100101 Firefox/141.0",
+    }
+
+    private setter last_request_headers : HTTP::Headers? = nil
     private getter auth_token : AuthToken?
 
-    def initialize(@tracing = false, @auth_token = nil)
-      STDERR.puts "... #{auth_token}"
-    end
+    def initialize(@tracing = false, @auth_token = nil); end
 
     # Return headers, incorporate auth token if any
     private def prepare_request_headers
-      return HEADERS_ unless bearer_auth = auth_token
-      h = HEADERS_.dup
-      h["Authorization"] = "Bearer #{bearer_auth.sensitive_data}"
-      STDERR.puts "... using #{bearer_auth}".colorize(:yellow)
+      h = HEADERS_POST_
+      if bearer_auth = auth_token
+        h = h.dup
+        h.add("Authorization", "Bearer #{bearer_auth.sensitive_data}")
+      end
       h
+    end
+
+    # Return headers, incorporate auth token if any
+    private def prepare_get_request_headers
+      h = HEADERS_GET_
+      if bearer_auth = auth_token
+        h = h.dup
+        h.add("Authorization", "Bearer #{bearer_auth.sensitive_data}")
+      end
+      h
+    end
+
+    # Custom getter to ensure we don't put auth token when tracing
+    private def last_request_headers : HTTP::Headers?
+      # If we have headers, and we have a Bearer token,
+      # shallow copy and sanitize and hold on to that.
+      # Future calls will not find "Bearer"
+      if h = @last_request_headers
+        if auth = h.get?("Authorization")
+          if (auth.any? &.index("Bearer"))
+            h = h.dup
+            h["Authorization"] = SENSITIVE_ # sanitize
+            @last_request_headers = h       # replace
+          end
+        end
+      end
+      @last_request_headers
     end
 
     # Control network traffic tracing sent to STDERR
@@ -84,7 +123,7 @@ module MCPC
     end
 
     # For legacy SSE transport only
-    private def find_sse_event_after_skipping_spuriosa(io) : Hash(String, String)
+    private def find_sse_event_after_skipping_spuriosa(io, wait_time_ms = -1) : Hash(String, String)
       # HACK to see this is even a solution for dealing with spurious records that build up
       #     because of the legacy protocol's behaviour.
       #     This should skip Empty and Ping responses
@@ -92,7 +131,8 @@ module MCPC
       #     we might get real notifications here but I'll
       #     fight that dragon later
       message = nil
-      while message.nil? || message.empty?
+      start = Time.monotonic
+      while (message.nil? || message.empty?)
         STDERR.puts "~~    skipping empty SSE message".colorize(:yellow) if tracing? && message
         message = extract_sse_event(io)
         if data = message["data"]?
@@ -102,8 +142,9 @@ module MCPC
             message = nil
           end
         end
+        break if wait_time_ms.positive? && (Time.monotonic - start).total_milliseconds > wait_time_ms
       end
-      message
+      message || {} of String => String
     end
 
     # Yields a `JSON::Any` for valid data: in the response, or `ErrorDetails` for unknown
@@ -148,9 +189,11 @@ module MCPC
             end
           when .starts_with?("application/json")
             if data = io.gets_to_end
-              yield JSON.parse(data)
+              yield JSON.parse(data) unless data.blank?
               ok = true
             end
+          else
+            trace_message("Unexpected content type: #{ct}", label = trace_label("handle_sse_response")) if tracing?
           end
         end
         if !ok
@@ -191,6 +234,7 @@ module MCPC
       return unless tracing?
       STDERR.puts "~~ MCP (#{label}) request #{req.method} #{req.hostname} #{req.path}".colorize(:magenta)
       req.headers.each do |k, v|
+        v = SENSITIVE_ if v.any? &.index("Bearer")
         STDERR.puts "~~    > #{k}: #{v}".colorize(:magenta)
       end
     end
