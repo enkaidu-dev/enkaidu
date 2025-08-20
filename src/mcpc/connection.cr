@@ -140,7 +140,6 @@ module MCPC
       init_ok = false
       STDERR.puts "---------- Connection#get_ready" if tracing?
       transport.post(session.body_initialize) do |reply|
-        STDERR.puts "~~~ reply: #{reply.inspect}"
         case reply
         when JSON::Any
           if value = reply.dig?("result", "protocolVersion")
