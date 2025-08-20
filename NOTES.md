@@ -8,16 +8,17 @@
 
 ### MCPC
 
-- [ ] Figure out how to support authentication (a) oAuth2 per spec? (b) API key? (c) Basic auth over HTTPS?
+- [ ] Figure out how to support oAuth2 based authorization
 - [ ] Detect when MCP connection needs to be reset; there are some rules for this.
 - [ ] Find a canonical server to run locally to test the protocol better
 - [ ] Figure out how to improve MCP transport responsiveness. The MCP Inspector seems be deal with HTTP streaming much more responsively. My implementation, which needs `io.skip_to_end` after handling every response, seems sluggish.
-- [x] Support the deprecated SSE transport 'cuz there are so many servers out there.
 - [ ] Support more complex tool JSON schema for complex objects etc.
+- [x] Support the deprecated SSE transport 'cuz there are so many servers out there.
+- [x] Support MCP server authentication using bearer token
 
 ## MCP Support
 
-Now supports legacy (deprecated) SSE over dual-http connections as well as the modern HTTP streaming. Also support non-streaming HTTP but I haven't found a good server to test this. 
+Now supports legacy (deprecated) SSE over dual-http connections as well as the modern HTTP streaming. Also support non-streaming HTTP but I haven't found a good server to test this.
 
 ### Some MCP servers with tools
 
@@ -38,9 +39,9 @@ These are major changes I'd like to make to Enkaidu
 
 ### Safe shell access
 
-It would be great to support shell access so that the model can be used to run tests and review results as part of supporting coding. 
+It would be great to support shell access so that the model can be used to run tests and review results as part of supporting coding.
 
-To do this I really want to have some kind of OS-level guardrails to ensure scripts can't break out of a "jail" to modify / access stuff they shouldn't. 
+To do this I really want to have some kind of OS-level guardrails to ensure scripts can't break out of a "jail" to modify / access stuff they shouldn't.
 
 Think ...
 
@@ -49,12 +50,6 @@ Think ...
 - Containers are perfect for this, with volume mounting to just the bits we want; but now we need to include `docker` or `podman` with the app!
 - What else?
 
-### Interactivity
-
-Consider `crystal-term/prompt`. I'd like a more interactive input prompt for the app.
-
-- https://github.com/crystal-term/prompt
-
 ### Web interface
 
 Consider [Kemal](https://github.com/kemalcr/kemal) to support a built-in web UI that mimics the CLI.
@@ -62,13 +57,6 @@ Consider [Kemal](https://github.com/kemalcr/kemal) to support a built-in web UI 
 And use [BakedFileSystem](https://github.com/ralsina/baked_file_system) to bundle the static file in the binary.
 
 And [Svelte](https://svelte.dev/docs/svelte/overview) with TypeScript (of course!) would be nice to write the web UI since it can be used to produce a SPA that can be "baked" into the binary.
-
-### Authentication for MCP servers
-
-Many MCP servers behind paywalls support `Bearer Authentication`.
-
-- Add ability to specify bearer auth
-- Where / how do we specify the API key per server?
 
 ### Image generation
 
@@ -82,14 +70,27 @@ https://modelcontextprotocol.io/specification/2025-06-18/schema#calltoolresult
 Known MCP servers:
 - Pixel Lab (`https://api.pixellab.ai/mcp`)
 
-### Complete [JSON Schema](https://json-schema.org/docs) support 
+### Complete [JSON Schema](https://json-schema.org/docs) support
 
 When listing tools, the too definition has more than just simple parameter types: https://modelcontextprotocol.io/specification/2025-06-18/schema#tool
 
 Per `LLM::Function` (or do we need a derived `MCP::Function`?)
 - Support full JSON schema for input schema
 - Add support for output schema
-- Check out [json-schema](https://github.com/spider-gazelle/json-schema) shard 
+- Check out [json-schema](https://github.com/spider-gazelle/json-schema) shard
+
+## Done
+
+### Interactive reader (Done)
+
+Using [REPLy](https://github.com/I3oris/reply/) shard (derived from the Crystal REPL support) which provides better editing, and gives us a framework for future enhancements (e.g. auto-completion, history etc.)
+
+### Authentication for MCP servers (Done)
+
+Many MCP servers behind paywalls support `Bearer Authentication`.
+
+- Add ability to specify bearer auth
+- Where / how do we specify the API key per server?
 
 Questions
 - [ ] Does OpenAI protocol support input/output schema?
