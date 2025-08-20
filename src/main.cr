@@ -1,6 +1,8 @@
 require "./enkaidu/*"
 require "./enkaidu/cli/*"
 
+require "./sucre/command_parser"
+
 require "option_parser"
 
 module Enkaidu
@@ -43,7 +45,7 @@ module Enkaidu
     HELP1
 
     H_C_USE_MCP = <<-HELP2
-    `#{C_USE_MCP} URL [--auth-env ENVARNAME]`
+    `#{C_USE_MCP} URL [auth_env=ENVARNAME]`
     - Connect with the specified MCP server and register any available tools
       for use with subsequent queries
     - Optionally specify name of environment variable that contains the
@@ -63,45 +65,40 @@ module Enkaidu
     #{H_C_USE_MCP}
     HELP
 
-    private def handle_use_mcp_command(q)
+    private def handle_use_mcp_command(cmd)
       error = nil
-      p_auth_token = nil
-      args = Process.parse_arguments_posix(q)
-      opts = OptionParser.parse(args) do |op|
-        op.banner = "#{C_USE_MCP} URL [options]"
-        op.separator "\nOptions"
-        op.on("--auth-env=NAME", "Specify the env var with the auth token") do |name|
-          unless p_auth_token = ENV[name]?
-            error = "ERROR: Unable to find environment variable: #{name}."
-          end
-        end
-        op.invalid_option do |option|
-          error = "ERROR: Unknown parameter for #{C_USE_MCP}: #{option}"
-        end
+      url = nil
+      auth_key = nil
+      # Check and extract what we want,
+      error = if (url = cmd.arg_at?(1)).nil?
+                "ERROR: Specify URL to the MCP server"
+              elsif (auth_env = cmd.arg_named?("auth_env")) && (auth_key = ENV[auth_env]?).nil?
+                "ERROR: Unable to find environment variable: #{auth_env}."
+              end
+      # Check if command meets expectation
+      unless error || cmd.expect?(C_USE_MCP, String, auth_env: String?)
+        error = "ERROR: Unexpected command / parameters"
       end
-      error = "ERROR: Expected #{C_USE_MCP} command." unless args.first == C_USE_MCP
-      unless error
-        if url = args[1]?
-          auth_token = if tmp = p_auth_token
-                         MCPC::AuthToken.new(label: "MCP auth token: #{url}", value: tmp)
-                       end
-          session.use_mcp_server url, auth_token: auth_token
-        else
-          error = "ERROR: Specify URL to the MCP server"
-        end
+      # Report error if any
+      if error
+        renderer.warning_with(error, help: H_C_USE_MCP, markdown: true)
+        return
       end
-      renderer.warning_with(error, help: H_C_USE_MCP, markdown: true) if error
+      # All good
+      auth_token = MCPC::AuthToken.new(label: "MCP auth token: #{url}", value: auth_key) if auth_key
+      session.use_mcp_server url.as(String), auth_token: auth_token
     end
 
     private def commands(q)
-      case q
+      cmd = CommandParser.new(q)
+      case cmd.arg_at?(0)
       when "/bye"
         @done = true
       when "/help"
         renderer.info_with "**The following `/` (slash) commands available.**",
           help: COMMAND_HELP, markdown: true
-      when .starts_with? "/use_mcp"
-        handle_use_mcp_command(q)
+      when "/use_mcp"
+        handle_use_mcp_command(cmd)
       else
         renderer.warning_with("ERROR: Unknown command: #{q}")
       end
