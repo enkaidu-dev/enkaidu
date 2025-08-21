@@ -49,6 +49,7 @@ module Enkaidu
         with_tool ListFilesTool.new
         with_tool ReadTextFileTool.new
         with_tool CreateTextFileTool.new
+        with_tool CreateImageFileTool.new
         with_tool ReplaceTextInTextFileTool.new
         with_tool RenameFileTool.new
         with_tool CreateDirectoryTool.new
