@@ -34,11 +34,11 @@ module Enkaidu
 
     # Look for a model by its unique name and, if one exists, return its
     # model's enclosing LLM
-    def find_llm_by_model_name?(unique_model_name) : LLM?
+    def find_llm_and_model_by?(unique_model_name)
       llms.each do |name, llm|
         llm.models.try &.each do |model|
           if model.name == unique_model_name
-            return llm
+            return {llm: llm, model: model}
           end
         end
       end

@@ -129,9 +129,10 @@ module Enkaidu::CLI
 
       if model_name && provider_type.nil?
         # look up unique model name
-        if llm = (config.try &.find_llm_by_model_name?(model_name))
-          @config_for_llm = llm
-          @provider_type = llm.provider
+        if info = (config.try &.find_llm_and_model_by?(unique_model_name: model_name))
+          @config_for_llm = info[:llm]
+          @provider_type = info[:llm].provider
+          @model_name = info[:model].model
         end
       end
     end
