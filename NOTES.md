@@ -5,14 +5,17 @@
 - [ ] Write test specs
 - [ ] Document the code classes (viz. fix `ops lint` warnings)
 - [ ] Add a tool to save an image where the provided image is in the `data:` base-64-encoded form
+- [ ] Does OpenAI protocol support input/output schema?
+- [ ] Setup GH action to build Linux and macOS binaries
+- [ ] Figure out `curl` and `bash` installation script
 
 ### MCPC
 
+- [ ] Support more complex JSON schema for tool properties to support some MCP servers (e.g. Pixel Lab)
 - [ ] Figure out how to support oAuth2 based authorization
 - [ ] Detect when MCP connection needs to be reset; there are some rules for this.
 - [ ] Find a canonical server to run locally to test the protocol better
 - [ ] Figure out how to improve MCP transport responsiveness. The MCP Inspector seems be deal with HTTP streaming much more responsively. My implementation, which needs `io.skip_to_end` after handling every response, seems sluggish.
-- [ ] Support more complex tool JSON schema for complex objects etc.
 - [x] Support the deprecated SSE transport 'cuz there are so many servers out there.
 - [x] Support MCP server authentication using bearer token
 
@@ -79,6 +82,16 @@ Per `LLM::Function` (or do we need a derived `MCP::Function`?)
 - Add support for output schema
 - Check out [json-schema](https://github.com/spider-gazelle/json-schema) shard
 
+### Distributing `enkaidu`
+
+Build releases via Github for Linux and macOS.
+
+Regarding signing / quarantining, see [this answer in SO](https://stackoverflow.com/questions/67446317/why-are-executables-installed-with-homebrew-trusted-on-macos):
+
+> There is no quarantining flag for a CLI app downloaded with curl. Home-brew, uses UNIX core tools to download the bottles, and thus they don't have this flag set.
+
+So providing instructions to fetch / install via `curl` should provide an interim solution.
+
 ## Done
 
 ### Interactive reader (Done)
@@ -96,5 +109,3 @@ Many MCP servers behind paywalls support `Bearer Authentication`.
 - Add ability to specify bearer auth
 - Where / how do we specify the API key per server?
 
-Questions
-- [ ] Does OpenAI protocol support input/output schema?
