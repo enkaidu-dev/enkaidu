@@ -10,7 +10,8 @@ module LLM
     getter? streaming = false
 
     def initialize
-      @tools = {} of String => LLM::Function
+      @tools_by_name = {} of String => Function
+      @tools_by_origin = {} of String => Hash(String, Function)
     end
 
     def with_debug
@@ -29,18 +30,33 @@ module LLM
       @system_message = content
     end
 
-    def with_tool(function : LLM::Function)
-      @tools[function.name] = function
+    def with_tool(function : Function)
+      unless @tools_by_name[function.name]?
+        @tools_by_name[function.name] = function
+        by_origin = @tools_by_origin[function.origin]? ||
+                    (@tools_by_origin[function.origin] = {} of String => Function)
+        by_origin[function.name] = function
+      end
     end
 
     def find_tool?(name)
-      @tools[name]?
+      @tools_by_name[name]?
     end
 
-    def each_tool(&)
-      @tools.each_value do |tool|
-        yield tool
+    def each_tool_origin(&)
+      @tools_by_origin.each_key { |origin| yield origin }
+    end
+
+    def each_tool(origin : String? = nil, &)
+      if tools = (origin ? @tools_by_origin[origin] : @tools_by_name)
+        tools.each_value do |tool|
+          yield tool
+        end
       end
+    end
+
+    def each_tool
+      @tools_by_name.each_value
     end
 
     abstract def ask(content : String, & : ChatEvent ->)

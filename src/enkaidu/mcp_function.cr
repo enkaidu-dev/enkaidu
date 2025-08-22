@@ -20,6 +20,7 @@ module Enkaidu
     def initialize(tool_def : JSON::Any, @mcpc, @cli)
       @params = [] of LLM::Param
       # Extract the function specification from the tool definition
+      @origin = mcpc.origin
       @name = tool_def["name"].as_s
       if tmp = tool_def["title"]?
         @title = tmp.as_s

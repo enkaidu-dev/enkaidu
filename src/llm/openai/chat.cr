@@ -243,7 +243,7 @@ module LLM::OpenAI
         chat_to_json(json, model, system_message,
           stream: streaming?,
           messages: @messages,
-          tools: @tools.each_value)
+          tools: each_tool)
       end
     end
   end

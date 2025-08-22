@@ -54,6 +54,15 @@ module MCPC
       get_ready
     end
 
+    # Short title
+    def origin
+      @origin ||= if server_name == server_version && server_name == "UNKNOWN"
+                    "MCP / #{uri}"
+                  else
+                    "MCP / #{server_name} #{server_version}"
+                  end
+    end
+
     # Enable / disable tracing from this point on
     def tracing=(trace : Bool)
       @tracing = trace

@@ -7,6 +7,10 @@ module LLM
     # one list per class; do not edit
     @@params = [] of Param
 
+    def initialize
+      @origin = "Enkaidu / Built-in"
+    end
+
     # Iterate through each parameter
     def each_param(& : LLM::Param ->)
       @@params.each do |param|

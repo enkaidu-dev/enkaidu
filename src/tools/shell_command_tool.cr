@@ -28,7 +28,9 @@ class ShellCommandTool < LLM::LocalFunction
 
   protected getter ui : Enkaidu::SessionRenderer
 
-  def initialize(@ui); end
+  def initialize(@ui)
+    super()
+  end
 
   # Replace `runner` macro to create with self
   def new_runner : Runner
