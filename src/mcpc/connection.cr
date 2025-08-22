@@ -1,7 +1,7 @@
 require "uri"
 
 require "./http_transport"
-require "./session"
+require "./json_rpc_session"
 require "./sensitive_data"
 
 module MCPC
@@ -25,7 +25,7 @@ module MCPC
     end
   end
 
-  # This MCP connection encapsulates `HttpTransport` and `Session`, adding additional
+  # This MCP connection encapsulates `HttpTransport` and `JsonRpcSession`, adding additional
   # processing and awareness.
   # Usage example:
   # ```
@@ -44,13 +44,13 @@ module MCPC
     getter? tracing = false
     private getter auth_token : AuthToken?
     private getter transport : Transport
-    private getter session : Session
+    private getter session : JsonRpcSession
 
     # Sets up the MCP connection
     def initialize(url, @tracing = false, @auth_token = nil)
       @uri = URI.parse(url)
       @transport = choose_transport(uri)
-      @session = Session.new
+      @session = JsonRpcSession.new
       get_ready
     end
 
@@ -140,7 +140,7 @@ module MCPC
     # session. TODO better handling of reset scenarios.
     def reset
       @transport = @transport.class.new(uri, tracing: tracing?, auth_token: auth_token)
-      @session = Session.new
+      @session = JsonRpcSession.new
       get_ready
     end
 
@@ -153,7 +153,7 @@ module MCPC
         when JSON::Any
           if value = reply.dig?("result", "protocolVersion")
             version = value.as_s
-            session.protocol_version = version
+            session.mcp_protocol_version = version
             transport.mcp_protocol_version = version
           end
           capabilities = reply.dig("result", "capabilities")
