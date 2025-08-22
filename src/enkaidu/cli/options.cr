@@ -16,9 +16,9 @@ module Enkaidu::CLI
     getter recorder_file : IO? = nil
 
     getter config_for_llm : Config::LLM?
+    getter config : Config?
 
     private getter renderer : SessionRenderer
-    private getter config : Config?
 
     private def add(name : Symbol, value : String | Bool)
       @options[name] = value.to_s
@@ -119,12 +119,12 @@ module Enkaidu::CLI
 
     private def check_config_for_defaults
       # Check config for default options
-      if default_opts = (config.try &.default)
-        @stream = default_opts.streaming? unless @options.has_key?(:stream)
-        @trace_mcp = default_opts.trace_mcp? unless @options.has_key?(:trace_mcp)
-        @enable_shell_command = default_opts.enable_shell_command? unless @options.has_key?(:enable_shell_command)
-        @provider_type = default_opts.provider_type if provider_type.nil?
-        @model_name = default_opts.model if model_name.nil?
+      if session_opts = (config.try &.session)
+        @stream = session_opts.streaming? unless @options.has_key?(:stream)
+        @trace_mcp = session_opts.trace_mcp? unless @options.has_key?(:trace_mcp)
+        @enable_shell_command = session_opts.enable_shell_command? unless @options.has_key?(:enable_shell_command)
+        @provider_type = session_opts.provider_type if provider_type.nil?
+        @model_name = session_opts.model if model_name.nil?
       end
 
       if model_name && provider_type.nil?
