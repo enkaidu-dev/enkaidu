@@ -17,6 +17,12 @@ module LLM::OpenAI
     def initialize(@conn)
       super()
       @messages = [] of Message
+      @model = @conn.model
+    end
+
+    def with_model(model : String)
+      super
+      @conn.model = model
     end
 
     private def call_tool(tool : LLM::Function, tool_call : JSON::Any)

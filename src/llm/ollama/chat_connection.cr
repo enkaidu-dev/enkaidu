@@ -9,6 +9,10 @@ module LLM::Ollama
       ENV.fetch("OLLAMA_ENDPOINT", "http://localhost:11434")
     end
 
+    def model
+      super || ENV["OLLAMA_MODEL"]?
+    end
+
     protected def path : String
       "/v1/chat/completions"
     end

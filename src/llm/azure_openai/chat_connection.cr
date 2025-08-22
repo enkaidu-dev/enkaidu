@@ -14,7 +14,7 @@ module LLM::AzureOpenAI
     end
 
     def model
-      ENV["AZURE_OPENAI_MODEL"]
+      super || ENV["AZURE_OPENAI_MODEL"]?
     end
 
     protected def url : String
