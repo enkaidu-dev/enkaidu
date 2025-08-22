@@ -93,18 +93,22 @@ module Enkaidu
     def list_tool_details(tool_name)
       if tool = find_tool_by(tool_name)
         text = String.build do |io|
-          io << tool.description << '\n'
+          desc = if tool.description == tool_name
+                   "_No description provided. Using tool name instead._"
+                 else
+                   tool.description
+                 end
+          io << desc << '\n'
           ix = 1
+          io << "### Parameters\n"
           tool.each_param do |param|
             io << ix << ". `" << param.name << "` : `" << param.type.label << "` " <<
               (param.required? ? "(Required)\n" : "(Optional)\n")
-            param.description.split('.').each do |line|
-              io << "    * " << line << '\n' unless line.strip.blank?
-            end
+            io << "    * " << param.description << '\n'
             ix += 1
           end
         end
-        renderer.info_with("Tool details: #{tool_name}", text, markdown: true)
+        renderer.info_with("Tool details: #{tool_name} (#{tool.origin})", text, markdown: true)
       else
         renderer.info_with("INFO: No such tool available: #{tool_name}")
       end
