@@ -85,6 +85,10 @@ Per `LLM::Function` (or do we need a derived `MCP::Function`?)
 
 Using [REPLy](https://github.com/I3oris/reply/) shard (derived from the Crystal REPL support) which provides better editing, and gives us a framework for future enhancements (e.g. auto-completion, history etc.)
 
+Notable:
+- `Alt-Enter` or `Option-Enter` can be used to start multi-line query editing
+- `Ctrl-R` can be used to search input history
+
 ### Authentication for MCP servers (Done)
 
 Many MCP servers behind paywalls support `Bearer Authentication`.
