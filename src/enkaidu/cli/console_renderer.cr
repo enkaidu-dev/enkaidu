@@ -5,29 +5,32 @@ module Enkaidu::CLI
   class ConsoleRenderer < SessionRenderer
     property? streaming = false
 
-    private def prepare_text(help, markdown = false)
+    private def prepare_text(help, markdown)
       markdown ? Markd.to_term(help.to_s) : help
+    end
+
+    private def err_puts_text(help, markdown)
+      text = prepare_text(help, markdown)
+      STDERR.puts unless text.to_s.starts_with? '\n'
+      STDERR.puts text
     end
 
     def info_with(message, help = nil, markdown = false)
       STDERR.puts message.colorize(:cyan)
       return unless help
-      STDERR.puts
-      STDERR.puts prepare_text(help, markdown)
+      err_puts_text help, markdown
     end
 
     def warning_with(message, help = nil, markdown = false)
       STDERR.puts message.colorize(:light_red)
       return unless help
-      STDERR.puts
-      STDERR.puts prepare_text(help, markdown)
+      err_puts_text help, markdown
     end
 
     def error_with(message, help = nil, markdown = false)
       STDERR.puts message.colorize(:red)
       return unless help
-      STDERR.puts
-      STDERR.puts prepare_text(help, markdown)
+      err_puts_text help, markdown
     end
 
     def user_query(query)

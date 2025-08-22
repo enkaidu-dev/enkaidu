@@ -69,6 +69,47 @@ module Enkaidu
       end
     end
 
+    def list_all_tools
+      text = String.build do |io|
+        chat.each_tool_origin do |origin|
+          io << "## " << origin << '\n'
+          chat.each_tool(origin: origin) do |tool|
+            io << "**" << tool.name << "** "
+            io << tool.description << "\n\n"
+          end
+        end
+        io << '\n'
+      end
+      renderer.info_with("List of available tools.", text, markdown: true)
+    end
+
+    private def find_tool_by(name)
+      chat.each_tool do |tool|
+        return tool if tool.name == name
+      end
+      nil
+    end
+
+    def list_tool_details(tool_name)
+      if tool = find_tool_by(tool_name)
+        text = String.build do |io|
+          io << tool.description << '\n'
+          ix = 1
+          tool.each_param do |param|
+            io << ix << ". `" << param.name << "` : `" << param.type.label << "` " <<
+              (param.required? ? "(Required)\n" : "(Optional)\n")
+            param.description.split('.').each do |line|
+              io << "    * " << line << '\n' unless line.strip.blank?
+            end
+            ix += 1
+          end
+        end
+        renderer.info_with("Tool details: #{tool_name}", text, markdown: true)
+      else
+        renderer.info_with("INFO: No such tool available: #{tool_name}")
+      end
+    end
+
     private def system_prompt
       ENV.fetch("ENKAIDU_SYSTEM_PROMPT", DEFAULT_SYSTEM_PROMPT)
     end

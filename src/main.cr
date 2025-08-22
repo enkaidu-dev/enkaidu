@@ -26,18 +26,28 @@ module Enkaidu
 
     WELCOME = <<-TEXT
     # Welcome to **Enkaidu**,
-    This is your second-in-command(-line) designed to assist you with
-    writing & maintaining code and other text-based content.
+    This is your second-in-command(-line) designed to assist you with 
+    writing & maintaining code and other text-based content, by enabling LLMs 
+    and connecting with MCP servers.
 
-    Furthermore, by connecting with MCP servers Enkaidu can assist you with much more.
-
-    Use `/help` to see the `/` commands available.
+    When entering a query,
+    - Type `/help` to see the `/` commands available.
+    - Press `Alt-Enter` or `Option-Enter` to start multi-line editing.
 
     TEXT
 
-    C_BYE     = "/use_mcp"
+    C_BYE     = "/bye"
     C_USE_MCP = "/use_mcp"
+    C_TOOL    = "/tool"
     C_HELP    = "/help"
+
+    H_C_TOOL = <<-HELP1
+    `#{C_TOOL}` [sub-command]
+    - `ls`
+      - List all available tools
+    - `info TOOLNAME`
+      - Provide details about one tool
+    HELP1
 
     H_C_BYE = <<-HELP1
     `#{C_BYE}`
@@ -61,6 +71,8 @@ module Enkaidu
     #{H_C_BYE}
 
     #{H_C_HELP}
+
+    #{H_C_TOOL}
 
     #{H_C_USE_MCP}
     HELP
@@ -89,15 +101,27 @@ module Enkaidu
       session.use_mcp_server url.as(String), auth_token: auth_token
     end
 
+    private def handle_tool_command(cmd)
+      if cmd.expect?(C_TOOL, "ls")
+        session.list_all_tools
+      elsif cmd.expect?(C_TOOL, "info", String)
+        session.list_tool_details((cmd.arg_at? 2).as(String))
+      else
+        renderer.warning_with("ERROR: Unknown or incomplete sub-command", help: H_C_TOOL, markdown: true)
+      end
+    end
+
     private def commands(q)
       cmd = CommandParser.new(q)
       case cmd.arg_at?(0)
-      when "/bye"
+      when C_BYE
         @done = true
-      when "/help"
-        renderer.info_with "**The following `/` (slash) commands available.**",
+      when C_HELP
+        renderer.info_with "The following `/` (slash) commands available:",
           help: COMMAND_HELP, markdown: true
-      when "/use_mcp"
+      when C_TOOL
+        handle_tool_command(cmd)
+      when C_USE_MCP
         handle_use_mcp_command(cmd)
       else
         renderer.warning_with("ERROR: Unknown command: #{q}")
