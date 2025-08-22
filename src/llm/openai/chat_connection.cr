@@ -18,7 +18,7 @@ module LLM::OpenAI
     end
 
     def model
-      ENV["OPENAI_MODEL"]
+      super || ENV["OPENAI_MODEL"]?
     end
 
     protected def path : String

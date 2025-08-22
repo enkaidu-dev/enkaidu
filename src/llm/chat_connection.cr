@@ -5,6 +5,8 @@ require "./chat"
 
 module LLM
   abstract class ChatConnection
+    protected property model : String? = nil
+
     def initialize
       @client = HTTP::Client.new(URI.parse(url))
     end
