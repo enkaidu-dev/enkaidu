@@ -22,12 +22,13 @@ module Enkaidu
       getter provider_type : String?
       getter model : String?
       getter recording_file : String?
+      getter input_history_file : String?
       getter? trace_mcp = false
       getter? streaming = false
       getter? enable_shell_command = true
     end
 
-    getter default : Options?
+    getter session : Options?
     getter llms = {} of String => LLM
 
     # ---------------------- end of content definition

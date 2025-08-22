@@ -3,6 +3,10 @@ require "reply"
 module Enkaidu::CLI
   # Command-line query reader with editing and other capabilities.
   class QueryReader < Reply::Reader
+    def initialize(@input_history_file : String? = nil)
+      super()
+    end
+
     def read_next
       puts
       super
@@ -33,6 +37,10 @@ module Enkaidu::CLI
 
     def save_in_history?(expression : String) : Bool
       true
+    end
+
+    def history_file
+      @input_history_file ||= ENV.fetch("ENKAIDU_HISTORY_FILE", ".enkaidu_history")
     end
 
     # def auto_complete(name_filter : String, expression : String) : {String, Array(String)}

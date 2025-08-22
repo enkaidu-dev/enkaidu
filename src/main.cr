@@ -12,13 +12,16 @@ module Enkaidu
     private getter count = 0
     private getter renderer : CLI::ConsoleRenderer
     private getter reader : CLI::QueryReader
+    private getter opts : CLI::Options
 
     delegate recorder, to: @session
 
     def initialize
       @renderer = CLI::ConsoleRenderer.new
-      @session = Session.new(renderer, opts: CLI::Options.new(@renderer))
-      @reader = CLI::QueryReader.new
+      @opts = CLI::Options.new(@renderer)
+      @session = Session.new(renderer, opts: opts)
+      @reader = CLI::QueryReader.new(
+        input_history_file: opts.config.try &.session.try &.input_history_file)
 
       return unless session.streaming?
       puts "WARNING: Markdown formatted rendering is not supported when streaming is enabled (for now). Sorry.\n".colorize(:yellow)
