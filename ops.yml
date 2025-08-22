@@ -36,7 +36,7 @@ actions:
     description: Build for release and then run the app
     load_secrets: true
   clean:
-    command: rm -rf bin/debug/* && rm -rf bin/release/* && rm $APP.json $APP.yaml
+    command: rm -rf bin/debug/* && rm -rf bin/release/*
     description: Clear prior builds
   wipe:
     command: crystal clear_cache && ops clean
