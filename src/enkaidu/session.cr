@@ -48,6 +48,7 @@ module Enkaidu
         with_system_message system_prompt
         with_tool ListFilesTool.new
         with_tool ReadTextFileTool.new
+        with_tool RegexTextEditTool.new
         with_tool CreateTextFileTool.new
         with_tool CreateImageFileTool.new
         with_tool ReplaceTextInTextFileTool.new
