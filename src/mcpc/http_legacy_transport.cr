@@ -17,72 +17,97 @@ module MCPC
     private getter session_path : String
     private getter httpc_recv_resp : HTTP::Client::Response
 
+    @httpc_recv : HTTP::Client
+
     def initialize(url : String | URI, tracing = false, auth_token = nil)
       super(tracing: tracing, auth_token: auth_token)
-      @uri = url.is_a?(URI) ? url : URI.parse(url)
+      @uri = parse_url(url)
+
       # Setup the GET connection
-      @httpc_recv = HTTP::Client.new(uri)
-      @httpc_recv.before_request do |request|
-        trace_request(request, trace_label("#initialize")) if tracing?
-      end
+      @httpc_recv = setup_receiver_client
+
       # Check if this is legacy or not
       setup_result = setup_receiver_response
       raise UnsupportedTransportError.new("Not a legacy SSE server.") unless setup_result
+
       # Legacy it is
       trace_message("Legacy SSE!", label: trace_label("#initialize")) if tracing?
-      @httpc_recv_resp = setup_result[:resp] # Setup the POST connection
+      @httpc_recv_resp = setup_result[:resp]
+
+      # Setup the POST connection
       @session_path = setup_result[:path]
-      @httpc_send = HTTP::Client.new(uri)
-      @httpc_send.before_request do |request|
+      @httpc_send = setup_legacy_sender_client
+    end
+
+    private def parse_url(url)
+      url.is_a?(URI) ? url : URI.parse(url)
+    end
+
+    private def setup_receiver_client
+      receiver = HTTP::Client.new(uri)
+      receiver.before_request do |request|
+        trace_request(request, trace_label("#initialize")) if tracing?
+      end
+      receiver
+    end
+
+    private def setup_legacy_sender_client
+      sender = HTTP::Client.new(uri)
+      sender.before_request do |request|
         # Remember
         last_request_headers = request.headers
         trace_request(request) if tracing?
       end
+      sender
     end
 
     private def reset_sender
       @httpc_send = HTTP::Client.new(uri)
       @httpc_send.before_request do |request|
-        # Remember
+        # Remember for if/when we have an error to trace
         last_request_headers = request.headers
       end
     end
 
     private def setup_receiver_response
-      @httpc_recv.get(uri.path, prepare_get_request_headers) do |resp|
-        trace_response(resp, label: trace_label("#setup_receiver_response")) if tracing?
-        if ctype = resp.content_type
-          case resp.status_code
-          when 405
-            if ctype.starts_with?("application/json")
-              result = JSON.parse(resp.body_io.gets_to_end)
-              if result["jsonrpc"]? && result.dig?("error", "code") == -32000
-                # This is an HTTP+Streamable protocol
-                return nil
-              end
-            end
-          when 200
-            if ctype.starts_with?("text/event-stream")
-              message = find_sse_event_after_skipping_spuriosa(resp.body_io, wait_time_ms: 500)
+      @httpc_recv.get(uri.path, prepare_get_request_headers) do |response|
+        trace_response(response, label: trace_label("#setup_receiver_response")) if tracing?
 
-              if message["event"]? == "endpoint"
-                # This is a legacy SSE protocol; keep the response.
-                return {resp: resp, path: message["data"]}
-              else
-                # Likely not SSE protocol?
-                return nil
-              end
-            end
-          end
+        if content_type = response.content_type
+          status_code = response.status_code
+          return handle_response_by_type_and_status(content_type, status_code, response)
         end
       end
     rescue ex
-      if tracing?
-        STDERR.puts "~~   #{ex.class}: #{ex}".colorize(:red)
-        STDERR.puts ex.inspect_with_backtrace
-      end
+      log_error(ex) if tracing?
     ensure
       nil
+    end
+
+    private def handle_response_by_type_and_status(content_type, status_code, response)
+      case status_code
+      when 200
+        if content_type.starts_with?("text/event-stream")
+          message = find_sse_event_after_skipping_spuriosa(response.body_io, wait_time_ms: 500)
+          return {resp: response, path: message["data"]} if message["event"]? == "endpoint"
+        end
+      end
+    end
+
+    # private def handle_status_405(content_type, response)
+    #   #
+    #   # This method looks like it always returns nil.
+    #   # I don't think we need to check the 405 path at all
+    #   #
+    #   if content_type.starts_with?("application/json")
+    #     result = JSON.parse(response.body_io.gets_to_end)
+    #     return nil if result["jsonrpc"]? && result.dig?("error", "code") == -32000
+    #   end
+    # end
+
+    private def log_error(exception)
+      STDERR.puts "~~   #{exception.class}: #{exception}".colorize(:red)
+      STDERR.puts exception.inspect_with_backtrace
     end
 
     OK_STATUS = [200, 202]
