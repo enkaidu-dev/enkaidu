@@ -5,20 +5,10 @@ require "../function_call"
 
 module LLM::OpenAI
   private module Converters
-    protected def param_type_label(pt : LLM::ParamType)
-      case pt
-      in .obj?  then "object"
-      in .bool? then "boolean"
-      in .num?  then "number"
-      in .arr?  then "array"
-      in .str?  then "string"
-      end
-    end
-
     protected def param_to_json(p : LLM::Param, json : JSON::Builder)
       json.field p.name do
         json.object do
-          json.field "type", param_type_label(p.type)
+          json.field "type", p.type.json_type
           json.field "description", p.description
         end
       end
@@ -45,27 +35,7 @@ module LLM::OpenAI
             json.field "name", f.name
             json.field "description", f.description
             json.field "parameters" do
-              json.object do
-                required = [] of String
-                json.field "type", "object"
-                json.field "properties" do
-                  json.object do
-                    f.each_param do |param|
-                      param_to_json(param, json)
-                      required << param.name if param.required?
-                    end
-                  end
-                end
-                unless required.empty?
-                  json.field "required" do
-                    json.array do
-                      required.each do |req|
-                        json.string req
-                      end
-                    end
-                  end
-                end
-              end
+              f.input_json_schema(json)
             end
             # json.field "additionalProperties", false
           end

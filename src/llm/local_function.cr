@@ -18,6 +18,36 @@ module LLM
       end
     end
 
+    # The input schema for the parameters to this function, into the JSON builder.
+    def input_json_schema(json : JSON::Builder)
+      json.object do
+        required = [] of String
+        json.field "type", "object"
+        json.field "properties" do
+          json.object do
+            each_param do |param|
+              json.field param.name do
+                json.object do
+                  json.field "type", param.type.json_type
+                  json.field "description", param.description
+                end
+              end
+              required << param.name if param.required?
+            end
+          end
+        end
+        unless required.empty?
+          json.field "required" do
+            json.array do
+              required.each do |req|
+                json.string req
+              end
+            end
+          end
+        end
+      end
+    end
+
     # Set the name for the function.
     macro name(str)
       # The name of the function
