@@ -101,13 +101,9 @@ module Enkaidu
                  end
           io << desc << '\n'
           ix = 1
-          io << "### Parameters\n"
-          tool.each_param do |param|
-            io << ix << ". `" << param.name << "` : `" << param.type.label << "` " <<
-              (param.required? ? "(Required)\n" : "(Optional)\n")
-            io << "    * " << param.description << '\n'
-            ix += 1
-          end
+          io << "## Input Schema (Parameters)\n```json\n"
+          io << JSON.parse(tool.input_json_schema).to_pretty_json
+          io << "\n```\n"
         end
         renderer.info_with("Tool details: #{tool_name} (#{tool.origin})", text, markdown: true)
       else
