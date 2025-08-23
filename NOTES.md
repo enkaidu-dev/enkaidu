@@ -4,18 +4,18 @@
 
 - [ ] Write test specs
 - [ ] Document the code classes (viz. fix `ops lint` warnings)
-- [ ] Add a tool to save an image where the provided image is in the `data:` base-64-encoded form
-- [ ] Does OpenAI protocol support input/output schema?
 - [ ] Setup GH action to build Linux and macOS binaries
 - [ ] Figure out `curl` and `bash` installation script
+- [x] Add a tool to save an image where the provided image is in the `data:` base-64-encoded form
+- [x] Does OpenAI protocol support input/output schema? The `parameters` value is a JSON schema (i.e. input), but non
 
 ### MCPC
 
-- [ ] Support more complex JSON schema for tool properties to support some MCP servers (e.g. Pixel Lab)
 - [ ] Figure out how to support oAuth2 based authorization
 - [ ] Detect when MCP connection needs to be reset; there are some rules for this.
 - [ ] Find a canonical server to run locally to test the protocol better
-- [ ] Figure out how to improve MCP transport responsiveness. The MCP Inspector seems be deal with HTTP streaming much more responsively. My implementation, which needs `io.skip_to_end` after handling every response, seems sluggish.
+- [x] Figure out how to improve MCP transport responsiveness. The MCP Inspector seems be deal with HTTP streaming much more responsively. My implementation, which needs `io.skip_to_end` after handling every response, seems sluggish.
+- [x] Support more complex JSON schema for tool properties to support some MCP servers (e.g. Pixel Lab)
 - [x] Support optional transport type when using MCP servers, to choose between `auto`, `legacy`, and `http`.
 - [x] Support the deprecated SSE transport 'cuz there are so many servers out there.
 - [x] Support MCP server authentication using bearer token
@@ -26,16 +26,16 @@ Now supports legacy (deprecated) SSE over dual-http connections as well as the m
 
 ### Some MCP servers with tools
 
-Server | Type | Comment
------|-----|-----
-https://remote.mcpservers.org/fetch/mcp | Modern | Works
-https://echo.mcp.inevitable.fyi/mcp | Modern | Works
-https://time.mcp.inevitable.fyi/mcp | Modern | Works; occasionally fails but I think this is a server problem
-https://gitmcp.io/ANYGITHUBUSER/REPO | Modern | Works for any Github repo
-https://gitmcp.io/nickthecook/ops | Modern | Provides MCP tools for that repo. Amazing.
-https://mcp.llmtxt.dev/sse | Legacy (SSE) | Can retrieve `llms.txt` for domains
-https://hf.co/mcp | Modern | Doesn't work; uses HTTP but not streaming
-https://mcp.semgrep.ai/sse | Legacy (SSE) | Partially works; has complex JSON schema which we don't support yet
+Server | Type | Status | Comment
+-----|-----|-----|-----
+https://remote.mcpservers.org/fetch/mcp | Modern | Works |
+https://echo.mcp.inevitable.fyi/mcp | Modern | Works | 
+https://time.mcp.inevitable.fyi/mcp | Modern | Works | Slow, but no problems in a while
+https://gitmcp.io/ANYGITHUBUSER/REPO | Modern | Works | Can be used with any  Github repo ... cool!
+https://gitmcp.io/nickthecook/ops | Modern | Works | Provides MCP tools for that repo. Amazing.
+https://mcp.llmtxt.dev/sse | Legacy (SSE) | Works | Can retrieve `llms.txt` for domains
+https://mcp.semgrep.ai/sse | Legacy (SSE) | Works | Full JSON schema support works
+https://huggingface.co/mcp | Modern |Works | (I had the wrong URL before.)
 
 ## Future
 
@@ -68,8 +68,8 @@ Some image generation services offer MCP servers. It would be cool to be able to
 
 https://modelcontextprotocol.io/specification/2025-06-18/schema#calltoolresult
 
-- Support the `Image` content type.
-- Support image file saving given `Image` content type so we can save generated images
+- [ ] Support the `Image` content type. 
+- [x] Support image file saving given `Image` content type so we can save generated images
 
 Known MCP servers:
 - Pixel Lab (`https://api.pixellab.ai/mcp`)
