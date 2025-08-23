@@ -53,10 +53,12 @@ module Enkaidu::CLI
       ['y', 'Y'].includes?(response)
     end
 
+    LLM_MAX_TOOL_CALL_ARGS_LENGTH = 72
+
     def llm_tool_call(name, args)
       print "  CALL".colorize(:green)
       puts " #{name.colorize(:red)} " \
-           "with #{args.colorize(:red)}"
+           "with #{trim_text(args.to_s, LLM_MAX_TOOL_CALL_ARGS_LENGTH).colorize(:red)}"
     end
 
     def llm_error(err)
@@ -83,19 +85,17 @@ module Enkaidu::CLI
       puts "  ADDED function: #{function.name}".colorize(:green)
     end
 
+    MCP_MAX_TOOL_CALL_ARGS_LENGTH = 72
+
     def mcp_calling_tool(uri, name, args)
       puts "  MCP CALLING \"#{name}\" at server #{uri}.".colorize(:yellow)
-      puts "      with: #{args}".colorize(:yellow)
+      puts "      with: #{trim_text(args.to_s, MCP_MAX_TOOL_CALL_ARGS_LENGTH)}".colorize(:yellow)
     end
 
+    MCP_MAX_TOOL_RESULT_LENGTH = 72
+
     def mcp_calling_tool_result(uri, name, result)
-      suffix = ""
-      str = result.to_s
-      if str.size > 20
-        str = str[..20]
-        suffix = "... >8"
-      end
-      puts "  MCP CALL (#{name}) RESULT: #{str}#{suffix.colorize.mode(:bold)}".colorize(:green)
+      puts "  MCP CALL (#{name}) RESULT: #{trim_text(result.to_s, MCP_MAX_TOOL_RESULT_LENGTH)}".colorize(:green)
     end
 
     def mcp_error(ex)
@@ -106,6 +106,16 @@ module Enkaidu::CLI
       else
         STDERR.puts ex.inspect_with_backtrace
       end
+    end
+
+    private def trim_text(text, max_length)
+      suffix = ""
+      str = text
+      if str.size > max_length
+        str = str[..max_length]
+        suffix = "... >8"
+      end
+      "#{str}#{suffix.colorize.mode(:bold)}"
     end
   end
 end

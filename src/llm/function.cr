@@ -1,3 +1,5 @@
+require "json"
+
 require "./param"
 
 module LLM
@@ -5,7 +7,6 @@ module LLM
   abstract class Function
     abstract def name : String
     abstract def description : String
-    abstract def each_param(& : LLM::Param ->)
 
     # A short title about the origin of the function
     getter origin : String = "Unknown"
@@ -25,5 +26,15 @@ module LLM
     def run(args : JSON::Any) : String
       self.new_runner.execute(args)
     end
+
+    # The input schema for the parameters to this function, as a String.
+    def input_json_schema : String
+      JSON.build do |json|
+        input_json_schema(json)
+      end
+    end
+
+    # The input schema for the parameters to this function, into the JSON builder.
+    abstract def input_json_schema(json : JSON::Builder)
   end
 end

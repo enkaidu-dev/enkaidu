@@ -10,7 +10,7 @@ module LLM
     Arr
     Str
 
-    def label
+    def json_type
       case self
       in .obj?  then "object"
       in .bool? then "boolean"
@@ -20,15 +20,15 @@ module LLM
       end
     end
 
-    def self.from(label) : ParamType
-      case label
+    def self.from_json(type) : ParamType
+      case type
       when "object"  then ParamType::Obj
       when "boolean" then ParamType::Bool
       when "number"  then ParamType::Num
       when "array"   then ParamType::Arr
       when "string"  then ParamType::Str
       else
-        raise ParamTypeException.new("Unknown parameter type label: #{label}")
+        raise ParamTypeException.new("Unknown JSON type: #{type}")
       end
     end
   end
