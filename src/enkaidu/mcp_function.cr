@@ -15,6 +15,8 @@ module Enkaidu
     protected getter mcpc : MCPC::HttpConnection
     protected getter cli : Session
 
+    @input_schema : JSON::Any
+
     # Initialize with the JSON representation of the tool return by MCP "tools/list", and the
     # MCPC connection to use to make the tool call
     def initialize(tool_def : JSON::Any, @mcpc, @cli)
@@ -30,20 +32,12 @@ module Enkaidu
                      else
                        @name # if no description, use name as description.
                      end
-      requireds = if tmp = tool_def.dig?("inputSchema", "required")
-                    tmp.as_a
-                  else
-                    [] of String
-                  end
-      return unless props = tool_def.dig?("inputSchema", "properties")
-      props.as_h.each do |p_name, p_def|
-        @params << LLM::Param.new(
-          name: p_name,
-          description: (tmp = p_def["description"]?) ? tmp.as_s : p_name,
-          type: LLM::ParamType.from(label: p_def["type"]),
-          required: requireds != nil && requireds.includes?(p_name)
-        )
-      end
+      @input_schema = tool_def["inputSchema"]
+    end
+
+    # The input schema for the parameters to this function, into the JSON builder.
+    def input_json_schema(json : JSON::Builder)
+      @input_schema.to_json(json)
     end
 
     # This defines the runner that is instantiated to
@@ -75,11 +69,6 @@ module Enkaidu
       Runner.new(self)
     end
 
-    # Yield each parameter definition
-    def each_param(& : LLM::Param ->)
-      params.each { |param| yield param }
-    end
-
     def to_s(io)
       JSON.build(io) { |json| build_json(json) }
     end
@@ -94,32 +83,7 @@ module Enkaidu
         json.field "description", description
         json.field "title", title
         json.field "inputSchema" do
-          requireds = [] of String
-          json.object do
-            json.field "type", "object"
-            json.field "properties" do
-              json.object do
-                each_param do |param|
-                  json.field param.name do
-                    json.object do
-                      json.field "type", param.type.label
-                      json.field "description", param.description
-                      requireds << param.name if param.required?
-                    end
-                  end
-                end
-              end
-            end
-            if !requireds.empty?
-              json.field "required" do
-                json.array do
-                  requireds.each do |p_name|
-                    json.string p_name
-                  end
-                end
-              end
-            end
-          end
+          input_json_schema(json)
         end
       end
     end
