@@ -139,8 +139,9 @@ module Enkaidu
       end
     end
 
-    def use_mcp_server(url : String, auth_token : MCPC::AuthToken? = nil)
-      mcpc = MCPC::HttpConnection.new(url, tracing: opts.trace_mcp?, auth_token: auth_token)
+    def use_mcp_server(url : String, auth_token : MCPC::AuthToken? = nil, transport_type = MCPC::TransportType::AutoDetect)
+      mcpc = MCPC::HttpConnection.new(url, tracing: opts.trace_mcp?,
+        auth_token: auth_token, transport_type: transport_type)
       # puts "  INIT MCP connection: #{mcpc.uri}".colorize(:green)
       renderer.mcp_initialized(mcpc.uri)
       mcp_connections << mcpc

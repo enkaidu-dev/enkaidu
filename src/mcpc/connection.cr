@@ -3,6 +3,7 @@ require "uri"
 require "./http_transport"
 require "./json_rpc_session"
 require "./sensitive_data"
+require "./transport_type"
 
 module MCPC
   # This `ResultError` exception is raised for errors within the
@@ -42,14 +43,20 @@ module MCPC
     getter server_name : String = "UNKNOWN"
     getter server_version : String = "UNKNOWN"
     getter? tracing = false
+    getter transport_type : TransportType
     private getter auth_token : AuthToken?
     private getter transport : Transport
     private getter session : JsonRpcSession
 
     # Sets up the MCP connection
-    def initialize(url, @tracing = false, @auth_token = nil)
+    def initialize(url, @tracing = false, @auth_token = nil, @transport_type = TransportType::AutoDetect)
       @uri = URI.parse(url)
-      @transport = choose_transport(uri)
+      @transport = case transport_type
+                   when .auto_detect? then autodetect_transport
+                   when .legacy_sse?  then use_legacy_sse_transport
+                   else
+                     use_modern_http_transport
+                   end
       @session = JsonRpcSession.new
       get_ready
     end
@@ -69,15 +76,23 @@ module MCPC
       @transport.tracing = trace
     end
 
+    private def use_legacy_sse_transport
+      HttpLegacyTransport.new(uri, tracing: tracing?, auth_token: auth_token)
+    end
+
+    private def use_modern_http_transport
+      HttpTransport.new(uri, tracing: tracing?, auth_token: auth_token)
+    end
+
     # This will try to use the legacy transport and then fall back to
     # standard one. (Yes, this is ass backwards, but that's what the spec wants.)
-    private def choose_transport(uri)
-      STDERR.puts "~~ MCP (Connection#choose_transport) #{uri}".colorize(:yellow) if tracing?
-      HttpLegacyTransport.new(uri, tracing: tracing?, auth_token: auth_token)
+    private def autodetect_transport
+      STDERR.puts "~~ MCP (Connection#autodetect_transport) #{uri}".colorize(:yellow) if tracing?
+      use_legacy_sse_transport
     rescue ex
       STDERR.puts "~~ MCP (Connection) #{ex}".colorize(:yellow) if tracing?
       STDERR.puts "~~    Switch to modern".colorize(:yellow) if tracing?
-      HttpTransport.new(uri, tracing: tracing?, auth_token: auth_token)
+      use_modern_http_transport
     end
 
     # Returns an array of tools, if any

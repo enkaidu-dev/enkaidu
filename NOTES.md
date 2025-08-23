@@ -16,6 +16,7 @@
 - [ ] Detect when MCP connection needs to be reset; there are some rules for this.
 - [ ] Find a canonical server to run locally to test the protocol better
 - [ ] Figure out how to improve MCP transport responsiveness. The MCP Inspector seems be deal with HTTP streaming much more responsively. My implementation, which needs `io.skip_to_end` after handling every response, seems sluggish.
+- [x] Support optional transport type when using MCP servers, to choose between `auto`, `legacy`, and `http`.
 - [x] Support the deprecated SSE transport 'cuz there are so many servers out there.
 - [x] Support MCP server authentication using bearer token
 

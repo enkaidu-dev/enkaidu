@@ -21,7 +21,7 @@ class CommandParser
     # Split by space, preserve quotes
     remainder = query.gsub(TERMRX) do |term|
       parts = term.split('=', 2)
-      if parts.size > 1 && parts.first.match(/^\w+$/)
+      if parts.size > 1 && parts.first.match(/^[_a-zA-Z][_a-zA-Z0-9]+$/)
         @named_args[parts.first] = parts.last
       else
         # otherwise this is a positional, either OK or bad
@@ -41,7 +41,7 @@ class CommandParser
 
   # Positional argument at index
   def arg_at?(index)
-    @pos_args[index]?
+    @pos_args[index.to_i]?
   end
 
   # Number of positional args that occurred after the first named argument was found
@@ -61,11 +61,11 @@ class CommandParser
 
   # Get the value of a named argument
   def arg_named?(name)
-    @named_args[name]?
+    @named_args[name.to_s]?
   end
 
   # Use this to see if the command matches expected arguments and parameters, where
-  # values can be Strings (exact match) or Class expressions (type match), and
+  # values can be `String` (exact match), array of `String` (match one), or `Class` expressions (type match), and
   # also if extra args were found.
   # Example: `cmd.expect "/cmd", String, type: String?
   def expect?(*args, **params)
@@ -73,16 +73,16 @@ class CommandParser
     return false if missed
     # Check the positional args
     checked_pos_count = 0
-    args.each_with_index do |arg, i|
+    args.each_with_index do |arg_spec, i|
       checked_pos_count += 1
-      next if expect_test(arg, arg_at?(i))
+      next if expect_test(arg_spec, arg_at?(i))
       return false # mismatch
     end
     # Checked the named args
     checked_name_count = 0
-    params.each do |name, value|
+    params.each do |name, value_spec|
       checked_name_count += 1
-      next if expect_test(value, arg_named?(name))
+      next if expect_test(value_spec, arg_named? name)
       return false # mismatch
     end
     # Check that parser didn't capture more args than expected
@@ -92,10 +92,13 @@ class CommandParser
   end
 
   # Internal, to test if `arg_value` satisfies `value_spec`
-  private def expect_test(value_spec : String | Class, arg_value)
-    return true if (value_spec.is_a? String && value_spec == arg_value) ||
-                   (value_spec === arg_value)
-    false
+  private def expect_test(value_spec, arg_value)
+    return case value_spec
+    when String then value_spec == arg_value         # match exact
+    when Array  then value_spec.includes?(arg_value) # match one of
+    else
+      value_spec === arg_value # match type
+    end
   end
 
   private def disenquote(s)

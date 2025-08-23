@@ -58,11 +58,12 @@ module Enkaidu
     HELP1
 
     H_C_USE_MCP = <<-HELP2
-    `#{C_USE_MCP} URL [auth_env=ENVARNAME]`
+    `#{C_USE_MCP} URL [auth_env=ENVARNAME] [transport=auto|legacy|http]`
     - Connect with the specified MCP server and register any available tools
       for use with subsequent queries
     - Optionally specify name of environment variable that contains the
       authentication token if needed.
+    - Optionally specify the transport type; defaults to `auto`
     HELP2
 
     H_C_HELP = <<-HELP3
@@ -84,6 +85,8 @@ module Enkaidu
       error = nil
       url = nil
       auth_key = nil
+      type = MCPC::TransportType::AutoDetect
+
       # Check and extract what we want,
       error = if (url = cmd.arg_at?(1)).nil?
                 "ERROR: Specify URL to the MCP server"
@@ -91,7 +94,7 @@ module Enkaidu
                 "ERROR: Unable to find environment variable: #{auth_env}."
               end
       # Check if command meets expectation
-      unless error || cmd.expect?(C_USE_MCP, String, auth_env: String?)
+      unless error || cmd.expect?(C_USE_MCP, String, auth_env: String?, transport: ["auto", "legacy", "http", nil])
         error = "ERROR: Unexpected command / parameters"
       end
       # Report error if any
@@ -100,8 +103,11 @@ module Enkaidu
         return
       end
       # All good
+      if transport_arg = cmd.arg_named?("transport")
+        type = MCPC::TransportType.from(transport_arg)
+      end
       auth_token = MCPC::AuthToken.new(label: "MCP auth token: #{url}", value: auth_key) if auth_key
-      session.use_mcp_server url.as(String), auth_token: auth_token
+      session.use_mcp_server url.as(String), auth_token: auth_token, transport_type: type
     end
 
     private def handle_tool_command(cmd)
