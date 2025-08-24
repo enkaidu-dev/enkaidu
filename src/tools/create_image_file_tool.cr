@@ -1,15 +1,11 @@
 require "json"
 require "base64"
 require "../tools"
-require "./file_helper"
-require "../sucre/image_type_helper"
+require "./image_helper"
 
 # The `CreateImageFileTool` class defines a tool for creating image files from base64 encoded data within
 # the current directory.
 class CreateImageFileTool < LLM::LocalFunction
-  # Allowed image content types
-  ALLOWED_CONTENT_TYPES = ["image/png", "image/jpeg"]
-
   name "create_image_file"
 
   description "Creates an image file from base64 encoded image data at the specified path. " \
@@ -20,14 +16,14 @@ class CreateImageFileTool < LLM::LocalFunction
   param "image_data", type: LLM::ParamType::Str,
     description: "The base64 encoded image data in the format of a data URL " \
                  "('data:<content_type>;base64,<data>'). Supported content types are: " \
-                 "#{ALLOWED_CONTENT_TYPES.join(',')}",
+                 "#{ImageHelper::ALLOWED_IMAGE_CONTENT_TYPES.join(',')}",
     required: true
 
   runner Runner
 
   # The Runner class executes the function
   class Runner < LLM::Function::Runner
-    include FileHelper
+    include ImageHelper
 
     def execute(args : JSON::Any) : String
       file_path = args["file_path"].as_s? ||
@@ -50,8 +46,8 @@ class CreateImageFileTool < LLM::LocalFunction
         base64_data = match["data"]
 
         # Validate content type using ImageTypeHelper
-        determined_type = Sucre::ImageTypeHelper.determine_content_type(base64_data)
-        unless ALLOWED_CONTENT_TYPES.includes?(content_type) && content_type == determined_type
+        determined_type = determine_image_content_type(base64_data)
+        unless ALLOWED_IMAGE_CONTENT_TYPES.includes?(content_type) && content_type == determined_type
           return error_response("Unsupported or mismatched image format: #{content_type}. " \
                                 "Detected format: #{determined_type}. Supported formats are PNG and JPEG.")
         end
