@@ -25,7 +25,9 @@ jobs:
     - name: Cache shards
       uses: actions/cache@v4
       with:
-        path: lib
+        path: |
+          lib
+          bin/ameba
         key: ${{ runner.os }}-shards-${{ hashFiles('**/shard.lock') }}
 
     - name: Install shards
