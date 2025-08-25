@@ -34,38 +34,38 @@ jobs:
     # ---- Build debug release and check code quality on one platform
 
     - name: Setup debug environment
-      if: runner.os == 'linux-latest'
+      if: ${{ runner.os == 'linux-latest' }}
       run: mkdir -p bin/debug
 
     - name: Build Debug
-      if: runner.os == 'linux-latest'
+      if: ${{ runner.os == 'linux-latest' }}
       run: SHARDS_BIN_PATH=bin/debug shards build --debug
 
     - name: Check formatting
-      if: runner.os == 'linux-latest'
+      if: ${{ runner.os == 'linux-latest' }}
       run: crystal tool format; git diff --exit-code
 
     # ---- Build releases on all platforms
 
     # Non-Windows
     - name: Setup release environment
-      if: runner.os != 'windows-latest'
+      if: ${{ runner.os != 'windows-latest' }}
       run: mkdir -p bin/release
 
     - name: Build Release
-      if: runner.os != 'windows-latest'
+      if: ${{ runner.os != 'windows-latest' }}
       run: SHARDS_BIN_PATH=bin/release shards build --release
 
     # Ah, Windows.
     - name: Setup release environment (Windows)
-      if: runner.os == 'windows-latest'
+      if: ${{ runner.os == 'windows-latest' }}
       shell: powershell
       run: |
         mkdir bin
         mkdir bin\release
 
     - name: Build Release (Windows)
-      if: runner.os == 'windows-latest'
+      if: ${{ runner.os == 'windows-latest' }}
       shell: powershell
       run: |
         $env:SHARDS_BIN_PATH = "bin\release"
