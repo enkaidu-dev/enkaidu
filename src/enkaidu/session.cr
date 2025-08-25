@@ -39,7 +39,12 @@ module Enkaidu
                       opts.error_and_exit_with "FATAL: Unknown provider type: #{opts.provider_type}", opts.help
                     end
 
-      @chat = connection.new_chat do
+      @chat = setup_chat
+      @renderer.streaming = chat.streaming?
+    end
+
+    private def setup_chat
+      connection.new_chat do
         unless (m = opts.model_name).nil?
           with_model m
         end
@@ -57,8 +62,6 @@ module Enkaidu
         with_tool CreateDirectoryTool.new
         with_tool ShellCommandTool.new(renderer) if opts.enable_shell_command?
       end
-
-      @renderer.streaming = chat.streaming?
     end
 
     # Load the selected LLM's environment variable values into
@@ -120,19 +123,13 @@ module Enkaidu
       case r["type"]
       when "tool_call"
         tools << r["content"]
-        # print "  CALL".colorize(:green)
-        # puts " #{r["content"].dig("function", "name").as_s.colorize(:red)} " \
-        #      "with #{r["content"].dig("function", "arguments").colorize(:red)}" unless chat.streaming?
         renderer.llm_tool_call(
           name: r["content"].dig("function", "name").as_s,
           args: r["content"].dig("function", "arguments"))
       when "text"
         renderer.llm_text(r["content"].as_s)
-        # puts "----".colorize(:green)
-        # puts Markd.to_term(r["content"].as_s) unless chat.streaming?
       when .starts_with? "error"
         renderer.llm_error(r["content"])
-        # warning("ERROR:\n#{r["content"].to_json}")
       end
     end
 
@@ -144,13 +141,11 @@ module Enkaidu
       mcp_connections << mcpc
       if tool_defs = mcpc.list_tools
         tool_defs = tool_defs.as_a
-        # puts "  FOUND #{tool_defs.size} tools".colorize(:green)
         renderer.mcp_tools_found(tool_defs.size)
         tool_defs.each do |tool|
           func = MCPFunction.new(tool, mcpc, cli: self)
           mcp_functions << func
           renderer.mcp_tool_ready(func)
-          # puts "  ADDED function: #{func.name}".colorize(:green)
           chat.with_tool(func)
         end
       end

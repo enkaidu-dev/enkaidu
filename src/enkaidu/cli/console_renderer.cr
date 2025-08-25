@@ -65,8 +65,8 @@ module Enkaidu::CLI
       warning_with("ERROR:\n#{err.to_json}")
     end
 
-    def llm_text(text, streaming = false)
-      if streaming
+    def llm_text(text)
+      if streaming?
         print text
       else
         puts Markd.to_term(text)

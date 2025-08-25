@@ -27,8 +27,8 @@ module Enkaidu
       puts "WARNING: Markdown formatted rendering is not supported when streaming is enabled (for now). Sorry.\n".colorize(:yellow)
     end
 
-    WELCOME = <<-TEXT
-    # Welcome to **Enkaidu**,
+    WELCOME_MSG = "Welcome to Enkaidu"
+    WELCOME     = <<-TEXT
     This is your second-in-command(-line) designed to assist you with 
     writing & maintaining code and other text-based content, by enabling LLMs 
     and connecting with MCP servers.
@@ -36,7 +36,6 @@ module Enkaidu
     When entering a query,
     - Type `/help` to see the `/` commands available.
     - Press `Alt-Enter` or `Option-Enter` to start multi-line editing.
-
     TEXT
 
     C_BYE     = "/bye"
@@ -144,7 +143,7 @@ module Enkaidu
     end
 
     def run
-      renderer.llm_text WELCOME
+      renderer.info_with WELCOME_MSG, WELCOME, markdown: true
       recorder << "["
       while !done?
         if q = reader.read_next
