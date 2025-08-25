@@ -142,16 +142,58 @@ module MCPC
       while message.nil? || message.empty?
         STDERR.puts "~~    skipping empty SSE message".colorize(:yellow) if tracing? && message
         message = extract_sse_event(io)
-        if data = message["data"]?
-          if data.index("\"ping\"") || data.index("\"notification/")
-            # skip these also
-            STDERR.puts "~~    skipping SSE message: #{data.inspect}".colorize(:yellow) if tracing?
-            message = nil
-          end
+        if data = skip_sse_event?(message)
+          message = nil
+          STDERR.puts "~~    skipping SSE message: #{data.inspect}".colorize(:yellow) if tracing?
         end
+        # abort if this is taking too long
         break if wait_time_ms.positive? && (Time.monotonic - start).total_milliseconds > wait_time_ms
       end
       message || {} of String => String
+    end
+
+    # Return event data if this message is a candidate for skipping, or nil otherwise.
+    private def skip_sse_event?(message)
+      if data = message["data"]?
+        if data.index("\"ping\"") || data.index("\"notification/")
+          return data # skip
+        end
+      end
+      nil
+    end
+
+    # Looks through response headers to pick our MSP session ID
+    private def recover_mcp_session_id(resp)
+      resp.headers.each do |key, value|
+        if key.downcase == "mcp-session-id"
+          @mcp_session_id = value.first
+          break
+        end
+      end
+    end
+
+    # Returns an SSE event, or nil if none found
+    private def retrieve_sse_event_from(io, legacy_sse)
+      event = nil
+      message = if legacy_sse
+                  find_sse_event_after_skipping_spuriosa(io)
+                else
+                  extract_sse_event(io)
+                end
+      # If the field name is "event"
+      #     Set the event type buffer to the field value.
+      # If the field name is "data"
+      #     Append the field value to the data buffer, then append a single U+000A LINE FEED (LF) character to the data buffer.
+      type = message["event"]? || "message"
+      if type == "message" && (data = message["data"])
+        # NOTE: We currently only support one data: per event:
+        # NOTE: We currently ignore id: and retry:
+        event = JSON.parse(data)
+        trace_message("yield #{event.as_h}", label: trace_label("handle_sse_response")) if tracing?
+        # yield event
+        # ok = true
+      end
+      event
     end
 
     # Yields a `JSON::Any` for valid data: in the response, or `ErrorDetails` for unknown
@@ -161,36 +203,13 @@ module MCPC
       io = resp.body_io
       ok = false
       begin
-        unless legacy_sse
-          # Remember and reuse the MCP session ID
-          resp.headers.each do |key, value|
-            if key.downcase == "mcp-session-id"
-              @mcp_session_id = value.first
-              break
-            end
-          end
-        end
+        recover_mcp_session_id(resp) unless legacy_sse
         # Use content type to determine how to process response
         # Currently we only support HTTP + Streaming
         if ct = resp.content_type
           case ct
           when .starts_with?("text/event-stream")
-            message = if legacy_sse
-                        find_sse_event_after_skipping_spuriosa(io)
-                      else
-                        extract_sse_event(io)
-                      end
-
-            # If the field name is "event"
-            #     Set the event type buffer to the field value.
-            # If the field name is "data"
-            #     Append the field value to the data buffer, then append a single U+000A LINE FEED (LF) character to the data buffer.
-            type = message["event"]? || "message"
-            if type == "message" && (data = message["data"])
-              # NOTE: We currently only support one data: per event:
-              # NOTE: We currently ignore id: and retry:
-              event = JSON.parse(data)
-              trace_message("yield #{event.as_h}", label: trace_label("handle_sse_response")) if tracing?
+            if event = retrieve_sse_event_from(io, legacy_sse)
               yield event
               ok = true
             end

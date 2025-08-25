@@ -144,11 +144,47 @@ module LLM::OpenAI
       msg
     end
 
-    private def prepare_message_from_streamed_data(stream_io, &)
+    private def extract_tool_call_from_message(msg)
+      # AWFUL?
+      # This FunctionCall object is used to aggregate the
+      # tool call when streaming, after which it is
+      # retrograded back to its JSON::Any representation
+      # as if it had been parsed from a whole incoming
+      # tool call.
+      tool_call = msg["content"]
+      LLM::FunctionCall.new(
+        name: tool_call.dig("function", "name").as_s,
+        id: tool_call["id"].as_s,
+        args_json: tool_call.dig("function", "arguments").as_s
+      )
+    end
+
+    private def merge_with_recent_tool_call(msg, recent_tool_call)
+      tool_call = msg["content"]
+      return unless args = tool_call.dig?("function", "arguments")
+      recent_tool_call.append_args_json(args.as_s)
+    end
+
+    private def wrap_up_tool_call(recent_tool_call, tool_calls)
+      # close up recent tool call
+      call = jsonify_function_call(recent_tool_call)
+      tool_calls << call
+      {type: "tool_call", content: call}
+    end
+
+    private def prepare_assisstant_message(content, tool_calls)
       message = Message.new
+      message[:role] = "assistant"
+      message[:content] = content
+      message[:tool_calls] = tool_calls unless tool_calls.empty?
+      message
+    end
+
+    # ameba:disable Metrics/CyclomaticComplexity: It's too messy if I split this up more.
+    private def prepare_message_from_streamed_data(stream_io, &)
       tool_calls = [] of JSON::Any
-      recent_tool_call = nil
       content = String.build do |text_io|
+        recent_tool_call = nil
         stream_io.each_line do |line|
           next if line.empty?
 
@@ -164,36 +200,15 @@ module LLM::OpenAI
                 text_io << msg["content"]
                 yield msg
               when "tool_call"
-                if recent_tool_call
-                  call = jsonify_function_call(recent_tool_call)
-                  tool_calls << call
-                  yield({type: "tool_call", content: call})
-                end
-                # AWFUL?
-                # This FunctionCall object is used to aggregate the
-                # tool call when streaming, after which it is
-                # retrograded back to its JSON::Any representation
-                # as if it had been parsed from a whole incoming
-                # tool call.
-                tool_call = msg["content"]
-                recent_tool_call = LLM::FunctionCall.new(
-                  name: tool_call.dig("function", "name").as_s,
-                  id: tool_call["id"].as_s,
-                  args_json: tool_call.dig("function", "arguments").as_s
-                )
+                yield(wrap_up_tool_call(recent_tool_call, tool_calls)) if recent_tool_call
+                # and start a new one
+                recent_tool_call = extract_tool_call_from_message(msg)
               when "tool_call_merge"
-                if recent_tool_call
-                  tool_call = msg["content"]
-                  if args = tool_call.dig?("function", "arguments")
-                    recent_tool_call.append_args_json(args.as_s)
-                  end
-                end
+                merge_with_recent_tool_call(msg, recent_tool_call) if recent_tool_call
               when "finish_reason"
                 if recent_tool_call
-                  call = jsonify_function_call(recent_tool_call)
-                  tool_calls << call
+                  yield wrap_up_tool_call(recent_tool_call, tool_calls)
                   recent_tool_call = nil
-                  yield({type: "tool_call", content: call})
                 end
               else
                 yield msg
@@ -202,10 +217,7 @@ module LLM::OpenAI
           end
         end
       end
-      message[:role] = "assistant"
-      message[:content] = content
-      message[:tool_calls] = tool_calls unless tool_calls.empty?
-      message
+      prepare_assisstant_message(content, tool_calls)
     end
 
     private def jsonify_function_call(f : LLM::FunctionCall)
