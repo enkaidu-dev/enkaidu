@@ -64,13 +64,38 @@ module Enkaidu
       end
     end
 
+    # Run auto loads specified in the session config
+    def auto_load
+      return unless config = opts.config
+      return unless (mcp_servers = config.mcp_servers) && (auto_load = config.session.try &.auto_load)
+      auto_load_mcp_servers = auto_load.mcp_servers
+      return if auto_load_mcp_servers.empty?
+      renderer.info_with("\nAuto-loading MCP servers: #{auto_load_mcp_servers.join(", ")}")
+      auto_load_mcp_servers(mcp_servers, auto_load_mcp_servers)
+    end
+
+    private def auto_load_mcp_servers(mcp_servers, auto_load_mcp_servers)
+      auto_load_mcp_servers.each do |mcp_name|
+        mcp_name = mcp_name.strip
+        if mcp_server = mcp_servers[mcp_name]?
+          url = mcp_server.url
+          transport = MCPC::TransportType.from?(mcp_server.transport) || MCPC::TransportType::AutoDetect
+          auth_token = if auth_key = mcp_server.bearer_auth_token
+                         MCPC::AuthToken.new(label: "MCP auth token: #{url}", value: auth_key)
+                       end
+          use_mcp_server(url, auth_token, transport_type: transport)
+        else
+          renderer.warning_with("WARNING: Unknown MCP server configured with name: #{mcp_name}")
+        end
+      end
+    end
+
     # Load the selected LLM's environment variable values into
     # `ENV`; call this method before initializing an LLM connection
     private def setup_envs_from_config
-      if env = opts.config_for_llm.try &.env
-        env.each do |name, value|
-          ENV[name] = value
-        end
+      return unless env = opts.config_for_llm.try &.env
+      env.each do |name, value|
+        ENV[name] = value
       end
     end
 
@@ -136,7 +161,6 @@ module Enkaidu
     def use_mcp_server(url : String, auth_token : MCPC::AuthToken? = nil, transport_type = MCPC::TransportType::AutoDetect)
       mcpc = MCPC::HttpConnection.new(url, tracing: opts.trace_mcp?,
         auth_token: auth_token, transport_type: transport_type)
-      # puts "  INIT MCP connection: #{mcpc.uri}".colorize(:green)
       renderer.mcp_initialized(mcpc.uri)
       mcp_connections << mcpc
       if tool_defs = mcpc.list_tools

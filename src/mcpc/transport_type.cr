@@ -14,14 +14,18 @@ module MCPC
       end
     end
 
-    def self.from(label) : TransportType
+    def self.from?(label) : TransportType?
       case label
       when "auto"   then AutoDetect
       when "legacy" then LegacySSE
       when "http"   then ModernHTTP
       else
-        raise TransportTypeException.new("Unknown parameter type label: #{label}")
+        nil
       end
+    end
+
+    def self.from(label) : TransportType
+      self.from?(label) || raise TransportTypeException.new("Unknown parameter type label: #{label}")
     end
   end
 end
