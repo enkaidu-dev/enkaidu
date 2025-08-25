@@ -1,0 +1,45 @@
+name: CI
+
+jobs:
+  build-and-test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install dependencies
+      run: |
+        uses: crystal-lang/install-crystal@v1
+
+    - name: Cache shards
+      uses: actions/cache@v4
+      with:
+        path: lib
+        key: ${{ runner.os }}-shards-${{ hashFiles('**/shard.lock') }}
+
+    - name: Install shards
+      run: shards check || shards install
+
+    - name: Setup environment
+      run: mkdir -p bin/debug && mkdir -p bin/release
+
+    - name: Build Debug
+      run: SHARDS_BIN_PATH=bin/debug shards build --debug
+
+    # - name: Build Release
+    #   run: SHARDS_BIN_PATH=bin/release shards build --release
+
+    # - name: Run Linting
+    #   run: bin/ameba --all src/
+
+    # - name: Check formatting
+    #   run: crystal tool format; git diff --exit-code
+    # You can add custom test run commands specific to your tests here
+    # - name: Run tests
+    #   run: ops run_test_command
