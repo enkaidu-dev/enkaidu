@@ -36,14 +36,16 @@ jobs:
     - name: Build Debug
       run: SHARDS_BIN_PATH=bin/debug shards build --debug
 
-    # - name: Build Release
-    #   run: SHARDS_BIN_PATH=bin/release shards build --release
+    - name: Build Release
+      run: SHARDS_BIN_PATH=bin/release shards build --release
+
+    - name: Check formatting
+      run: crystal tool format; git diff --exit-code
 
     # - name: Run Linting
     #   run: bin/ameba --all src/
 
-    # - name: Check formatting
-    #   run: crystal tool format; git diff --exit-code
+
     # You can add custom test run commands specific to your tests here
     # - name: Run tests
     #   run: ops run_test_command
