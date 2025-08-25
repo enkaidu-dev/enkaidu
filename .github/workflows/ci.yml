@@ -33,17 +33,21 @@ jobs:
 
     # ---- Build debug release and check code quality on one platform
 
-    - name: Setup debug environment
+    - name: Setup debug environment (Linux)
       if: ${{ runner.os == 'Linux' }}
       run: mkdir -p bin/debug
 
-    - name: Build Debug
+    - name: Build Debug (Linux)
       if: ${{ runner.os == 'Linux' }}
       run: SHARDS_BIN_PATH=bin/debug shards build --debug
 
-    - name: Check formatting
+    - name: Check formatting (Linux)
       if: ${{ runner.os == 'Linux' }}
       run: crystal tool format; git diff --exit-code
+
+    - name: Run static code analysis (Linux)
+      if: ${{ runner.os == 'Linux' }}
+      run: bin/ameba --all src/
 
     # ---- Build releases on all platforms
 
