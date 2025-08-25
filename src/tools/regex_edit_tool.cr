@@ -24,9 +24,9 @@ class RegexTextEditTool < LLM::LocalFunction
     include FileHelper
 
     def execute(args : JSON::Any) : String
-      file_path = args["file_path"].as_s? || return error_response("The required file_path was not specified")
-      pattern = args["pattern"].as_s? || return error_response("The required pattern was not specified")
-      replacement = args["replacement"].as_s? || return error_response("The required replacement was not specified")
+      file_path = args["file_path"]?.try &.as_s? || return error_response("The required file_path was not specified")
+      pattern = args["pattern"]?.try &.as_s? || return error_response("The required pattern was not specified")
+      replacement = args["replacement"]?.try &.as_s? || return error_response("The required replacement was not specified")
 
       resolved_path = resolve_path(file_path)
 

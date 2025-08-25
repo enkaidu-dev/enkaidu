@@ -26,9 +26,9 @@ class ReplaceTextInTextFileTool < LLM::LocalFunction
     include FileHelper
 
     def execute(args : JSON::Any) : String
-      file_path = args["file_path"].as_s? || return error_response("The required file_path was not specified")
-      search_text = args["search_text"].as_s? || return error_response("The required search_text was not specified")
-      replacement_text = args["replacement_text"].as_s? || return error_response("The required replacement_text was not specified")
+      file_path = args["file_path"]?.try &.as_s? || return error_response("The required file_path was not specified")
+      search_text = args["search_text"]?.try &.as_s? || return error_response("The required search_text was not specified")
+      replacement_text = args["replacement_text"]?.try &.as_s? || return error_response("The required replacement_text was not specified")
 
       resolved_path = resolve_path(file_path)
 

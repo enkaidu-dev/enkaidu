@@ -4,6 +4,8 @@ require "uri"
 require "./chat"
 
 module LLM
+  # `ChatConnection` is an abstract class that defines the basic structure
+  # for chat connection implementations.
   abstract class ChatConnection
     protected property model : String? = nil
 

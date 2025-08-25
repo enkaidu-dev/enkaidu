@@ -17,6 +17,7 @@ class CreateDirectoryTool < LLM::LocalFunction
 
   runner Runner
 
+  # The `Runner` class executes the logic to create directories within the specified constraints.
   class Runner < LLM::Function::Runner
     include FileHelper
 

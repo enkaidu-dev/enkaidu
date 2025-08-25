@@ -6,8 +6,10 @@ require "../enkaidu/session_renderer"
 # The `ShellCommandTool` class defines a tool for executing shell commands within the
 # current project directory. Note: This implementation assumes a protected environment (e.g., chroot).
 class ShellCommandTool < LLM::LocalFunction
+  # The `PermissionError` class is raised when user permission is required and denied for executing a command.
   class PermissionError < Exception; end
 
+  # The `SafetyError` class is used to indicate that a command is unsafe for execution due to its content.
   class SafetyError < Exception; end
 
   UNSAFE_STRINGS = ["..", "|", "<", ">", ";", "&"]

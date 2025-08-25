@@ -6,6 +6,7 @@ require "./sucre/command_parser"
 require "option_parser"
 
 module Enkaidu
+  # `Main` is the entry point for executing the application, managing initialization and execution flow.
   class Main
     private getter session
     private getter? done = false

@@ -4,6 +4,8 @@ require "uri"
 require "../openai"
 
 module LLM::Ollama
+  # `ChatConnection` is a class that extends from `OpenAI::ChatConnection` to provide
+  # specialized connection handling with local AI models run using Ollama.
   class ChatConnection < OpenAI::ChatConnection
     protected def url : String
       ENV.fetch("OLLAMA_ENDPOINT", "http://localhost:11434")

@@ -1,3 +1,4 @@
+# `SensitiveData` is a generic class to handle and encapsulate sensitive data securely.
 class SensitiveData(T)
   getter label : String
   private getter value : T
