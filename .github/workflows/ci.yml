@@ -61,8 +61,8 @@ jobs:
       if: ${{ runner.os == 'Windows' }}
       shell: powershell
       run: |
-        mkdir bin
-        mkdir bin\release
+        mkdir bin -ErrorAction SilentlyContinue
+        mkdir bin\release -ErrorAction SilentlyContinue
 
     - name: Build Release (Windows)
       if: ${{ runner.os == 'Windows' }}
