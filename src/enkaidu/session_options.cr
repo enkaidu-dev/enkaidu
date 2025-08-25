@@ -1,8 +1,8 @@
 require "./session_renderer"
 require "./config"
 
-# Defines configurable options for an Enkaidu session
 module Enkaidu
+  # Defines configurable options for an Enkaidu session
   abstract class SessionOptions
     abstract def provider_type : String?
     abstract def model_name : String?

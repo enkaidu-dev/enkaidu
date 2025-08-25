@@ -1,11 +1,13 @@
 require "./config_serializable"
 
 module Enkaidu
-  # Configuration
+  # Configuration class facilitates settings for the Enkaidu application.
   class Config < ConfigSerializable
     # ---------------------- start of content definition
 
+    # Represents a Language Model configuration within the Enkaidu application.
     class LLM < ConfigSerializable
+      # Represents a Model within an LLM.
       class Model < ConfigSerializable
         getter name : String
         getter model : String
@@ -18,19 +20,23 @@ module Enkaidu
       getter env = {} of String => String
     end
 
+    # Configuration for the MCP Server.
     class MCPServer < ConfigSerializable
       getter url : String
       getter transport : String = "auto"
       getter bearer_auth_token : String?
     end
 
+    # Global configuration settings for Enkaidu.
     class Global < ConfigSerializable
       getter? trace_mcp = false
       getter? streaming = false
       getter? enable_shell_command = true
     end
 
+    # Session configuration settings for Enkaidu.
     class Session < ConfigSerializable
+      # Configuration for auto-loading settings within a Session.
       class AutoLoad < ConfigSerializable
         getter mcp_servers : Array(String) = [] of String
       end

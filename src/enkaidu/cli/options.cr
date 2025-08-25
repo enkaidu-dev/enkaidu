@@ -4,6 +4,7 @@ require "../session_options"
 require "../config"
 
 module Enkaidu::CLI
+  # This class handles the options for the command-line interface.
   class Options < SessionOptions
     @options = {} of Symbol => String
 

@@ -3,6 +3,7 @@ require "./function"
 module LLM
   alias ChatEvent = NamedTuple(type: String, content: JSON::Any)
 
+  # `Chat` is an abstract class that serves as a base for creating various chat implementations.
   abstract class Chat
     getter model : String | Nil = nil
     getter system_message : String | Nil = nil

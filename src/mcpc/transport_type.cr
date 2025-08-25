@@ -1,6 +1,8 @@
 module MCPC
+  # `TransportTypeException` is raised for invalid transport types.
   class TransportTypeException < Exception; end
 
+  # `TransportType` enumerates the possible transport mechanisms available in the system.
   enum TransportType
     AutoDetect
     LegacySSE

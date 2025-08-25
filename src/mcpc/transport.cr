@@ -6,6 +6,8 @@ require "json"
 module MCPC
   alias AuthToken = SensitiveData(String)
 
+  # `UnsupportedTransportError` is an exception raised when attempting to use a transport mechanism
+  # that is not supported or implemented.
   class UnsupportedTransportError < Exception
   end
 

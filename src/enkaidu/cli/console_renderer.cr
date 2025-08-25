@@ -2,6 +2,7 @@ require "../session_renderer"
 require "markterm"
 
 module Enkaidu::CLI
+  # This class is responsible for rendering console outputs.
   class ConsoleRenderer < SessionRenderer
     property? streaming = false
 

@@ -1,4 +1,6 @@
 module LLM
+  # `ParamTypeException` is a custom exception that is raised for invalid parameter types
+  # within the application.
   class ParamTypeException < Exception; end
 
   # The `ParamType` defines an enumeration of supported types for
