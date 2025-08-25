@@ -81,7 +81,6 @@ module Enkaidu
     HELP
 
     private def handle_use_mcp_command(cmd)
-      error = nil
       url = nil
       auth_key = nil
       type = MCPC::TransportType::AutoDetect

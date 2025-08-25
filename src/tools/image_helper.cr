@@ -19,9 +19,9 @@ module ImageHelper
   # Determines the content type based on the magic bytes of the image
   def determine_image_content_type(base64_encoded_string : String) : String
     # Check the base64 string for encoded magic bytes
-    ALLOWED_IMAGE_MAGIC_B64.each_with_index do |magic, ix|
-      return ALLOWED_IMAGE_CONTENT_TYPES[ix] if base64_encoded_string.starts_with?(magic)
+    ALLOWED_IMAGE_MAGIC_B64.each_with_index do |magic, i|
+      return ALLOWED_IMAGE_CONTENT_TYPES[i] if base64_encoded_string.starts_with?(magic)
     end
-    return "unknown"
+    "unknown"
   end
 end

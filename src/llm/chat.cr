@@ -31,12 +31,11 @@ module LLM
     end
 
     def with_tool(function : Function)
-      unless @tools_by_name[function.name]?
-        @tools_by_name[function.name] = function
-        by_origin = @tools_by_origin[function.origin]? ||
-                    (@tools_by_origin[function.origin] = {} of String => Function)
-        by_origin[function.name] = function
-      end
+      return if @tools_by_name[function.name]?
+      @tools_by_name[function.name] = function
+      by_origin = @tools_by_origin[function.origin]? ||
+                  (@tools_by_origin[function.origin] = {} of String => Function)
+      by_origin[function.name] = function
     end
 
     def find_tool?(name)
@@ -48,10 +47,9 @@ module LLM
     end
 
     def each_tool(origin : String? = nil, &)
-      if tools = (origin ? @tools_by_origin[origin] : @tools_by_name)
-        tools.each_value do |tool|
-          yield tool
-        end
+      return unless tools = (origin ? @tools_by_origin[origin] : @tools_by_name)
+      tools.each_value do |tool|
+        yield tool
       end
     end
 

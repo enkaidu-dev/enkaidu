@@ -31,7 +31,8 @@ module MCPC
       "User-Agent"      => "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:141.0) Gecko/20100101 Firefox/141.0",
     }
 
-    private setter last_request_headers : HTTP::Headers? = nil
+    @last_request_headers : HTTP::Headers? = nil
+
     private getter auth_token : AuthToken?
 
     def initialize(@tracing = false, @auth_token = nil); end
@@ -56,6 +57,10 @@ module MCPC
       h
     end
 
+    private def set_last_request_headers(headers : HTTP::Headers)
+      @last_request_headers = headers
+    end
+
     # Custom getter to ensure we don't put auth token when tracing
     private def last_request_headers : HTTP::Headers?
       # If we have headers, and we have a Bearer token,
@@ -63,7 +68,7 @@ module MCPC
       # Future calls will not find "Bearer"
       if h = @last_request_headers
         if auth = h.get?("Authorization")
-          if (auth.any? &.index("Bearer"))
+          if auth.any? &.index("Bearer")
             h = h.dup
             h["Authorization"] = SENSITIVE_ # sanitize
             @last_request_headers = h       # replace
@@ -132,7 +137,7 @@ module MCPC
       #     fight that dragon later
       message = nil
       start = Time.monotonic
-      while (message.nil? || message.empty?)
+      while message.nil? || message.empty?
         STDERR.puts "~~    skipping empty SSE message".colorize(:yellow) if tracing? && message
         message = extract_sse_event(io)
         if data = message["data"]?
@@ -150,7 +155,7 @@ module MCPC
     # Yields a `JSON::Any` for valid data: in the response, or `ErrorDetails` for unknown
     # response. Called
     private def handle_sse_response(resp, legacy_sse = false, skip_to_end = true, & : JSON::Any | ErrorDetails ->)
-      trace_message("start", label = trace_label("handle_sse_response")) if tracing?
+      trace_message("start", label: trace_label("handle_sse_response")) if tracing?
       io = resp.body_io
       ok = false
       begin
@@ -183,7 +188,7 @@ module MCPC
               # NOTE: We currently only support one data: per event:
               # NOTE: We currently ignore id: and retry:
               event = JSON.parse(data)
-              trace_message("yield #{event.as_h}", label = trace_label("handle_sse_response")) if tracing?
+              trace_message("yield #{event.as_h}", label: trace_label("handle_sse_response")) if tracing?
               yield event
               ok = true
             end
@@ -193,7 +198,7 @@ module MCPC
               ok = true
             end
           else
-            trace_message("Unexpected content type: #{ct}", label = trace_label("handle_sse_response")) if tracing?
+            trace_message("Unexpected content type: #{ct}", label: trace_label("handle_sse_response")) if tracing?
           end
         end
         if !ok

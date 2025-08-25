@@ -55,7 +55,7 @@ module MCPC
       sender = HTTP::Client.new(uri)
       sender.before_request do |request|
         # Remember
-        last_request_headers = request.headers
+        set_last_request_headers request.headers
         trace_request(request) if tracing?
       end
       sender
@@ -65,7 +65,7 @@ module MCPC
       @httpc_send = HTTP::Client.new(uri)
       @httpc_send.before_request do |request|
         # Remember for if/when we have an error to trace
-        last_request_headers = request.headers
+        set_last_request_headers request.headers
       end
     end
 

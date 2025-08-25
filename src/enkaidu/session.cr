@@ -129,7 +129,6 @@ module Enkaidu
                    tool.description
                  end
           io << desc << '\n'
-          ix = 1
           io << "## Input Schema (Parameters)\n```json\n"
           io << JSON.parse(tool.input_json_schema).to_pretty_json
           io << "\n```\n"

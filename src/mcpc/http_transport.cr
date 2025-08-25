@@ -26,7 +26,7 @@ module MCPC
           request.headers["mcp-protocol-version"] = tmp
         end
         # Remember
-        last_request_headers = request.headers
+        set_last_request_headers request.headers
         trace_request(request) if tracing?
       end
     end

@@ -93,7 +93,7 @@ class CommandParser
 
   # Internal, to test if `arg_value` satisfies `value_spec`
   private def expect_test(value_spec, arg_value)
-    return case value_spec
+    case value_spec
     when String then value_spec == arg_value         # match exact
     when Array  then value_spec.includes?(arg_value) # match one of
     else
