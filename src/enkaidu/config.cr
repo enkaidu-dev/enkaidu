@@ -18,25 +18,41 @@ module Enkaidu
       getter env = {} of String => String
     end
 
-    class Options < ConfigSerializable
-      getter provider_type : String?
-      getter model : String?
-      getter recording_file : String?
-      getter input_history_file : String?
+    class MCP < ConfigSerializable
+      getter url : String
+      getter transport : String = "auto"
+      getter bearer_auth_token : String?
+    end
+
+    class Global < ConfigSerializable
       getter? trace_mcp = false
       getter? streaming = false
       getter? enable_shell_command = true
     end
 
-    getter session : Options?
+    class AutoLoad < ConfigSerializable
+      getter mcp_servers : Array(String) = [] of String
+    end
+
+    class Session < ConfigSerializable
+      getter provider_type : String?
+      getter model : String?
+      getter recording_file : String?
+      getter input_history_file : String?
+      getter auto_load : AutoLoad?
+    end
+
+    getter global : Global?
+    getter session : Session?
     getter llms = {} of String => LLM
+    getter mcp_servers = {} of String => MCP
 
     # ---------------------- end of content definition
 
     # Look for a model by its unique name and, if one exists, return its
     # model's enclosing LLM
     def find_llm_and_model_by?(unique_model_name)
-      llms.each do |name, llm|
+      llms.each do |_, llm|
         llm.models.try &.each do |model|
           if model.name == unique_model_name
             return {llm: llm, model: model}

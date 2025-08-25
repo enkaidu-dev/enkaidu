@@ -6,6 +6,8 @@
 - [ ] Document the code classes (viz. fix `ops lint` warnings)
 - [ ] Setup GH action to build Linux and macOS binaries
 - [ ] Figure out `curl` and `bash` installation script
+- [x] Support configuring MCP servers in config YAML file
+- [x] Support session auto-loading of specific MCP servers
 - [x] Add a tool to save an image where the provided image is in the `data:` base-64-encoded form
 - [x] Does OpenAI protocol support input/output schema? The `parameters` value is a JSON schema (i.e. input), but non
 

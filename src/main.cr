@@ -29,8 +29,8 @@ module Enkaidu
 
     WELCOME_MSG = "Welcome to Enkaidu"
     WELCOME     = <<-TEXT
-    This is your second-in-command(-line) designed to assist you with 
-    writing & maintaining code and other text-based content, by enabling LLMs 
+    This is your second-in-command(-line) designed to assist you with
+    writing & maintaining code and other text-based content, by enabling LLMs
     and connecting with MCP servers.
 
     When entering a query,
@@ -144,6 +144,8 @@ module Enkaidu
 
     def run
       renderer.info_with WELCOME_MSG, WELCOME, markdown: true
+      session.auto_load
+
       recorder << "["
       while !done?
         if q = reader.read_next
