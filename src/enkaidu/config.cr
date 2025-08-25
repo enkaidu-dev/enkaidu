@@ -5,12 +5,12 @@ module Enkaidu
   class Config < ConfigSerializable
     # ---------------------- start of content definition
 
-    class Model < ConfigSerializable
-      getter name : String
-      getter model : String
-    end
-
     class LLM < ConfigSerializable
+      class Model < ConfigSerializable
+        getter name : String
+        getter model : String
+      end
+
       getter provider : String
       getter models : Array(Model)?
       # Use this to populate environment variables for the specific
@@ -18,7 +18,7 @@ module Enkaidu
       getter env = {} of String => String
     end
 
-    class MCP < ConfigSerializable
+    class MCPServer < ConfigSerializable
       getter url : String
       getter transport : String = "auto"
       getter bearer_auth_token : String?
@@ -30,11 +30,11 @@ module Enkaidu
       getter? enable_shell_command = true
     end
 
-    class AutoLoad < ConfigSerializable
-      getter mcp_servers : Array(String) = [] of String
-    end
-
     class Session < ConfigSerializable
+      class AutoLoad < ConfigSerializable
+        getter mcp_servers : Array(String) = [] of String
+      end
+
       getter provider_type : String?
       getter model : String?
       getter recording_file : String?
@@ -45,7 +45,7 @@ module Enkaidu
     getter global : Global?
     getter session : Session?
     getter llms = {} of String => LLM
-    getter mcp_servers = {} of String => MCP
+    getter mcp_servers = {} of String => MCPServer
 
     # ---------------------- end of content definition
 
