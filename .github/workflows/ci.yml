@@ -1,0 +1,72 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-and-test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install dependencies
+      uses: crystal-lang/install-crystal@v1
+
+    - name: Cache shards
+      uses: actions/cache@v4
+      with:
+        path: lib
+        key: ${{ runner.os }}-shards-${{ hashFiles('**/shard.lock') }}
+
+    - name: Install shards
+      run: shards check || shards install
+
+    # ---- Build debug release and check code quality on one platform
+
+    - name: Setup debug environment
+      if: ${{ runner.os == 'Linux' }}
+      run: mkdir -p bin/debug
+
+    - name: Build Debug
+      if: ${{ runner.os == 'Linux' }}
+      run: SHARDS_BIN_PATH=bin/debug shards build --debug
+
+    - name: Check formatting
+      if: ${{ runner.os == 'Linux' }}
+      run: crystal tool format; git diff --exit-code
+
+    # ---- Build releases on all platforms
+
+    # Non-Windows
+    - name: Setup release environment
+      if: ${{ runner.os != 'Windows' }}
+      run: mkdir -p bin/release
+
+    - name: Build Release
+      if: ${{ runner.os != 'Windows' }}
+      run: SHARDS_BIN_PATH=bin/release shards build --release
+
+    # Ah, Windows.
+    - name: Setup release environment (Windows)
+      if: ${{ runner.os == 'Windows' }}
+      shell: powershell
+      run: |
+        mkdir bin -ErrorAction SilentlyContinue
+        mkdir bin\release -ErrorAction SilentlyContinue
+
+    - name: Build Release (Windows)
+      if: ${{ runner.os == 'Windows' }}
+      shell: powershell
+      run: |
+        $env:SHARDS_BIN_PATH = "bin\release"
+        shards build --release

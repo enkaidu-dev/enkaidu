@@ -4,8 +4,8 @@
 
 - [ ] Write test specs
 - [ ] Document the code classes (viz. fix `ops lint` warnings)
-- [ ] Setup GH action to build Linux and macOS binaries
 - [ ] Figure out `curl` and `bash` installation script
+- [x] Setup GH action to build Linux and macOS binaries
 - [x] Support configuring MCP servers in config YAML file
 - [x] Support session auto-loading of specific MCP servers
 - [x] Add a tool to save an image where the provided image is in the `data:` base-64-encoded form
@@ -31,7 +31,7 @@ Now supports legacy (deprecated) SSE over dual-http connections as well as the m
 Server | Type | Status | Comment
 -----|-----|-----|-----
 https://remote.mcpservers.org/fetch/mcp | Modern | Works |
-https://echo.mcp.inevitable.fyi/mcp | Modern | Works | 
+https://echo.mcp.inevitable.fyi/mcp | Modern | Works |
 https://time.mcp.inevitable.fyi/mcp | Modern | Works | Slow, but no problems in a while
 https://gitmcp.io/ANYGITHUBUSER/REPO | Modern | Works | Can be used with any  Github repo ... cool!
 https://gitmcp.io/nickthecook/ops | Modern | Works | Provides MCP tools for that repo. Amazing.
@@ -43,18 +43,21 @@ https://huggingface.co/mcp | Modern |Works | (I had the wrong URL before.)
 
 These are major changes I'd like to make to Enkaidu
 
-### Safe shell access
+### Build container image to run `enkaidu` with safe shell access
 
-It would be great to support shell access so that the model can be used to run tests and review results as part of supporting coding.
+> **WHY?**
+>
+> It would be great to support shell access so that the model can be used to run tests and review results as part of supporting coding.
+>
+> To do this I really want to have some kind of OS-level guardrails to ensure scripts can't break out of a "jail" to modify / access stuff they shouldn't.
 
-To do this I really want to have some kind of OS-level guardrails to ensure scripts can't break out of a "jail" to modify / access stuff they shouldn't.
+A way to absolutely cut the risk of wider disk access, we could ship `enkaidu` as a container image that user can _execute_ with a volume-mount to the folder they want to work in.
 
-Think ...
+E.g. containers starts in `/opt/workspace` and uer launches container and uses volume-mounting to map, e.g. `$HOME/Dev/project` to `/opt/workspace`. Then
+- we could even block networking access for the container, and
+- we could give more shell access.
 
-- Consider [chroot](https://en.wikipedia.org/wiki/Chroot) jails
-- But these can be a pain to setup
-- Containers are perfect for this, with volume mounting to just the bits we want; but now we need to include `docker` or `podman` with the app!
-- What else?
+Does this give us ZERO exfil / malware / host damage risk?
 
 ### Web interface
 
@@ -64,13 +67,32 @@ And use [BakedFileSystem](https://github.com/ralsina/baked_file_system) to bundl
 
 And [Svelte](https://svelte.dev/docs/svelte/overview) with TypeScript (of course!) would be nice to write the web UI since it can be used to produce a SPA that can be "baked" into the binary.
 
-### Image generation
+### Send image with a query
+
+LLM models with vision capability can be sent image data as part of a query. Need a way to specify an image before a query _just_ for the query.
+
+- Consider `/with image URL | FILEPATH` command that only affects the next query.
+- This could be a pattern for sending other file-types? e.g. documents
+
+References
+
+- https://platform.openai.com/docs/guides/images-vision?api-mode=responses&format=base64-encoded
+
+### Support prompts via MCP
+
+MCP supports prompts as a service type for MCP servers. This is a good way to allow an MCP server to provide specific prompts based on inputs for querying an AI model. Especially when tool calls themselves produce non-trivial data.
+
+References
+
+- https://modelcontextprotocol.io/specification/2025-03-26/server/prompts
+
+### Image generation via MCP
 
 Some image generation services offer MCP servers. It would be cool to be able to use them when working on games.
 
 https://modelcontextprotocol.io/specification/2025-06-18/schema#calltoolresult
 
-- [ ] Support the `Image` content type. 
+- [ ] Support the `Image` content type.
 - [x] Support image file saving given `Image` content type so we can save generated images
 
 Known MCP servers:
