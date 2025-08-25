@@ -11,7 +11,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-latest, macos-latest, windows-latest]
 
     runs-on: ${{ matrix.os }}
 
@@ -31,17 +31,28 @@ jobs:
     - name: Install shards
       run: shards check || shards install
 
-    - name: Setup environment
-      run: mkdir -p bin/debug && mkdir -p bin/release
+    # Build debug release and check code quality on one platform
+
+    - name: Setup debug environment
+      if: runner.os == 'linux-latest'
+      run: mkdir -p bin/debug
 
     - name: Build Debug
+      if: runner.os == 'linux-latest'
       run: SHARDS_BIN_PATH=bin/debug shards build --debug
+
+    - name: Check formatting
+      if: runner.os == 'linux-latest'
+      run: crystal tool format; git diff --exit-code
+
+    # Build releases on all platforms
+
+    - name: Setup release environment
+      run: mkdir -p bin/release
 
     - name: Build Release
       run: SHARDS_BIN_PATH=bin/release shards build --release
 
-    - name: Check formatting
-      run: crystal tool format; git diff --exit-code
 
     # - name: Run Linting
     #   run: bin/ameba --all src/
