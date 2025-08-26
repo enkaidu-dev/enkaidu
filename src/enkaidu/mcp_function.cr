@@ -32,7 +32,22 @@ module Enkaidu
                      else
                        @name # if no description, use name as description.
                      end
-      @input_schema = tool_def["inputSchema"]
+      @input_schema = validate_input_schema(tool_def["inputSchema"])
+    end
+
+    # Check if the tool definition has no `properties` and fix to specify empty parameters
+    # to deal with Open AI protocol requirements.
+    private def validate_input_schema(input_schema)
+      return input_schema if input_schema["properties"]?
+      # Missing `properties` so we need to insert an empty one
+      if input_schema_hash = input_schema.as_h?
+        input_schema_hash["properties"] = JSON::Any.new({} of String => JSON::Any)
+        # This feels awful to do but is a quick fix
+        JSON.parse(input_schema_hash.to_json)
+      else
+        # Should never happen, but let's failsafe it with an empty schema
+        JSON.parse("{ \"type\": \"object\", \"properties\": {}}")
+      end
     end
 
     # The input schema for the parameters to this function, into the JSON builder.
