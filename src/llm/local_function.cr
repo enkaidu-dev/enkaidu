@@ -6,6 +6,7 @@ module LLM
   abstract class LocalFunction < Function
     # one list per class; do not edit
     @@params = [] of Param
+    @@input_schema = nil
 
     def initialize
       @origin = "Enkaidu / Built-in"
@@ -20,7 +21,7 @@ module LLM
 
     # The input schema for the parameters to this function, into the JSON builder.
     def input_json_schema(json : JSON::Builder)
-      json.object do
+      @@input_schema ||= json.object do
         required = [] of String
         json.field "type", "object"
         json.field "properties" do
