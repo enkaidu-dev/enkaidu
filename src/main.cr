@@ -8,6 +8,7 @@ require "option_parser"
 module Enkaidu
   # `Main` is the entry point for executing the application, managing initialization and execution flow.
   class Main
+    # This is a documentation string, Ameba.
     class ArgumentError < Exception; end
 
     private getter session
@@ -105,9 +106,6 @@ module Enkaidu
     end
 
     private def handle_use_mcp_with_name(name)
-      auth_token = nil
-      type = MCPC::TransportType::AutoDetect
-
       if (config = opts.config).nil?
         raise ArgumentError.new("'#{C_USE_MCP}' with a non-URL argument requires MCP servers to be defined in config.")
       end
@@ -126,11 +124,11 @@ module Enkaidu
       type = MCPC::TransportType::AutoDetect
 
       # Check and extract what we want,
-      error = if (url = cmd.arg_at?(1)).nil?
-                "ERROR: Specify URL to the MCP server"
-              elsif (auth_env = cmd.arg_named?("auth_env")) && (auth_key = ENV[auth_env]?).nil?
-                "ERROR: Unable to find environment variable: #{auth_env}."
-              end
+      if (url = cmd.arg_at?(1)).nil?
+        raise ArgumentError.new("ERROR: Specify URL to the MCP server")
+      elsif (auth_env = cmd.arg_named?("auth_env")) && (auth_key = ENV[auth_env]?).nil?
+        raise ArgumentError.new("ERROR: Unable to find environment variable: #{auth_env}.")
+      end
 
       if transport_arg = cmd.arg_named?("transport")
         type = MCPC::TransportType.from(transport_arg)
