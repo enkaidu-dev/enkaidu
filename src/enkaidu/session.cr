@@ -13,6 +13,26 @@ module Enkaidu
   # The Session class manages connection setup, logging, and the processing of
   # different types of events for user queries via the command line app
   class Session
+    # Use MCP server by config_name, retrieved from Config.
+    def use_mcp_by(config_name : String)
+      return unless config = opts.config
+
+      mcp_server = config.mcp_servers[config_name]?
+      if mcp_server.nil?
+        renderer.warning_with("WARNING: No MCP server found under the name: #{config_name}.")
+        return
+      end
+
+      url = mcp_server.url
+      bearer_token_string = mcp_server.bearer_auth_token
+      auth_token = unless bearer_token_string.nil?
+        MCPC::AuthToken.new(label: "MCP auth token: #{url}", value: bearer_token_string)
+      end
+      transport = MCPC::TransportType.from?(mcp_server.transport) || MCPC::TransportType::AutoDetect
+
+      use_mcp_server(url, auth_token: auth_token, transport_type: transport)
+    end
+
     DEFAULT_SYSTEM_PROMPT = "You are a capable coding assistant with " \
                             "the ability to use tool calling to solve " \
                             "complicated multi-step tasks."
@@ -77,16 +97,8 @@ module Enkaidu
     private def auto_load_mcp_servers(mcp_servers, auto_load_mcp_servers)
       auto_load_mcp_servers.each do |mcp_name|
         mcp_name = mcp_name.strip
-        if mcp_server = mcp_servers[mcp_name]?
-          url = mcp_server.url
-          transport = MCPC::TransportType.from?(mcp_server.transport) || MCPC::TransportType::AutoDetect
-          auth_token = if auth_key = mcp_server.bearer_auth_token
-                         MCPC::AuthToken.new(label: "MCP auth token: #{url}", value: auth_key)
-                       end
-          use_mcp_server(url, auth_token, transport_type: transport)
-        else
-          renderer.warning_with("WARNING: Unknown MCP server configured with name: #{mcp_name}")
-        end
+
+        use_mcp_by(mcp_name)
       end
     end
 
