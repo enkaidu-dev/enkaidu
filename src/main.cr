@@ -8,7 +8,7 @@ require "option_parser"
 module Enkaidu
   # `Main` is the entry point for executing the application, managing initialization and execution flow.
   class Main
-    # This is a documentation string, Ameba.
+    # This class extends Exception. It is a custom error class, so we can raise custom error classes.
     class ArgumentError < Exception; end
 
     private getter session
