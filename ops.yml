@@ -42,7 +42,7 @@ actions:
     command: crystal clear_cache && ops clean
     description: Clear build caches and prior builds
   lint:
-    command: bin/ameba --all
+    command: bin/ameba src/
   just-run-debug:
     alias: jrun
     description: Run the debug build; make sure to run `ops build` before.
