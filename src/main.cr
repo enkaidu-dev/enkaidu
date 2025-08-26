@@ -125,10 +125,8 @@ module Enkaidu
       auth_key = nil
       type = MCPC::TransportType::AutoDetect
 
-      # Check and extract what we want,
-      if (url = cmd.arg_at?(1)).nil?
-        raise ArgumentError.new("ERROR: Specify URL to the MCP server")
-      elsif (auth_env = cmd.arg_named?("auth_env")) && (auth_key = ENV[auth_env]?).nil?
+      raise ArgumentError.new("ERROR: Specify URL to the MCP server") if (url = cmd.arg_at?(1)).nil?
+      if (auth_env = cmd.arg_named?("auth_env")) && (auth_key = ENV[auth_env]?).nil?
         raise ArgumentError.new("ERROR: Unable to find environment variable: #{auth_env}.")
       end
 
