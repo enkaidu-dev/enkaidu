@@ -43,6 +43,17 @@ https://huggingface.co/mcp | Modern |Works | (I had the wrong URL before.)
 
 These are major changes I'd like to make to Enkaidu
 
+### Group tools into toolsets
+
+We have a lot of default tools and they fill up the query requests and thus the context. Some tools make sense all the time but not all do.
+
+- Define toolsets: e.g. "File management", "Image Files", "Date and Time", "Shell Commands" etc.
+- Determine which should be on all the time and which need to be loaded explicitly
+- Group the tools in `src/tools` under modules so we can automagic the toolset definitions
+- Add `/toolset list` command
+- Add `/toolset use NAME` command
+- Add `autoload: { ... toolsets: [...]}` to the config
+
 ### Build container image to run `enkaidu` with safe shell access
 
 > **WHY?**
@@ -98,15 +109,6 @@ https://modelcontextprotocol.io/specification/2025-06-18/schema#calltoolresult
 Known MCP servers:
 - Pixel Lab (`https://api.pixellab.ai/mcp`)
 
-### Complete [JSON Schema](https://json-schema.org/docs) support
-
-When listing tools, the too definition has more than just simple parameter types: https://modelcontextprotocol.io/specification/2025-06-18/schema#tool
-
-Per `LLM::Function` (or do we need a derived `MCP::Function`?)
-- Support full JSON schema for input schema
-- Add support for output schema
-- Check out [json-schema](https://github.com/spider-gazelle/json-schema) shard
-
 ### Distributing `enkaidu`
 
 Build releases via Github for Linux and macOS.
@@ -134,3 +136,10 @@ Many MCP servers behind paywalls support `Bearer Authentication`.
 - Add ability to specify bearer auth
 - Where / how do we specify the API key per server?
 
+### Complete [JSON Schema](https://json-schema.org/docs) support
+
+When listing tools, the too definition has more than just simple parameter types: https://modelcontextprotocol.io/specification/2025-06-18/schema#tool
+
+Per `LLM::Function` (or do we need a derived `MCP::Function`?)
+- [x] Support full JSON schema for input schema
+- [x] Check out [json-schema](https://github.com/spider-gazelle/json-schema) shard
