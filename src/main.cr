@@ -48,10 +48,10 @@ module Enkaidu
     C_HELP    = "/help"
 
     H_C_TOOL = <<-HELP1
-    `#{C_TOOL}` [sub-command]
+    `#{C_TOOL}` [<sub-command>]
     - `ls`
       - List all available tools
-    - `info TOOLNAME`
+    - `info <TOOLNAME>`
       - Provide details about one tool
     HELP1
 
@@ -61,9 +61,11 @@ module Enkaidu
     HELP1
 
     H_C_USE_MCP = <<-HELP2
-    `#{C_USE_MCP} URL [auth_env=ENVARNAME] [transport=auto|legacy|http]`
+    `#{C_USE_MCP} <URL|NAME> [auth_env=<ENVARNAME>] [transport=auto|legacy|http]`
     - Connect with the specified MCP server and register any available tools
       for use with subsequent queries
+    - MCP server can be specified with URL or name from the config file
+    - if NAME is specified, auth_env and transport may not be specified
     - Optionally specify name of environment variable that contains the
       authentication token if needed.
     - Optionally specify the transport type; defaults to `auto`
