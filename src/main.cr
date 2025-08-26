@@ -135,7 +135,7 @@ module Enkaidu
       if transport_arg = cmd.arg_named?("transport")
         type = MCPC::TransportType.from(transport_arg)
       end
-      auth_token = auth_token_for_bearer_token(auth_key)
+      auth_token = auth_token_for_bearer_token(url, auth_key)
       session.use_mcp_server url.as(String), auth_token: auth_token, transport_type: type
     end
 
