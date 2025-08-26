@@ -81,6 +81,7 @@ module Enkaidu
         with_tool RenameFileTool.new
         with_tool CreateDirectoryTool.new
         with_tool ShellCommandTool.new(renderer) if opts.enable_shell_command?
+        with_tool GetCurrentDatetimeTool.new
       end
     end
 
