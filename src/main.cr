@@ -8,6 +8,9 @@ require "option_parser"
 module Enkaidu
   # `Main` is the entry point for executing the application, managing initialization and execution flow.
   class Main
+    # This class extends Exception. It is a custom error class, so we can raise custom error classes.
+    class ArgumentError < Exception; end
+
     private getter session
     private getter? done = false
     private getter count = 0
@@ -45,10 +48,10 @@ module Enkaidu
     C_HELP    = "/help"
 
     H_C_TOOL = <<-HELP1
-    `#{C_TOOL}` [sub-command]
+    `#{C_TOOL}` [<sub-command>]
     - `ls`
       - List all available tools
-    - `info TOOLNAME`
+    - `info <TOOLNAME>`
       - Provide details about one tool
     HELP1
 
@@ -58,9 +61,11 @@ module Enkaidu
     HELP1
 
     H_C_USE_MCP = <<-HELP2
-    `#{C_USE_MCP} URL [auth_env=ENVARNAME] [transport=auto|legacy|http]`
+    `#{C_USE_MCP} <URL|NAME> [auth_env=<ENVARNAME>] [transport=auto|legacy|http]`
     - Connect with the specified MCP server and register any available tools
       for use with subsequent queries
+    - MCP server can be specified with URL or name from the config file
+    - if NAME is specified, auth_env and transport may not be specified
     - Optionally specify name of environment variable that contains the
       authentication token if needed.
     - Optionally specify the transport type; defaults to `auto`
@@ -82,31 +87,60 @@ module Enkaidu
     HELP
 
     private def handle_use_mcp_command(cmd)
-      url = nil
+      # Check if command meets expectation
+      if cmd.expect?(C_USE_MCP, String)
+        first_arg = cmd.arg_at?(1)
+        raise ArgumentError.new("No MCP server URL or name given.") if first_arg.nil?
+
+        uri = URI.parse(first_arg)
+        if uri.scheme.nil?
+          handle_use_mcp_with_name(first_arg)
+        else
+          handle_use_mcp_with_url(cmd)
+        end
+      elsif cmd.expect?(C_USE_MCP, String, auth_env: String?, transport: ["auto", "legacy", "http", nil])
+        handle_use_mcp_with_url(cmd)
+      else
+        raise ArgumentError.new("ERROR: Unexpected command / parameters")
+      end
+    rescue e : ArgumentError
+      renderer.warning_with(e.message, help: H_C_USE_MCP, markdown: true)
+    end
+
+    private def handle_use_mcp_with_name(name)
+      if (config = opts.config).nil?
+        raise ArgumentError.new("'#{C_USE_MCP}' with a non-URL argument requires MCP servers to be defined in config.")
+      end
+
+      mcp_server = config.mcp_servers[name]
+      raise ArgumentError.new("MCP server '#{name}' is not defined in the config file.") if mcp_server.nil?
+
+      url = mcp_server.url
+      auth_token = auth_token_for_bearer_token(url, mcp_server.bearer_auth_token)
+      transport_type = MCPC::TransportType.from(mcp_server.transport)
+      session.use_mcp_server(mcp_server.url, auth_token: auth_token, transport_type: transport_type)
+    end
+
+    private def handle_use_mcp_with_url(cmd)
       auth_key = nil
       type = MCPC::TransportType::AutoDetect
 
-      # Check and extract what we want,
-      error = if (url = cmd.arg_at?(1)).nil?
-                "ERROR: Specify URL to the MCP server"
-              elsif (auth_env = cmd.arg_named?("auth_env")) && (auth_key = ENV[auth_env]?).nil?
-                "ERROR: Unable to find environment variable: #{auth_env}."
-              end
-      # Check if command meets expectation
-      unless error || cmd.expect?(C_USE_MCP, String, auth_env: String?, transport: ["auto", "legacy", "http", nil])
-        error = "ERROR: Unexpected command / parameters"
+      raise ArgumentError.new("ERROR: Specify URL to the MCP server") if (url = cmd.arg_at?(1)).nil?
+      if (auth_env = cmd.arg_named?("auth_env")) && (auth_key = ENV[auth_env]?).nil?
+        raise ArgumentError.new("ERROR: Unable to find environment variable: #{auth_env}.")
       end
-      # Report error if any
-      if error
-        renderer.warning_with(error, help: H_C_USE_MCP, markdown: true)
-        return
-      end
-      # All good
+
       if transport_arg = cmd.arg_named?("transport")
         type = MCPC::TransportType.from(transport_arg)
       end
-      auth_token = MCPC::AuthToken.new(label: "MCP auth token: #{url}", value: auth_key) if auth_key
+      auth_token = auth_token_for_bearer_token(url, auth_key)
       session.use_mcp_server url.as(String), auth_token: auth_token, transport_type: type
+    end
+
+    private def auth_token_for_bearer_token(url, bearer_token)
+      return if bearer_token.nil?
+
+      MCPC::AuthToken.new(label: "MCP auth token: #{url}", value: bearer_token)
     end
 
     private def handle_tool_command(cmd)
