@@ -13,7 +13,6 @@ module Enkaidu::CLI
     getter? debug = false
     getter? stream = false
     getter? trace_mcp = false
-    getter? enable_shell_command = true
     getter recorder_file : IO? = nil
 
     getter config_for_llm : Config::LLM?
@@ -80,11 +79,6 @@ module Enkaidu::CLI
 
     private def define_config_options(parser)
       parser.separator("\nCONFIGURE")
-      parser.on("--disable-shell-command",
-        "Disable the shell command tool") do
-        @enable_shell_command = false
-        add(:enable_shell_command, false)
-      end
       parser.on("--config=FILEPATH", "-C FILEPATH",
         "Config #{Config::FORMATS.join(" or ")} file path; " \
         "defaults to \"#{Config::DEFAULT_NAME}.{#{Config::EXTENSIONS.join('|')}}\"") do |path|
@@ -124,7 +118,6 @@ module Enkaidu::CLI
       if global_opts = (config.try &.global)
         @stream = global_opts.streaming? unless @options.has_key?(:stream)
         @trace_mcp = global_opts.trace_mcp? unless @options.has_key?(:trace_mcp)
-        @enable_shell_command = global_opts.enable_shell_command? unless @options.has_key?(:enable_shell_command)
       end
 
       # Check config for default options

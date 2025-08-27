@@ -45,7 +45,7 @@ module Enkaidu::CLI
     end
 
     def user_confirm_shell_command?(command)
-      puts "  CONFIRM: The assistant wants to run the following command:\n\n"
+      puts "  CONFIRM: The assistant wants to run the following command:\n"
       puts "  > #{command}\n\n".colorize(:red).bold
       print "  Allow? [y/N] "
       response = STDIN.raw &.read_char

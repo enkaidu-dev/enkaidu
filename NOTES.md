@@ -16,6 +16,7 @@
 - [ ] Figure out how to support oAuth2 based authorization
 - [ ] Detect when MCP connection needs to be reset; there are some rules for this.
 - [ ] Find a canonical server to run locally to test the protocol better
+- [x] Organize built-in tools into toolsets and allow loading / autoloading / unloading of toolsets
 - [x] Figure out how to improve MCP transport responsiveness. The MCP Inspector seems be deal with HTTP streaming much more responsively. My implementation, which needs `io.skip_to_end` after handling every response, seems sluggish.
 - [x] Support more complex JSON schema for tool properties to support some MCP servers (e.g. Pixel Lab)
 - [x] Support optional transport type when using MCP servers, to choose between `auto`, `legacy`, and `http`.
@@ -43,16 +44,6 @@ https://huggingface.co/mcp | Modern |Works | (I had the wrong URL before.)
 
 These are major changes I'd like to make to Enkaidu
 
-### Group tools into toolsets
-
-We have a lot of default tools and they fill up the query requests and thus the context. Some tools make sense all the time but not all do.
-
-- Define toolsets: e.g. "File management", "Image Files", "Date and Time", "Shell Commands" etc.
-- Determine which should be on all the time and which need to be loaded explicitly
-- Group the tools in `src/tools` under modules so we can automagic the toolset definitions
-- Add `/toolset list` command
-- Add `/toolset use NAME` command
-- Add `autoload: { ... toolsets: [...]}` to the config
 
 ### Build container image to run `enkaidu` with safe shell access
 
@@ -143,3 +134,14 @@ When listing tools, the too definition has more than just simple parameter types
 Per `LLM::Function` (or do we need a derived `MCP::Function`?)
 - [x] Support full JSON schema for input schema
 - [x] Check out [json-schema](https://github.com/spider-gazelle/json-schema) shard
+
+### Group tools into toolsets (Done)
+
+We have a lot of default tools and they fill up the query requests and thus the context. Some tools make sense all the time but not all do.
+
+- [x] Define toolsets: e.g. "File management", "Image Files", "Date and Time", "Shell Commands" etc.
+- [x] Group the tools in `src/tools` under modules so we can automagic the toolset definitions
+- [x] Add `/toolset ls` command
+- [x] Add `/toolset load NAME` command
+- [x] Add `/toolset unload NAME` command
+- [x] Add `autoload: { ... toolsets: [...]}` to the config

@@ -1,6 +1,6 @@
 require "./file_helper"
 
-module ImageHelper
+module Tools::ImageHelper
   include FileHelper
 
   # Allowed image content types

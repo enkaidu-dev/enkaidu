@@ -39,12 +39,21 @@ module LLM
       by_origin[function.name] = function
     end
 
+    def without_tool(function_name)
+      return unless function = @tools_by_name[function_name]?
+
+      if by_origin = @tools_by_origin[function.origin]?
+        by_origin.delete(function_name)
+      end
+      @tools_by_name.delete(function_name)
+    end
+
     def find_tool?(name)
       @tools_by_name[name]?
     end
 
     def each_tool_origin(&)
-      @tools_by_origin.each_key { |origin| yield origin }
+      @tools_by_origin.each { |name, by_origin| yield(name) unless by_origin.empty? }
     end
 
     def each_tool(origin : String? = nil, &)

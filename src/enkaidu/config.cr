@@ -31,7 +31,6 @@ module Enkaidu
     class Global < ConfigSerializable
       getter? trace_mcp = false
       getter? streaming = false
-      getter? enable_shell_command = true
     end
 
     # Session configuration settings for Enkaidu.
@@ -39,6 +38,7 @@ module Enkaidu
       # Configuration for auto-loading settings within a Session.
       class AutoLoad < ConfigSerializable
         getter mcp_servers : Array(String) = [] of String
+        getter toolsets : Array(String) = [] of String
       end
 
       getter provider_type : String?

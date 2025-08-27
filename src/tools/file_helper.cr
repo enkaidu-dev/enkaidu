@@ -1,4 +1,4 @@
-module FileHelper
+module Tools::FileHelper
   def resolve_path(path)
     File.expand_path(path)
   end

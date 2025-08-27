@@ -8,7 +8,6 @@ module Enkaidu
     abstract def model_name : String?
     abstract def debug?
     abstract def stream?
-    abstract def enable_shell_command?
     abstract def recorder_file : IO?
     abstract def renderer : SessionRenderer
 

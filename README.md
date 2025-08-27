@@ -1,41 +1,140 @@
 # Enkaidu
 
-Your trusted second-in-command (line tool) for coding and creativity. Inspired by Enkidu, the loyal and dynamic companion from Mesopotamian mythology, Enkaidu embodies collaboration, adaptability, and a touch of chaos to spark innovation. 
+Enkaidu is your _second-in-command(-line)_ for coding and creativity. Inspired by Enkidu, the loyal and dynamic companion from Mesopotamian mythology, Enkaidu embodies collaboration, adaptability, and a touch of chaos to spark innovation.
 
-With the use of AI large language models Enkaidu is designed to assist you with writing & maintaining code (and other text-based content). Additionally, by integrating with MCP servers Enkaidu can help do even more.
+Out of the box, with the use of _your preferred_ AI large language models, Enkaidu is designed to assist you with writing & maintaining code (and other text-based content). 
+
+Additionally, by integrating with MCP servers _of your choice_, Enkaidu can help you do even more.
 
 ## Install
 
-> TODO: via package installers
+> COMING SOON: pre-built binaries
 
-See "Development" section for how to build `enkaidu`
+See [DEVELOPMENT](./DEVELOPMENT.md) for how to build and run `enkaidu`.
 
-## Usage
+Following sections assume you have _installed_ Enkaidu and that it is available to run from anywhere using the `enkaidu` command.
 
-### With Ollama
+## Get Started
 
-Run `enkaidu -p ollama -m M` with the model `M` you want to use. Use the following environment variable if needed:
+### Start with Ollama
+
+If you have Ollama running, create a file `enkaidu.yaml` and copy in the following configuration, then run `enkaidu` from the commandline in the same folder as the config file.
+
+<details>
+<summary>Simple Ollama configuration for `enkaidu`.</summary>
+
+```yaml
+session:
+  model: qwen3                # <---
+  auto_load:
+    toolsets:
+      - DateAndTime
+llms:
+  my_ollama:
+    provider: ollama
+    models:
+      - name: qwen3           # <---
+        model: qwen3:8b       # <---
+```
+
+If you're using a different local model, change the values pointed to by the `# <---` comment
+</details>
+
+
+### Start with LMStudio
+
+If you have LMStudio running, create a file `enkaidu.yaml` and copy in the following configuration, then run `enkaidu` from the commandline in the same folder as the config file.
+
+<details>
+<summary>Simple LMStudio configuration for `enkaidu`.</summary>
+
+```yaml
+session:
+  model: qwen3                       # <---
+  auto_load:
+    toolsets:
+      - DateAndTime
+llms:
+  my_lmstudio:
+    provider: openai
+    env:
+      OPENAI_ENDPOINT: 'http://localhost:1234'
+      OPENAI_API_KEY: n/a
+    models:
+      - name: qwen3                 # <---
+        model: qwen/qwen3-4b        # <---
+```
+
+If you're using a different local model, change the values pointed to by the `# <---` comment
+</details>
+
+
+### Start with Chat GPT
+
+If you have an OpenAI Chat GPT account, create a file `enkaidu.yaml` and copy in the following configuration, then run `enkaidu` from the commandline in the same folder as the config file.
+
+<details>
+<summary>Simple OpenAI Chat GPT configuration for `enkaidu`.</summary>
+
+```yaml
+session:
+  model: gpt4
+  auto_load:
+    toolsets:
+      - DateAndTime
+llms:
+  my_openai:
+    provider: openai
+    models:
+      - name: gpt4
+        model: gpt-4.1-2025-04-14
+```
+
+Make sure you have `OPENAI_API_KEY` environment variable set. 
+</details>
+
+## Understanding LLM Providers
+
+Enkaidu supports the following LLM provider types:
+- `azure_openai`
+- `ollama`
+- `openai`
+
+Each of the providers, when selected for a session, expect different environment variables to specify the connection information.
+
+### Provider: `ollama`
+
+Assuming you're running `ollama serve` locally, the defaults should just work. In case you're not:
+
+<details>
+<summary>Environment variables to use with `ollama`</summary>
 
 Env var | Description
 ----|----
 `OLLAMA_ENDPOINT` | Defaults to `http://localhost:1234`
+</details>
 
+### Provider: `openai`
 
-(Expects the local server to be at `http://localhost:11434`.)
+The `openai` provider defaults to the Open AI endpoint, but you still need to supply the API KEY.
 
-### With OpenAI
+You can use this provider with different LLM systems who provide an Open AI-compatible API, in which case you'll need to set the environment variables.
 
-Run `enkaidu -p openai` after setting up the following environment variables:
+<details>
+<summary>Environment variables to use with `openai`</summary>
 
 Env var | Description
 ----|----
-`OPENAI_MODEL` | For example, `gpt-oss:20b`.
 `OPENAI_ENDPOINT` | For example, `http://localhost:1234` for LM Studio; defaults to `https://api.openai.com`.
-`OPENAI_API_KEY` | Optional; for example, `sk-...`
+`OPENAI_MODEL` | For example, `gpt-oss:20b`.
+</details>
 
-### With Azure OpenAI
+### Provider: `azure_openai`
 
-Run `enkaidu -p azure_openai` after setting up the following environment variables:
+Azure OpenAI needs many parameters to select the model to use, so you have to set all of these. 
+
+<details>
+<summary>Environment variables to use with `azure_openai`</summary>
 
 Env var | Description
 -----|-----
@@ -43,39 +142,12 @@ Env var | Description
 `AZURE_OPENAI_MODEL` | Defaults to `gpt-4o` if not specified.
 `AZURE_OPENAI_ENDPOINT` | For example, `https://X.openai.azure.com` for your deployment `X`. Just the bare endpoint only please!
 `AZURE_OPENAI_API_KEY` | The API key for your deployment
+</details>
 
-## Development
+## Configuration
 
-### Dependencies
-
-1. Make sure you have `ops` installed, in one of the following ways:
- - as a gem via `gem install ops_team` or 
- - as a tool via `brew tap nickthecook/crops && brew install ops`
-2. If you not using macOS, or a Linux that uses `apt`, please [install Crystal](https://crystal-lang.org/install/)
-
-### Getting started
-
-Command | Description
------|-----
-`ops up` | Gets everything setup including `crystal` via `apt` or `brew` if applicable.
-`ops build-debug` or `ops bd` | Make a debug build, with binary in `bin/debug` folder.
-`ops build-release` or `ops br` | Make a dreleasebug build, with binary in `bin/release` folder.
-`ops lint` | Run `ameba` on the source code
-`ops clean` | Remove debug and release build files
-`ops wipe` | In addition to cleaning, remove all compiler caches
-
-### Build and run for development
-
-Run `ops run` which will build the debug version and run it afterwards.
-
-### Build to run later
-
-Run `ops build-release` to make a release build in the `bin/release/` folder
-
-Run `ops build-debug` to make a debug build in the `bin/debug/` folder
-
+> Documentation coming soon
 
 ## Contributions
 
-By invitation only for the time being.
-
+By invitation only limited to people I know and see often. This is early days, I am busy with family and work, and this will help me manage my bandwidth.
