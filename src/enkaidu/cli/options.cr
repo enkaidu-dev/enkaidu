@@ -90,6 +90,7 @@ module Enkaidu::CLI
 
     private def define_troubleshooting_options(parser)
       parser.separator("\nTROUBLESHOOTING")
+
       parser.on("--recorder-file=FILEPATH", "-R FILEPATH",
         "Record chat processing events to a JSON file") do |path|
         @recorder_file = File.open(path, "w")
@@ -97,17 +98,31 @@ module Enkaidu::CLI
       rescue ex
         error_and_exit_with "FATAL: Unable to create recorder file (\"#{path}\"): #{ex.message}", parser
       end
+
       parser.on("--debug",
         "Sending raw protocol messages to the recorder configured (via -R)") do
         @debug = true
         add(:debug, true)
       end
+
       parser.on("--trace-mcp",
         "Enable transport traces for MCP networking") do
         @trace_mcp = true
         add(:trace_mcp, true)
       end
-      parser.on("--help", "Show this help") do
+
+      parser.separator("\nINFORMATION")
+
+      parser.on("--save-config-schema=FILEPATH",
+        "Export a JSON schema for Enkaidu's YAML config file and exit") do |path|
+        File.write(path, Config.json_schema.to_pretty_json)
+        renderer.info_with("INFO: Saved configuration JSON schema: #{path}")
+        exit
+      rescue ex
+        error_and_exit_with "FATAL: Unable to create file (\"#{path}\"): #{ex.message}", parser
+      end
+
+      parser.on("--help", "Show this help and exit") do
         puts parser
         exit
       end
