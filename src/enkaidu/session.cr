@@ -71,35 +71,41 @@ module Enkaidu
         with_debug if opts.debug?
         with_streaming if opts.stream?
         with_system_message system_prompt
-        with_tool ListFilesTool.new
-        with_tool ReadTextFileTool.new
-        with_tool ReadImageFileTool.new
-        with_tool RegexTextEditTool.new
-        with_tool CreateTextFileTool.new
-        with_tool CreateImageFileTool.new
-        with_tool ReplaceTextInTextFileTool.new
-        with_tool RenameFileTool.new
-        with_tool CreateDirectoryTool.new
-        with_tool ShellCommandTool.new(renderer) if opts.enable_shell_command?
-        with_tool GetCurrentDatetimeTool.new
       end
     end
 
     # Run auto loads specified in the session config
     def auto_load
       return unless config = opts.config
-      return unless (mcp_servers = config.mcp_servers) && (auto_load = config.session.try &.auto_load)
-      auto_load_mcp_servers = auto_load.mcp_servers
-      return if auto_load_mcp_servers.empty?
-      renderer.info_with("\nAuto-loading MCP servers: #{auto_load_mcp_servers.join(", ")}")
-      auto_load_mcp_servers(mcp_servers, auto_load_mcp_servers)
+
+      if auto_load = config.session.try &.auto_load
+        if mcp_servers = config.mcp_servers
+          unless (mcp_server_names = auto_load.mcp_servers).empty?
+            renderer.info_with("\nAuto-loading MCP servers: #{mcp_server_names.join(", ")}")
+            auto_load_mcp_servers(mcp_servers, mcp_server_names)
+          end
+        end
+
+        unless (toolset_names = auto_load.toolsets).empty?
+          renderer.info_with("\nAuto-loading toolsets: #{toolset_names.join(", ")}")
+          auto_load_toolsets(toolset_names)
+        end
+      end
     end
 
-    private def auto_load_mcp_servers(mcp_servers, auto_load_mcp_servers)
-      auto_load_mcp_servers.each do |mcp_name|
+    private def auto_load_mcp_servers(mcp_servers, mcp_server_names)
+      mcp_server_names.each do |mcp_name|
         mcp_name = mcp_name.strip
 
         use_mcp_by(mcp_name)
+      end
+    end
+
+    private def auto_load_toolsets(toolset_names)
+      toolset_names.each do |toolset_name|
+        toolset_name = toolset_name.strip
+
+        load_toolset_by(toolset_name)
       end
     end
 
@@ -117,7 +123,7 @@ module Enkaidu
         chat.each_tool_origin do |origin|
           io << "## " << origin << '\n'
           chat.each_tool(origin: origin) do |tool|
-            io << "**" << tool.name << "** "
+            io << "**" << tool.name << "** : "
             io << tool.description << "\n\n"
           end
         end
@@ -126,15 +132,70 @@ module Enkaidu
       renderer.info_with("List of available tools.", text, markdown: true)
     end
 
-    private def find_tool_by(name)
-      chat.each_tool do |tool|
-        return tool if tool.name == name
+    @loaded_toolsets = {} of String => Tools::ToolSet
+
+    def unload_toolset_by(name)
+      toolset = Tools[name]?
+      if toolset.nil?
+        renderer.warning_with("WARNING: No built-in toolset found under the name: #{name}.")
+      elsif !@loaded_toolsets.has_key?(name)
+        renderer.info_with("INFO: Built-in toolset not loaded: #{name}.")
+      else
+        message = String.build do |str|
+          str << "INFO: Unloaded built-in tools: "
+          ix = 0
+          toolset.each_tool_info do |tool_name, _|
+            str << ", " if ix.positive?
+            chat.without_tool(tool_name)
+            str << tool_name
+            ix += 1
+          end
+        end
+        @loaded_toolsets.delete(name)
+        renderer.info_with(message)
       end
-      nil
+    end
+
+    def load_toolset_by(name)
+      toolset = Tools[name]?
+      if toolset.nil?
+        renderer.warning_with("WARNING: No built-in toolset found under the name: #{name}.")
+      elsif @loaded_toolsets.has_key?(name)
+        renderer.info_with("INFO: Built-in toolset already loaded: #{name}.")
+      else
+        message = String.build do |str|
+          str << "INFO: Loaded built-in tools: "
+          ix = 0
+          toolset.produce(renderer) do |tool|
+            str << ", " if ix.positive?
+            chat.with_tool(tool)
+            str << tool.name
+            ix += 1
+          end
+        end
+        @loaded_toolsets[name] = toolset
+        renderer.info_with(message)
+      end
+    end
+
+    def list_all_toolsets
+      text = String.build do |io|
+        Tools.each_toolset do |toolset|
+          loaded = @loaded_toolsets.has_key?(toolset.name)
+          io << "## " << toolset.name
+          io << (loaded ? " _(Loaded)_\n" : '\n')
+          toolset.each_tool_info do |name, description|
+            io << "* **" << name << "** : "
+            io << description << "\n\n"
+          end
+        end
+        io << '\n'
+      end
+      renderer.info_with("List of available toolsets.", text, markdown: true)
     end
 
     def list_tool_details(tool_name)
-      if tool = find_tool_by(tool_name)
+      if tool = chat.find_tool?(tool_name)
         text = String.build do |io|
           desc = if tool.description == tool_name
                    "_No description provided. Using tool name instead._"

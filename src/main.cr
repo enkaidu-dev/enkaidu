@@ -45,7 +45,18 @@ module Enkaidu
     C_BYE     = "/bye"
     C_USE_MCP = "/use_mcp"
     C_TOOL    = "/tool"
+    C_TOOLSET = "/toolset"
     C_HELP    = "/help"
+
+    H_C_TOOLSET = <<-HELP1
+    `#{C_TOOLSET}` [<sub-command>]
+    - `ls`
+      - List all built-in toolsets that can be activated
+    - `load <TOOLSET_NAME>`
+      - Load all the tools from the named toolset
+    - `unload <TOOLSET_NAME>`
+      - Unload all the tools from the named toolset
+    HELP1
 
     H_C_TOOL = <<-HELP1
     `#{C_TOOL}` [<sub-command>]
@@ -61,14 +72,16 @@ module Enkaidu
     HELP1
 
     H_C_USE_MCP = <<-HELP2
-    `#{C_USE_MCP} <URL|NAME> [auth_env=<ENVARNAME>] [transport=auto|legacy|http]`
+    `#{C_USE_MCP} <NAME>`
+
+    `#{C_USE_MCP} <URL> [auth_env=<ENVARNAME>] [transport=auto|legacy|http]`
     - Connect with the specified MCP server and register any available tools
       for use with subsequent queries
     - MCP server can be specified with URL or name from the config file
-    - if NAME is specified, auth_env and transport may not be specified
-    - Optionally specify name of environment variable that contains the
-      authentication token if needed.
-    - Optionally specify the transport type; defaults to `auto`
+    - When loading with a URL
+      - Optionally specify the transport type; defaults to `auto`
+      - Optionally specify name of environment variable that contains the
+        authentication token if needed.
     HELP2
 
     H_C_HELP = <<-HELP3
@@ -82,6 +95,8 @@ module Enkaidu
     #{H_C_HELP}
 
     #{H_C_TOOL}
+
+    #{H_C_TOOLSET}
 
     #{H_C_USE_MCP}
     HELP
@@ -151,7 +166,23 @@ module Enkaidu
       elsif cmd.expect?(C_TOOL, "info", String)
         session.list_tool_details((cmd.arg_at? 2).as(String))
       else
-        renderer.warning_with("ERROR: Unknown or incomplete sub-command", help: H_C_TOOL, markdown: true)
+        renderer.warning_with("ERROR: Unknown or incomplete sub-command: #{cmd.arg_at? 0}", help: H_C_TOOL, markdown: true)
+      end
+    end
+
+    private def handle_toolset_command(cmd)
+      if cmd.expect?(C_TOOLSET, "ls")
+        session.list_all_toolsets
+      elsif cmd.expect?(C_TOOLSET, "load", String)
+        if name = cmd.arg_at?(2)
+          session.load_toolset_by(name)
+        end
+      elsif cmd.expect?(C_TOOLSET, "unload", String)
+        if name = cmd.arg_at?(2)
+          session.unload_toolset_by(name)
+        end
+      else
+        renderer.warning_with("ERROR: Unknown or incomplete sub-command: #{cmd.arg_at? 0}", help: H_C_TOOLSET, markdown: true)
       end
     end
 
@@ -165,6 +196,8 @@ module Enkaidu
           help: COMMAND_HELP, markdown: true
       when C_TOOL
         handle_tool_command(cmd)
+      when C_TOOLSET
+        handle_toolset_command(cmd)
       when C_USE_MCP
         handle_use_mcp_command(cmd)
       else
