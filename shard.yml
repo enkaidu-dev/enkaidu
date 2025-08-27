@@ -13,6 +13,8 @@ development_dependencies:
     gitlab: arctic-fox/spectator
 
 dependencies:
+  json-schema:
+    github: spider-gazelle/json-schema
   markterm:
     github: ralsina/markterm
   reply:

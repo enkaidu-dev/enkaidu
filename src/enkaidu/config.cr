@@ -37,8 +37,8 @@ module Enkaidu
     class Session < ConfigSerializable
       # Configuration for auto-loading settings within a Session.
       class AutoLoad < ConfigSerializable
-        getter mcp_servers : Array(String) = [] of String
-        getter toolsets : Array(String) = [] of String
+        getter mcp_servers : Array(String)?
+        getter toolsets : Array(String)?
       end
 
       getter provider_type : String?
@@ -51,15 +51,15 @@ module Enkaidu
 
     getter global : Global?
     getter session : Session?
-    getter llms = {} of String => LLM
-    getter mcp_servers = {} of String => MCPServer
+    getter llms : Hash(String, LLM)?
+    getter mcp_servers : Hash(String, MCPServer)?
 
     # ---------------------- end of content definition
 
     # Look for a model by its unique name and, if one exists, return its
     # model's enclosing LLM
     def find_llm_and_model_by?(unique_model_name)
-      llms.each do |_, llm|
+      llms.try &.each do |_, llm|
         llm.models.try &.each do |model|
           if model.name == unique_model_name
             return {llm: llm, model: model}

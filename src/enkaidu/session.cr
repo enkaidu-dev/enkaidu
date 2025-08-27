@@ -17,7 +17,7 @@ module Enkaidu
     def use_mcp_by(config_name : String)
       return unless config = opts.config
 
-      mcp_server = config.mcp_servers[config_name]?
+      mcp_server = config.mcp_servers.try &.[config_name]?
       if mcp_server.nil?
         renderer.warning_with("WARNING: No MCP server found under the name: #{config_name}.")
         return
@@ -81,13 +81,13 @@ module Enkaidu
 
       if auto_load = config.session.try &.auto_load
         if mcp_servers = config.mcp_servers
-          unless (mcp_server_names = auto_load.mcp_servers).empty?
+          if (mcp_server_names = auto_load.mcp_servers) && mcp_server_names.present?
             renderer.info_with("\nAuto-loading MCP servers: #{mcp_server_names.join(", ")}")
             auto_load_mcp_servers(mcp_servers, mcp_server_names)
           end
         end
 
-        unless (toolset_names = auto_load.toolsets).empty?
+        if (toolset_names = auto_load.toolsets) && toolset_names.present?
           renderer.info_with("\nAuto-loading toolsets: #{toolset_names.join(", ")}")
           auto_load_toolsets(toolset_names)
         end
