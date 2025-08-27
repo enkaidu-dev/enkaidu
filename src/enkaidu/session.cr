@@ -67,6 +67,7 @@ module Enkaidu
       connection.new_chat do
         unless (m = opts.model_name).nil?
           with_model m
+          renderer.info_with("INFO: Using model #{model}")
         end
         with_debug if opts.debug?
         with_streaming if opts.stream?
@@ -214,7 +215,11 @@ module Enkaidu
     end
 
     private def system_prompt
-      ENV.fetch("ENKAIDU_SYSTEM_PROMPT", DEFAULT_SYSTEM_PROMPT)
+      from_env = ENV.fetch("ENKAIDU_SYSTEM_PROMPT", DEFAULT_SYSTEM_PROMPT)
+      return from_env unless from_config = opts.config.try(&.session).try(&.system_prompt)
+
+      renderer.info_with("INFO: Using system prompt from config file; #{from_config.size} characters")
+      from_config
     end
 
     private def process_event(r, tools)
