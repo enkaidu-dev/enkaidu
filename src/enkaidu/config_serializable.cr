@@ -1,4 +1,6 @@
 require "yaml"
+require "json"
+require "json-schema"
 
 module Enkaidu
   # Convenient serializable class that contains common functionality: automatic
@@ -6,6 +8,7 @@ module Enkaidu
   # with values of type `String`, `String?`, `Hash(String,String)` and `Array(String)`
   class ConfigSerializable
     include YAML::Serializable
+    include JSON::Serializable
 
     private def gsub_with_env(value : String)
       #

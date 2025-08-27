@@ -126,11 +126,11 @@ module Enkaidu
       if (config = opts.config).nil?
         raise ArgumentError.new("'#{C_USE_MCP}' with a non-URL argument requires MCP servers to be defined in config.")
       end
-      unless config.mcp_servers.has_key?(name)
+      unless mcp_server = config.mcp_servers.try &.[name]?
         raise ArgumentError.new("MCP server '#{name}' is not defined in the config file.")
       end
 
-      mcp_server = config.mcp_servers[name]
+      # mcp_server = config.mcp_servers[name]
 
       url = mcp_server.url
       auth_token = auth_token_for_bearer_token(url, mcp_server.bearer_auth_token)
