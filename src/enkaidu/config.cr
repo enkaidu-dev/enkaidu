@@ -46,6 +46,7 @@ module Enkaidu
       getter recording_file : String?
       getter input_history_file : String?
       getter auto_load : AutoLoad?
+      getter system_prompt : String?
     end
 
     getter global : Global?
