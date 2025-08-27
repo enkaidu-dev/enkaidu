@@ -216,16 +216,10 @@ module Enkaidu
 
     private def system_prompt
       from_env = ENV.fetch("ENKAIDU_SYSTEM_PROMPT", DEFAULT_SYSTEM_PROMPT)
+      return from_env unless from_config = opts.config.try(&.session).try(&.system_prompt)
 
-      config = opts.config
-      return from_env if config.nil?
-      session = config.session
-      return from_env if session.nil?
-      system_prompt = session.system_prompt
-      return from_env if system_prompt.nil?
-
-      renderer.info_with("INFO: Using prompt from config file; #{system_prompt.size} characters")
-      system_prompt
+      renderer.info_with("INFO: Using prompt from config file; #{from_config.size} characters")
+      return from_config
     end
 
     private def process_event(r, tools)
