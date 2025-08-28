@@ -4,6 +4,7 @@ module Tools
   # A `ToolSet` hold a set of tools until they need to be instantiated
   class ToolSet
     getter name : String
+    # Track the available tools
     @tools = {} of String => BuiltInFunction.class
 
     # Create a new named toolset
@@ -27,9 +28,12 @@ module Tools
       end
     end
 
-    # Call this method to instantiate the tools held within this `ToolSet`
-    def produce(renderer : Enkaidu::SessionRenderer, & : LLM::Function ->)
+    # Call this method to instantiate the tools held within this `ToolSet`, optionally
+    # using a `selection` of tool names to limit the tools that get "produced".
+    def produce(renderer : Enkaidu::SessionRenderer, selection : Enumerable(String)? = nil, & : LLM::Function ->)
       @tools.each_value do |fun_class|
+        next if selection && !selection.includes?(fun_class.function_name)
+
         yield fun_class.new(renderer)
       end
     end

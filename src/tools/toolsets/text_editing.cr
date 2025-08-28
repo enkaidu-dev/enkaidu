@@ -1,5 +1,4 @@
-require "../tools"
-require "./file_helper"
+require "../toolset"
 require "./text_editing/*"
 
 module Tools

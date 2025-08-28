@@ -1,5 +1,3 @@
-require "./llm"
-require "./enkaidu/session_renderer"
 require "./tools/*"
 
 # Local tools live under the `Tools` module in sub-modules which can

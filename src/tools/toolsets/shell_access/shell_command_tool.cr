@@ -1,5 +1,5 @@
 require "json"
-require "../shell_access"
+require "../../built_in_function"
 
 module Tools::ShellAccess
   # The `ShellCommandTool` class defines a tool for executing shell commands within the

@@ -1,5 +1,5 @@
 require "json"
-require "../text_editing"
+require "../../built_in_function"
 
 module Tools::DateAndTime
   # The `GetCurrentDatetimeTool` class defines a tool for fetching the current date and time.

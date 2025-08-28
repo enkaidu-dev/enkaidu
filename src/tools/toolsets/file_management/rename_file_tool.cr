@@ -1,5 +1,6 @@
 require "json"
-require "../file_management"
+require "../../built_in_function"
+require "../../file_helper"
 
 module Tools::FileManagement
   # The `RenameFileTool` class defines a tool to rename a file in the current directory.

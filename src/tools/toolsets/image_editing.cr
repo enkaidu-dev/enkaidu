@@ -1,5 +1,4 @@
-require "../tools"
-require "./image_helper"
+require "../toolset"
 require "./image_editing/*"
 
 module Tools
