@@ -1,6 +1,7 @@
 require "json"
 require "base64"
-require "../image_editing"
+require "../../built_in_function"
+require "../../image_helper"
 
 module Tools::ImageEditing
   # The `CreateImageFileTool` class defines a tool for creating image files from base64 encoded data within

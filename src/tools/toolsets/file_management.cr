@@ -1,5 +1,4 @@
-require "../tools"
-require "./file_helper"
+require "../toolset"
 require "./file_management/*"
 
 module Tools

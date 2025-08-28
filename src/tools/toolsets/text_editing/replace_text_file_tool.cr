@@ -1,5 +1,6 @@
 require "json"
-require "../text_editing"
+require "../../built_in_function"
+require "../../file_helper"
 
 module Tools::TextEditing
   # The `ReplaceTextInTextFileTool` class defines a tool for replacing specified

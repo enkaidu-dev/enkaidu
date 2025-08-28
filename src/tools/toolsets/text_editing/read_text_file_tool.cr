@@ -1,5 +1,6 @@
 require "json"
-require "../text_editing"
+require "../../built_in_function"
+require "../../file_helper"
 
 module Tools::TextEditing
   # The `ReadTextFileTool` class defines a tool for reading all the text
