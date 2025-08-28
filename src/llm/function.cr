@@ -11,6 +11,8 @@ module LLM
     # A short title about the origin of the function
     getter origin : String = "Unknown"
 
+    def initialize(@origin); end
+
     # This defines the runner that is instantiated to
     # execute the function.
     abstract class Runner

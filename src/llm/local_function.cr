@@ -8,10 +8,8 @@ module LLM
     @@params = [] of Param
     @@input_schema = nil
 
-    def initialize(@origin); end
-
-    def initialize
-      @origin = "LEGACY / Built-in"
+    def initialize(origin = "LEGACY / Built-in")
+      super(origin)
     end
 
     # Iterate through each parameter
