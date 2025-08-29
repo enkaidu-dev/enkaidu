@@ -166,6 +166,12 @@ Once Enkaidu is started, you can interact with it using predefined commands and 
 
 - **`/use_mcp <NAME|URL>`**: Connect to an MCP server using either a predefined name from your configuration or a direct URL. Optionally, specify authentication and transport settings.
 
+- **`/include image_file`**: Include an image from a file with the next query to the AI model.
+
+- **`/include text_file`**: Include text from a file with the next query to the AI model.
+
+- **`/include any_file`**: Include any supported file with the next query to the AI model.
+
 ### User Queries
 
 You can input your queries directly into Enkaidu. If the query is prefixed with `/`, it will be treated as a command. Otherwise, it will be processed as a general query that Enkaidu will handle using the available tools and LLMs.
