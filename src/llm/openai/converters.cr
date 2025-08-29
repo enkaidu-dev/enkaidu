@@ -56,11 +56,7 @@ module LLM::OpenAI
               end
             end
             messages.each do |msg|
-              json.object do
-                msg.each do |k, v|
-                  json.field k.to_s, v
-                end
-              end
+              msg.to_json(json)
             end
           end
         end

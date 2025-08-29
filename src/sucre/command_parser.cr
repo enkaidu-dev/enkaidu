@@ -10,6 +10,8 @@ class CommandParser
   # Helps extract terms separated by spaces while preserving quotes
   private TERMRX = /(?:[^\s"']+|"[^"]*"|'[^']*')+/
 
+  getter input : String
+
   @pos_args = [] of String
   @named_args = {} of String => String
   @bad_args = [] of String
@@ -18,6 +20,7 @@ class CommandParser
   getter missed : String?
 
   def initialize(query)
+    @input = query.clone
     # Split by space, preserve quotes
     remainder = query.gsub(TERMRX) do |term|
       parts = term.split('=', 2)

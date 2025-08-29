@@ -3,6 +3,10 @@ require "reply"
 module Enkaidu::CLI
   # Command-line query reader with editing and other capabilities.
   class QueryReader < Reply::Reader
+    # Incicators is an array of strings that are presented as a prefix
+    # to the input prompt.
+    property indicators : Array(String)? = nil
+
     def initialize(@input_history_file : String? = nil)
       super()
     end
@@ -13,10 +17,15 @@ module Enkaidu::CLI
     end
 
     def prompt(io : IO, line_number : Int32, color : Bool) : Nil
-      p = "QUERY > "
-      p = p.colorize(:yellow) if color
+      q = if (tags = indicators) && tags.present?
+            prefix = tags.join('|')
+            "[#{prefix}] QUERY > "
+          else
+            "QUERY > "
+          end
+      q = q.colorize(:yellow) if color
 
-      io << p
+      io << q
     end
 
     # def highlight(expression : String) : String

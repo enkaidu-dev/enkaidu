@@ -5,6 +5,42 @@ module LLM
 
   # `Chat` is an abstract class that serves as a base for creating various chat implementations.
   abstract class Chat
+    private enum ContentType
+      Text
+      ImageData
+      FileData
+    end
+
+    # This class is used to setup additional content for use with a `Chat#ask`.
+    class Inclusions
+      @content = [] of NamedTuple(type: ContentType, name: String, data: String)
+
+      def initialize; end
+
+      # Expects a data URL string
+      def image_data(data_url : String, source_path : String) : Nil
+        @content << {type: ContentType::ImageData, data: data_url, name: source_path}
+      end
+
+      # Expects some text
+      def text(content : String, source_path : String) : Nil
+        @content << {type: ContentType::Text, data: content, name: source_path}
+      end
+
+      # Expects base64-encoded data from a file
+      def file_data(base64_content : String, source_path : String) : Nil
+        @content << {type: ContentType::FileData, data: base64_content, name: source_path}
+      end
+
+      def each(&)
+        @content.each { |item| yield item }
+      end
+
+      def each
+        @content.each
+      end
+    end
+
     getter model : String | Nil = nil
     getter system_message : String | Nil = nil
     getter? debug = false
@@ -67,6 +103,6 @@ module LLM
       @tools_by_name.each_value
     end
 
-    abstract def ask(content : String, & : ChatEvent ->)
+    abstract def ask(content : String, attach : Inclusions? = nil, & : ChatEvent ->)
   end
 end
