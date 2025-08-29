@@ -5,6 +5,7 @@
 - [ ] Write test specs
 - [ ] Document the code classes (viz. fix `ops lint` warnings)
 - [ ] Figure out `curl` and `bash` installation script
+- [x] Support "including" text and image files in queries, especially for vision models
 - [x] Setup GH action to build Linux and macOS binaries
 - [x] Support configuring MCP servers in config YAML file
 - [x] Support session auto-loading of specific MCP servers
@@ -68,17 +69,6 @@ Consider [Kemal](https://github.com/kemalcr/kemal) to support a built-in web UI 
 And use [BakedFileSystem](https://github.com/ralsina/baked_file_system) to bundle the static file in the binary.
 
 And [Svelte](https://svelte.dev/docs/svelte/overview) with TypeScript (of course!) would be nice to write the web UI since it can be used to produce a SPA that can be "baked" into the binary.
-
-### Send image with a query
-
-LLM models with vision capability can be sent image data as part of a query. Need a way to specify an image before a query _just_ for the query.
-
-- Consider `/with image URL | FILEPATH` command that only affects the next query.
-- This could be a pattern for sending other file-types? e.g. documents
-
-References
-
-- https://platform.openai.com/docs/guides/images-vision?api-mode=responses&format=base64-encoded
 
 ### Support prompts via MCP
 
@@ -145,3 +135,14 @@ We have a lot of default tools and they fill up the query requests and thus the 
 - [x] Add `/toolset load NAME` command
 - [x] Add `/toolset unload NAME` command
 - [x] Add `autoload: { ... toolsets: [...]}` to the config
+
+### Send image with a query
+
+LLM models with vision capability can be sent image data as part of a query. Need a way to specify an image before a query _just_ for the query.
+
+- Consider `/include image URL | FILEPATH` command that only affects the next query.
+- This could be a pattern for sending other file-types? e.g. documents
+
+References
+
+- https://platform.openai.com/docs/guides/images-vision?api-mode=responses&format=base64-encoded

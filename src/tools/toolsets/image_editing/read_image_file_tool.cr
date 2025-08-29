@@ -1,5 +1,4 @@
 require "json"
-require "base64"
 require "../../built_in_function"
 require "../../image_helper"
 

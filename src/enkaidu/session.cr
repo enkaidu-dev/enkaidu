@@ -13,26 +13,6 @@ module Enkaidu
   # The Session class manages connection setup, logging, and the processing of
   # different types of events for user queries via the command line app
   class Session
-    # Use MCP server by config_name, retrieved from Config.
-    def use_mcp_by(config_name : String)
-      return unless config = opts.config
-
-      mcp_server = config.mcp_servers.try &.[config_name]?
-      if mcp_server.nil?
-        renderer.warning_with("WARNING: No MCP server found under the name: #{config_name}.")
-        return
-      end
-
-      url = mcp_server.url
-      bearer_token_string = mcp_server.bearer_auth_token
-      auth_token = unless bearer_token_string.nil?
-        MCPC::AuthToken.new(label: "MCP auth token: #{url}", value: bearer_token_string)
-      end
-      transport = MCPC::TransportType.from?(mcp_server.transport) || MCPC::TransportType::AutoDetect
-
-      use_mcp_server(url, auth_token: auth_token, transport_type: transport)
-    end
-
     DEFAULT_SYSTEM_PROMPT = "You are a capable coding assistant with " \
                             "the ability to use tool calling to solve " \
                             "complicated multi-step tasks."
@@ -82,13 +62,13 @@ module Enkaidu
       if auto_load = config.session.try &.auto_load
         if mcp_servers = config.mcp_servers
           if (mcp_server_names = auto_load.mcp_servers) && mcp_server_names.present?
-            renderer.info_with("\nAuto-loading MCP servers: #{mcp_server_names.join(", ")}")
+            renderer.info_with("INFO: Auto-loading MCP servers: #{mcp_server_names.join(", ")}")
             auto_load_mcp_servers(mcp_servers, mcp_server_names)
           end
         end
 
         if (toolset_names = auto_load.toolsets) && toolset_names.present?
-          renderer.info_with("\nAuto-loading toolsets: #{toolset_names.join(", ")}")
+          renderer.info_with("INFO: Auto-loading toolsets: #{toolset_names.join(", ")}")
           auto_load_toolsets(toolset_names)
         end
       end
@@ -236,6 +216,26 @@ module Enkaidu
       end
     end
 
+    # Use MCP server by config_name, retrieved from Config.
+    def use_mcp_by(config_name : String)
+      return unless config = opts.config
+
+      mcp_server = config.mcp_servers.try &.[config_name]?
+      if mcp_server.nil?
+        renderer.warning_with("WARNING: No MCP server found in the config under the name: #{config_name}.")
+        return
+      end
+
+      url = mcp_server.url
+      bearer_token_string = mcp_server.bearer_auth_token
+      auth_token = unless bearer_token_string.nil?
+        MCPC::AuthToken.new(label: "MCP auth token: #{url}", value: bearer_token_string)
+      end
+      transport = MCPC::TransportType.from?(mcp_server.transport) || MCPC::TransportType::AutoDetect
+
+      use_mcp_server(url, auth_token: auth_token, transport_type: transport)
+    end
+
     def use_mcp_server(url : String, auth_token : MCPC::AuthToken? = nil, transport_type = MCPC::TransportType::AutoDetect)
       mcpc = MCPC::HttpConnection.new(url, tracing: opts.trace_mcp?,
         auth_token: auth_token, transport_type: transport_type)
@@ -259,13 +259,13 @@ module Enkaidu
       renderer.mcp_error(ex)
     end
 
-    def ask(query, render_query = false)
+    def ask(query, attach : LLM::Chat::Inclusions? = nil, render_query = false)
       recorder << "["
       ix = 0
       tools = [] of JSON::Any
       # ask and handle the initial query and its events
       renderer.user_query(query) if render_query
-      chat.ask query do |event|
+      chat.ask query, attach do |event|
         unless event["type"] == "done"
           recorder << "," if ix.positive?
           recorder << event.to_json

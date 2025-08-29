@@ -1,14 +1,11 @@
 require "http"
-require "json"
 
+require "./chat_message"
 require "./converters"
 require "../chat"
 require "../function_call"
 
 module LLM::OpenAI
-  alias MessageValue = String | JSON::Any | Array(JSON::Any)
-  alias Message = Hash(Symbol, MessageValue)
-
   private class Chat < LLM::Chat
     include Converters
 
@@ -33,12 +30,7 @@ module LLM::OpenAI
                JSON::Any.new(nil)
              end
       reply = tool.run(args)
-      Message{
-        :role         => "tool",
-        :tool_call_id => id,
-        :name         => tool.name,
-        :content      => reply,
-      }
+      Message::ToolCall.new tool_call_id: id, name: tool.name, content: reply
     end
 
     def call_tools_and_ask(tool_calls : Array(JSON::Any), & : LLM::ChatEvent ->)
@@ -64,11 +56,9 @@ module LLM::OpenAI
       {type: "error/unknown", content: tool_call}
     end
 
-    def ask(content : String, & : LLM::ChatEvent ->)
-      @messages << Message{
-        :role    => "user",
-        :content => content,
-      }
+    def ask(content : String, attach : Inclusions? = nil, & : LLM::ChatEvent ->)
+      @messages << Message::MultiContent.new(prompt: content, attach: attach)
+
       ask_post do |msg|
         yield msg
       end
@@ -123,25 +113,13 @@ module LLM::OpenAI
       })}
     end
 
-    private def message_key_to_sym(k : String)
-      case k
-      when "role"       then :role
-      when "content"    then :content
-      when "tool_calls" then :tool_calls
-      else                   nil
-      end
-    end
-
-    private def prepare_message_from(data)
-      msg = Message.new
+    private def prepare_message_from(data : JSON::Any)
       m = data.dig("choices", 0, "message").as_h
-      m.each do |k, v|
-        if v
-          sym = message_key_to_sym(k)
-          msg[sym] = v if sym
-        end
-      end
-      msg
+      # This seems wasteful to emit JSON string only to parse it back
+      # But to get the `message` out we need to parse the data,
+      # as long as I don't want to transform the JSON::Any tree into
+      # a `Message` ... this is good enough.
+      Message.from_json(m.to_json)
     end
 
     private def extract_tool_call_from_message(msg)
@@ -170,14 +148,6 @@ module LLM::OpenAI
       call = jsonify_function_call(recent_tool_call)
       tool_calls << call
       {type: "tool_call", content: call}
-    end
-
-    private def prepare_assisstant_message(content, tool_calls)
-      message = Message.new
-      message[:role] = "assistant"
-      message[:content] = content
-      message[:tool_calls] = tool_calls unless tool_calls.empty?
-      message
     end
 
     # ameba:disable Metrics/CyclomaticComplexity: It's too messy if I split this up more.
@@ -217,7 +187,7 @@ module LLM::OpenAI
           end
         end
       end
-      prepare_assisstant_message(content, tool_calls)
+      Message::Response.new(content: content, tool_calls: tool_calls)
     end
 
     private def jsonify_function_call(f : LLM::FunctionCall)
