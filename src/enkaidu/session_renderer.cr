@@ -9,6 +9,8 @@ module Enkaidu
 
     abstract def error_with(message, help = nil, markdown = false)
 
+    abstract def show_inclusions(indicators : Array(String))
+
     abstract def user_query(query)
 
     abstract def user_calling_tools

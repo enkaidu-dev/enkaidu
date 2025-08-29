@@ -56,7 +56,8 @@ module Enkaidu
 
       recorder << "["
       while !done?
-        reader.indicators = commander.query_indicators
+        puts
+        renderer.show_inclusions(commander.query_indicators)
         if q = reader.read_next
           case q = q.strip
           when .starts_with?("/")

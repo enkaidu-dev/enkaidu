@@ -28,6 +28,12 @@ module Enkaidu::CLI
       err_puts_text help, markdown
     end
 
+    def show_inclusions(indicators : Array(String))
+      if indicators.present?
+        puts "----[ #{indicators.join(" | ")} ]----".colorize.yellow
+      end
+    end
+
     def error_with(message, help = nil, markdown = false)
       STDERR.puts message.colorize(:red)
       return unless help
