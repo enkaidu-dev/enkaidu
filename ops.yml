@@ -43,6 +43,8 @@ actions:
     description: Clear build caches and prior builds
   lint:
     command: bin/ameba src/
+  test:
+    command: crystal spec -Dtest
   just-run-debug:
     alias: jrun
     description: Run the debug build; make sure to run `ops build` before.
