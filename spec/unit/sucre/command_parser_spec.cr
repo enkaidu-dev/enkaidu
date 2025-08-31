@@ -1,21 +1,8 @@
 require "../../spec_helper"
 
 Spectator.describe CommandParser do
-  let(command_parts) { ["first", "second", ["third", "value"], ["fourth", "'spaced out'"]] }
-  let(command) { join_parts(command_parts) }
+  let(command) { "first 'second' third=value fourth='spaced out'" }
   let(parser) { described_class.new(command) }
-
-  # Used to construct a command so we can verify command parser
-  # results
-  private def join_parts(parts)
-    (parts.map do |arg|
-      if arg.is_a? Array
-        arg.join('=')
-      else
-        arg
-      end
-    end).join(' ')
-  end
 
   describe "#arg_named?" do
     context "with named arg: " do
@@ -89,28 +76,40 @@ Spectator.describe CommandParser do
       end
     end
 
-    context "with types" do
-      subject { parser.expect?(String, String, third: String, fourth: String) }
-      it "succeeds" do
-        is_expected.to be_true
+    context "matching" do
+      context "exact types" do
+        subject { parser.expect?(String, String, third: String, fourth: String) }
+        it "succeeds" do
+          is_expected.to be_true
+        end
       end
-    end
 
-    context "with values" do
-      subject { parser.expect?(command_parts[0], command_parts[1],
-        third: command_parts[2].as(Array).last,
-        fourth: command_parts[3].as(Array).last) }
-      it "succeeds" do
-        is_expected.to be_true
+      context "union types" do
+        subject { parser.expect?(String?, String | Float32, third: String?, fourth: String) }
+        it "succeeds" do
+          is_expected.to be_true
+        end
       end
-    end
 
-    context "with value lists" do
-      subject { parser.expect?([command_parts[0]], [command_parts[1], "other"],
-        third: command_parts[2],
-        fourth: command_parts[3]) }
-      it "succeeds" do
-        is_expected.to be_true
+      context "with values" do
+        subject { parser.expect?("first", "second", third: "value", fourth: "'spaced out'") }
+        it "succeeds" do
+          is_expected.to be_true
+        end
+      end
+
+      context "with value lists" do
+        subject { parser.expect?(["first"], ["second", "other"], third: ["value", "other"], fourth: ["'spaced out'"]) }
+        it "succeeds" do
+          is_expected.to be_true
+        end
+      end
+
+      context "with regex" do
+        subject { parser.expect?(/fir\w+/, /\w+/, third: "value", fourth: "'spaced out'") }
+        it "succeeds" do
+          is_expected.to be_true
+        end
       end
     end
 
