@@ -68,8 +68,8 @@ class CommandParser
   end
 
   # Use this to see if the command matches expected arguments and parameters, where
-  # values can be `String` (exact match), array of `String` (match one), or `Class` expressions (type match), and
-  # also if extra args were found.
+  # values can be `String` (exact match), array of `String` (match one), `Class` expressions (type match), or
+  # any other "subsumption operator" matches (i.e. `===`) include Regex expression.
   # Example: `cmd.expect "/cmd", String, type: String?
   def expect?(*args, **params)
     # If we have junk no point in checking anything else

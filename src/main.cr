@@ -76,4 +76,6 @@ module Enkaidu
   end
 end
 
-Enkaidu::Main.new.run
+{% unless flag?(:test) %}
+  Enkaidu::Main.new.run
+{% end %}
