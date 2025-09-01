@@ -67,9 +67,9 @@ module Enkaidu
           end
         end
 
-        if (toolset_names = auto_load.toolsets) && toolset_names.present?
-          renderer.info_with("INFO: Auto-loading toolsets: #{toolset_names.join(", ")}")
-          auto_load_toolsets(toolset_names)
+        if (toolsets = auto_load.toolsets) && toolsets.present?
+          renderer.info_with("INFO: Auto-loading toolsets: #{toolsets.join(", ")}")
+          auto_load_toolsets(toolsets)
         end
       end
     end
@@ -82,11 +82,13 @@ module Enkaidu
       end
     end
 
-    private def auto_load_toolsets(toolset_names)
-      toolset_names.each do |toolset_name|
-        toolset_name = toolset_name.strip
-
-        load_toolset_by(toolset_name)
+    private def auto_load_toolsets(toolsets)
+      toolsets.each do |toolset|
+        if toolset.is_a? String
+          load_toolset_by(toolset.strip)
+        elsif toolset.is_a? NamedTuple
+          load_toolset_by(toolset[:name].strip, toolset[:select])
+        end
       end
     end
 

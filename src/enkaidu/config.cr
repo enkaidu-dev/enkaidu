@@ -38,7 +38,7 @@ module Enkaidu
       # Configuration for auto-loading settings within a Session.
       class AutoLoad < ConfigSerializable
         getter mcp_servers : Array(String)?
-        getter toolsets : Array(String)?
+        getter toolsets : Array(String | NamedTuple(name: String, select: Array(String)))?
       end
 
       getter provider_type : String?
