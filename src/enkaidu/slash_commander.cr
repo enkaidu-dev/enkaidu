@@ -27,6 +27,9 @@ module Enkaidu
       - List all built-in toolsets that can be activated
     - `load <TOOLSET_NAME>`
       - Load all the tools from the named toolset
+    - `load <TOOLSET_NAME> select=LIST_TOOL_NAMES
+      - Load the selected tools from the named toolset
+      - E.g. `/toolset load FileManagement select=[list_files rename_file]`
     - `unload <TOOLSET_NAME>`
       - Unload all the tools from the named toolset
     HELP1
@@ -110,7 +113,7 @@ module Enkaidu
 
     private def handle_include_command(cmd)
       ok = nil
-      if filepath = cmd.arg_at?(2)
+      if filepath = cmd.arg_at?(2).try(&.as(String))
         basename = Path.new(filepath).basename
         if cmd.expect? C_INCLUDE, "image_file", String
           inclusions.image_data load_image_file_as_data_url(filepath), basename
@@ -135,9 +138,9 @@ module Enkaidu
         first_arg = cmd.arg_at?(1)
         raise ArgumentError.new("No MCP server URL or name given.") if first_arg.nil?
 
-        uri = URI.parse(first_arg)
+        uri = URI.parse(first_arg.as(String))
         if uri.scheme.nil?
-          handle_use_mcp_with_name(first_arg)
+          handle_use_mcp_with_name(first_arg.as(String))
         else
           handle_use_mcp_with_url(cmd)
         end
@@ -159,7 +162,7 @@ module Enkaidu
       type = MCPC::TransportType::AutoDetect
 
       raise ArgumentError.new("ERROR: Specify URL to the MCP server") if (url = cmd.arg_at?(1)).nil?
-      if (auth_env = cmd.arg_named?("auth_env")) && (auth_key = ENV[auth_env]?).nil?
+      if (auth_env = cmd.arg_named?("auth_env").try(&.as(String))) && (auth_key = ENV[auth_env]?).nil?
         raise ArgumentError.new("ERROR: Unable to find environment variable: #{auth_env}.")
       end
 
@@ -189,9 +192,10 @@ module Enkaidu
     private def handle_toolset_command(cmd)
       if cmd.expect?(C_TOOLSET, "ls")
         session.list_all_toolsets
-      elsif cmd.expect?(C_TOOLSET, "load", String)
+      elsif cmd.expect?(C_TOOLSET, "load", String, select: Array(String)?)
         if name = cmd.arg_at?(2)
-          session.load_toolset_by(name)
+          selection = cmd.arg_named?("select").try(&.as(Array(String)))
+          session.load_toolset_by(name.as(String), select_tools: selection)
         end
       elsif cmd.expect?(C_TOOLSET, "unload", String)
         if name = cmd.arg_at?(2)

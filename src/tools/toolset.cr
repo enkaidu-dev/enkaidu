@@ -20,12 +20,17 @@ module Tools
     protected def hold(fun_class)
       name = fun_class.function_name
       @tools[name] = fun_class unless @tools.has_key?(name)
+      @tool_names = nil
     end
 
     def each_tool_info(&)
       @tools.each do |name, fun_class|
         yield name, fun_class.description
       end
+    end
+
+    def tool_names
+      @tool_names ||= @tools.keys
     end
 
     # Call this method to instantiate the tools held within this `ToolSet`, optionally
