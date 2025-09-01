@@ -109,7 +109,7 @@ module LLM::OpenAI
   class Message::Response < Message
     include JSON::Serializable
 
-    property content : String
+    property content : String?
     property tool_calls : Array(JSON::Any)?
 
     def initialize(@content, @tool_calls = nil)
