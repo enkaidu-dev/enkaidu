@@ -216,7 +216,7 @@ The configuration file is structured in several key sections. Here’s an overvi
   - **system_prompt** _(optional)_: Custom system prompt for the session.
   - **auto_load** _(optional)_: Contains settings for automatically loading specific resources.
     - **mcp_servers** _(optional)_: List of MCP servers to automatically connect to on startup.
-    - **toolsets** _(optional)_: List of toolsets to automatically load.
+    - **toolsets** _(optional)_: List of toolsets to automatically load, where each toolset can be specified by name to load all tools, or as a map of `name:` and `select:` to specify the tools to load from the named toolset.
 
 #### LLM Providers
 - **llms**: Defines the configuration for different LLM providers as a named map of LLM definitions where _each_ can have the following properties.
@@ -244,6 +244,9 @@ session:
   auto_load:
     toolsets:
       - DateAndTime
+      - name: FileManagement
+        select: 
+          - list_files
 llms:
   my_openai:
     provider: openai
@@ -257,10 +260,6 @@ mcp_servers:
     url: https://gitmcp.io/nickthecook/ops
     transport: http
 ```
-
-For more detailed instructions on configuring Enkaidu, please refer to the accompanying documentation or the JSON schema for more insights.
-
-
 
 ## Contributions
 
