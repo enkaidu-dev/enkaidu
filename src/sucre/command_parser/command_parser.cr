@@ -3,33 +3,53 @@
 # - Command can start with non-named arguments (positional) separated by spaces
 # - First named argument means no more positional args
 # - Names args are always K=V without spaces
-# - Arguments can be quotes within '' or ""
+# - Arguments can be quoted within '' or ""
+# - Arguments can be arrays of values, within square brackets and separated by spaces.
 # - No interpolation of values (for now?)
 class CommandParser
-  # Azure gpt-4o helped me with this. Wow.
   # Helps extract terms separated by spaces while preserving quotes
-  private TERMRX = /(?:[^\s"']+|"[^"]*"|'[^']*')+/
+  private VALUE_TERM_RX = /(?:[^\s"']+|"[^"]*"|'[^']*')+/
+
+  # Additionally detects variable assignments where VAR=VALUE where VALUE can be quoted
+  # Additional detect arrays of values grouped by square brackets
+  private TERM_PARSE_RX = /(?:[a-zA-Z_][0-9a-zA-Z_]*=(?:[^\s"'\[]+|"[^"]*"|'[^']*'|\[(?:[^\[\]"']|"[^"]*"|'[^']*')*\])|\[(?:[^\[\]"']|"[^"]*"|'[^']*')*\]|"[^"]*"|'[^']*'|[^\s"']+)+/
+
+  private VARNAME_RX = /^[_a-zA-Z][_a-zA-Z0-9]*$/
 
   getter input : String
 
-  @pos_args = [] of String
-  @named_args = {} of String => String
-  @bad_args = [] of String
+  @pos_args = [] of String | Array(String)
+  @named_args = {} of String => String | Array(String)
+  @bad_args = [] of String | Array(String)
 
   # Portions of command we couldn't parse, or nil if none
   getter missed : String?
 
+  # Value can be string, quoted string, array of values
+  private def parse_value(str)
+    if str.match(/\[[^\[]*\]/)
+      str = str.lchop.rchop.strip
+      arr = [] of String
+      str.scan(VALUE_TERM_RX) do |match|
+        arr << disenquote(match.to_s)
+      end
+      arr
+    else
+      disenquote(str)
+    end
+  end
+
   def initialize(query)
     @input = query.clone
     # Split by space, preserve quotes
-    remainder = query.gsub(TERMRX) do |term|
+    remainder = query.gsub(TERM_PARSE_RX) do |term|
       parts = term.split('=', 2)
-      if parts.size > 1 && parts.first.match(/^[_a-zA-Z][_a-zA-Z0-9]+$/)
-        @named_args[parts.first] = parts.last
+      if parts.size > 1 && parts.first.match(VARNAME_RX)
+        @named_args[parts.first] = parse_value(parts.last)
       else
         # otherwise this is a positional, either OK or bad
         where = @named_args.empty? ? @pos_args : @bad_args
-        where << disenquote(term)
+        where << parse_value(term)
       end
       "" # replace with blanks
     end
@@ -97,8 +117,16 @@ class CommandParser
   # Internal, to test if `arg_value` satisfies `value_spec`
   private def expect_test(value_spec, arg_value)
     case value_spec
-    when String then value_spec == arg_value         # match exact
-    when Array  then value_spec.includes?(arg_value) # match one of
+    when String then value_spec == arg_value # match exact
+    when Array(String)
+      case arg_value
+      when String        then value_spec.includes?(arg_value) # match one of
+      when Array(String) then value_spec == arg_value
+      end
+    when Array(Array(String))
+      case arg_value
+      when Array(String) then value_spec.includes?(arg_value) # match one of
+      end
     else
       value_spec === arg_value # match type
     end
