@@ -110,10 +110,12 @@ module LLM::OpenAI
     include JSON::Serializable
 
     property content : String?
+
+    @[JSON::Field(ignore_serialize: ((toolcalls = @tool_calls).nil? || toolcalls.empty?))]
     property tool_calls : Array(JSON::Any)?
 
     def initialize(@content, @tool_calls = nil)
-      @role = "assisstant"
+      @role = "assistant"
     end
   end
 end
