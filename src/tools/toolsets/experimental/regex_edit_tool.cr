@@ -2,13 +2,14 @@ require "json"
 require "../../built_in_function"
 require "../../file_helper"
 
-module Tools::TextEditing
+module Tools::Experimental
   # The `RegexTextEditTool` class defines a tool for finding patterns using regex
   # in text-based files and replacing them with new text.
   class RegexTextEditTool < BuiltInFunction
     name "regex_text_edit_tool"
 
-    description "Finds patterns using a regex in a text-based file and replaces them with new text."
+    description "Finds patterns using a regex in a text-based file and replaces them with new text. " +
+                "Ensures the file is within the current directory and is a text file."
 
     param "file_path", type: LLM::ParamType::Str,
       description: "The relative path to the file where you want to perform the regex replacement.", required: true

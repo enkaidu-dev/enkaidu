@@ -1,6 +1,6 @@
 require "../spec_helper"
 
-KNOWN_TOOLSETS = ["FileManagement", "TextEditing", "DateAndTime", "ImageEditing", "ShellAccess"]
+KNOWN_TOOLSETS = ["FileManagement", "TextEditing", "DateAndTime", "ImageEditing", "ShellAccess", "Experimental"]
 
 Spectator.describe Tools do
   describe "has known toolset" do
