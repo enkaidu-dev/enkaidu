@@ -1,7 +1,7 @@
 require "http/server"
 require "json"
 
-class Server
+class WebServer
   private enum Tracker
     StartHandler
     EndHandler
@@ -57,6 +57,10 @@ class Server
     routers["GET #{path}"] = handler
   end
 
+  def get_unknown(&handler : HTTP::Request, HTTP::Server::Response -> Nil)
+    routers["GET *"] = handler
+  end
+
   def post(path, &handler : HTTP::Request, HTTP::Server::Response -> Nil)
     routers["POST #{path}"] = handler
   end
@@ -64,22 +68,22 @@ class Server
   private def handle(context)
     work_tracker.send(Tracker::StartHandler)
     route = "#{context.request.method} #{context.request.path}"
-    if handler = routers[route]?
-      begin
-        if pre_handler = before_handler
-          pre_handler.call(context.request, context.response)
-        end
-        handler.call(context.request, context.response)
-      rescue err
-        STDERR.puts route
-        STDERR.puts err.inspect_with_backtrace
-        context.response.content_type = "application/json"
-        context.response.status_code = 500
-        context.response.print <<-ERROR
+    if handler = (routers[route]? || routers["#{context.request.method} *"]?)
+      if pre_handler = before_handler
+        pre_handler.call(context.request, context.response)
+      end
+      handler.call(context.request, context.response)
+    else
+      raise ArgumentError.new("Unknown route: #{route}")
+    end
+  rescue err
+    STDERR.puts "ERROR: --------"
+    STDERR.puts err.inspect_with_backtrace
+    context.response.content_type = "application/json"
+    context.response.status_code = 500
+    context.response.print <<-ERROR
         { "type" : "error", "message" : "#{err.to_s}" }
         ERROR
-      end
-    end
   ensure
     work_tracker.send(Tracker::EndHandler)
   end
