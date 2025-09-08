@@ -3,6 +3,8 @@
   import Promptbar from "./lib/Promptbar.svelte";
   import Session from "./lib/Session.svelte";
   import Sidebar from "./lib/Sidebar.svelte";
+
+  let session: Session;
 </script>
 
 <main>
@@ -10,8 +12,15 @@
     <input id="my-drawer" type="checkbox" class="drawer-toggle" />
     <div class="drawer-content">
       <Menubar />
-      <Session />
-      <Promptbar />
+      <Session bind:this={session} />
+      <Promptbar
+        onask={(query: string) => {
+          session.add_event({
+            type: "query",
+            content: query,
+          });
+        }}
+      />
     </div>
     <Sidebar />
   </div>
