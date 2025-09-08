@@ -13,6 +13,8 @@ development_dependencies:
     gitlab: arctic-fox/spectator
 
 dependencies:
+  # baked_file_system:
+  #   github: schovi/baked_file_system
   json-schema:
     github: spider-gazelle/json-schema
   markterm:
@@ -23,3 +25,5 @@ dependencies:
 targets:
   enkaidu:
     main: src/main.cr
+  enkaidu-server:
+    main: src/server.cr
