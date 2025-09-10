@@ -109,7 +109,7 @@ module MCPC
           raise ResponseError.new("Unexpected transport response; see .details.", reply)
         end
       end
-      tools
+      tools # don't (can't, mustn't) rely on the #post return value
     end
 
     # Calls a tool and returns the content from the reply on success
@@ -127,7 +127,7 @@ module MCPC
           raise ResponseError.new("Unexpected transport response; see .details.", reply)
         end
       end
-      content
+      content # don't (can't, mustn't) rely on the #post return value
     end
 
     # Returns a JSON representation of the state of this connection
