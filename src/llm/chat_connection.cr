@@ -17,6 +17,7 @@ module LLM
       @client.post(path, headers,
         body: body) do |resp|
         yield resp
+        resp
       end
     end
 

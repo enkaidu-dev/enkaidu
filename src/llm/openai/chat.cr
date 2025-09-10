@@ -33,7 +33,7 @@ module LLM::OpenAI
       Message::ToolCall.new tool_call_id: id, name: tool.name, content: reply
     end
 
-    def call_tools_and_ask(tool_calls : Array(JSON::Any), & : LLM::ChatEvent ->)
+    def call_tools_and_ask(tool_calls : Array(JSON::Any), & : LLM::ChatEvent ->) : Nil
       calls = 0
       tool_calls.each do |call|
         name = call.dig("function", "name").as_s
@@ -56,7 +56,7 @@ module LLM::OpenAI
       {type: "error/unknown", content: tool_call}
     end
 
-    def ask(content : String, attach : Inclusions? = nil, & : LLM::ChatEvent ->)
+    def ask(content : String, attach : Inclusions? = nil, & : LLM::ChatEvent ->) : Nil
       @messages << Message::MultiContent.new(prompt: content, attach: attach)
 
       ask_post do |msg|
@@ -64,7 +64,7 @@ module LLM::OpenAI
       end
     end
 
-    private def ask_post(& : LLM::ChatEvent ->)
+    private def ask_post(& : LLM::ChatEvent ->) : Nil
       body = to_body
 
       yield({type: "debug/request", content: JSON.parse(body)}) if debug?
@@ -92,7 +92,7 @@ module LLM::OpenAI
       @messages << aggr_msg
     end
 
-    private def handle_app_json(resp, &)
+    private def handle_app_json(resp, &) : Nil
       # Read the entire body and parse as JSON to determine what to do
       data = JSON.parse(resp.body_io.gets_to_end)
       if data["error"]?
@@ -137,7 +137,7 @@ module LLM::OpenAI
       )
     end
 
-    private def merge_with_recent_tool_call(msg, recent_tool_call)
+    private def merge_with_recent_tool_call(msg, recent_tool_call) : Nil
       tool_call = msg["content"]
       return unless args = tool_call.dig?("function", "arguments")
       recent_tool_call.append_args_json(args.as_s)
@@ -197,7 +197,7 @@ module LLM::OpenAI
       end)
     end
 
-    private def process_data(data : JSON::Any, from_stream = false, &)
+    private def process_data(data : JSON::Any, from_stream = false, &) : Nil
       yield({type: "debug/data", content: data}) if debug?
 
       selector = from_stream ? "delta" : "message"

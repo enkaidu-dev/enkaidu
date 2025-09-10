@@ -103,6 +103,6 @@ module LLM
       @tools_by_name.each_value
     end
 
-    abstract def ask(content : String, attach : Inclusions? = nil, & : ChatEvent ->)
+    abstract def ask(content : String, attach : Inclusions? = nil, & : ChatEvent ->) : Nil
   end
 end

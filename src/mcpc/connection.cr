@@ -98,34 +98,36 @@ module MCPC
     # Returns an array of tools, if any
     def list_tools : JSON::Any?
       STDERR.puts "---------- Connection#list_tools" if tracing?
+      tools = nil
       transport.post(session.body_tools_list) do |reply|
         case reply
         when JSON::Any
-          if tools = reply.dig?("result", "tools")
-            return tools
+          unless tools = reply.dig?("result", "tools")
+            raise ResultError.new("Result has no 'tools'; see .data.", reply)
           end
-          raise ResultError.new("Result has no 'tools'; see .data.", reply)
         else
           raise ResponseError.new("Unexpected transport response; see .details.", reply)
         end
       end
+      tools
     end
 
     # Calls a tool and returns the content from the reply on success
     def call_tool(name : String,
                   args : Hash(String, String | Number | Bool | JSON::Any)) : JSON::Any?
       STDERR.puts "---------- Connection#call_tool" if tracing?
+      content = nil
       transport.post(session.body_tools_call(name, args)) do |reply|
         case reply
         when JSON::Any
-          if content = reply.dig?("result", "content")
-            return content
+          unless content = reply.dig?("result", "content")
+            raise ResultError.new("Result has no 'content'; see .data.", reply)
           end
-          raise ResultError.new("Result has no 'content'; see .data.", reply)
         else
           raise ResponseError.new("Unexpected transport response; see .details.", reply)
         end
       end
+      content
     end
 
     # Returns a JSON representation of the state of this connection

@@ -42,6 +42,7 @@ module MCPC
           end
           yield message
         end
+        resp
       end
     end
 
