@@ -163,7 +163,8 @@ module MCPC
 
     # Initializes the session and collects properties
     private def get_ready
-      init_ok = false
+      resp_error_with = nil
+
       STDERR.puts "---------- Connection#get_ready" if tracing?
       transport.post(session.body_initialize) do |reply|
         case reply
@@ -182,13 +183,13 @@ module MCPC
             @server_name = server["name"].as_s
             @server_version = server["version"].as_s
           end
-          init_ok = true
         else
-          raise ResponseError.new("Unexpected transport response; see .details.", reply)
+          resp_error_with = reply
         end
       end
+      # raise outside the do block
+      raise ResponseError.new("Unexpected transport response; see .details.", resp_error_with) if resp_error_with
       # notify init success
-      return unless init_ok
       transport.notify(session.body_notify_initialized) do |_|
       end
     end
