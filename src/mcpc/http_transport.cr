@@ -42,6 +42,7 @@ module MCPC
           end
           yield message
         end
+        resp # Always return the response at end of streaming handler block
       end
     end
 

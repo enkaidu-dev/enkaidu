@@ -3,6 +3,8 @@ require "option_parser"
 require "../session_options"
 require "../config"
 
+require "./trace_http"
+
 module Enkaidu::CLI
   # This class handles the options for the command-line interface.
   class Options < SessionOptions
@@ -13,6 +15,7 @@ module Enkaidu::CLI
     getter? debug = false
     getter? stream = false
     getter? trace_mcp = false
+    getter? trace_http = true
     getter recorder_file : IO? = nil
 
     getter config_for_llm : Config::LLM?
@@ -109,6 +112,13 @@ module Enkaidu::CLI
         "Enable transport traces for MCP networking") do
         @trace_mcp = true
         add(:trace_mcp, true)
+      end
+
+      parser.on("--trace-http",
+        "Enable transport traces for every HTTP request made by Enkaidu") do
+        @trace_http = true
+        HTTP::Client.trace_http = true
+        add(:trace_http, true)
       end
 
       parser.separator("\nINFORMATION")
