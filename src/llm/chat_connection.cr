@@ -17,7 +17,7 @@ module LLM
       @client.post(path, headers,
         body: body) do |resp|
         yield resp
-        resp
+        resp # Always return the response at end of streaming handler block
       end
     end
 
