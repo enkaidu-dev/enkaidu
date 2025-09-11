@@ -158,6 +158,8 @@ module MCPC
         if data.index("\"ping\"") || data.index("\"notification/")
           return data # skip
         end
+      elsif data = message["retry"]?
+        return data
       end
       nil
     end
