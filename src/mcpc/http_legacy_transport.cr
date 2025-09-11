@@ -70,14 +70,18 @@ module MCPC
     end
 
     private def setup_receiver_response
+      result = nil
       @httpc_recv.get(uri.path, prepare_get_request_headers) do |response|
         trace_response(response, label: trace_label("#setup_receiver_response")) if tracing?
 
         if content_type = response.content_type
           status_code = response.status_code
-          return handle_response_by_type_and_status(content_type, status_code, response)
+          result = handle_response_by_type_and_status(content_type, status_code, response)
         end
+        response # Always return the response at end of streaming handler block
       end
+
+      return result
     rescue ex
       log_error(ex) if tracing?
     ensure
@@ -112,11 +116,12 @@ module MCPC
 
     OK_STATUS = [200, 202]
 
-    # With the legacy transport tool calling posts seem to fail and require
-    # a new sending client instance.
-    private def retryable_post(body, & : JSON::Any | ErrorDetails ->)
+    # Send a request. Yields a `JSON::Any` for valid data: in the response, or `ErrorDetails` for unknown
+    # response. Listens for exception and retries the post with a new
+    # HTTP client exactly once.
+    def post(body, & : JSON::Any | ErrorDetails ->)
       @httpc_send.post(session_path, prepare_request_headers, body: body) do |resp|
-        trace_response(resp, label: trace_label("#retryable_post"), req_body: body) if tracing?
+        trace_response(resp, label: trace_label("#post"), req_body: body) if tracing?
         if OK_STATUS.includes? resp.status_code
           handle_sse_response(@httpc_recv_resp, legacy_sse: true, skip_to_end: false) do |message|
             if message.is_a? Transport::ErrorDetails
@@ -126,18 +131,7 @@ module MCPC
           end
         end
         resp.body_io.skip_to_end
-      end
-    end
-
-    # Send a request. Yields a `JSON::Any` for valid data: in the response, or `ErrorDetails` for unknown
-    # response. Listens for exception and retries the post with a new
-    # HTTP client exactly once.
-    def post(body, & : JSON::Any | ErrorDetails ->)
-      begin
-        retryable_post(body) { |result| yield result }
-      rescue
-        reset_sender
-        retryable_post(body) { |result| yield result }
+        resp
       end
     end
 
@@ -156,6 +150,7 @@ module MCPC
           }
         end
         resp.body_io.skip_to_end
+        resp
       end
     end
   end
