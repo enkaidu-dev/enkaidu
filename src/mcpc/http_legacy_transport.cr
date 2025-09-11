@@ -81,7 +81,7 @@ module MCPC
         response # Always return the response at end of streaming handler block
       end
 
-      return result
+      result
     rescue ex
       log_error(ex) if tracing?
     ensure
