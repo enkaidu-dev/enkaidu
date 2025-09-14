@@ -19,6 +19,7 @@ module Enkaidu
     C_TOOL    = "/tool"
     C_TOOLSET = "/toolset"
     C_INCLUDE = "/include"
+    C_SESSION = "/session"
     C_HELP    = "/help"
 
     H_C_TOOLSET = <<-HELP1
@@ -72,6 +73,13 @@ module Enkaidu
         authentication token if needed.
     HELP2
 
+    H_C_SESSION = <<-HELP1
+    `#{C_SESSION} [<sub-command>]`
+    - `usage`
+      - Show the token usage / size for the current session based OpenSSL
+        most recent response from LLM
+    HELP1
+
     H_C_HELP = <<-HELP3
     `#{C_HELP}`
     - Shows this information
@@ -109,6 +117,21 @@ module Enkaidu
       @inclusions = nil
       @query_indicators.clear
       hold
+    end
+
+    private def handle_session_command(cmd)
+      if cmd.expect?(C_SESSION, "usage")
+        if usage = session.usage
+          renderer.info_with("Current session usage: #{usage.total_tokens} tokens (prompt: #{usage.prompt_tokens}, completion: #{usage.completion_tokens}})")
+        else
+          renderer.info_with("No usage data for curent session at this time.")
+        end
+      else
+        renderer.warning_with("ERROR: Unexpected command / parameters: '#{cmd.input}'",
+          help: H_C_SESSION, markdown: true)
+      end
+    rescue e
+      renderer.warning_with("ERROR: #{e.message}", help: H_C_INCLUDE, markdown: true)
     end
 
     private def handle_include_command(cmd)
@@ -224,6 +247,8 @@ module Enkaidu
         handle_use_mcp_command(cmd)
       when C_INCLUDE
         handle_include_command(cmd)
+      when C_SESSION
+        handle_session_command(cmd)
       else
         renderer.warning_with("ERROR: Unknown command: #{q}")
       end

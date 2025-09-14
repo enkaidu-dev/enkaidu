@@ -43,6 +43,10 @@ module Enkaidu
       @renderer.streaming = chat.streaming?
     end
 
+    def usage
+      chat.usage
+    end
+
     private def setup_chat
       connection.new_chat do
         unless (m = opts.model_name).nil?
