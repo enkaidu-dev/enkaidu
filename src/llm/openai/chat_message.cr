@@ -105,6 +105,15 @@ module LLM::OpenAI
     end
   end
 
+  class Usage
+    include JSON::Serializable
+    include JSON::Serializable::Unmapped
+
+    getter prompt_tokens = 0
+    getter completion_tokens = 0
+    getter total_tokens = 0
+  end
+
   # Represents a response message from the LLM
   class Message::Response < Message
     include JSON::Serializable
@@ -113,6 +122,11 @@ module LLM::OpenAI
 
     @[JSON::Field(ignore_serialize: ((toolcalls = @tool_calls).nil? || toolcalls.empty?))]
     property tool_calls : Array(JSON::Any)?
+
+    # Sidecar to response message so we can keep the usage together with it.
+    # Not serialized.
+    @[JSON::Field(ignore: true)]
+    property usage : Usage? = nil
 
     def initialize(@content, @tool_calls = nil)
       @role = "assistant"

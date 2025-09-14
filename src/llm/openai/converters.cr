@@ -47,6 +47,14 @@ module LLM::OpenAI
       json.object do
         json.field "model", model if model
         json.field "stream", stream
+        if stream
+          # Ask for usage when streaming
+          json.field "stream_options" do
+            json.object do
+              json.field "include_usage", true
+            end
+          end
+        end
         json.field "messages" do
           json.array do
             if sm = system_message
