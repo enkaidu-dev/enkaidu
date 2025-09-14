@@ -11,15 +11,26 @@ module LLM::OpenAI
 
     @conn : ChatConnection
 
+    # Usage report in most recent response from LLM.
+    getter usage : Usage? = nil
+
     def initialize(@conn)
       super()
       @messages = [] of Message
+      @usage = nil
       @model = @conn.model
     end
 
     def with_model(model : String)
       super
       @conn.model = model
+    end
+
+    private def append_message(msg)
+      @messages << msg
+      if msg.is_a? Message::Response
+        @usage = msg.usage
+      end
     end
 
     private def call_tool(tool : LLM::Function, tool_call : JSON::Any)
@@ -38,7 +49,7 @@ module LLM::OpenAI
       tool_calls.each do |call|
         name = call.dig("function", "name").as_s
         if tool = find_tool? name
-          @messages << call_tool tool, call
+          append_message call_tool(tool, call)
           calls += 1
         else
           yield unknown_tool_call(call)
@@ -57,7 +68,7 @@ module LLM::OpenAI
     end
 
     def ask(content : String, attach : Inclusions? = nil, & : LLM::ChatEvent ->) : Nil
-      @messages << Message::MultiContent.new(prompt: content, attach: attach)
+      append_message Message::MultiContent.new(prompt: content, attach: attach)
 
       ask_post do |msg|
         yield msg
@@ -89,7 +100,7 @@ module LLM::OpenAI
         yield msg
       end
       STDERR.puts "+++ #{aggr_msg.to_json}" if TRACE
-      @messages << aggr_msg
+      append_message aggr_msg
     end
 
     private def handle_app_json(resp, &) : Nil
@@ -102,7 +113,7 @@ module LLM::OpenAI
         process_data(data) do |msg|
           yield msg
         end
-        @messages << prepare_message_from(data)
+        append_message prepare_message_from(data)
       end
     end
 
@@ -119,7 +130,13 @@ module LLM::OpenAI
       # But to get the `message` out we need to parse the data,
       # as long as I don't want to transform the JSON::Any tree into
       # a `Message` ... this is good enough.
-      Message.from_json(m.to_json)
+      msg = Message.from_json(m.to_json)
+      if msg.is_a? Message::Response
+        if usg = data["usage"]?
+          msg.usage = Usage.from_json(usg.to_json)
+        end
+      end
+      msg
     end
 
     private def extract_tool_call_from_message(msg)
@@ -153,6 +170,7 @@ module LLM::OpenAI
     # ameba:disable Metrics/CyclomaticComplexity: It's too messy if I split this up more.
     private def prepare_message_from_streamed_data(stream_io, &)
       tool_calls = [] of JSON::Any
+      usage = nil
       content = String.build do |text_io|
         recent_tool_call = nil
         stream_io.each_line do |line|
@@ -180,6 +198,8 @@ module LLM::OpenAI
                   yield wrap_up_tool_call(recent_tool_call, tool_calls)
                   recent_tool_call = nil
                 end
+              when "usage"
+                usage = Usage.from_json(msg["content"].to_json)
               else
                 yield msg
               end
@@ -187,7 +207,10 @@ module LLM::OpenAI
           end
         end
       end
-      Message::Response.new(content: content, tool_calls: tool_calls)
+
+      msg = Message::Response.new(content: content, tool_calls: tool_calls)
+      msg.usage = usage if usage
+      msg
     end
 
     private def jsonify_function_call(f : LLM::FunctionCall)
@@ -197,6 +220,23 @@ module LLM::OpenAI
       end)
     end
 
+    private def process_content(content, &) : Nil
+      if content && content.raw && content.raw != "" # in case property exists with null value
+        yield({type: "text", content: content})
+      end
+    end
+
+    private def process_tool_calls(tool_calls, &) : Nil
+      tool_calls.as_a.each do |call|
+        if call.dig?("function", "name") # in case function block is a dud
+          yield({type: "tool_call", content: call})
+        else
+          # chunks to merge with last tool_call with name
+          yield({type: "tool_call_merge", content: call})
+        end
+      end
+    end
+
     private def process_data(data : JSON::Any, from_stream = false, &) : Nil
       yield({type: "debug/data", content: data}) if debug?
 
@@ -204,20 +244,16 @@ module LLM::OpenAI
 
       # check for text content
       content = data.dig?("choices", 0, selector, "content")
-      if content && content.raw && content.raw != "" # in case property exists with null value
-        yield({type: "text", content: content})
-      end
+      process_content(content) { |msg| yield msg }
 
       # check for tool calling
       if tool_calls = data.dig?("choices", 0, selector, "tool_calls")
-        tool_calls.as_a.each do |call|
-          if call.dig?("function", "name") # in case function block is a dud
-            yield({type: "tool_call", content: call})
-          else
-            # chunks to merge with last tool_call with name
-            yield({type: "tool_call_merge", content: call})
-          end
-        end
+        process_tool_calls(tool_calls) { |msg| yield msg }
+      end
+
+      # check for usage chunk
+      if (usage = data["usage"]?) && usage.raw
+        yield({type: "usage", content: usage})
       end
 
       # check if we have a finish reason
