@@ -15,7 +15,7 @@
 </script>
 
 <div
-  class="w-full bg-base-200 px-10 py-5 fixed bottom-0 border-t-2 border-base-content"
+  class="w-full bg-base-200 px-10 py-5 bottom-0 border-t-2 border-base-content"
 >
   <form>
     <fieldset class="fieldset">
