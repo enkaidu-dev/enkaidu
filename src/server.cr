@@ -3,6 +3,8 @@ require "json"
 require "baked_file_system"
 require "mime"
 
+require "./acpa"
+
 require "./enkaidu/*"
 require "./enkaidu/cli/*"
 require "./enkaidu/wui/*"
@@ -57,6 +59,11 @@ module Enkaidu
       private getter session : Session
       private getter commander : SlashCommander
 
+      alias SessionRequests = Symbol | ACPA::Request::PromptParams
+
+      private getter session_work = Channel(SessionRequests).new
+      private getter session_done = Channel(Bool).new
+
       delegate recorder, to: @session
 
       WELCOME_MSG = "Welcome to Enkaidu (Server Mode)"
@@ -84,30 +91,51 @@ module Enkaidu
         @session = Session.new(queue, opts: opts)
         @commander = SlashCommander.new(session)
 
+        session.auto_load
         prepare_web_server
+      end
+
+      private def gather_queue_events
+        list = [] of Render::BaseEvent
+        while ev = queue.event?
+          list << ev
+        end
+        list
       end
 
       private def prepare_web_server
         web_server.before_all do |_, resp|
+          STDERR.puts "~~~ #before_all"
           resp.content_type = "application/json"
         end
 
         web_server.get "/api/quit" do |_, resp|
+          session_work.send(:quit)
           resp.print "{ }"
           web_server.close
         end
 
-        web_server.get "/api/start" do |_, resp|
-          # resp.print API::Message.new(API::MessageType::Info, WELCOME_MSG,
-          #   details: WELCOME, markdown: true).to_json
-          queue.info_with(WELCOME_MSG, WELCOME, markdown: true)
-          session.auto_load
+        # web_server.get "/api/start" do |_, resp|
+        #   # resp.print API::Message.new(API::MessageType::Info, WELCOME_MSG,
+        #   #   details: WELCOME, markdown: true).to_json
+        #   queue.info_with(WELCOME_MSG, WELCOME, markdown: true)
+        #   session.auto_load
 
-          list = [] of Render::BaseEvent
-          while ev = queue.event?
-            list << ev
+        #   resp.print gather_queue_events.to_json
+        # end
+
+        web_server.post "/api/prompt" do |req, resp|
+          if body_io = req.body
+            prompt_req = ACPA::Request::PromptParams.from_json(body_io.gets_to_end)
+            STDERR.puts "~~~ req: #{prompt_req.inspect}"
+            session_work.send(prompt_req)
+            session_done.receive
+            list = gather_queue_events
+            list.each { |line| resp.puts line.to_json }
+            # resp.print list
+          else
+            raise ArgumentError.new("Nil body: #{req.method} #{req.path}")
           end
-          resp.print list.to_json
         end
 
         web_server.get_unknown do |req, resp|
@@ -121,38 +149,27 @@ module Enkaidu
         end
       end
 
-      # private def query(q)
-      #   recorder << "," if count.positive?
-      #   session.ask(query: q, attach: commander.take_inclusions)
-      #   @count += 1
-      # end
-
-      # def run
-      #   session.auto_load
-
-      #   recorder << "["
-      #   while !done?
-      #     puts
-      #     renderer.show_inclusions(commander.query_indicators)
-      #     if q = reader.read_next
-      #       case q = q.strip
-      #       when .starts_with?("/")
-      #         @done = commander.make_it_so(q) == :done
-      #       else
-      #         query(q)
-      #       end
-      #     else
-      #       @done = true
-      #     end
-      #   end
-      #   recorder << "]"
-      # ensure
-      #   recorder.close
-      # end
+      # We do all the session requests in the `Main` fibre by waiting for work requests
+      # and then signalling the request is done.
+      def handle_session_requests
+        done = false
+        while !done && (req = session_work.receive?)
+          case req
+          when :quit
+            done = true
+          when ACPA::Request::PromptParams
+            session.ask(req.prompt.first.text)
+            session_done.send(true)
+          else
+            STDERR.puts "~~~ #handle_session_requests: ?? #{req.inspect}"
+          end
+        end
+      end
 
       def run
         web_server.start
         console.info_with "INFO: Server started: http://localhost:#{web_server.port}/"
+        handle_session_requests
         web_server.join
         console.info_with "Goodbye"
       end
