@@ -6,7 +6,12 @@ module Enkaidu::Server
     abstract class BaseEvent
       include JSON::Serializable
 
-      use_json_discriminator "type", {message: Message, tool_call: ToolCall}
+      use_json_discriminator "type", {
+        message:           Message,
+        llm_text:          LLMText,
+        llm_text_fragment: LLMTextFragment,
+        llm_tool_call:     LLMToolCall,
+      }
 
       getter type : String
       getter time = Time.local
@@ -15,7 +20,10 @@ module Enkaidu::Server
     end
 
     abstract class Message < BaseEvent
-      use_json_discriminator "level", {info: InfoMessage, warn: WarningMessage, error: ErrorMessage}
+      use_json_discriminator "level", {
+        info: InfoMessage, warn: WarningMessage, error: ErrorMessage,
+        success: SuccessMessage,
+      }
 
       getter level : String
       getter message : String
@@ -45,12 +53,34 @@ module Enkaidu::Server
       end
     end
 
-    class ToolCall < BaseEvent
+    class SuccessMessage < Message
+      def initialize(@message, @details = nil, @markdown = false)
+        super("success", message, details, markdown)
+      end
+    end
+
+    class LLMToolCall < BaseEvent
       getter name : String
       getter args : String
 
       def initialize(@name, @args)
-        super("tool_call")
+        super("llm_tool_call")
+      end
+    end
+
+    class LLMTextFragment < BaseEvent
+      getter fragment : String
+
+      def initialize(@fragment)
+        super("llm_text_fragment")
+      end
+    end
+
+    class LLMText < BaseEvent
+      getter content : String
+
+      def initialize(@content)
+        super("llm_text")
       end
     end
   end
@@ -110,7 +140,7 @@ module Enkaidu::Server
       # print "  CALL".colorize(:green)
       # puts " #{name.colorize(:red)} " \
       #      "with #{trim_text(args.to_s, LLM_MAX_TOOL_CALL_ARGS_LENGTH).colorize(:red)}"
-      queue.push Render::ToolCall.new(name, args.to_s)
+      queue.push Render::LLMToolCall.new(name, args.to_s)
     end
 
     def llm_error(err)
@@ -118,7 +148,11 @@ module Enkaidu::Server
     end
 
     def llm_text(text)
-      STDERR.puts "~~ Unimplemented renderer #llm_text"
+      queue.push(if streaming?
+        Render::LLMTextFragment.new(text)
+      else
+        Render::LLMText.new(text)
+      end)
       # if streaming?
       #   print text
       # else
