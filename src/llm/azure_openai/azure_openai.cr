@@ -1,4 +1,4 @@
-require "./chat_connection"
+require "./connection"
 
 # The `AzureOpenAI` module lets you connect and chat with
 # OpenAI's LLMs hosted by Microsoft Azure.
