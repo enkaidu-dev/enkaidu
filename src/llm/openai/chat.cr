@@ -3,6 +3,8 @@ require "http"
 require "../chat"
 require "./chat/content"
 require "./chat/message"
+require "./chat/session"
+
 require "./converters"
 require "./function_call"
 
@@ -11,27 +13,33 @@ module LLM::OpenAI
     include Converters
 
     @conn : Connection
+    @sess : Session
 
     # Usage report in most recent response from LLM.
     getter usage : Usage? = nil
 
     def initialize(@conn)
       super()
-      @messages = [] of Message
-      @usage = nil
+      @sess = Session.new
       @model = @conn.model
+      @usage = nil
+    end
+
+    def save_session(io : IO | JSON::Builder) : Nil
+      @sess.to_json(io)
+    end
+
+    def append_message(msg)
+      usage = nil
+      if msg.is_a? Message::Response
+        @usage = usage = msg.usage
+      end
+      @sess.append_message msg, usage
     end
 
     def with_model(model : String)
       super
       @conn.model = model
-    end
-
-    private def append_message(msg)
-      @messages << msg
-      if msg.is_a? Message::Response
-        @usage = msg.usage
-      end
     end
 
     private def call_tool(tool : LLM::Function, tool_call : JSON::Any)
@@ -267,7 +275,7 @@ module LLM::OpenAI
       JSON.build do |json|
         chat_to_json(json, model, system_message,
           stream: streaming?,
-          messages: @messages,
+          session: @sess,
           tools: each_tool)
       end
     end
