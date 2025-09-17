@@ -18,7 +18,7 @@ module ACPA
 
     macro check_if_clean_with(*props)
       def clean?
-        super && {{ (props.map { |p| "#{p}.clean?" }).join(" && ").id }}
+        super && {{ (props.map { |prop| "#{prop}.clean?" }).join(" && ").id }}
       end
     end
   end

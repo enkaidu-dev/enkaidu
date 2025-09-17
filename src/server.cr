@@ -15,6 +15,9 @@ require "./tools/image_helper"
 require "./sucre/web_server"
 
 module Enkaidu
+  # Read this at compile time from shard.yml one day
+  VERSION = "0.1.0"
+
   module Server
     class FileStorage
       # extend BakedFileSystem
@@ -138,7 +141,7 @@ module Enkaidu
           end
         end
 
-        web_server.get_unknown do |req, resp|
+        web_server.unknown_get do |req, resp|
           path = req.path == "/" ? "/index.html" : req.path
           if file = FileStorage.get(path)
             resp.content_type = MIME.from_filename(path)

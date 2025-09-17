@@ -27,7 +27,7 @@ class WebServer
 
   private def start_tracking
     spawn do
-      while true
+      loop do
         msg = work_tracker.receive?
         break if msg.nil? || msg.end_server?
 
@@ -57,7 +57,7 @@ class WebServer
     routers["GET #{path}"] = handler
   end
 
-  def get_unknown(&handler : HTTP::Request, HTTP::Server::Response -> Nil)
+  def unknown_get(&handler : HTTP::Request, HTTP::Server::Response -> Nil)
     routers["GET *"] = handler
   end
 
@@ -76,13 +76,13 @@ class WebServer
     else
       raise ArgumentError.new("Unknown route: #{route}")
     end
-  rescue err
+  rescue ex
     STDERR.puts "ERROR: --------"
-    STDERR.puts err.inspect_with_backtrace
+    STDERR.puts ex.inspect_with_backtrace
     context.response.content_type = "application/json"
     context.response.status_code = 500
     context.response.print <<-ERROR
-        { "type" : "error", "message" : "#{err.to_s}" }
+        { "type" : "error", "message" : "#{ex}" }
         ERROR
   ensure
     work_tracker.send(Tracker::EndHandler)
