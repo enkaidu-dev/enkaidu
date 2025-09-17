@@ -1,15 +1,16 @@
 require "http"
 
-require "./chat_message"
-require "./converters"
 require "../chat"
-require "../function_call"
+require "./chat/content"
+require "./chat/message"
+require "./converters"
+require "./function_call"
 
 module LLM::OpenAI
   private class Chat < LLM::Chat
     include Converters
 
-    @conn : ChatConnection
+    @conn : Connection
 
     # Usage report in most recent response from LLM.
     getter usage : Usage? = nil
@@ -147,7 +148,7 @@ module LLM::OpenAI
       # as if it had been parsed from a whole incoming
       # tool call.
       tool_call = msg["content"]
-      LLM::FunctionCall.new(
+      FunctionCall.new(
         name: tool_call.dig("function", "name").as_s,
         id: tool_call["id"].as_s,
         args_json: tool_call.dig("function", "arguments").as_s
@@ -213,7 +214,7 @@ module LLM::OpenAI
       msg
     end
 
-    private def jsonify_function_call(f : LLM::FunctionCall)
+    private def jsonify_function_call(f : FunctionCall)
       f.append_args_json(nil, complete: true)
       JSON.parse(JSON.build do |json|
         function_call_to_json(f, json)

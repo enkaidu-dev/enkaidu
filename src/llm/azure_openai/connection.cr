@@ -4,9 +4,9 @@ require "uri"
 require "../openai"
 
 module LLM::AzureOpenAI
-  # `ChatConnection` is a class that extends from `OpenAI::ChatConnection` to provide
+  # `Connection` is a class that extends from `OpenAI::Connection` to provide
   # specialized connection handling for Azure OpenAI services.
-  class ChatConnection < OpenAI::ChatConnection
+  class Connection < OpenAI::Connection
     def api_ver
       ENV["AZURE_OPENAI_API_VER"]
     end

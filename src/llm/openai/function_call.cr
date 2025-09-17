@@ -1,10 +1,10 @@
-require "./param"
+require "../param"
 
-module LLM
+module LLM::OpenAI
   # Defines a function (tool) call, with ability to build up the
   # args from chunks when streaming. USED AS AN INTERIM object; maybe one day
   # the whole system won't be hung on JSON::Any scaffolding.
-  class FunctionCall
+  private class FunctionCall
     getter name : String
     getter id : String
     getter args_json : String

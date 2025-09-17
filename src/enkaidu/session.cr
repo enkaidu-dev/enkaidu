@@ -18,7 +18,7 @@ module Enkaidu
                             "complicated multi-step tasks."
 
     private getter opts : SessionOptions
-    private getter connection : LLM::ChatConnection
+    private getter connection : LLM::Connection
     private getter chat : LLM::Chat
 
     private getter mcp_functions = [] of MCPFunction
@@ -32,9 +32,9 @@ module Enkaidu
 
       setup_envs_from_config
       @connection = case opts.provider_type
-                    when "openai"       then LLM::OpenAI::ChatConnection.new
-                    when "azure_openai" then LLM::AzureOpenAI::ChatConnection.new
-                    when "ollama"       then LLM::Ollama::ChatConnection.new
+                    when "openai"       then LLM::OpenAI::Connection.new
+                    when "azure_openai" then LLM::AzureOpenAI::Connection.new
+                    when "ollama"       then LLM::Ollama::Connection.new
                     else
                       opts.error_and_exit_with "FATAL: Unknown provider type: #{opts.provider_type}", opts.help
                     end
