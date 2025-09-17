@@ -62,7 +62,12 @@ class CommandParser
     @pos_args.size
   end
 
-  # Positional argument at index
+  # Positional argument at index, raising exception if no such index
+  def arg_at(index)
+    @pos_args[index.to_i]
+  end
+
+  # Positional argument at index, return `nil` if no such index
   def arg_at?(index)
     @pos_args[index.to_i]?
   end
@@ -82,7 +87,12 @@ class CommandParser
     @named_args.size
   end
 
-  # Get the value of a named argument
+  # Get the value of a named argument, raising exception if no such named argument
+  def arg_named(name)
+    @named_args[name.to_s]
+  end
+
+  # Get the value of a named argument, return `nil` if no such named argument
   def arg_named?(name)
     @named_args[name.to_s]?
   end

@@ -78,6 +78,9 @@ module Enkaidu
     - `usage`
       - Show the token usage / size for the current session based OpenSSL
         most recent response from LLM
+    - `save <FILEPATH>`
+      - Save the current chat session to a JSONL file
+      - NOTE: The file should not be edited.
     HELP1
 
     H_C_HELP = <<-HELP3
@@ -126,6 +129,12 @@ module Enkaidu
         else
           renderer.info_with("No usage data for curent session at this time.")
         end
+      elsif cmd.expect?(C_SESSION, "save", String)
+        path = Path.new(cmd.arg_at(2).as(String))
+        File.open(path, "w") do |file|
+          session.save_session(file)
+        end
+        renderer.info_with("Session saved to JSONL file: #{path}")
       else
         renderer.warning_with("ERROR: Unexpected command / parameters: '#{cmd.input}'",
           help: H_C_SESSION, markdown: true)

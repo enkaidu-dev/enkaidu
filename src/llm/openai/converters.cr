@@ -43,7 +43,7 @@ module LLM::OpenAI
       end
     end
 
-    private def chat_to_json(json : JSON::Builder, model, system_message, stream, messages, tools)
+    private def chat_to_json(json : JSON::Builder, model, system_message, stream, session, tools)
       json.object do
         json.field "model", model if model
         json.field "stream", stream
@@ -63,7 +63,7 @@ module LLM::OpenAI
                 json.field "content", sm
               end
             end
-            messages.each do |msg|
+            session.each_message do |msg|
               msg.to_json(json)
             end
           end
