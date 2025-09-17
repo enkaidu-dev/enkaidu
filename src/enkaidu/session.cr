@@ -1,3 +1,4 @@
+require "json"
 require "option_parser"
 require "markterm"
 
@@ -10,6 +11,19 @@ require "./session_options"
 require "./session_renderer"
 
 module Enkaidu
+  class About
+    include JSON::Serializable
+    getter app = "Enkaidu"
+    getter ver = VERSION
+
+    protected def initialize; end
+
+    # Singleton instance
+    def self.me
+      @@about ||= About.new
+    end
+  end
+
   # The Session class manages connection setup, logging, and the processing of
   # different types of events for user queries via the command line app
   class Session
@@ -26,6 +40,8 @@ module Enkaidu
 
     getter recorder : Recorder
     getter renderer : SessionRenderer
+
+    @loaded_toolsets = {} of String => Tools::ToolSet
 
     def initialize(@renderer, @opts)
       @recorder = Recorder.new(opts.recorder_file)
@@ -47,6 +63,52 @@ module Enkaidu
       chat.usage
     end
 
+    # Save session to a JSONL file,  where each line in order is as follows:
+    #   - about the file / app
+    #   - active MCP server connection info
+    #   - active toolsets and selected tools
+    #   - chat session
+    def save_session(io : IO) : Nil
+      About.me.to_json(io)
+      io.puts
+
+      save_active_mcp_servers(io)
+      save_active_toolsets(io)
+
+      chat.save_session(io)
+      io.puts
+    end
+
+    # Helper to save active MCP server info as a single JSON line
+    private def save_active_mcp_servers(io : IO) : Nil
+      mcps = {mcp: mcp_connections.map do |conn|
+        {uri: conn.uri.to_s, type: conn.transport_type.label}
+      end}
+      mcps.to_json(io)
+      io.puts
+    end
+
+    # Helper to save active toolsets and their selected tools as a single JSON line
+    private def save_active_toolsets(io : IO) : Nil
+      toolsets = [] of Hash(String, String | Array(String))
+      Tools.each_toolset do |toolset|
+        if @loaded_toolsets.has_key?(toolset.name)
+          tools = [] of String
+          toolset.each_tool_info do |name|
+            tools << name if chat.find_tool?(name)
+          end
+          map = Hash(String, String | Array(String)){
+            "name" => toolset.name,
+          }
+          map["select"] = tools if tools.size < toolset.tool_names.size
+          toolsets << map
+        end
+      end
+      {toolsets: toolsets}.to_json(io)
+      io.puts
+    end
+
+    # Helper to setup the Chat's initial config
     private def setup_chat
       connection.new_chat do
         unless (m = opts.model_name).nil?
@@ -118,8 +180,6 @@ module Enkaidu
       end
       renderer.info_with("List of available tools.", text, markdown: true)
     end
-
-    @loaded_toolsets = {} of String => Tools::ToolSet
 
     def unload_toolset_by(name)
       toolset = Tools[name]?
