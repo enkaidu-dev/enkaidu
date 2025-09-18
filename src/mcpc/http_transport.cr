@@ -31,6 +31,12 @@ module MCPC
       end
     end
 
+    # Clean up the transport and close all underlying client connections; renders
+    # the transport unusable permanently
+    def close
+      @httpc.close
+    end
+
     # Send a request. Yields a `JSON::Any` for valid data: in the response, or `ErrorDetails` for unknown
     # response.
     def post(body, & : JSON::Any | ErrorDetails ->)

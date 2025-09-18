@@ -39,6 +39,10 @@ module MCPC
 
     def initialize(@tracing = false, @auth_token = nil); end
 
+    # Clean up the transport and close all underlying client connections; renders
+    # the transport unusable permanently
+    abstract def close
+
     # Return headers, incorporate auth token if any
     private def prepare_request_headers
       h = HEADERS_POST_
