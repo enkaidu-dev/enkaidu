@@ -106,5 +106,7 @@ module LLM
     abstract def ask(content : String, attach : Inclusions? = nil, & : ChatEvent ->) : Nil
 
     abstract def save_session(io : IO | JSON::Builder) : Nil
+
+    abstract def load_session(io : IO | String) : Nil
   end
 end

@@ -29,6 +29,11 @@ module LLM::OpenAI
       @sess.to_json(io)
     end
 
+    def load_session(io : IO | String) : Nil
+      @sess = Session.from_json(io)
+      @usage = @sess.last_usage
+    end
+
     def append_message(msg)
       usage = nil
       if msg.is_a? Message::Response
