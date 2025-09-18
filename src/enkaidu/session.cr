@@ -11,6 +11,8 @@ require "./session_options"
 require "./session_renderer"
 
 module Enkaidu
+  class InvalidSessionData < Exception; end
+
   class About
     include JSON::Serializable
     getter app = "Enkaidu"
@@ -63,6 +65,37 @@ module Enkaidu
       chat.usage
     end
 
+    # Load a session a previously saved session, expects JSONL-format per the `#save_session` method.
+    def load_session(io : IO) : Nil
+      # Four lines
+      about = JSON.parse(io.gets.as(String))
+      raise InvalidSessionData.new("Invalid or missing `about.app`") unless about["app"]? == About.me.app
+      raise InvalidSessionData.new("Invalid or missing `about.version`") unless about["ver"]? == About.me.ver
+
+      mcps = NamedTuple(mcp_servers: Array(String)).from_json(io.gets.as(String))
+      toolsets = NamedTuple(toolsets: Array(Hash(String, String | Array(String)))).from_json(io.gets.as(String))
+
+      unload_all_toolsets
+      unload_all_mcp_servers
+      @chat = setup_chat # new chat BEFORE loading tools, MCP servers
+
+      # load the toolsets
+      toolsets[:toolsets].each do |toolset_spec|
+        load_toolset_by(
+          name: toolset_spec["name"].as(String),
+          select_tools: toolset_spec["select"]?.try(&.as(Array(String))))
+      end
+
+      # load MCP servers
+      mcps[:mcp_servers].each do |config_name|
+        use_mcp_by(config_name)
+      end
+
+      # load chat session
+      sess = io.gets.as(String)
+      @chat.load_session(sess)
+    end
+
     # Save session to a JSONL file,  where each line in order is as follows:
     #   - about the file / app
     #   - active MCP server connection info
@@ -81,10 +114,15 @@ module Enkaidu
 
     # Helper to save active MCP server info as a single JSON line
     private def save_active_mcp_servers(io : IO) : Nil
-      mcps = {mcp: mcp_connections.map do |conn|
-        {uri: conn.uri.to_s, type: conn.transport_type.label}
-      end}
-      mcps.to_json(io)
+      mcp_server_names = [] of String
+      mcp_connections.each do |conn|
+        if name = opts.config.try &.find_mcp_server_by_url?(conn.uri.to_s)
+          mcp_server_names << name
+        else
+          renderer.warning_with("WARNING: MCP server not in config cannot be saved with session: #{conn.uri}")
+        end
+      end
+      {mcp_servers: mcp_server_names}.to_json(io)
       io.puts
     end
 
@@ -179,6 +217,12 @@ module Enkaidu
         io << '\n'
       end
       renderer.info_with("List of available tools.", text, markdown: true)
+    end
+
+    def unload_all_toolsets
+      @loaded_toolsets.keys.each do |name|
+        unload_toolset_by(name)
+      end
     end
 
     def unload_toolset_by(name)
@@ -287,6 +331,15 @@ module Enkaidu
       when .starts_with? "error"
         renderer.llm_error(r["content"])
       end
+    end
+
+    def unload_all_mcp_servers
+      mcp_functions.clear
+      mcp_connections.each do |conn|
+        renderer.info_with("INFO: MCP server connection unloaded: #{conn.uri}.")
+        conn.close
+      end
+      mcp_connections.clear
     end
 
     # Use MCP server by config_name, retrieved from Config.

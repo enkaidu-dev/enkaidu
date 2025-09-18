@@ -68,6 +68,15 @@ module Enkaidu
       end
     end
 
+    # Look for an MCP server based on its url and return its name
+    # in the config, or `nil` if not found.
+    def find_mcp_server_by_url?(url : String)
+      mcp_servers.try &.each do |name, spec|
+        return name if spec.url == url
+      end
+      nil
+    end
+
     # Config setup helpers and errors and so on
 
     # Config parsing error

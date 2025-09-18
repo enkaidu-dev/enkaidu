@@ -6,10 +6,10 @@ require "./usage"
 module LLM::OpenAI
   # The serializable chat session keeps all wrapped messages to save
   # the additional information when saving the session.
-  private class Session
+  class Session
     # This wrapper is used to keep the `Message` and additional information
     # that we want to save when available.
-    private class MessageWrap
+    class MessageWrap
       include JSON::Serializable
 
       getter message : Message
@@ -22,7 +22,10 @@ module LLM::OpenAI
     include JSON::Serializable
     include JSON::Serializable::Unmapped
 
+    getter format : String
+
     def initialize
+      @format = self.class.name
       @messages = [] of MessageWrap
     end
 
@@ -35,6 +38,16 @@ module LLM::OpenAI
       @messages.each do |msgplus|
         yield msgplus.message
       end
+    end
+
+    # Returns the most recent usage information
+    def last_usage : Usage?
+      @messages.reverse_each do |msg|
+        if usage = msg.usage
+          return usage
+        end
+      end
+      nil
     end
   end
 end

@@ -39,6 +39,13 @@ module MCPC
       @httpc_send = setup_legacy_sender_client
     end
 
+    # Clean up the transport and close all underlying client connections; renders
+    # the transport unusable permanently
+    def close
+      @httpc_send.close
+      @httpc_recv.close
+    end
+
     private def parse_url(url)
       url.is_a?(URI) ? url : URI.parse(url)
     end

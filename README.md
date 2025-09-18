@@ -148,33 +148,38 @@ Env var | Description
 
 Once Enkaidu is started, you can interact with it using predefined commands and tools. The available commands serve to enhance your productivity by connecting you with MCP servers and leveraging the capabilities of LLMs. Below are some basic commands to get you started:
 
-### Basic Commands
-
-- **`/help`**: Display a list of all available slash commands along with their descriptions.
-
-- **`/bye`**: Exit the Enkaidu application.
-
-- **`/tool ls`**: List all available tools that you can activate.
-
-- **`/tool info <TOOLNAME>`**: Provide detailed information about the specified tool.
-
-- **`/toolset ls`**: List all built-in toolsets available for activation.
-
-- **`/toolset load <TOOLSET_NAME>`**: Load all the tools from the specified toolset.
-
-- **`/toolset unload <TOOLSET_NAME>`**: Unload all the tools from the specified toolset.
-
-- **`/use_mcp <NAME|URL>`**: Connect to an MCP server using either a predefined name from your configuration or a direct URL. Optionally, specify authentication and transport settings.
-
-- **`/include image_file`**: Include an image from a file with the next query to the AI model.
-
-- **`/include text_file`**: Include text from a file with the next query to the AI model.
-
-- **`/include any_file`**: Include any supported file with the next query to the AI model.
-
 ### User Queries
 
 You can input your queries directly into Enkaidu. If the query is prefixed with `/`, it will be treated as a command. Otherwise, it will be processed as a general query that Enkaidu will handle using the available tools and LLMs.
+
+### Slash Commands
+
+- **`/help`**: Display a list of all available slash commands along with their descriptions.
+- **`/bye`**: Exit the Enkaidu application.
+
+#### Session management
+
+- **`/session usage`**: Shows the token usage/size for the current session based on the most recent response from the LLM.
+- **`/session save <FILEPATH>`**: Saves the current chat session to a JSONL file. The file should not be edited.
+- **`/session load <FILEPATH>`**: Loads a saved chat session from its JSONL file.
+
+#### Tools management
+
+- **`/tool ls`**: List all available tools that you can activate.
+- **`/tool info <TOOLNAME>`**: Provide detailed information about the specified tool.
+- **`/toolset ls`**: List all built-in toolsets available for activation.
+- **`/toolset load <TOOLSET_NAME>`**: Load all the tools from the specified toolset.
+- **`/toolset unload <TOOLSET_NAME>`**: Unload all the tools from the specified toolset.
+
+#### MCP connections
+
+- **`/use_mcp <NAME|URL>`**: Connect to an MCP server using either a predefined name from your configuration or a direct URL. Optionally, specify authentication and transport settings.
+
+#### Including files
+
+- **`/include image_file <PATH>`**: Include an image from a file with the next query to the AI model.
+- **`/include text_file <PATH>`**: Include text from a file with the next query to the AI model.
+- **`/include any_file <PATH>`**: Include any supported file with the next query to the AI model.
 
 ### Advanced Usage
 

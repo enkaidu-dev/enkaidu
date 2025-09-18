@@ -153,9 +153,16 @@ module MCPC
       end
     end
 
+    # Clean up the connection; will be unusable without subsequent call
+    # to `#reset`
+    def close
+      @transport.close
+    end
+
     # Reset to re-initialize the connection whenever calls fail with a 404 error; sets up a new transport and session, and initializes the
     # session. TODO better handling of reset scenarios.
     def reset
+      close
       @transport = @transport.class.new(uri, tracing: tracing?, auth_token: auth_token)
       @session = JsonRpcSession.new
       get_ready
