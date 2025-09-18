@@ -80,7 +80,13 @@ module Enkaidu
         most recent response from LLM
     - `save <FILEPATH>`
       - Save the current chat session to a JSONL file
+      - Records current toolsets and tools
+      - Records MCP connections _iff_ they match MCP servers defined in the config file
       - NOTE: The file should not be edited.
+    - `load <FILEPATH>`
+      - Load a saved chat session from its JSONL file.
+      - Clears all active tools and MCP connections
+      - Restores toolsets and re-establishes MCP server connections
     HELP1
 
     H_C_HELP = <<-HELP3
@@ -92,6 +98,8 @@ module Enkaidu
     #{H_C_BYE}
 
     #{H_C_HELP}
+
+    #{H_C_SESSION}
 
     #{H_C_TOOL}
 
@@ -135,8 +143,14 @@ module Enkaidu
           session.save_session(file)
         end
         renderer.info_with("Session saved to JSONL file: #{path}")
+      elsif cmd.expect?(C_SESSION, "load", String)
+        path = Path.new(cmd.arg_at(2).as(String))
+        renderer.info_with("Loading previously saved session: #{path}")
+        File.open(path, "r") do |file|
+          session.load_session(file)
+        end
       else
-        renderer.warning_with("ERROR: Unexpected command / parameters: '#{cmd.input}'",
+        renderer.warning_with("ERROR: Unknown or incomplete sub-command: '#{cmd.input}'",
           help: H_C_SESSION, markdown: true)
       end
     rescue e
@@ -158,7 +172,7 @@ module Enkaidu
           ok = query_indicators << "F:#{basename}"
         end
       end
-      renderer.warning_with("ERROR: Unexpected command / parameters: '#{cmd.input}'",
+      renderer.warning_with("ERROR: Unknown or incomplete sub-command: '#{cmd.input}'",
         help: H_C_INCLUDE, markdown: true) if ok.nil?
     rescue e
       renderer.warning_with("ERROR: #{e.message}", help: H_C_INCLUDE, markdown: true)
@@ -179,7 +193,7 @@ module Enkaidu
       elsif cmd.expect?(C_USE_MCP, String, auth_env: String?, transport: ["auto", "legacy", "http", nil])
         handle_use_mcp_with_url(cmd)
       else
-        raise ArgumentError.new("ERROR: Unexpected command / parameters")
+        raise ArgumentError.new("ERROR: Unknown or incomplete sub-command: '#{cmd.input}'")
       end
     rescue e : ArgumentError
       renderer.warning_with(e.message, help: H_C_USE_MCP, markdown: true)
