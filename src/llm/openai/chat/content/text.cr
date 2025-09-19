@@ -8,5 +8,10 @@ module LLM::OpenAI
     def initialize(@text)
       @type = "text"
     end
+
+    # Emit this content as one or more `ChatEvent` objects
+    def emit(& : ChatEvent ->) : Nil
+      yield({type: "query/text", content: JSON::Any.new(text)})
+    end
   end
 end

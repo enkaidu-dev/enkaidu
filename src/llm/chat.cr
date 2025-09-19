@@ -108,5 +108,7 @@ module LLM
     abstract def save_session(io : IO | JSON::Builder) : Nil
 
     abstract def load_session(io : IO | String) : Nil
+
+    abstract def tail_session(num_responses = 1, & : ChatEvent ->) : Nil
   end
 end

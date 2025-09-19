@@ -10,6 +10,9 @@ module LLM::OpenAI
                                     assistant: Message::Response}
 
     property role : String
+
+    # Emit this message as one or more `ChatEvent` objects
+    abstract def emit(& : ChatEvent ->) : Nil
   end
 end
 

@@ -30,5 +30,14 @@ module LLM::OpenAI
     private def file_data(base64_data : String, file_name : String)
       content << Content::FileData.new(base64_data: base64_data, file_name: file_name)
     end
+
+    # Emit this message as one or more `ChatEvent` objects
+    def emit(& : ChatEvent ->) : Nil
+      content.each do |content|
+        content.emit do |chat_ev|
+          yield chat_ev
+        end
+      end
+    end
   end
 end

@@ -9,5 +9,10 @@ module LLM::OpenAI
       @type = "image_url"
       @image_url["url"] = url
     end
+
+    # Emit this content as one or more `ChatEvent` objects
+    def emit(& : ChatEvent ->) : Nil
+      yield({type: "query/image_url", content: JSON::Any.new(@image_url["url"])})
+    end
   end
 end

@@ -10,5 +10,10 @@ module LLM::OpenAI
       @file["file_data"] = base64_data
       @file["filename"] = file_name
     end
+
+    # Emit this content as one or more `ChatEvent` objects
+    def emit(& : ChatEvent ->) : Nil
+      yield({type: "query/file_data", content: JSON::Any.new(file["filename"])})
+    end
   end
 end

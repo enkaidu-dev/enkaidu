@@ -34,6 +34,10 @@ module LLM::OpenAI
       @usage = @sess.last_usage
     end
 
+    def tail_session(num_responses = 1, & : ChatEvent ->) : Nil
+      @sess.tail_chats(num_responses) { |chat_ev| yield chat_ev }
+    end
+
     def append_message(msg)
       usage = nil
       if msg.is_a? Message::Response

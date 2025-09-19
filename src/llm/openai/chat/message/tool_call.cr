@@ -10,5 +10,21 @@ module LLM::OpenAI
     def initialize(@tool_call_id, @name, @content)
       @role = "tool"
     end
+
+    # Emit this message as one or more `ChatEvent` objects
+    def emit(& : ChatEvent ->) : Nil
+      body = <<-EMIT
+          {
+            "function" : {
+              "name" : #{name.to_json},
+              "content" : #{content.to_json}
+            }
+          }
+          EMIT
+      yield({
+        type:    "tool_call/done",
+        content: JSON.parse(body),
+      })
+    end
   end
 end
