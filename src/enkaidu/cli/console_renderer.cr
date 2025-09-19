@@ -80,6 +80,11 @@ module Enkaidu::CLI
       end
     end
 
+    def llm_text_block(text)
+      puts Markd.to_term(text)
+      puts
+    end
+
     def mcp_initialized(uri)
       puts "  INIT MCP connection: #{uri}".colorize(:green)
     end

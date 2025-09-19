@@ -83,10 +83,11 @@ module Enkaidu
       - Records current toolsets and tools
       - Records MCP connections _iff_ they match MCP servers defined in the config file
       - NOTE: The file should not be edited.
-    - `load <FILEPATH>`
+    - `load <FILEPATH> [tail=<N>]`
       - Load a saved chat session from its JSONL file.
       - Clears all active tools and MCP connections
       - Restores toolsets and re-establishes MCP server connections
+      - Optionally specify how many `N` recent chats to display after loading the session.
     HELP1
 
     H_C_HELP = <<-HELP3
@@ -143,11 +144,12 @@ module Enkaidu
           session.save_session(file)
         end
         renderer.info_with("Session saved to JSONL file: #{path}")
-      elsif cmd.expect?(C_SESSION, "load", String)
+      elsif cmd.expect?(C_SESSION, "load", String, tail: String?)
         path = Path.new(cmd.arg_at(2).as(String))
+        tail_n = cmd.arg_named?("tail").try(&.as(String).to_i) || -1
         renderer.info_with("Loading previously saved session: #{path}")
         File.open(path, "r") do |file|
-          session.load_session(file)
+          session.load_session(file, tail_num_chats: tail_n)
         end
       else
         renderer.warning_with("ERROR: Unknown or incomplete sub-command: '#{cmd.input}'",

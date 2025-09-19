@@ -65,8 +65,35 @@ module Enkaidu
       chat.usage
     end
 
-    # Load a session a previously saved session, expects JSONL-format per the `#save_session` method.
-    def load_session(io : IO) : Nil
+    private def tail_session_events(num_chats)
+      text_count = 0
+      @chat.tail_session(num_chats) do |chat_ev|
+        case chat_ev["type"]
+        when "text"
+          renderer.llm_text_block(chat_ev["content"].as_s)
+          text_count += 1
+        when "tool_call"
+          renderer.user_calling_tools unless text_count.zero?
+          text_count = 0
+          renderer.llm_tool_call(
+            name: chat_ev["content"].dig("function", "name").as_s,
+            args: chat_ev["content"].dig("function", "arguments"))
+        when "tool_called"
+        when "query/text"
+          renderer.user_query(chat_ev["content"].as_s)
+          text_count += 1
+        when "query/image_url"
+          renderer.info_with("INCLUDE image: #{chat_ev["content"].as_s}")
+        when "query/file_data"
+          renderer.info_with("INCLUDE file: #{chat_ev["content"].as_s}")
+        end
+      end
+    end
+
+    # Load a session a previously saved session (expects JSONL-format per the `#save_session` method)
+    # and render past N chat events (or none by default)
+    # last N chats..
+    def load_session(io : IO, tail_num_chats = -1)
       # Four lines
       about = JSON.parse(io.gets.as(String))
       raise InvalidSessionData.new("Invalid or missing `about.app`") unless about["app"]? == About.me.app
@@ -94,6 +121,7 @@ module Enkaidu
       # load chat session
       sess = io.gets.as(String)
       @chat.load_session(sess)
+      tail_session_events(tail_num_chats)
     end
 
     # Save session to a JSONL file,  where each line in order is as follows:
