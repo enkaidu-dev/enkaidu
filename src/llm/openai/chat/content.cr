@@ -10,6 +10,9 @@ module LLM::OpenAI
                                     file:      Content::FileData}
 
     property type : String
+
+    # Emit this content as one or more `ChatEvent` objects
+    abstract def emit(& : ChatEvent ->) : Nil
   end
 end
 

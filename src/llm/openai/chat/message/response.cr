@@ -18,5 +18,18 @@ module LLM::OpenAI
     def initialize(@content, @tool_calls = nil)
       @role = "assistant"
     end
+
+    # Emit this message as one or more `ChatEvent` objects
+    def emit(& : ChatEvent ->) : Nil
+      if text = content
+        yield({type: "text", content: JSON::Any.new(text)})
+      end
+      tool_calls.try &.each do |call|
+        yield({
+          type:    "tool_call",
+          content: call,
+        })
+      end
+    end
   end
 end

@@ -49,5 +49,27 @@ module LLM::OpenAI
       end
       nil
     end
+
+    # Emit the last N request responses. Always tries to emit the query before the response. May include
+    # tool calls as a result. Use N=-1 to list all
+    def tail_chats(num = -1, &)
+      return if num.zero?
+
+      start_index = num < 0 ? 0 : @messages.size - 1
+      # Find last num'th user message
+      num.times do
+        break if start_index.nil? || start_index.zero?
+        start_index = @messages.rindex do |msg|
+          msg.message.is_a? Message::MultiContent
+        end
+      end
+      start_index = 0 if start_index.nil?
+
+      # yield each one via it's emitter because some
+      # emit more than one
+      @messages.each(start: start_index, count: @messages.size - start_index) do |msg|
+        msg.message.emit { |chat_ev| yield chat_ev }
+      end
+    end
   end
 end

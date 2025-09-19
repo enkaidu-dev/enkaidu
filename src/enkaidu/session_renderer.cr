@@ -21,6 +21,8 @@ module Enkaidu
 
     abstract def llm_text(text)
 
+    abstract def llm_text_block(text)
+
     abstract def llm_error(err)
 
     abstract def mcp_initialized(uri)
