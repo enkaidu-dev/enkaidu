@@ -1,5 +1,6 @@
 <script lang="ts">
-  import SvelteMarkdown from "@humanspeak/svelte-markdown";
+  import Markdown from "./Markdown.svelte";
+  // import SvelteMarkdown from "@humanspeak/svelte-markdown";
 
   let { message } = $props();
 </script>
@@ -9,6 +10,6 @@
 >
   <div class="card-body text-base py-1">
     <h2 class="card-title text-sm">Assistant</h2>
-    <SvelteMarkdown source={message} />
+    <Markdown content={message} />
   </div>
 </div>

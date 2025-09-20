@@ -7,34 +7,31 @@
   import Sidebar from "./lib/Sidebar.svelte";
 
   let session: Session;
+  let started = false;
 
-  function read_line_by_line(
+  async function read_line_by_line(
     response: Response,
     handler: (line: string | null) => void,
   ) {
     const reader = response.body?.getReader();
+    if (!reader) return;
+
     const decoder = new TextDecoder();
     let buffer = "";
 
-    function read() {
-      reader?.read().then(({ done, value }) => {
-        if (done) {
-          // Process any remaining buffer
-          if (buffer) {
-            handler(buffer);
-          }
-          handler(null); // null to indicate no more lines
-          return;
-        }
-        buffer += decoder.decode(value, { stream: true });
-        let lines = buffer.split("\n");
-        buffer = lines.pop() || ""; // Keep the last incomplete line in the buffer
-        lines.forEach((line) => handler(line));
-        read(); // Read the next chunk
-      });
+    while (true) {
+      let { done, value } = await reader.read();
+      if (done) {
+        // Process any remaining buffer
+        if (buffer) handler(buffer);
+        handler(null); // null to indicate no more lines
+        break;
+      }
+      buffer += decoder.decode(value, { stream: true });
+      let lines = buffer.split("\n");
+      buffer = lines.pop() || ""; // Keep the last incomplete line in the buffer
+      lines.forEach((line) => handler(line));
     }
-
-    read(); // Start reading
   }
 
   function new_prompt_request(prompt: string): Acp.PromptRequest {
@@ -47,6 +44,14 @@
         },
       ],
     };
+  }
+
+  async function get_request(path: string) {
+    const request = new Request(`http://localhost:8765/api/${path}`, {
+      method: "GET",
+    });
+
+    return await fetch(request);
   }
 
   async function post_request(path: string, content: any) {
@@ -63,15 +68,10 @@
     return await fetch(request);
   }
 
-  async function on_prompt_ask(query: string) {
-    session.add_event({
-      type: "query",
-      content: query,
-    });
-    let resp = await post_request("prompt", new_prompt_request(query));
+  async function handle_response(resp: Response) {
     let last_type: string | null = null;
     let text_aggr = "";
-    read_line_by_line(resp, function (line) {
+    await read_line_by_line(resp, function (line) {
       if (line == null) {
         // no more lines.
         if (last_type == "llm_text_fragment") {
@@ -82,7 +82,9 @@
         let msg = JSON.parse(line);
         if (last_type != msg.type && last_type == "llm_text_fragment") {
           // gather up text content
-          session.add_event({ type: "llm", content: text_aggr });
+          if (text_aggr.trim.length > 0) {
+            session.add_event({ type: "llm", content: text_aggr });
+          }
           text_aggr = "";
         }
         switch (msg.type) {
@@ -93,8 +95,26 @@
               content: msg.details,
             });
             break;
+          case "query":
+            session.add_event({
+              type: msg.prompt.startsWith("/") ? "command" : "query",
+              content: msg.prompt,
+            });
+            break;
           case "llm_text":
-            session.add_event({ type: "llm", content: msg.content });
+            let content = msg.content.trim();
+            let think_ix = content.indexOf("</think>");
+            // Split think block if present
+            if (think_ix > 0) {
+              let think = content.substring(0, think_ix + 8).trim();
+              if (think.length > 0) {
+                session.add_event({ type: "think", content: think });
+              }
+              content = content.substring(think_ix + 8).trim();
+            }
+            if (content.length > 0) {
+              session.add_event({ type: "llm", content: content });
+            }
             break;
           case "llm_text_fragment":
             text_aggr += msg.fragment;
@@ -115,6 +135,26 @@
         last_type = msg.type;
       }
     });
+  }
+
+  async function check_if_started() {
+    if (!started) {
+      let resp = await get_request("start");
+      await handle_response(resp);
+      started = true;
+    }
+  }
+
+  async function on_prompt_ask(query: string) {
+    await check_if_started();
+
+    query = query.trim();
+    session.add_event({
+      type: query.startsWith("/") ? "command" : "query",
+      content: query,
+    });
+    let resp = await post_request("prompt", new_prompt_request(query));
+    await handle_response(resp);
   }
 </script>
 

@@ -1,5 +1,6 @@
 <script lang="ts">
-  import SvelteMarkdown from "@humanspeak/svelte-markdown";
+  import Markdown from "./Markdown.svelte";
+  // import SvelteMarkdown from "@humanspeak/svelte-markdown";
 
   let { message } = $props();
 </script>
@@ -11,7 +12,7 @@
     <input type="checkbox" />
     <div class="collapse-title card-title text-sm">Assistant &lt;THINK&gt;</div>
     <div class="collapse-content text-base">
-      <SvelteMarkdown source={message} />
+      <Markdown content={message} />
     </div>
   </div>
 </div>

@@ -24,7 +24,9 @@
   <div class="space-y-3 grid grid-cols-1 w-full p-3">
     {#each events as ev}
       {#if ev.type == "query"}
-        <UserCard message={ev.content} />
+        <UserCard message={ev.content || "??"} />
+      {:else if ev.type == "command"}
+        <UserCard message={ev.content || "/??"} command />
       {:else if ev.type == "llm"}
         <AsstCard message={ev.content} />
       {:else if ev.type == "think"}
