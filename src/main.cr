@@ -7,9 +7,6 @@ require "./sucre/command_parser"
 require "./tools/image_helper"
 
 module Enkaidu
-  # Read this at compile time from shard.yml one day
-  VERSION = "0.1.0"
-
   # `Main` is the entry point for executing the application, managing initialization and execution flow.
   class Main
     private getter session

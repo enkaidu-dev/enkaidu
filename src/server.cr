@@ -15,9 +15,6 @@ require "./tools/image_helper"
 require "./sucre/web_server"
 
 module Enkaidu
-  # Read this at compile time from shard.yml one day
-  VERSION = "0.1.0"
-
   module Server
     class FileStorage
       # extend BakedFileSystem
@@ -74,27 +71,26 @@ module Enkaidu
     This is your second-in-command(-line) designed to assist you with
     writing & maintaining code and other text-based content, by enabling LLMs
     and connecting with MCP servers.
-
-    When entering a query,
-    - Type `/help` to see the `/` commands available.
-    - Press `Alt-Enter` or `Option-Enter` to start multi-line editing.
     TEXT
 
       def initialize
         @queue = Server::EventRenderer.new
 
         @console = CLI::ConsoleRenderer.new
-        console.info_with WELCOME_MSG
-        # console.info_with WELCOME_MSG, WELCOME, markdown: true
+        console.info_with WELCOME_MSG, WELCOME, markdown: true
         console.info_with ""
 
         @opts = CLI::Options.new(console)
 
         @web_server = WebServer.new(8765)
+
+        queue.info_with(WELCOME_MSG, WELCOME, markdown: true)
+
         @session = Session.new(queue, opts: opts)
         @commander = SlashCommander.new(session)
 
         session.auto_load
+
         prepare_web_server
       end
 
@@ -108,7 +104,6 @@ module Enkaidu
 
       private def prepare_web_server
         web_server.before_all do |_, resp|
-          STDERR.puts "~~~ #before_all"
           resp.content_type = "application/json"
         end
 
@@ -118,14 +113,11 @@ module Enkaidu
           web_server.close
         end
 
-        # web_server.get "/api/start" do |_, resp|
-        #   # resp.print API::Message.new(API::MessageType::Info, WELCOME_MSG,
-        #   #   details: WELCOME, markdown: true).to_json
-        #   queue.info_with(WELCOME_MSG, WELCOME, markdown: true)
-        #   session.auto_load
-
-        #   resp.print gather_queue_events.to_json
-        # end
+        web_server.get "/api/start" do |req, resp|
+          STDERR.puts "~~~ req: #{req.inspect}"
+          list = gather_queue_events
+          list.each { |line| resp.puts line.to_json }
+        end
 
         web_server.post "/api/prompt" do |req, resp|
           if body_io = req.body
@@ -135,7 +127,6 @@ module Enkaidu
             session_done.receive
             list = gather_queue_events
             list.each { |line| resp.puts line.to_json }
-            # resp.print list
           else
             raise ArgumentError.new("Nil body: #{req.method} #{req.path}")
           end
@@ -161,7 +152,12 @@ module Enkaidu
           when :quit
             done = true
           when ACPA::Request::PromptParams
-            session.ask(req.prompt.first.text)
+            query = req.prompt.first.text.strip
+            if query.strip.starts_with? '/'
+              commander.make_it_so(query)
+            else
+              session.ask(query)
+            end
             session_done.send(true)
           else
             STDERR.puts "~~~ #handle_session_requests: ?? #{req.inspect}"

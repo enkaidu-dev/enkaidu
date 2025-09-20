@@ -8,6 +8,7 @@ module Enkaidu::Server
 
       use_json_discriminator "type", {
         message:           Message,
+        query:             Query,
         llm_text:          LLMText,
         llm_text_fragment: LLMTextFragment,
         llm_tool_call:     LLMToolCall,
@@ -32,6 +33,14 @@ module Enkaidu::Server
 
       def initialize(@level, @message, @details, @markdown)
         super("message")
+      end
+    end
+
+    class Query < BaseEvent
+      getter prompt : String
+
+      def initialize(@prompt)
+        super("query")
       end
     end
 
@@ -116,7 +125,7 @@ module Enkaidu::Server
     end
 
     def user_query(query)
-      # NOOP
+      queue.push Render::Query.new(query)
     end
 
     def user_calling_tools
@@ -148,37 +157,35 @@ module Enkaidu::Server
     end
 
     def llm_text(text)
-      queue.push(if streaming?
-        Render::LLMTextFragment.new(text)
+      if streaming?
+        queue.push Render::LLMTextFragment.new(text)
       else
-        Render::LLMText.new(text)
-      end)
-      # if streaming?
-      #   print text
-      # else
-      #   puts Markd.to_term(text)
-      # end
+        llm_text_block(text)
+      end
+    end
+
+    def llm_text_block(text)
+      queue.push Render::LLMText.new(text)
     end
 
     def mcp_initialized(uri)
-      STDERR.puts "~~ Unimplemented renderer #mcp_initialized"
-      # puts "  INIT MCP connection: #{uri}".colorize(:green)
+      queue.push Render::SuccessMessage.new("MCP connection: #{uri}")
     end
 
     def mcp_tools_found(count)
-      STDERR.puts "~~ Unimplemented renderer #mcp_tools_found"
-      # puts "  FOUND #{count} tools".colorize(:green)
+      queue.push Render::SuccessMessage.new("MCP found #{count} tools")
     end
 
     def mcp_tool_ready(function)
-      STDERR.puts "~~ Unimplemented renderer #mcp_tool_ready"
-      # puts "  ADDED function: #{function.name}".colorize(:green)
+      queue.push Render::SuccessMessage.new("MCP added function: #{function.name}")
     end
 
     MCP_MAX_TOOL_CALL_ARGS_LENGTH = 72
 
     def mcp_calling_tool(uri, name, args)
-      STDERR.puts "~~ Unimplemented renderer #mcp_calling_tool"
+      queue.push Render::SuccessMessage.new(
+        "MCP calling \"#{name}\" (at #{uri}) with:",
+        details: "`#{args}`", markdown: true)
       # puts "  MCP CALLING \"#{name}\" at server #{uri}.".colorize(:yellow)
       # puts "      with: #{trim_text(args.to_s, MCP_MAX_TOOL_CALL_ARGS_LENGTH)}".colorize(:yellow)
     end
@@ -186,19 +193,24 @@ module Enkaidu::Server
     MCP_MAX_TOOL_RESULT_LENGTH = 72
 
     def mcp_calling_tool_result(uri, name, result)
-      STDERR.puts "~~ Unimplemented renderer #mcp_calling_tool_result"
+      queue.push Render::SuccessMessage.new(
+        "MCP call \"#{name}\" RESULT:",
+        details: "`#{result}`", markdown: true)
       # puts "  MCP CALL (#{name}) RESULT: #{trim_text(result.to_s, MCP_MAX_TOOL_RESULT_LENGTH)}".colorize(:green)
     end
 
     def mcp_error(ex)
-      STDERR.puts "~~ Unimplemented renderer #mcp_error"
-      # STDERR.puts "ERROR: #{ex.class}: #{ex}".colorize(:red)
-      # case ex
-      # when MCPC::ResponseError then STDERR.puts(JSON.build(indent: 2) { |builder| ex.details.to_json(builder) })
-      # when MCPC::ResultError   then STDERR.puts(JSON.build(indent: 2) { |builder| ex.data.to_json(builder) })
-      # else
-      #   STDERR.puts ex.inspect_with_backtrace
-      # end
+      details = case ex
+                when MCPC::ResponseError
+                  JSON.build(indent: 2) { |builder| ex.details.to_json(builder) }
+                when MCPC::ResultError
+                  JSON.build(indent: 2) { |builder| ex.data.to_json(builder) }
+                else
+                  ex.inspect_with_backtrace
+                end
+      queue.push Render::ErrorMessage.new(
+        "MCP error: #{ex.class}: #{ex}",
+        details: "```\n#{details}\n```", markdown: true)
     end
 
     private def trim_text(text, max_length)
