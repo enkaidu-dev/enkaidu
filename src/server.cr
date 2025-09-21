@@ -17,12 +17,16 @@ require "./sucre/web_server"
 module Enkaidu
   module Server
     class FileStorage
-      # extend BakedFileSystem
-      # bake_folder "../webui/public"
-
-      def self.get(path)
-        File.new("webui/dist#{path}")
-      end
+      {% if flag?(:release) %}
+        # Build the disttibution build of webUI into the executable
+        extend BakedFileSystem
+        bake_folder "../webui/dist"
+      {% else %}
+        # Reas files from file system
+        def self.get(path)
+          File.new("webui/dist#{path}")
+        end
+      {% end %}
     end
 
     module API
