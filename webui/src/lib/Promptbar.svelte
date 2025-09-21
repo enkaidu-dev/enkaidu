@@ -1,5 +1,6 @@
 <script lang="ts">
-  let { onask = null } = $props();
+  let { onask = null, loading = false } = $props();
+  let text_area: HTMLTextAreaElement;
 
   function handle_key_event(event: KeyboardEvent) {
     if (!event.shiftKey && event.key == "Enter") {
@@ -12,21 +13,34 @@
       }
     }
   }
+
+  export function focus() {
+    text_area.focus();
+  }
 </script>
 
 <div
-  class="w-full bg-base-200 px-10 py-5 bottom-0 border-t-2 border-base-content"
+  class="relative w-full bg-base-200 px-10 py-5 bottom-0 border-t-2 border-base-content"
 >
-  <form>
+  <form class={loading ? " blur-xs " : ""}>
     <fieldset class="fieldset">
       <textarea
+        bind:this={text_area}
+        disabled={loading}
         onkeydown={handle_key_event}
-        class="textarea h-20 w-full"
+        class="textarea h-20 w-full mx-auto max-w-5xl dark:border-3"
         placeholder="Prompt"
       ></textarea>
-      <div class="label">
+      <div class="label mx-auto">
         Press ENTER to submit the query; use Shift-ENTER to create new lines.
       </div>
     </fieldset>
   </form>
+  {#if loading}
+    <div
+      class="absolute inset-0 w-full h-full flex items-center place-content-center"
+    >
+      <span class="loading loading-spinner text-primary loading-xl"></span>
+    </div>
+  {/if}
 </div>
