@@ -45,5 +45,7 @@ module ACPA
     end
 
     class Prompt < JsonRpcRequest(PromptParams); end
+
+    alias ParamTypes = InitParams | PromptParams
   end
 end

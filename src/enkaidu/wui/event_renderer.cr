@@ -1,9 +1,11 @@
 require "../session_renderer"
+require "./work"
+
 require "markterm"
 
 module Enkaidu::Server
   module Render
-    abstract class BaseEvent
+    abstract class Event
       include JSON::Serializable
 
       use_json_discriminator "type", {
@@ -20,7 +22,7 @@ module Enkaidu::Server
       def initialize(@type); end
     end
 
-    abstract class Message < BaseEvent
+    abstract class Message < Event
       use_json_discriminator "level", {
         info: InfoMessage, warn: WarningMessage, error: ErrorMessage,
         success: SuccessMessage,
@@ -36,7 +38,7 @@ module Enkaidu::Server
       end
     end
 
-    class Query < BaseEvent
+    class Query < Event
       getter prompt : String
 
       def initialize(@prompt)
@@ -68,7 +70,7 @@ module Enkaidu::Server
       end
     end
 
-    class LLMToolCall < BaseEvent
+    class LLMToolCall < Event
       getter name : String
       getter args : String
 
@@ -77,7 +79,7 @@ module Enkaidu::Server
       end
     end
 
-    class LLMTextFragment < BaseEvent
+    class LLMTextFragment < Event
       getter fragment : String
 
       def initialize(@fragment)
@@ -85,7 +87,7 @@ module Enkaidu::Server
       end
     end
 
-    class LLMText < BaseEvent
+    class LLMText < Event
       getter content : String
 
       def initialize(@content)
@@ -97,24 +99,32 @@ module Enkaidu::Server
   # This class is responsible for rendering console outputs into a queue
   # for retrieval by API
   class EventRenderer < SessionRenderer
-    private getter queue = Deque(Render::BaseEvent).new
+    private getter queue = Deque(Render::Event).new
 
     property? streaming = false
+    private getter work_channel : Channel(Work)
+
+    def initialize(@work_channel); end
+
+    private def post_event(event)
+      queue.push(event)
+      work_channel.send(Work::RenderEventPosted)
+    end
 
     def event?
       queue.shift?
     end
 
     def info_with(message, help = nil, markdown = false)
-      queue.push Render::InfoMessage.new(message, details: help.to_s, markdown: markdown)
+      post_event Render::InfoMessage.new(message, details: help.to_s, markdown: markdown)
     end
 
     def warning_with(message, help = nil, markdown = false)
-      queue.push Render::WarningMessage.new(message, details: help.to_s, markdown: markdown)
+      post_event Render::WarningMessage.new(message, details: help.to_s, markdown: markdown)
     end
 
     def error_with(message, help = nil, markdown = false)
-      queue.push Render::ErrorMessage.new(message, details: help.to_s, markdown: markdown)
+      post_event Render::ErrorMessage.new(message, details: help.to_s, markdown: markdown)
     end
 
     def show_inclusions(indicators : Array(String))
@@ -125,7 +135,7 @@ module Enkaidu::Server
     end
 
     def user_query(query)
-      queue.push Render::Query.new(query)
+      post_event Render::Query.new(query)
     end
 
     def user_calling_tools
@@ -149,7 +159,7 @@ module Enkaidu::Server
       # print "  CALL".colorize(:green)
       # puts " #{name.colorize(:red)} " \
       #      "with #{trim_text(args.to_s, LLM_MAX_TOOL_CALL_ARGS_LENGTH).colorize(:red)}"
-      queue.push Render::LLMToolCall.new(name, args.to_s)
+      post_event Render::LLMToolCall.new(name, args.to_s)
     end
 
     def llm_error(err)
@@ -158,32 +168,32 @@ module Enkaidu::Server
 
     def llm_text(text)
       if streaming?
-        queue.push Render::LLMTextFragment.new(text)
+        post_event Render::LLMTextFragment.new(text)
       else
         llm_text_block(text)
       end
     end
 
     def llm_text_block(text)
-      queue.push Render::LLMText.new(text)
+      post_event Render::LLMText.new(text)
     end
 
     def mcp_initialized(uri)
-      queue.push Render::SuccessMessage.new("MCP connection: #{uri}")
+      post_event Render::SuccessMessage.new("MCP connection: #{uri}")
     end
 
     def mcp_tools_found(count)
-      queue.push Render::SuccessMessage.new("MCP found #{count} tools")
+      post_event Render::SuccessMessage.new("MCP found #{count} tools")
     end
 
     def mcp_tool_ready(function)
-      queue.push Render::SuccessMessage.new("MCP added function: #{function.name}")
+      post_event Render::SuccessMessage.new("MCP added function: #{function.name}")
     end
 
     MCP_MAX_TOOL_CALL_ARGS_LENGTH = 72
 
     def mcp_calling_tool(uri, name, args)
-      queue.push Render::SuccessMessage.new(
+      post_event Render::SuccessMessage.new(
         "MCP calling \"#{name}\" (at #{uri}) with:",
         details: "`#{args}`", markdown: true)
       # puts "  MCP CALLING \"#{name}\" at server #{uri}.".colorize(:yellow)
@@ -193,7 +203,7 @@ module Enkaidu::Server
     MCP_MAX_TOOL_RESULT_LENGTH = 72
 
     def mcp_calling_tool_result(uri, name, result)
-      queue.push Render::SuccessMessage.new(
+      post_event Render::SuccessMessage.new(
         "MCP call \"#{name}\" RESULT:",
         details: "`#{result}`", markdown: true)
       # puts "  MCP CALL (#{name}) RESULT: #{trim_text(result.to_s, MCP_MAX_TOOL_RESULT_LENGTH)}".colorize(:green)
@@ -208,7 +218,7 @@ module Enkaidu::Server
                 else
                   ex.inspect_with_backtrace
                 end
-      queue.push Render::ErrorMessage.new(
+      post_event Render::ErrorMessage.new(
         "MCP error: #{ex.class}: #{ex}",
         details: "```\n#{details}\n```", markdown: true)
     end
