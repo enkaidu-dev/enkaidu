@@ -4,10 +4,13 @@
   import Menubar from "./lib/Menubar.svelte";
   import Promptbar from "./lib/Promptbar.svelte";
   import Session from "./lib/Session.svelte";
-  import Sidebar from "./lib/Sidebar.svelte";
+  // import Sidebar from "./lib/Sidebar.svelte";
 
   let session: Session;
+  let prompt: Promptbar;
+
   let started = false;
+  let handling_request = false;
 
   async function read_line_by_line(
     response: Response,
@@ -69,24 +72,12 @@
   }
 
   async function handle_response(resp: Response) {
-    let last_type: string | null = null;
-    let text_aggr = "";
+    // Use to track when in think mode while gathering text fragments.
+    let text_thinking = false;
+
     await read_line_by_line(resp, function (line) {
-      if (line == null) {
-        // no more lines.
-        if (last_type == "llm_text_fragment") {
-          // gather up text content
-          session.add_event({ type: "llm", content: text_aggr });
-        }
-      } else {
+      if (line != null) {
         let msg = JSON.parse(line);
-        if (last_type != msg.type && last_type == "llm_text_fragment") {
-          // gather up text content
-          if (text_aggr.trim.length > 0) {
-            session.add_event({ type: "llm", content: text_aggr });
-          }
-          text_aggr = "";
-        }
         switch (msg.type) {
           case "message":
             session.add_event({
@@ -117,22 +108,23 @@
             }
             break;
           case "llm_text_fragment":
-            text_aggr += msg.fragment;
-            if (msg.fragment == "</think>") {
-              session.add_event({ type: "think", content: text_aggr });
-              text_aggr = "";
-              msg.type = "llm_text";
+            if (msg.fragment == "<think>") text_thinking = true;
+            if (msg.fragment.trim.length > 0) {
+              session.add_event({
+                type: text_thinking ? "think" : "llm",
+                content: msg.fragment,
+              });
             }
+            if (msg.fragment == "</think>") text_thinking = false;
             break;
           case "llm_tool_call":
             session.add_event({
-              type: `message_info`,
+              type: `message_success`,
               subject: `CALL "${msg.name}" with`,
               content: "`" + msg.args + "`",
             });
             break;
         }
-        last_type = msg.type;
       }
     });
   }
@@ -146,15 +138,28 @@
   }
 
   async function on_prompt_ask(query: string) {
-    await check_if_started();
+    try {
+      handling_request = true;
+      await check_if_started();
 
-    query = query.trim();
-    session.add_event({
-      type: query.startsWith("/") ? "command" : "query",
-      content: query,
-    });
-    let resp = await post_request("prompt", new_prompt_request(query));
-    await handle_response(resp);
+      query = query.trim();
+      session.add_event({
+        type: query.startsWith("/") ? "command" : "query",
+        content: query,
+      });
+      let resp = await post_request("prompt", new_prompt_request(query));
+      await handle_response(resp);
+    } catch (error) {
+      session.add_event({
+        type: "message_error",
+        subject: error as string,
+      });
+    } finally {
+      handling_request = false;
+      setTimeout(() => {
+        prompt.focus();
+      }, 10);
+    }
   }
 </script>
 
@@ -165,9 +170,13 @@
       <div class="flex flex-col h-screen justify-between">
         <Menubar />
         <Session bind:this={session} />
-        <Promptbar onask={on_prompt_ask} />
+        <Promptbar
+          bind:this={prompt}
+          onask={on_prompt_ask}
+          loading={handling_request}
+        />
       </div>
     </div>
-    <Sidebar />
+    <!-- <Sidebar /> -->
   </div>
 </main>
