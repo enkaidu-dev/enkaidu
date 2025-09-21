@@ -9,15 +9,21 @@ hooks:
     - (test -f "config/$environment/$APP.$CONFIG" && ln -sf config/$environment/$APP.$CONFIG) || true
 actions:
   ## ----- Server --- will be removed
+  build-server-release:
+    command: cd webui && npm run build && cd .. && SHARDS_BIN_PATH=bin/release shards build $APP-server --release
+    description: Build for release
+    aliases: [bsr]
   build-server-debug:
     command: SHARDS_BIN_PATH=bin/debug shards build $APP-server --debug
     description: Build for development (debugging)
     aliases: [bsd]
-  run-server:
+  run-server-debug:
     command: ops build-server-debug && bin/debug/$APP-server
     load_secrets: true
     aliases: [rsd]
-
+  run-server-release:
+    command: bin/release/$APP-server
+    aliases: [rsr]
   ## -----
   build-release:
     command: SHARDS_BIN_PATH=bin/release shards build $APP --release
