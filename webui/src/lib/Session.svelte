@@ -33,6 +33,20 @@
 
   let entries: SessionEntry[] = $state([]);
 
+  function check_and_trim_last_entry() {
+    let last = entries.at(-1);
+    if (last) {
+      // Check if last one is text and if it has any text in it
+      if (last.type == "llm" || last.type == "think") {
+        let content = last.data[0].content?.trim();
+        if (content && content.length == 0) {
+          // The previous one has empty text, so just drop it.
+          entries.pop();
+        }
+      }
+    }
+  }
+
   export function add_event(ev: Event) {
     let last = entries.at(-1);
     let ev_data = { subject: ev.subject, content: ev.content };
@@ -47,6 +61,8 @@
         last.data.push(ev_data);
       }
     } else {
+      check_and_trim_last_entry();
+      // Append the new event type
       entries.push({
         type: ev.type,
         data: [ev_data],

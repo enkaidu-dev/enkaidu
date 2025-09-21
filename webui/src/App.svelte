@@ -108,14 +108,15 @@
             }
             break;
           case "llm_text_fragment":
-            if (msg.fragment == "<think>") text_thinking = true;
-            if (msg.fragment.trim.length > 0) {
+            let fragment = msg.fragment.trim();
+            if (fragment == "<think>") text_thinking = true;
+            if (fragment.length > 0 || msg.fragment.includes("\n")) {
               session.add_event({
                 type: text_thinking ? "think" : "llm",
                 content: msg.fragment,
               });
             }
-            if (msg.fragment == "</think>") text_thinking = false;
+            if (fragment == "</think>") text_thinking = false;
             break;
           case "llm_tool_call":
             session.add_event({
