@@ -21,7 +21,7 @@ module Enkaidu
       {% if flag?(:release) %}
         # Build the disttibution build of webUI into the executable
         extend BakedFileSystem
-        bake_folder "../webui/dist"
+        bake_folder "../../../webui/dist"
       {% else %}
         # Reads files from file system in debug mode
         def self.get(path)
