@@ -20,7 +20,7 @@ module Enkaidu::CLI
     delegate recorder, to: @session
     delegate renderer, to: @session
 
-    WELCOME_MSG = "Welcome to Enkaidu"
+    WELCOME_MSG = "Welcome to Enkaidu #{VERSION}"
     WELCOME     = <<-TEXT
     This is your second-in-command(-line) designed to assist you with
     writing & maintaining code and other text-based content, by enabling LLMs
