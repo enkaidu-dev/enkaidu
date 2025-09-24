@@ -2,12 +2,11 @@ name: CI
 
 on:
   push:
-    branches: [main]
-  pull_request:
-    branches: [main]
+    tags:
+      - 'v*'
 
 jobs:
-  build-and-test:
+  build-and-release:
     strategy:
       fail-fast: false
       matrix:
@@ -45,28 +44,6 @@ jobs:
         npm run build
         cd ..
         
-    # ---- Build debug release and check code quality on one platform
-
-    - name: Setup debug environment (Linux)
-      if: ${{ runner.os == 'Linux' }}
-      run: mkdir -p bin/debug
-
-    - name: Build Debug (Linux)
-      if: ${{ runner.os == 'Linux' }}
-      run: SHARDS_BIN_PATH=bin/debug shards build --debug
-
-    - name: Check formatting (Linux)
-      if: ${{ runner.os == 'Linux' }}
-      run: crystal tool format; git diff --exit-code
-
-    - name: Run static code analysis (Linux)
-      if: ${{ runner.os == 'Linux' }}
-      run: bin/ameba src/
-
-    - name: Run tests (Linux)
-      if: ${{ runner.os == 'Linux' }}
-      run: crystal spec -Dtest
-
     # ---- Build releases on all platforms
 
     # Non-Windows
@@ -92,3 +69,9 @@ jobs:
       run: |
         $env:SHARDS_BIN_PATH = "bin\release"
         shards build --release
+
+    - name: Upload release bundle artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: enkaidu-${{ matrix.os }}
+        path: bin/release/enkaidu

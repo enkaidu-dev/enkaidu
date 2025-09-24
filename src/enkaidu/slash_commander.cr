@@ -198,7 +198,7 @@ module Enkaidu
         raise ArgumentError.new("ERROR: Unknown or incomplete sub-command: '#{cmd.input}'")
       end
     rescue e : ArgumentError
-      renderer.warning_with(e.message, help: H_C_USE_MCP, markdown: true)
+      renderer.warning_with(e.message || e.class.name, help: H_C_USE_MCP, markdown: true)
     end
 
     private def handle_use_mcp_with_name(name)
