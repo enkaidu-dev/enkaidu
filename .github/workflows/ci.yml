@@ -43,6 +43,7 @@ jobs:
         cd webui
         npm i
         npm run build
+        cd ..
         
     # ---- Build debug release and check code quality on one platform
 
