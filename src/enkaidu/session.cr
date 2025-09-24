@@ -5,6 +5,7 @@ require "markterm"
 require "../llm"
 require "../tools"
 
+require "./version"
 require "./mcp_function"
 require "./recorder"
 require "./session_options"

@@ -3,50 +3,31 @@ require "json"
 require "baked_file_system"
 require "mime"
 
-require "./acpa"
+require "../../acpa"
+require "../../sucre/web_server"
 
-require "./enkaidu/*"
-require "./enkaidu/cli/*"
-require "./enkaidu/wui/*"
+require "../cli/options"
+require "../cli/console_renderer"
 
-require "./sucre/command_parser"
-require "./tools/image_helper"
+require "./event_renderer"
+require "./work"
 
-require "./sucre/web_server"
+require "../slash_commander"
+require "../session"
 
 module Enkaidu
-  module Server
+  module WUI
     class FileStorage
       {% if flag?(:release) %}
         # Build the disttibution build of webUI into the executable
         extend BakedFileSystem
         bake_folder "../webui/dist"
       {% else %}
-        # Reas files from file system
+        # Reads files from file system in debug mode
         def self.get(path)
           File.new("webui/dist#{path}")
         end
       {% end %}
-    end
-
-    module API
-      enum MessageType
-        Info
-        Warn
-        Error
-      end
-
-      class Message
-        include JSON::Serializable
-
-        getter type : MessageType
-        getter message : String
-
-        getter? markdown : Bool
-        getter details : String?
-
-        def initialize(@type, @message, @details = nil, @markdown = false); end
-      end
     end
 
     # `Sever` is the interim WIP entry point for the server-mode build of Enkaidu.
@@ -77,14 +58,13 @@ module Enkaidu
     and connecting with MCP servers.
     TEXT
 
-      def initialize
-        @queue = Server::EventRenderer.new(session_work)
+      def initialize(@opts)
+        @console = opts.renderer
 
-        @console = CLI::ConsoleRenderer.new
+        @queue = EventRenderer.new(session_work)
+
         console.info_with WELCOME_MSG, WELCOME, markdown: true
         console.info_with ""
-
-        @opts = CLI::Options.new(console)
 
         @web_server = WebServer.new(8765)
 
@@ -112,8 +92,7 @@ module Enkaidu
           STDERR.puts "#{req.method} #{req.path}".colorize(:green)
         end
 
-        web_server.get "/api/start" do |req, resp|
-          STDERR.puts "~~~ req: #{req.inspect}"
+        web_server.get "/api/start" do |_, resp|
           list = gather_queue_events
           list.each { |line| resp.puts line.to_json }
         end
@@ -121,7 +100,6 @@ module Enkaidu
         web_server.post "/api/prompt" do |req, resp|
           if body_io = req.body
             prompt_req = ACPA::Request::PromptParams.from_json(body_io.gets_to_end)
-            STDERR.puts "~~~ req: #{prompt_req.inspect}"
             channel_acpa_session_request(prompt_req, resp)
           else
             raise ArgumentError.new("Nil body: #{req.method} #{req.path}")
@@ -144,7 +122,7 @@ module Enkaidu
       private def channel_acpa_session_request(req : ACPA::Request::ParamTypes, resp : HTTP::Server::Response)
         session_requests.send(req)
         # Monitor session work and gather queue events when triggered;
-        while (work = session_work.receive)
+        while work = session_work.receive
           list = gather_queue_events
           list.each { |line| resp.puts line.to_json }
           resp.flush
@@ -201,7 +179,7 @@ module Enkaidu
 
       def run
         web_server.start
-        console.info_with "INFO: Server started: http://localhost:#{web_server.port}/"
+        console.info_with "INFO: WebUI server started: http://localhost:#{web_server.port}/"
         wait_and_handle_session_requests
         web_server.join
         console.info_with "Goodbye"
@@ -209,7 +187,3 @@ module Enkaidu
     end
   end
 end
-
-{% unless flag?(:test) %}
-  Enkaidu::Server::Main.new.run
-{% end %}

@@ -1,5 +1,7 @@
 # Enkaidu
 
+![Enkaidu](./webui/public/favicon.png)
+
 Enkaidu is your _second-in-command(-line)_ for coding and creativity. Inspired by Enkidu, the loyal and dynamic companion from Mesopotamian mythology, Enkaidu embodies collaboration, adaptability, and a touch of chaos to spark innovation.
 
 Out of the box, with the use of _your preferred_ AI large language models, Enkaidu is designed to assist you with writing & maintaining code (and other text-based content).

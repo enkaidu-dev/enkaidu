@@ -1,4 +1,4 @@
-module Enkaidu::Server
+module Enkaidu::WUI
   enum Work
     # When an event has been posted
     RenderEventPosted

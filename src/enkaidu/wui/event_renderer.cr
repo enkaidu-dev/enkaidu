@@ -3,7 +3,7 @@ require "./work"
 
 require "markterm"
 
-module Enkaidu::Server
+module Enkaidu::WUI
   module Render
     abstract class Event
       include JSON::Serializable

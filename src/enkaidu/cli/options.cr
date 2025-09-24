@@ -16,12 +16,14 @@ module Enkaidu::CLI
     getter? stream = false
     getter? trace_mcp = false
     getter? trace_http = true
+    getter? webui = false
+
     getter recorder_file : IO? = nil
 
     getter config_for_llm : Config::LLM?
     getter config : Config?
 
-    private getter renderer : SessionRenderer
+    getter renderer : SessionRenderer
 
     private def add(name : Symbol, value : String | Bool)
       @options[name] = value.to_s
@@ -88,6 +90,11 @@ module Enkaidu::CLI
         add(:config_file, path)
       rescue ex
         error_and_exit_with "FATAL: Unable to open file (\"#{path}\"): #{ex.message}", parser
+      end
+
+      parser.on("--webui", "Enable web UI mode to use Enkaidu via browser") do
+        @webui = true
+        add(:webui, true)
       end
     end
 
