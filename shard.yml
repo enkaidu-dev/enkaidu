@@ -25,5 +25,3 @@ dependencies:
 targets:
   enkaidu:
     main: src/main.cr
-  enkaidu-server:
-    main: src/server.cr
