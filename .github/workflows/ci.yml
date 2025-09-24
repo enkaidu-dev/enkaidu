@@ -38,6 +38,12 @@ jobs:
     - name: Install shards
       run: shards check || shards install
 
+    - name: Prepare and build webui
+      run: |
+        cd webui
+        npm i
+        npm run build
+        
     # ---- Build debug release and check code quality on one platform
 
     - name: Setup debug environment (Linux)
