@@ -125,6 +125,9 @@
               content: "`" + msg.args + "`",
             });
             break;
+          case "confirmation":
+            session.show_confirmation(msg.command, msg.id);
+            break;
         }
       }
     });

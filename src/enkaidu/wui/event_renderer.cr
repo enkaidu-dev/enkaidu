@@ -14,6 +14,7 @@ module Enkaidu::WUI
         llm_text:          LLMText,
         llm_text_fragment: LLMTextFragment,
         llm_tool_call:     LLMToolCall,
+        confirmation:      Confirmation,
       }
 
       getter type : String
@@ -94,12 +95,22 @@ module Enkaidu::WUI
         super("llm_text")
       end
     end
+
+    class Confirmation < Event
+      getter command : String
+      getter id : String
+
+      def initialize(@command, @id)
+        super("confirmation")
+      end
+    end
   end
 
   # This class is responsible for rendering console outputs into a queue
   # for retrieval by API
   class EventRenderer < SessionRenderer
     private getter queue = Deque(Render::Event).new
+    private getter pending_confirmations = Hash(String, Channel(Bool)).new
 
     property? streaming = false
     private getter work_channel : Channel(Work)
@@ -144,13 +155,22 @@ module Enkaidu::WUI
     end
 
     def user_confirm_shell_command?(command)
-      puts "  CONFIRM: The assistant wants to run the following command:\n"
-      puts "  > #{command}\n\n".colorize(:red).bold
-      print "  Allow? [y/N] "
-      response = STDIN.raw &.read_char
-      puts response
+      confirmation_id = Random::Secure.hex(16)
+      confirmation_channel = Channel(Bool).new
+      pending_confirmations[confirmation_id] = confirmation_channel
 
-      ['y', 'Y'].includes?(response)
+      post_event Render::Confirmation.new(command, confirmation_id)
+
+      # Wait for the response
+      result = confirmation_channel.receive
+      pending_confirmations.delete(confirmation_id)
+      result
+    end
+
+    def respond_to_confirmation(confirmation_id : String, approved : Bool)
+      if channel = pending_confirmations[confirmation_id]?
+        channel.send(approved)
+      end
     end
 
     LLM_MAX_TOOL_CALL_ARGS_LENGTH = 72

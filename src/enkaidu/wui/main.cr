@@ -106,6 +106,18 @@ module Enkaidu
           end
         end
 
+        web_server.post "/api/confirmation" do |req, resp|
+          if body_io = req.body
+            confirmation_data = JSON.parse(body_io.gets_to_end)
+            confirmation_id = confirmation_data["id"].as_s
+            approved = confirmation_data["approved"].as_bool
+            queue.respond_to_confirmation(confirmation_id, approved)
+            resp.puts({"status": "ok"}.to_json)
+          else
+            raise ArgumentError.new("Nil body: #{req.method} #{req.path}")
+          end
+        end
+
         web_server.unknown_get do |req, resp|
           path = req.path == "/" ? "/index.html" : req.path
           if file = FileStorage.get(path)

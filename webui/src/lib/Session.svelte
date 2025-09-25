@@ -3,6 +3,7 @@
   import AsstCard from "./AsstCard.svelte";
   import MsgCard from "./MsgCard.svelte";
   import AsstThinkCard from "./AsstThinkCard.svelte";
+  import ConfirmDialog from "./ConfirmDialog.svelte";
 
   const scrollToBottom = (node: HTMLElement, _list: Event[]) => {
     const scroll = () =>
@@ -32,6 +33,11 @@
   };
 
   let entries: SessionEntry[] = $state([]);
+  let confirmDialog = $state({
+    show: false,
+    command: "",
+    id: ""
+  });
 
   function check_and_trim_last_entry() {
     let last = entries.at(-1);
@@ -73,6 +79,32 @@
   export function get_id() {
     return "not_applicable";
   }
+
+  export function show_confirmation(command: string, id: string) {
+    confirmDialog.show = true;
+    confirmDialog.command = command;
+    confirmDialog.id = id;
+  }
+
+  export async function send_confirmation_response(id: string, approved: boolean) {
+    try {
+      await fetch("http://localhost:8765/api/confirmation", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ id, approved }),
+      });
+    } catch (error) {
+      console.error("Failed to send confirmation response:", error);
+    }
+  }
+
+  function handle_confirmation(event: CustomEvent) {
+    const { id, approved } = event.detail;
+    confirmDialog.show = false;
+    send_confirmation_response(id, approved);
+  }
 </script>
 
 <div use:scrollToBottom={entries} class="mb-auto overflow-scroll">
@@ -95,3 +127,10 @@
     {/each}
   </div>
 </div>
+
+<ConfirmDialog
+  command={confirmDialog.command}
+  id={confirmDialog.id}
+  show={confirmDialog.show}
+  on:confirm={handle_confirmation}
+/>
