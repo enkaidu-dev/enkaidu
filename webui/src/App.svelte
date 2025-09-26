@@ -1,6 +1,8 @@
 <script lang="ts">
   import * as Acp from "./acp_schema_types";
 
+  import { enkaidu_post_request, enkaidu_get_request } from "./utilities";
+
   import Menubar from "./lib/Menubar.svelte";
   import Promptbar from "./lib/Promptbar.svelte";
   import Session from "./lib/Session.svelte";
@@ -47,28 +49,6 @@
         },
       ],
     };
-  }
-
-  async function get_request(path: string) {
-    const request = new Request(`http://localhost:8765/api/${path}`, {
-      method: "GET",
-    });
-
-    return await fetch(request);
-  }
-
-  async function post_request(path: string, content: any) {
-    const headers = new Headers({
-      "Content-Type": "application/json",
-    });
-
-    const request = new Request(`http://localhost:8765/api/${path}`, {
-      method: "POST",
-      body: JSON.stringify(content),
-      headers: headers,
-    });
-
-    return await fetch(request);
   }
 
   async function handle_response(resp: Response) {
@@ -125,7 +105,7 @@
               content: "`" + msg.args + "`",
             });
             break;
-          case "confirmation":
+          case "shell_confirmation":
             session.show_confirmation(msg.command, msg.id);
             break;
         }
@@ -135,7 +115,7 @@
 
   async function check_if_started() {
     if (!started) {
-      let resp = await get_request("start");
+      let resp = await enkaidu_get_request("start");
       await handle_response(resp);
       started = true;
     }
@@ -151,7 +131,10 @@
         type: query.startsWith("/") ? "command" : "query",
         content: query,
       });
-      let resp = await post_request("prompt", new_prompt_request(query));
+      let resp = await enkaidu_post_request(
+        "prompt",
+        new_prompt_request(query),
+      );
       await handle_response(resp);
     } catch (error) {
       session.add_event({
