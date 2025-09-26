@@ -118,8 +118,10 @@ module Enkaidu::WUI
     def initialize(@work_channel); end
 
     private def post_event(event)
+      queue_size_before_post = queue.size
       queue.push(event)
-      work_channel.send(Work::RenderEventPosted)
+      # Only signal channel if first event
+      work_channel.send(Work::RenderEventPosted) if queue_size_before_post.zero?
     end
 
     def event?
