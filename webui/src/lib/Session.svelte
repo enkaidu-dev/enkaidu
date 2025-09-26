@@ -1,8 +1,11 @@
 <script lang="ts">
+  import { enkaidu_post_request } from "../utilities";
+
   import UserCard from "./UserCard.svelte";
   import AsstCard from "./AsstCard.svelte";
   import MsgCard from "./MsgCard.svelte";
   import AsstThinkCard from "./AsstThinkCard.svelte";
+  import ShellConfirmDialog from "./ShellConfirmDialog.svelte";
 
   const scrollToBottom = (node: HTMLElement, _list: Event[]) => {
     const scroll = () =>
@@ -32,6 +35,11 @@
   };
 
   let entries: SessionEntry[] = $state([]);
+  let shell_confirm_dialog = $state({
+    show: false,
+    command: "",
+    id: "",
+  });
 
   function check_and_trim_last_entry() {
     let last = entries.at(-1);
@@ -73,6 +81,25 @@
   export function get_id() {
     return "not_applicable";
   }
+
+  export function show_confirmation(command: string, id: string) {
+    shell_confirm_dialog.show = true;
+    shell_confirm_dialog.command = command;
+    shell_confirm_dialog.id = id;
+  }
+
+  async function send_confirmation_response(id: string, approved: boolean) {
+    try {
+      await enkaidu_post_request("confirmation", { id, approved });
+    } catch (error) {
+      console.error("Failed to send confirmation response:", error);
+    }
+  }
+
+  function handle_shell_confirmation(id: string, approved: boolean) {
+    shell_confirm_dialog.show = false;
+    send_confirmation_response(id, approved);
+  }
 </script>
 
 <div use:scrollToBottom={entries} class="mb-auto overflow-scroll">
@@ -95,3 +122,10 @@
     {/each}
   </div>
 </div>
+
+<ShellConfirmDialog
+  command={shell_confirm_dialog.command}
+  id={shell_confirm_dialog.id}
+  show={shell_confirm_dialog.show}
+  onconfirm={handle_shell_confirmation}
+/>
