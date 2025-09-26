@@ -9,12 +9,12 @@ module Enkaidu::WUI
       include JSON::Serializable
 
       use_json_discriminator "type", {
-        message:           Message,
-        query:             Query,
-        llm_text:          LLMText,
-        llm_text_fragment: LLMTextFragment,
-        llm_tool_call:     LLMToolCall,
-        confirmation:      Confirmation,
+        message:            Message,
+        query:              Query,
+        llm_text:           LLMText,
+        llm_text_fragment:  LLMTextFragment,
+        llm_tool_call:      LLMToolCall,
+        shell_confirmation: ShellConfirmation,
       }
 
       getter type : String
@@ -96,12 +96,12 @@ module Enkaidu::WUI
       end
     end
 
-    class Confirmation < Event
+    class ShellConfirmation < Event
       getter command : String
       getter id : String
 
       def initialize(@command, @id)
-        super("confirmation")
+        super("shell_confirmation")
       end
     end
   end
@@ -159,7 +159,7 @@ module Enkaidu::WUI
       confirmation_channel = Channel(Bool).new
       pending_confirmations[confirmation_id] = confirmation_channel
 
-      post_event Render::Confirmation.new(command, confirmation_id)
+      post_event Render::ShellConfirmation.new(command, confirmation_id)
 
       # Wait for the response
       result = confirmation_channel.receive
@@ -176,9 +176,6 @@ module Enkaidu::WUI
     LLM_MAX_TOOL_CALL_ARGS_LENGTH = 72
 
     def llm_tool_call(name, args)
-      # print "  CALL".colorize(:green)
-      # puts " #{name.colorize(:red)} " \
-      #      "with #{trim_text(args.to_s, LLM_MAX_TOOL_CALL_ARGS_LENGTH).colorize(:red)}"
       post_event Render::LLMToolCall.new(name, args.to_s)
     end
 
@@ -216,8 +213,6 @@ module Enkaidu::WUI
       post_event Render::SuccessMessage.new(
         "MCP calling \"#{name}\" (at #{uri}) with:",
         details: "`#{args}`", markdown: true)
-      # puts "  MCP CALLING \"#{name}\" at server #{uri}.".colorize(:yellow)
-      # puts "      with: #{trim_text(args.to_s, MCP_MAX_TOOL_CALL_ARGS_LENGTH)}".colorize(:yellow)
     end
 
     MCP_MAX_TOOL_RESULT_LENGTH = 72
@@ -226,7 +221,6 @@ module Enkaidu::WUI
       post_event Render::SuccessMessage.new(
         "MCP call \"#{name}\" RESULT:",
         details: "`#{result}`", markdown: true)
-      # puts "  MCP CALL (#{name}) RESULT: #{trim_text(result.to_s, MCP_MAX_TOOL_RESULT_LENGTH)}".colorize(:green)
     end
 
     def mcp_error(ex)
