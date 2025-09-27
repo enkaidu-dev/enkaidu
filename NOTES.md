@@ -3,8 +3,8 @@
 ## TODO
 
 - [ ] Write test specs
-- [ ] Document the code classes (viz. fix `ops lint` warnings)
 - [ ] Figure out `curl` and `bash` installation script
+- [x] Document the code classes (viz. fix `ops lint` warnings)
 - [x] Support "including" text and image files in queries, especially for vision models
 - [x] Setup GH action to build Linux and macOS binaries
 - [x] Support configuring MCP servers in config YAML file
@@ -62,14 +62,6 @@ E.g. containers starts in `/opt/workspace` and uer launches container and uses v
 
 Does this give us ZERO exfil / malware / host damage risk?
 
-### Web interface
-
-Consider [Kemal](https://github.com/kemalcr/kemal) to support a built-in web UI that mimics the CLI.
-
-And use [BakedFileSystem](https://github.com/ralsina/baked_file_system) to bundle the static file in the binary.
-
-And [Svelte](https://svelte.dev/docs/svelte/overview) with TypeScript (of course!) would be nice to write the web UI since it can be used to produce a SPA that can be "baked" into the binary.
-
 ### Support prompts via MCP
 
 MCP supports prompts as a service type for MCP servers. This is a good way to allow an MCP server to provide specific prompts based on inputs for querying an AI model. Especially when tool calls themselves produce non-trivial data.
@@ -101,6 +93,14 @@ Regarding signing / quarantining, see [this answer in SO](https://stackoverflow.
 So providing instructions to fetch / install via `curl` should provide an interim solution.
 
 ## Done
+
+### Web interface
+
+Built it using Crystal's `HTTP::Server` API, defining a simple router in `src/sucre/web_server`.
+
+Used [BakedFileSystem](https://github.com/ralsina/baked_file_system) to bundle the static file in the binary.
+
+And [Svelte](https://svelte.dev/docs/svelte/overview) with TypeScript (of course!) would be nice to write the web UI since it can be used to produce a SPA that can be "baked" into the binary.
 
 ### Interactive reader (Done)
 
