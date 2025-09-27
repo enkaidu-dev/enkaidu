@@ -17,6 +17,8 @@ module Enkaidu
 
     abstract def user_confirm_shell_command?(command)
 
+    abstract def session_reset
+
     abstract def llm_tool_call(name, args)
 
     abstract def llm_text(text)

@@ -47,12 +47,16 @@
       // Check if last one is text and if it has any text in it
       if (last.type == "llm" || last.type == "think") {
         let content = last.data[0].content?.trim();
-        if (content && content.length == 0) {
+        if (typeof content == "string" && content.length == 0) {
           // The previous one has empty text, so just drop it.
           entries.pop();
         }
       }
     }
+  }
+
+  export function reset() {
+    entries.length = 0;
   }
 
   export function add_event(ev: Event) {

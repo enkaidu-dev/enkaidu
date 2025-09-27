@@ -103,6 +103,7 @@ module Enkaidu
       mcps = NamedTuple(mcp_servers: Array(String)).from_json(io.gets.as(String))
       toolsets = NamedTuple(toolsets: Array(Hash(String, String | Array(String)))).from_json(io.gets.as(String))
 
+      renderer.session_reset
       unload_all_toolsets
       unload_all_mcp_servers
       @chat = setup_chat # new chat BEFORE loading tools, MCP servers
@@ -123,6 +124,16 @@ module Enkaidu
       sess = io.gets.as(String)
       @chat.load_session(sess)
       tail_session_events(tail_num_chats)
+    end
+
+    # Unload everything and start a new session as if we restarted Enkaidu, including auto loading from
+    # the configuration
+    def reset_session
+      renderer.session_reset
+      unload_all_toolsets
+      unload_all_mcp_servers
+      @chat = setup_chat # new chat BEFORE loading tools, MCP servers
+      auto_load
     end
 
     # Save session to a JSONL file,  where each line in order is as follows:

@@ -108,6 +108,11 @@
           case "shell_confirmation":
             session.show_confirmation(msg.command, msg.id);
             break;
+          case "session_update":
+            if (msg.reset) {
+              session.reset();
+            }
+            break;
         }
       }
     });
