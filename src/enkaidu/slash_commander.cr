@@ -88,6 +88,10 @@ module Enkaidu
       - Clears all active tools and MCP connections
       - Restores toolsets and re-establishes MCP server connections
       - Optionally specify how many `N` recent chats to display after loading the session.
+    - `reset`
+      - Clears all active tools and MCP connections
+      - Throws away the current session / context
+      - Auto loads tools and MCP connections in the configuration
     HELP1
 
     H_C_HELP = <<-HELP3
@@ -138,6 +142,8 @@ module Enkaidu
         else
           renderer.info_with("No usage data for curent session at this time.")
         end
+      elsif cmd.expect?(C_SESSION, "reset")
+        session.reset_session
       elsif cmd.expect?(C_SESSION, "save", String)
         path = Path.new(cmd.arg_at(2).as(String))
         File.open(path, "w") do |file|

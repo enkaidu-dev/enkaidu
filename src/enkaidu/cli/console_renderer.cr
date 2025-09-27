@@ -1,4 +1,5 @@
 require "../session_renderer"
+
 require "markterm"
 
 module Enkaidu::CLI
@@ -58,6 +59,20 @@ module Enkaidu::CLI
       puts response
 
       ['y', 'Y'].includes?(response)
+    end
+
+    private RESET = <<-ANSI
+     ______     ______     ______     ______     ______  
+    /\\  == \\   /\\  ___\\   /\\  ___\\   /\\  ___\\   /\\__  _\\ 
+    \\ \\  __<   \\ \\  __\\   \\ \\___  \\  \\ \\  __\\   \\/_/\\ \\/ 
+     \\ \\_\\ \\_\\  \\ \\_____\\  \\/\\_____\\  \\ \\_____\\    \\ \\_\\ 
+      \\/_/ /_/   \\/_____/   \\/_____/   \\/_____/     \\/_/ 
+                                                     
+    ANSI
+
+    def session_reset
+      10.times { puts }
+      puts RESET
     end
 
     LLM_MAX_TOOL_CALL_ARGS_LENGTH = 72

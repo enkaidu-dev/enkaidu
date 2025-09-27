@@ -15,6 +15,7 @@ module Enkaidu::WUI
         llm_text_fragment:  LLMTextFragment,
         llm_tool_call:      LLMToolCall,
         shell_confirmation: ShellConfirmation,
+        session_update:     SessionUpdate,
       }
 
       getter type : String
@@ -104,6 +105,14 @@ module Enkaidu::WUI
         super("shell_confirmation")
       end
     end
+
+    class SessionUpdate < Event
+      getter? reset : Bool
+
+      def initialize(@reset)
+        super "session_update"
+      end
+    end
   end
 
   # This class is responsible for rendering console outputs into a queue
@@ -167,6 +176,10 @@ module Enkaidu::WUI
       result = confirmation_channel.receive
       pending_confirmations.delete(confirmation_id)
       result
+    end
+
+    def session_reset
+      post_event Render::SessionUpdate.new(reset: true)
     end
 
     def respond_to_confirmation(confirmation_id : String, approved : Bool)

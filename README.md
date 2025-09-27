@@ -164,6 +164,7 @@ You can input your queries directly into Enkaidu. If the query is prefixed with 
 - **`/session usage`**: Shows the token usage/size for the current session based on the most recent response from the LLM.
 - **`/session save <FILEPATH>`**: Saves the current chat session to a JSONL file. The file should not be edited.
 - **`/session load <FILEPATH> [tail=<N>]`**: Loads a saved chat session from its JSONL file, and optionally _tails_ last `N` chats.
+- **`/session reset`**: Resets and cleares the current session including tools and MCP connections and starts anew per config.
 
 #### Tools management
 
