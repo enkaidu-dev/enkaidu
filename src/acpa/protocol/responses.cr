@@ -1,18 +1,9 @@
-require "./capabilities"
+require "../../sucre/json_rpc"
 
 module ACPA
-  # Base class for outgoing JSON RPC responses from ACP agent to the editor
-  abstract class JsonRpcResponse(R) < JsonRpcMessage
-    getter result : R
-
-    def initialize(@id, @result); end
-
-    check_if_clean_with result
-  end
-
-  # Outgoing JSON RPC responses are defined in this module
-  module Response
-    class InitResult < JsonEntity
+  # Outgoing ACP responses
+  abstract class Response(R) < JsonRpc::Response(R)
+    class InitResult < JsonRpc::Entity
       @[JSON::Field(key: "protocolVersion")]
       getter protocol_version : Int32
 
@@ -26,7 +17,7 @@ module ACPA
       end
     end
 
-    class Initialize < JsonRpcResponse(InitResult)
+    class Initialize < Response(InitResult)
       def initialize(id, result)
         super(id, "initialize", result)
       end

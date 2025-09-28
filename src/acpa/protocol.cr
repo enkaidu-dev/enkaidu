@@ -1,2 +1,3 @@
-require "./protocol/requests.cr"
-require "./protocol/responses.cr"
+require "./protocol/requests"
+require "./protocol/responses"
+require "./protocol/session_updates"

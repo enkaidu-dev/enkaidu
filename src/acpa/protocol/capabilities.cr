@@ -1,9 +1,9 @@
-require "./json_rpc"
+require "../../sucre/json_rpc"
 
 module ACPA
   # Capability JSON data types are defined in this module
   module Capabilities
-    class FileSystem < JsonEntity
+    class FileSystem < JsonRpc::Entity
       @[JSON::Field(key: "readTextFile")]
       getter? read_text_file : Bool = false
 
@@ -12,13 +12,13 @@ module ACPA
     end
 
     # Incoming client capabilities from the editor
-    class Client < JsonEntity
+    class Client < JsonRpc::Entity
       getter fs : FileSystem
 
       check_if_clean_with fs
     end
 
-    class Prompt < JsonEntity
+    class Prompt < JsonRpc::Entity
       @[JSON::Field(key: "image")]
       getter? image = false
 
@@ -29,7 +29,7 @@ module ACPA
       getter? embedded_context = false
     end
 
-    class Mcp < JsonEntity
+    class Mcp < JsonRpc::Entity
       @[JSON::Field(key: "http")]
       getter? http = false
 
@@ -38,7 +38,7 @@ module ACPA
     end
 
     # Outgoing ACP agent capabilities to the editor
-    class Agent < JsonEntity
+    class Agent < JsonRpc::Entity
       @[JSON::Field(key: "loadSession")]
       getter? load_session = false
 
