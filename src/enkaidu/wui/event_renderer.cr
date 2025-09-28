@@ -1,120 +1,10 @@
 require "../session_renderer"
 require "./work"
+require "./render_events/*"
 
 require "markterm"
 
 module Enkaidu::WUI
-  module Render
-    abstract class Event
-      include JSON::Serializable
-
-      use_json_discriminator "type", {
-        message:            Message,
-        query:              Query,
-        llm_text:           LLMText,
-        llm_text_fragment:  LLMTextFragment,
-        llm_tool_call:      LLMToolCall,
-        shell_confirmation: ShellConfirmation,
-        session_update:     SessionUpdate,
-      }
-
-      getter type : String
-      getter time = Time.local
-
-      def initialize(@type); end
-    end
-
-    abstract class Message < Event
-      use_json_discriminator "level", {
-        info: InfoMessage, warn: WarningMessage, error: ErrorMessage,
-        success: SuccessMessage,
-      }
-
-      getter level : String
-      getter message : String
-      getter? markdown : Bool
-      getter details : String?
-
-      def initialize(@level, @message, @details, @markdown)
-        super("message")
-      end
-    end
-
-    class Query < Event
-      getter prompt : String
-
-      def initialize(@prompt)
-        super("query")
-      end
-    end
-
-    class InfoMessage < Message
-      def initialize(message, details = nil, markdown = false)
-        super("info", message, details, markdown)
-      end
-    end
-
-    class WarningMessage < Message
-      def initialize(@message, @details = nil, @markdown = false)
-        super("warn", message, details, markdown)
-      end
-    end
-
-    class ErrorMessage < Message
-      def initialize(@message, @details = nil, @markdown = false)
-        super("error", message, details, markdown)
-      end
-    end
-
-    class SuccessMessage < Message
-      def initialize(@message, @details = nil, @markdown = false)
-        super("success", message, details, markdown)
-      end
-    end
-
-    class LLMToolCall < Event
-      getter name : String
-      getter args : String
-
-      def initialize(@name, @args)
-        super("llm_tool_call")
-      end
-    end
-
-    class LLMTextFragment < Event
-      getter fragment : String
-
-      def initialize(@fragment)
-        super("llm_text_fragment")
-      end
-    end
-
-    class LLMText < Event
-      getter content : String
-
-      def initialize(@content)
-        super("llm_text")
-      end
-    end
-
-    class ShellConfirmation < Event
-      getter command : String
-      getter id : String
-
-      def initialize(@command, @id)
-        super("shell_confirmation")
-      end
-    end
-
-    class SessionUpdate < Event
-      getter? reset : Bool
-
-      def initialize(@reset)
-        super "session_update"
-      end
-    end
-  end
-
   # This class is responsible for rendering console outputs into a queue
   # for retrieval by API
   class EventRenderer < SessionRenderer
@@ -179,7 +69,7 @@ module Enkaidu::WUI
     end
 
     def session_reset
-      post_event Render::SessionUpdate.new(reset: true)
+      post_event Render::SessionReset.new
     end
 
     def respond_to_confirmation(confirmation_id : String, approved : Bool)
