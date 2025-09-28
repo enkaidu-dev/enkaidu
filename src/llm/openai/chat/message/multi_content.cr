@@ -5,7 +5,7 @@ module LLM::OpenAI
   class Message::MultiContent < Message
     property content = [] of Content
 
-    def initialize(prompt : String, attach : Chat::Inclusions? = nil)
+    def initialize(prompt : String, attach : ChatInclusions? = nil)
       @role = "user"
       text(prompt)
       if more = attach

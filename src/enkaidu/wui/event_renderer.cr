@@ -39,20 +39,8 @@ module Enkaidu::WUI
       post_event Render::ErrorMessage.new(message, details: help.to_s, markdown: markdown)
     end
 
-    def show_inclusions(indicators : Array(String))
-      STDERR.puts "~~ Unimplemented renderer #show_inclusions"
-      # if indicators.present?
-      #   puts "----[ #{indicators.join(" | ")} ]----".colorize.yellow
-      # end
-    end
-
     def user_query(query)
       post_event Render::Query.new(query)
-    end
-
-    def user_calling_tools
-      STDERR.puts "~~ Unimplemented renderer #user_calling_tools"
-      # puts "----".colorize(:green)
     end
 
     def user_confirm_shell_command?(command)

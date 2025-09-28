@@ -85,7 +85,7 @@ module LLM::OpenAI
       {type: "error/unknown", content: tool_call}
     end
 
-    def ask(content : String, attach : Inclusions? = nil, & : LLM::ChatEvent ->) : Nil
+    def ask(content : String, attach : ChatInclusions? = nil, & : LLM::ChatEvent ->) : Nil
       append_message Message::MultiContent.new(prompt: content, attach: attach)
 
       ask_post do |msg|

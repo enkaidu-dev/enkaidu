@@ -42,7 +42,7 @@ module Enkaidu
       private getter web_server : WebServer
 
       private getter session : Session
-      private getter commander : SlashCommander
+      private getter commander : Slash::Commander
 
       alias SessionRequests = Symbol | ACPA::Request::PromptParams
 
@@ -71,7 +71,7 @@ module Enkaidu
         queue.info_with(WELCOME_MSG, WELCOME, markdown: true)
 
         @session = Session.new(queue, opts: opts)
-        @commander = SlashCommander.new(session)
+        @commander = Slash::Commander.new(session)
 
         session.auto_load
 

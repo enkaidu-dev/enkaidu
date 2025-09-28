@@ -1,97 +1,42 @@
 require "../sucre/command_parser"
 require "../tools/image_helper"
+require "./slash/*"
 
-module Enkaidu
-  # `SlashCommander` provides the `/` command handling support.
-  class SlashCommander
-    include Tools::ImageHelper
+module Enkaidu::Slash
+  # `Slash::Commander` provides the `/` command handling support.
+  class Commander
+    private getter commands = {} of String => Command
+
+    private getter include_command = IncludeCommand.new
 
     getter session : Session
     delegate renderer, to: @session
 
-    def initialize(@session); end
+    def initialize(@session)
+      register_commands
+    end
+
+    private def register_commands
+      [
+        include_command, # tracked locally to access inclusions
+        SessionCommand.new,
+        ToolCommand.new,
+        ToolsetCommand.new,
+        UseMcpCommand.new,
+      ].each do |command|
+        commands[command.name] = command
+      end
+    end
 
     # This class extends Exception. It is a custom error class, so we can raise custom error classes.
     class ArgumentError < Exception; end
 
-    C_BYE     = "/bye"
-    C_USE_MCP = "/use_mcp"
-    C_TOOL    = "/tool"
-    C_TOOLSET = "/toolset"
-    C_INCLUDE = "/include"
-    C_SESSION = "/session"
-    C_HELP    = "/help"
-
-    H_C_TOOLSET = <<-HELP1
-    `#{C_TOOLSET} [<sub-command>]`
-    - `ls`
-      - List all built-in toolsets that can be activated
-    - `load <TOOLSET_NAME>`
-      - Load all the tools from the named toolset
-    - `load <TOOLSET_NAME> select=LIST_TOOL_NAMES
-      - Load the selected tools from the named toolset
-      - E.g. `/toolset load FileManagement select=[list_files rename_file]`
-    - `unload <TOOLSET_NAME>`
-      - Unload all the tools from the named toolset
-    HELP1
-
-    H_C_TOOL = <<-HELP1
-    `#{C_TOOL} [<sub-command>]`
-    - `ls`
-      - List all available tools
-    - `info <TOOLNAME>`
-      - Provide details about one tool
-    HELP1
-
-    H_C_INCLUDE = <<-HELP1
-    `#{C_INCLUDE} [<sub-command>]`
-    - `image_file <PATH>`
-      - Prepare image data from a file to _include_ with the next query;
-        make sure the LLM model supports vision/image processing.
-    - `text_file <PATH>`
-      - Prepare text from a file to _include_ with the next query.
-    - `any_file <PATH>`
-      - Prepare a file (with it's base name) to _include_ with the next query;
-        make sure the LLM model supports file data along.
-    HELP1
+    C_BYE  = "/bye"
+    C_HELP = "/help"
 
     H_C_BYE = <<-HELP1
     `#{C_BYE}`
     - Exit Enkaidu
-    HELP1
-
-    H_C_USE_MCP = <<-HELP2
-    `#{C_USE_MCP} <NAME>`
-
-    `#{C_USE_MCP} <URL> [auth_env=<ENVARNAME>] [transport=auto|legacy|http]`
-    - Connect with the specified MCP server and register any available tools
-      for use with subsequent queries
-    - MCP server can be specified with URL or name from the config file
-    - When loading with a URL
-      - Optionally specify the transport type; defaults to `auto`
-      - Optionally specify name of environment variable that contains the
-        authentication token if needed.
-    HELP2
-
-    H_C_SESSION = <<-HELP1
-    `#{C_SESSION} [<sub-command>]`
-    - `usage`
-      - Show the token usage / size for the current session based OpenSSL
-        most recent response from LLM
-    - `save <FILEPATH>`
-      - Save the current chat session to a JSONL file
-      - Records current toolsets and tools
-      - Records MCP connections _iff_ they match MCP servers defined in the config file
-      - NOTE: The file should not be edited.
-    - `load <FILEPATH> [tail=<N>]`
-      - Load a saved chat session from its JSONL file.
-      - Clears all active tools and MCP connections
-      - Restores toolsets and re-establishes MCP server connections
-      - Optionally specify how many `N` recent chats to display after loading the session.
-    - `reset`
-      - Clears all active tools and MCP connections
-      - Throws away the current session / context
-      - Auto loads tools and MCP connections in the configuration
     HELP1
 
     H_C_HELP = <<-HELP3
@@ -99,189 +44,38 @@ module Enkaidu
     - Shows this information
     HELP3
 
-    HELP = <<-HELP
-    #{H_C_BYE}
-
-    #{H_C_HELP}
-
-    #{H_C_SESSION}
-
-    #{H_C_TOOL}
-
-    #{H_C_TOOLSET}
-
-    #{H_C_USE_MCP}
-
-    #{H_C_INCLUDE}
-    HELP
-
-    # Track any query indicators
-    getter query_indicators = [] of String
-
-    # Track current inclusions
-    @inclusions : LLM::Chat::Inclusions? = nil
-
-    # Current inclusions collector
-    private def inclusions
-      @inclusions ||= LLM::Chat::Inclusions.new
-    end
-
-    # Returns `Inclusions` if present, clearing current inclusion state and indicators; for use
-    # with a query.
-    def take_inclusions
-      hold = @inclusions
-      @inclusions = nil
-      @query_indicators.clear
-      hold
-    end
-
-    private def handle_session_command(cmd)
-      if cmd.expect?(C_SESSION, "usage")
-        if usage = session.usage
-          renderer.info_with("Current session usage: #{usage.total_tokens} tokens (prompt: #{usage.prompt_tokens}, completion: #{usage.completion_tokens}})")
-        else
-          renderer.info_with("No usage data for curent session at this time.")
-        end
-      elsif cmd.expect?(C_SESSION, "reset")
-        session.reset_session
-      elsif cmd.expect?(C_SESSION, "save", String)
-        path = Path.new(cmd.arg_at(2).as(String))
-        File.open(path, "w") do |file|
-          session.save_session(file)
-        end
-        renderer.info_with("Session saved to JSONL file: #{path}")
-      elsif cmd.expect?(C_SESSION, "load", String, tail: String?)
-        path = Path.new(cmd.arg_at(2).as(String))
-        tail_n = cmd.arg_named?("tail").try(&.as(String).to_i) || -1
-        renderer.info_with("Loading previously saved session: #{path}")
-        File.open(path, "r") do |file|
-          session.load_session(file, tail_num_chats: tail_n)
-        end
-      else
-        renderer.warning_with("ERROR: Unknown or incomplete sub-command: '#{cmd.input}'",
-          help: H_C_SESSION, markdown: true)
-      end
-    rescue e
-      renderer.warning_with("ERROR: #{e.message}", help: H_C_INCLUDE, markdown: true)
-    end
-
-    private def handle_include_command(cmd)
-      ok = nil
-      if filepath = cmd.arg_at?(2).try(&.as(String))
-        basename = Path.new(filepath).basename
-        if cmd.expect? C_INCLUDE, "image_file", String
-          inclusions.image_data load_image_file_as_data_url(filepath), basename
-          ok = query_indicators << "I:#{basename}"
-        elsif cmd.expect? C_INCLUDE, "text_file", String
-          inclusions.text File.read(filepath), basename
-          ok = query_indicators << "T:#{basename}"
-        elsif cmd.expect? C_INCLUDE, "any_file", String
-          inclusions.file_data load_file_as_data_url(filepath), basename
-          ok = query_indicators << "F:#{basename}"
+    def help
+      @help ||= String.build do |sio|
+        sio.puts H_C_BYE
+        sio.puts
+        sio.puts H_C_HELP
+        sio.puts
+        commands.each_value do |command|
+          sio.puts command.help
+          sio.puts
         end
       end
-      renderer.warning_with("ERROR: Unknown or incomplete sub-command: '#{cmd.input}'",
-        help: H_C_INCLUDE, markdown: true) if ok.nil?
-    rescue e
-      renderer.warning_with("ERROR: #{e.message}", help: H_C_INCLUDE, markdown: true)
     end
 
-    private def handle_use_mcp_command(cmd)
-      # Check if command meets expectation
-      if cmd.expect?(C_USE_MCP, String)
-        first_arg = cmd.arg_at?(1)
-        raise ArgumentError.new("No MCP server URL or name given.") if first_arg.nil?
-
-        uri = URI.parse(first_arg.as(String))
-        if uri.scheme.nil?
-          handle_use_mcp_with_name(first_arg.as(String))
-        else
-          handle_use_mcp_with_url(cmd)
-        end
-      elsif cmd.expect?(C_USE_MCP, String, auth_env: String?, transport: ["auto", "legacy", "http", nil])
-        handle_use_mcp_with_url(cmd)
-      else
-        raise ArgumentError.new("ERROR: Unknown or incomplete sub-command: '#{cmd.input}'")
-      end
-    rescue e : ArgumentError
-      renderer.warning_with(e.message || e.class.name, help: H_C_USE_MCP, markdown: true)
-    end
-
-    private def handle_use_mcp_with_name(name)
-      session.use_mcp_by(name)
-    end
-
-    private def handle_use_mcp_with_url(cmd)
-      auth_key = nil
-      type = MCPC::TransportType::AutoDetect
-
-      raise ArgumentError.new("ERROR: Specify URL to the MCP server") if (url = cmd.arg_at?(1)).nil?
-      if (auth_env = cmd.arg_named?("auth_env").try(&.as(String))) && (auth_key = ENV[auth_env]?).nil?
-        raise ArgumentError.new("ERROR: Unable to find environment variable: #{auth_env}.")
-      end
-
-      if transport_arg = cmd.arg_named?("transport")
-        type = MCPC::TransportType.from(transport_arg)
-      end
-      auth_token = auth_token_for_bearer_token(url, auth_key)
-      session.use_mcp_server url.as(String), auth_token: auth_token, transport_type: type
-    end
-
-    private def auth_token_for_bearer_token(url, bearer_token)
-      return if bearer_token.nil?
-
-      MCPC::AuthToken.new(label: "MCP auth token: #{url}", value: bearer_token)
-    end
-
-    private def handle_tool_command(cmd)
-      if cmd.expect?(C_TOOL, "ls")
-        session.list_all_tools
-      elsif cmd.expect?(C_TOOL, "info", String)
-        session.list_tool_details((cmd.arg_at? 2).as(String))
-      else
-        renderer.warning_with("ERROR: Unknown or incomplete sub-command: #{cmd.arg_at? 0}", help: H_C_TOOL, markdown: true)
-      end
-    end
-
-    private def handle_toolset_command(cmd)
-      if cmd.expect?(C_TOOLSET, "ls")
-        session.list_all_toolsets
-      elsif cmd.expect?(C_TOOLSET, "load", String, select: Array(String)?)
-        if name = cmd.arg_at?(2)
-          selection = cmd.arg_named?("select").try(&.as(Array(String)))
-          session.load_toolset_by(name.as(String), select_tools: selection)
-        end
-      elsif cmd.expect?(C_TOOLSET, "unload", String)
-        if name = cmd.arg_at?(2)
-          session.unload_toolset_by(name)
-        end
-      else
-        renderer.warning_with("ERROR: Unknown or incomplete sub-command: #{cmd.arg_at? 0}", help: H_C_TOOLSET, markdown: true)
-      end
-    end
+    delegate query_indicators, take_inclusions!, to: @include_command
 
     # Returns :done if user says `/bye`
     def make_it_so(q)
       state = nil
       cmd = CommandParser.new(q)
-      case cmd.arg_at?(0)
+
+      case cmd_name = cmd.arg_at?(0)
       when C_BYE
         state = :done
       when C_HELP
         renderer.info_with "The following `/` (slash) commands available:",
-          help: HELP, markdown: true
-      when C_TOOL
-        handle_tool_command(cmd)
-      when C_TOOLSET
-        handle_toolset_command(cmd)
-      when C_USE_MCP
-        handle_use_mcp_command(cmd)
-      when C_INCLUDE
-        handle_include_command(cmd)
-      when C_SESSION
-        handle_session_command(cmd)
+          help: help, markdown: true
       else
-        renderer.warning_with("ERROR: Unknown command: #{q}")
+        if command = commands[cmd_name]?
+          command.handle(session, cmd)
+        else
+          renderer.warning_with("ERROR: Unknown command: #{q}")
+        end
       end
       state
     end
