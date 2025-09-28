@@ -1,4 +1,4 @@
-name: CI
+name: Release
 
 on:
   push:
@@ -66,8 +66,9 @@ jobs:
     - name: Build Release (Windows)
       if: ${{ runner.os == 'Windows' }}
       shell: powershell
+      env:
+        SHARDS_BIN_PATH: "bin\release"
       run: |
-        $env:SHARDS_BIN_PATH = "bin\release"
         shards build --release
 
     - name: Upload release bundle artifact
