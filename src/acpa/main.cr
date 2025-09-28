@@ -28,12 +28,12 @@ module ACPA
       @output = STDOUT
     end
 
-    # Listen for JSON RPC requests and process them
+    # Listen for ACPA requests and process them
     def listen(&) : Nil
       input.each_line do |line|
         line = line.strip
         unless line.empty?
-          req = JsonRpcRequest.from_json(line)
+          req = Request.from_json(line)
           trace line, req
           yield req
         end

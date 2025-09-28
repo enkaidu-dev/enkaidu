@@ -1,32 +1,14 @@
-require "./capabilities"
+require "../../sucre/json_rpc"
+require "./content"
 
 module ACPA
-  # Base class for incoming JSON RPC requests from editor to the ACP agent
-  abstract class JsonRpcRequest(P) < JsonRpcMessage
+  # Incoming JSON RPC requests are defined in this module
+  abstract class Request(P) < JsonRpc::Request(P)
     use_json_discriminator "method", {
       initialize: Request::Initialize,
     }
 
-    getter method : String
-    getter params : P
-
-    check_if_clean_with params
-  end
-
-  abstract class ContentBlock < JsonEntity
-    use_json_discriminator "type", {
-      text: TextContent,
-    }
-    getter type : String
-  end
-
-  class TextContent < ContentBlock
-    getter text : String
-  end
-
-  # Incoming JSON RPC requests are defined in this module
-  module Request
-    class InitParams < JsonEntity
+    class InitParams < JsonRpc::Entity
       @[JSON::Field(key: "protocolVersion")]
       getter protocol_version : Int32
 
@@ -36,15 +18,15 @@ module ACPA
       check_if_clean_with client_capabilities
     end
 
-    class Initialize < JsonRpcRequest(InitParams); end
+    class Initialize < Request(InitParams); end
 
-    class PromptParams < JsonEntity
+    class PromptParams < JsonRpc::Entity
       @[JSON::Field(key: "sessionId")]
       getter session_id : String
       getter prompt : Array(ContentBlock)
     end
 
-    class Prompt < JsonRpcRequest(PromptParams); end
+    class Prompt < Request(PromptParams); end
 
     alias ParamTypes = InitParams | PromptParams
   end
