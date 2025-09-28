@@ -29,12 +29,6 @@ module Enkaidu::CLI
       err_puts_text help, markdown
     end
 
-    def show_inclusions(indicators : Array(String))
-      if indicators.present?
-        puts "----[ #{indicators.join(" | ")} ]----".colorize.yellow
-      end
-    end
-
     def error_with(message, help = nil, markdown = false)
       STDERR.puts message.colorize(:red)
       return unless help
@@ -44,10 +38,6 @@ module Enkaidu::CLI
     def user_query(query)
       puts "QUERY".colorize(:yellow)
       puts query
-      puts "----".colorize(:green)
-    end
-
-    def user_calling_tools
       puts "----".colorize(:green)
     end
 
@@ -68,10 +58,11 @@ module Enkaidu::CLI
      \\ \\_\\ \\_\\  \\ \\_____\\  \\/\\_____\\  \\ \\_____\\    \\ \\_\\
       \\/_/ /_/   \\/_____/   \\/_____/   \\/_____/     \\/_/
 
+
     ANSI
 
     def session_reset
-      10.times { puts }
+      3.times { puts }
       puts RESET
     end
 
@@ -81,6 +72,7 @@ module Enkaidu::CLI
       print "  CALL".colorize(:green)
       puts " #{name.colorize(:red)} " \
            "with #{trim_text(args.to_s, LLM_MAX_TOOL_CALL_ARGS_LENGTH).colorize(:red)}"
+      puts
     end
 
     def llm_error(err)
@@ -123,6 +115,7 @@ module Enkaidu::CLI
 
     def mcp_calling_tool_result(uri, name, result)
       puts "  MCP CALL (#{name}) RESULT: #{trim_text(result.to_s, MCP_MAX_TOOL_RESULT_LENGTH)}".colorize(:green)
+      puts
     end
 
     def mcp_error(ex)

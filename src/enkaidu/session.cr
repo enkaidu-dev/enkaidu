@@ -74,7 +74,6 @@ module Enkaidu
           renderer.llm_text_block(chat_ev["content"].as_s)
           text_count += 1
         when "tool_call"
-          renderer.user_calling_tools unless text_count.zero?
           text_count = 0
           renderer.llm_tool_call(
             name: chat_ev["content"].dig("function", "name").as_s,
@@ -425,7 +424,7 @@ module Enkaidu
       renderer.mcp_error(ex)
     end
 
-    def ask(query, attach : LLM::Chat::Inclusions? = nil, render_query = false)
+    def ask(query, attach : LLM::ChatInclusions? = nil, render_query = false)
       recorder << "["
       ix = 0
       tools = [] of JSON::Any
@@ -446,7 +445,6 @@ module Enkaidu
         tools = [] of JSON::Any
         ev_count = 0
         chat.call_tools_and_ask calls do |event|
-          renderer.user_calling_tools if ev_count.zero?
           ev_count += 1
           unless event["type"] == "done"
             recorder << "," if ix.positive?
