@@ -47,7 +47,7 @@ module Enkaidu::CLI
 
     private def query(q)
       recorder << "," if count.positive?
-      session.ask(query: q, attach: commander.take_inclusions)
+      session.ask(query: q, attach: commander.take_inclusions!)
       @count += 1
     end
 
@@ -57,7 +57,10 @@ module Enkaidu::CLI
       recorder << "["
       while !done?
         puts
-        renderer.show_inclusions(commander.query_indicators)
+        unless commander.query_indicators.empty?
+          # Moving this out of session renderer
+          reader.editor.output.puts "----[ #{commander.query_indicators.join(" | ")} ]----".colorize.yellow
+        end
         if q = reader.read_next
           case q = q.strip
           when .starts_with?("/")
