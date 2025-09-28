@@ -15,7 +15,7 @@ module Enkaidu::CLI
     private getter count = 0
     private getter reader : CLI::QueryReader
     private getter opts : CLI::Options
-    private getter commander : SlashCommander
+    private getter commander : Slash::Commander
 
     delegate recorder, to: @session
     delegate renderer, to: @session
@@ -39,7 +39,7 @@ module Enkaidu::CLI
       @session = Session.new(ui, opts: opts)
       @reader = CLI::QueryReader.new(
         input_history_file: opts.config.try &.session.try &.input_history_file)
-      @commander = SlashCommander.new(session)
+      @commander = Slash::Commander.new(session)
 
       return unless session.streaming?
       renderer.warning_with "----\n| SORRY: Markdown formatted rendering is not supported when streaming is enabled (for now).\n----"
