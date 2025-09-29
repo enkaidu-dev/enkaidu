@@ -7,6 +7,7 @@ require "../tools"
 
 require "./version"
 require "./mcp_function"
+require "./mcp_prompt"
 require "./recorder"
 require "./session_options"
 require "./session_renderer"
@@ -39,6 +40,7 @@ module Enkaidu
     private getter chat : LLM::Chat
 
     private getter mcp_functions = [] of MCPFunction
+    private getter mcp_prompts = [] of MCPPrompt
     private getter mcp_connections = [] of MCPC::HttpConnection
 
     getter recorder : Recorder
@@ -244,6 +246,41 @@ module Enkaidu
       end
     end
 
+    def list_all_prompts
+      text = String.build do |io|
+        mcp_prompts.each do |prompt|
+          io << "**" << prompt.name << "** (" << prompt.origin << "): "
+          io << prompt.description << "\n\n"
+        end
+        io << '\n'
+      end
+      renderer.info_with("List of available prompts.", text, markdown: true)
+    end
+
+    def list_prompt_details(prompt_name)
+      found = mcp_prompts.select { |prompt| prompt_name == prompt.name }
+      if sel_prompt = found.first
+        text = String.build do |io|
+          desc = if sel_prompt.description == prompt_name
+                   "_No description provided. Using tool name instead._"
+                 else
+                   sel_prompt.description
+                 end
+          io << desc << '\n' << '\n'
+          if args = sel_prompt.arguments
+            io << "## Arguments" << '\n'
+            args.each do |arg|
+              io << "* `" << arg.name << "`: " << (arg.description || "_(No description)_")
+            end
+            io << '\n'
+          end
+        end
+        renderer.info_with("Prompt details: #{prompt_name} (#{sel_prompt.origin})", text, markdown: true)
+      else
+        renderer.info_with("INFO: No such prompt available: #{prompt_name}")
+      end
+    end
+
     def list_all_tools
       text = String.build do |io|
         chat.each_tool_origin do |origin|
@@ -414,6 +451,15 @@ module Enkaidu
           mcp_functions << func
           renderer.mcp_tool_ready(func)
           chat.with_tool(func)
+        end
+      end
+      if mcpc.supports_prompts? && (prompt_defs = mcpc.list_prompts)
+        prompt_defs = prompt_defs.as_a
+        renderer.mcp_prompts_found(prompt_defs.size)
+        prompt_defs.each do |prompt_spec|
+          prompt = MCPPrompt.new(prompt_spec, mcpc, cli: self)
+          mcp_prompts << prompt
+          renderer.mcp_prompt_ready(prompt)
         end
       end
     rescue ex

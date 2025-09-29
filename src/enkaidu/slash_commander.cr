@@ -19,6 +19,7 @@ module Enkaidu::Slash
     private def register_commands
       [
         include_command, # tracked locally to access inclusions
+        PromptCommand.new,
         SessionCommand.new,
         ToolCommand.new,
         ToolsetCommand.new,

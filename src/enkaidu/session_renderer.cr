@@ -29,6 +29,10 @@ module Enkaidu
 
     abstract def mcp_tool_ready(function)
 
+    abstract def mcp_prompts_found(count)
+
+    abstract def mcp_prompt_ready(prompt)
+
     abstract def mcp_calling_tool(uri, name, args)
 
     abstract def mcp_calling_tool_result(uri, name, result)

@@ -104,6 +104,14 @@ module Enkaidu::CLI
       puts "  ADDED function: #{function.name}".colorize(:green)
     end
 
+    def mcp_prompts_found(count)
+      puts "  FOUND #{count} prompts".colorize(:green)
+    end
+
+    def mcp_prompt_ready(prompt)
+      puts "  FOUND prompt: #{prompt.name}".colorize(:green)
+    end
+
     MCP_MAX_TOOL_CALL_ARGS_LENGTH = 72
 
     def mcp_calling_tool(uri, name, args)

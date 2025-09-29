@@ -100,6 +100,14 @@ module Enkaidu::WUI
       post_event Render::SuccessMessage.new("MCP added function: #{function.name}")
     end
 
+    def mcp_prompts_found(count)
+      post_event Render::SuccessMessage.new("MCP found #{count} prompts")
+    end
+
+    def mcp_prompt_ready(prompt)
+      post_event Render::SuccessMessage.new("MCP found prompt: #{prompt.name}")
+    end
+
     MCP_MAX_TOOL_CALL_ARGS_LENGTH = 72
 
     def mcp_calling_tool(uri, name, args)
