@@ -25,6 +25,8 @@ module Enkaidu::Slash
         session.list_all_prompts
       elsif cmd.expect?(NAME, "info", String)
         session.list_prompt_details((cmd.arg_at? 2).as(String))
+      elsif cmd.expect?(NAME, "use", String)
+        session.use_prompt((cmd.arg_at? 2).as(String))
       else
         session.renderer.warning_with(
           "ERROR: Unknown or incomplete sub-command: #{cmd.arg_at? 0}",
