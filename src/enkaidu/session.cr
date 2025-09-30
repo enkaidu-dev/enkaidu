@@ -281,6 +281,33 @@ module Enkaidu
       end
     end
 
+    def use_prompt(prompt_name)
+      found = mcp_prompts.select { |prompt| prompt_name == prompt.name }
+      if prompt = found.first
+        renderer.mcp_prompt_use_begin(prompt)
+        arg_inputs = {} of String => String
+        prompt.arguments.try &.each do |arg|
+          unless (value = renderer.mcp_prompt_ask_input(arg)).nil?
+            arg_inputs[arg.name] = value
+          end
+        end
+        renderer.mcp_prompt_use_end(prompt)
+        renderer.warning_with("WARN: MCP Prompt works with text prompts only. Report issue if you run into problems.")
+        unless (result = prompt.call_with(arg_inputs)).nil?
+          q = String.build do |io|
+            result.as_a.each do |query|
+              if text = query.dig?("content", "text").try(&.as_s)
+                io << text << '\n'
+              end
+            end
+          end
+          ask(q, render_query: true)
+        end
+      end
+    rescue ex
+      handle_mcpc_error(ex)
+    end
+
     def list_all_tools
       text = String.build do |io|
         chat.each_tool_origin do |origin|
