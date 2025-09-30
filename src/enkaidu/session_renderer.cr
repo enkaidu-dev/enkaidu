@@ -33,6 +33,10 @@ module Enkaidu
 
     abstract def mcp_prompt_ready(prompt)
 
+    abstract def mcp_prompt_use_begin(prompt)
+    abstract def mcp_prompt_use_end(prompt)
+    abstract def mcp_prompt_ask_input(prompt_arg)
+
     abstract def mcp_calling_tool(uri, name, args)
 
     abstract def mcp_calling_tool_result(uri, name, result)

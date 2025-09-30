@@ -1,11 +1,26 @@
+require "reply"
 require "../session_renderer"
 
 require "markterm"
 
 module Enkaidu::CLI
+  class InputReader < Reply::Reader
+    property label : String
+
+    def initialize(@label)
+      super()
+    end
+
+    def prompt(io : IO, line_number : Int32, color : Bool) : Nil
+      q = label.colorize(:cyan) if color
+      io << q
+    end
+  end
+
   # This class is responsible for rendering console outputs.
   class ConsoleRenderer < SessionRenderer
     property? streaming = false
+    private getter input = InputReader.new("> ")
 
     private def prepare_text(help, markdown)
       markdown ? Markd.to_term(help.to_s) : help
@@ -36,9 +51,8 @@ module Enkaidu::CLI
     end
 
     def user_query(query)
-      puts "QUERY".colorize(:yellow)
+      print "QUERY > ".colorize(:yellow)
       puts query
-      puts "----".colorize(:green)
     end
 
     def user_confirm_shell_command?(command)
@@ -110,6 +124,29 @@ module Enkaidu::CLI
 
     def mcp_prompt_ready(prompt)
       puts "  FOUND prompt: #{prompt.name}".colorize(:green)
+    end
+
+    def mcp_prompt_use_begin(prompt)
+      text = <<-PREFIX
+          #{prompt.description}
+
+      PREFIX
+      puts text.colorize(:cyan)
+    end
+
+    def mcp_prompt_use_end(prompt)
+      puts
+    end
+
+    def mcp_prompt_ask_input(prompt_arg)
+      text = if desc = prompt_arg.description
+               "    #{prompt_arg.name} [#{desc}] :"
+             else
+               "    #{prompt_arg.name}:"
+             end
+      puts text.colorize(:cyan)
+      input.label = "    > "
+      input.read_next
     end
 
     MCP_MAX_TOOL_CALL_ARGS_LENGTH = 72

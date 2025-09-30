@@ -108,6 +108,18 @@ module Enkaidu::WUI
       post_event Render::SuccessMessage.new("MCP found prompt: #{prompt.name}")
     end
 
+    def mcp_prompt_use_begin(prompt)
+      STDERR.puts "~~~ #mcp_prompt_use_begin not implemented: #{prompt.to_json}"
+    end
+
+    def mcp_prompt_use_end(prompt)
+      STDERR.puts "~~~ #mcp_prompt_use_end not implemented: #{prompt.to_json}"
+    end
+
+    def mcp_prompt_ask_input(prompt_arg)
+      STDERR.puts "~~~ #mcp_prompt_ask_input not implemented: #{prompt_arg.to_json}"
+    end
+
     MCP_MAX_TOOL_CALL_ARGS_LENGTH = 72
 
     def mcp_calling_tool(uri, name, args)
