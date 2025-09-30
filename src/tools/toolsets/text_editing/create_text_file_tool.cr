@@ -11,8 +11,8 @@ module Tools::TextEditing
     description "Creates a text file at the specified path with the given content. " \
                 "Ensures the file is created within the current directory and does not overwrite existing files."
 
-    param "file_path", type: LLM::ParamType::Str, description: "The relative path where the text file will be created.", required: true
-    param "content", type: LLM::ParamType::Str, description: "The content to write into the text file.", required: true
+    param "file_path", type: Param::Type::Str, description: "The relative path where the text file will be created.", required: true
+    param "content", type: Param::Type::Str, description: "The content to write into the text file.", required: true
 
     runner Runner
 

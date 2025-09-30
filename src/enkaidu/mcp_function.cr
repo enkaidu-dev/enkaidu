@@ -11,7 +11,6 @@ module Enkaidu
     getter description : String
 
     # Accessible to the function's Runner
-    protected getter params : Array(LLM::Param)
     protected getter mcpc : MCPC::HttpConnection
     protected getter cli : Session
 
@@ -20,7 +19,6 @@ module Enkaidu
     # Initialize with the JSON representation of the tool return by MCP "tools/list", and the
     # MCPC connection to use to make the tool call
     def initialize(tool_def : JSON::Any, @mcpc, @cli)
-      @params = [] of LLM::Param
       # Extract the function specification from the tool definition
       @origin = mcpc.origin
       @name = tool_def["name"].as_s

@@ -10,9 +10,9 @@ module Tools::FileManagement
 
     description "Renames a specified file to a new name within the current directory."
 
-    param "current_path", type: LLM::ParamType::Str,
+    param "current_path", type: Param::Type::Str,
       description: "The current path of the file to be renamed.", required: true
-    param "new_name", type: LLM::ParamType::Str,
+    param "new_name", type: Param::Type::Str,
       description: "The new name for the file.", required: true
 
     runner Runner

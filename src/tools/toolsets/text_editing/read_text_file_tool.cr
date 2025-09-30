@@ -15,7 +15,7 @@ module Tools::TextEditing
                 "Ensures the file is within the current directory and is not a binary file."
 
     # Define the acceptable parameter using the `param` method
-    param "file_path", type: LLM::ParamType::Str, description: "The relative path to the text file to read.", required: true
+    param "file_path", type: Param::Type::Str, description: "The relative path to the text file to read.", required: true
 
     runner Runner
 

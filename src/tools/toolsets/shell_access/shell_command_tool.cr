@@ -25,7 +25,7 @@ module Tools::ShellAccess
     returns the shell command's output."
 
     # Define the acceptable parameter using the `param` method
-    param "command", type: LLM::ParamType::Str, description: "The shell command to execute.", required: true
+    param "command", type: Param::Type::Str, description: "The shell command to execute.", required: true
 
     # Replace `runner` macro to create with self
     def new_runner : Runner

@@ -11,11 +11,11 @@ module Tools::Experimental
     description "Finds patterns using a regex in a text-based file and replaces them with new text. " +
                 "Ensures the file is within the current directory and is a text file."
 
-    param "file_path", type: LLM::ParamType::Str,
+    param "file_path", type: Param::Type::Str,
       description: "The relative path to the file where you want to perform the regex replacement.", required: true
-    param "pattern", type: LLM::ParamType::Str,
+    param "pattern", type: Param::Type::Str,
       description: "The regex pattern to search for in the file.", required: true
-    param "replacement", type: LLM::ParamType::Str,
+    param "replacement", type: Param::Type::Str,
       description: "The text to replace the pattern with in the file.", required: true
 
     runner Runner

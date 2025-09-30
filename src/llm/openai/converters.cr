@@ -5,15 +5,6 @@ require "../function"
 
 module LLM::OpenAI
   private module Converters
-    protected def param_to_json(p : LLM::Param, json : JSON::Builder)
-      json.field p.name do
-        json.object do
-          json.field "type", p.type.json_type
-          json.field "description", p.description
-        end
-      end
-    end
-
     protected def function_call_to_json(f : FunctionCall, json : JSON::Builder)
       json.object do
         json.field "type", "function"

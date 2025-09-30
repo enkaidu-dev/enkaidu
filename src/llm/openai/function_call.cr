@@ -1,5 +1,3 @@
-require "../param"
-
 module LLM::OpenAI
   # Defines a function (tool) call, with ability to build up the
   # args from chunks when streaming. USED AS AN INTERIM object; maybe one day
