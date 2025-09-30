@@ -115,13 +115,13 @@ module MCPC
     # Calls a tool and returns the content from the reply on success
     def get_prompt(name : String,
                    args : Hash(String, String)) : JSON::Any?
-      STDERR.puts "---------- Connection#call_tool" if tracing?
+      STDERR.puts "---------- Connection#get_prompt" if tracing?
       content = nil
-      transport.post(session.body_prompt_get(name, args)) do |reply|
+      transport.post(session.body_prompts_get(name, args)) do |reply|
         case reply
         when JSON::Any
-          unless content = reply.dig?("result", "content")
-            raise ResultError.new("Result has no 'content'; see .data.", reply)
+          unless content = reply.dig?("result", "messages")
+            raise ResultError.new("Result has no 'messages'; see .data.", reply)
           end
         else
           raise ResponseError.new("Unexpected transport response; see .details.", reply)

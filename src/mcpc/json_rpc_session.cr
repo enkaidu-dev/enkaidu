@@ -52,7 +52,7 @@ module MCPC
     end
 
     def body_prompts_get(name : String, args : Hash(String, String))
-      setup_request "prompts_get" do |json|
+      setup_request "prompts/get" do |json|
         setup_params(json) do
           json.field "name", name
           json.field "arguments" do
