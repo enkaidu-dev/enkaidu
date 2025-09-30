@@ -41,5 +41,9 @@ module Enkaidu
       end
       prompt_args
     end
+
+    def call_with(args : Hash(String, String))
+      mcpc.get_prompt(name, args)
+    end
   end
 end
