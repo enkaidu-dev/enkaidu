@@ -12,9 +12,9 @@ module Tools::Experimental
                 "`patch` command (version `#{PATCHVER}`). " +
                 "Ensures the file is within the current directory and is a text file."
 
-    param "file_path", type: LLM::ParamType::Str,
+    param "file_path", type: Param::Type::Str,
       description: "The relative path to the file to be patched.", required: true
-    param "patch_content", type: LLM::ParamType::Str,
+    param "patch_content", type: Param::Type::Str,
       description: "The content of the patch to apply.", required: true
 
     # Replace `runner` macro to create with self

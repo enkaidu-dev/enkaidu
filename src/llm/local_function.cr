@@ -4,6 +4,37 @@ module LLM
   # Defines a subclass of Function that can be used to
   # implement local (in-code) tools / functions easily
   abstract class LocalFunction < Function
+    # The `Param` class defines the schema for a single parameter of a `LocalFunction`
+    class Param
+      # The `Param::Type` defines an enumeration of supported types for
+      # tool calling parameters
+      enum Type
+        Obj
+        Bool
+        Num
+        Arr
+        Str
+
+        def json_type
+          case self
+          in .obj?  then "object"
+          in .bool? then "boolean"
+          in .num?  then "number"
+          in .arr?  then "array"
+          in .str?  then "string"
+          end
+        end
+      end
+
+      getter name : String
+      getter type : Type
+      getter description : String
+      getter? required
+
+      def initialize(@name, @type, @description, @required = false)
+      end
+    end
+
     # one list per class; do not edit
     @@params = [] of Param
     @@input_schema = nil
@@ -13,7 +44,7 @@ module LLM
     end
 
     # Iterate through each parameter
-    def each_param(& : LLM::Param ->)
+    private def each_param(& : Param ->)
       @@params.each do |param|
         yield param
       end
@@ -76,8 +107,8 @@ module LLM
     end
 
     # Define a parameter for this LLM Function.
-    macro param(name, description, type = LLM::ParamType::Str, required = false)
-      @@params << LLM::Param.new({{name}}, {{type}}, {{description}}, {{required}})
+    macro param(name, description, type = Param::Type::Str, required = false)
+      @@params << Param.new({{name}}, {{type}}, {{description}}, {{required}})
     end
 
     # Define the method that is used to create the Runner

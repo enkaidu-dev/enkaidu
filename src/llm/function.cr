@@ -1,7 +1,5 @@
 require "json"
 
-require "./param"
-
 module LLM
   # Defines custom function tool
   abstract class Function

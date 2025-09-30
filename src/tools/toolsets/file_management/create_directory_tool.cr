@@ -12,7 +12,7 @@ module Tools::FileManagement
     description "Creates a new directory at the specified relative path. " +
                 "The operation is restricted to remain inside the current working directory."
 
-    param "directory_path", type: LLM::ParamType::Str,
+    param "directory_path", type: Param::Type::Str,
       description: "The relative path of the directory to create.", required: true
 
     runner Runner
