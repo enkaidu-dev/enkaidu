@@ -1,5 +1,7 @@
 require "json"
 
+require "./prompt_result"
+
 module MCPC
   # The definition for an MCP Prompt
   class Prompt

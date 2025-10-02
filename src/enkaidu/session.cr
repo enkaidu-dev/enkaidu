@@ -293,11 +293,17 @@ module Enkaidu
         end
         renderer.mcp_prompt_use_end(prompt)
         renderer.warning_with("WARN: MCP Prompt works with text prompts only. Report issue if you run into problems.")
-        unless (result = prompt.call_with(arg_inputs)).nil?
+        unless (prompt_result = prompt.call_with(arg_inputs)).nil?
           q = String.build do |io|
-            result.as_a.each do |query|
-              if text = query.dig?("content", "text").try(&.as_s)
-                io << text << '\n'
+            prompt_result.each do |prompt_msg|
+              renderer.warning_with("WARN: Ignoring prompt message role: #{prompt_msg.role}") unless prompt_msg.role.user?
+              case content = prompt_msg.content
+              when MCPC::Content::Text
+                io << content.text << '\n'
+              else
+                renderer.warning_with("WARN: Unsupported prompt content type: #{content.type}",
+                  help: "```json\n#{prompt_msg.to_json}\n```",
+                  markdown: true)
               end
             end
           end
