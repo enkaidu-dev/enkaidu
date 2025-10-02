@@ -21,7 +21,7 @@ module MCPC
 
     getter data : String
 
-    @[JSON::Field(key = MIME_TYPE_KEY)]
+    @[JSON::Field(key: MIME_TYPE_KEY)]
     getter mime_type : MIME::MediaType
 
     def initialize(type, @data, @mime_type)
