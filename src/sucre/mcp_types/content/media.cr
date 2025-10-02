@@ -1,4 +1,4 @@
-require "../content"
+require "./content"
 
 # Monkey-patch to support JSON conversion
 struct MIME::MediaType
@@ -15,7 +15,7 @@ struct MIME::MediaType
   end
 end
 
-module MCPC
+module MCP
   abstract class Content::Media < Content
     private MIME_TYPE_KEY = "mimeType"
 

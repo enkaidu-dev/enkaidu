@@ -1,6 +1,6 @@
 require "../content"
 
-module MCPC
+module MCP
   enum Role
     Assistant
     User

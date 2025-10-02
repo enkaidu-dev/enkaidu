@@ -1,7 +1,6 @@
-require "../content"
 require "./media"
 
-module MCPC
+module MCP
   # Represents image `content` within a message to the LLM
   class Content::Image < Content::Media
     TYPE = "image"

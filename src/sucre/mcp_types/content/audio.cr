@@ -1,7 +1,6 @@
-require "../content"
 require "./media"
 
-module MCPC
+module MCP
   # Represents audio content in a prompt message
   class Content::Audio < Content::Media
     TYPE = "audio"

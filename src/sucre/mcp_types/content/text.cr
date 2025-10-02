@@ -1,6 +1,6 @@
-require "../content"
+require "./content"
 
-module MCPC
+module MCP
   # Represents text `content` within a message to the LLM
   class Content::Text < Content
     TYPE = "text"

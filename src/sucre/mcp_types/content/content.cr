@@ -1,7 +1,7 @@
 require "json"
 require "mime"
 
-module MCPC
+module MCP
   class UnexpectedContent < Exception
     def initialize(type)
       super "Unexpected MCP message content: \"#{type}\""
@@ -24,4 +24,6 @@ module MCPC
   end
 end
 
-require "./content/*"
+require "./text"
+require "./image"
+require "./audio"

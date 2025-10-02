@@ -2,7 +2,7 @@ require "../content"
 
 require "./prompt_message"
 
-module MCPC
+module MCP
   class PromptResult
     private getter messages = [] of PromptMessage
 

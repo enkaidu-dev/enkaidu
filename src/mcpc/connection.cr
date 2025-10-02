@@ -1,10 +1,11 @@
 require "uri"
 
+require "../sucre/mcp_types"
+
 require "./http_transport"
 require "./json_rpc_session"
 require "./sensitive_data"
 require "./transport_type"
-require "./prompt"
 
 module MCPC
   # This `ResultError` exception is raised for errors within the
@@ -114,7 +115,7 @@ module MCPC
 
     # Calls a tool and returns the content from the reply on success
     def get_prompt(name : String,
-                   args : Hash(String, String)) : PromptResult?
+                   args : Hash(String, String)) : MCP::PromptResult?
       STDERR.puts "---------- Connection#get_prompt" if tracing?
       content = nil
       transport.post(session.body_prompts_get(name, args)) do |reply|
@@ -128,7 +129,7 @@ module MCPC
         end
       end
       # don't (can't, mustn't) rely on the #post return value
-      (content && PromptResult.import(content)) || nil
+      (content && MCP::PromptResult.import(content)) || nil
     end
 
     # Returns an array of tools, if any

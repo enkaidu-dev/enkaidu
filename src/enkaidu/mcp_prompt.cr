@@ -1,11 +1,12 @@
 require "colorize"
 
+require "../sucre/mcp_types"
 require "../llm"
 require "../mcpc"
 
 module Enkaidu
   # Defines a prompt from an MCP server
-  class MCPPrompt < MCPC::Prompt
+  class MCPPrompt < MCP::Prompt
     # Accessible to the function's Runner
 
     @[JSON::Field(ignore: true)]
@@ -30,9 +31,9 @@ module Enkaidu
     end
 
     private def extract_arguments(arg_defs : Array(JSON::Any))
-      prompt_args = [] of MCPC::Prompt::Argument
+      prompt_args = [] of MCP::Prompt::Argument
       arg_defs.each do |arg_def|
-        prompt_args << MCPC::Prompt::Argument.new(
+        prompt_args << MCP::Prompt::Argument.new(
           name: arg_def["name"].as_s,
           title: arg_def["title"]?.try(&.as_s),
           description: arg_def["description"]?.try(&.as_s),

@@ -298,7 +298,7 @@ module Enkaidu
             prompt_result.each do |prompt_msg|
               renderer.warning_with("WARN: Ignoring prompt message role: #{prompt_msg.role}") unless prompt_msg.role.user?
               case content = prompt_msg.content
-              when MCPC::Content::Text
+              when MCP::Content::Text
                 io << content.text << '\n'
               else
                 renderer.warning_with("WARN: Unsupported prompt content type: #{content.type}",

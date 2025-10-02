@@ -2,7 +2,7 @@ require "json"
 
 require "./prompt_result"
 
-module MCPC
+module MCP
   # The definition for an MCP Prompt
   class Prompt
     include JSON::Serializable
