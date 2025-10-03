@@ -15,6 +15,8 @@ require "./session_renderer"
 module Enkaidu
   class InvalidSessionData < Exception; end
 
+  class InvalidSessionQuery < Exception; end
+
   class About
     include JSON::Serializable
     getter app = "Enkaidu"
@@ -68,27 +70,32 @@ module Enkaidu
       chat.usage
     end
 
+    private def render_session_event(chat_ev, text_count)
+      case chat_ev["type"]
+      when "text"
+        renderer.llm_text_block(chat_ev["content"].as_s)
+        text_count += 1
+      when "tool_call"
+        text_count = 0
+        renderer.llm_tool_call(
+          name: chat_ev["content"].dig("function", "name").as_s,
+          args: chat_ev["content"].dig("function", "arguments"))
+      when "tool_called"
+      when "query/text"
+        renderer.user_query(chat_ev["content"].as_s)
+        text_count += 1
+      when "query/image_url"
+        renderer.info_with("INCLUDE image: #{chat_ev["content"].as_s}")
+      when "query/file_data"
+        renderer.info_with("INCLUDE file: #{chat_ev["content"].as_s}")
+      end
+      text_count
+    end
+
     private def tail_session_events(num_chats)
       text_count = 0
       @chat.tail_session(num_chats) do |chat_ev|
-        case chat_ev["type"]
-        when "text"
-          renderer.llm_text_block(chat_ev["content"].as_s)
-          text_count += 1
-        when "tool_call"
-          text_count = 0
-          renderer.llm_tool_call(
-            name: chat_ev["content"].dig("function", "name").as_s,
-            args: chat_ev["content"].dig("function", "arguments"))
-        when "tool_called"
-        when "query/text"
-          renderer.user_query(chat_ev["content"].as_s)
-          text_count += 1
-        when "query/image_url"
-          renderer.info_with("INCLUDE image: #{chat_ev["content"].as_s}")
-        when "query/file_data"
-          renderer.info_with("INCLUDE file: #{chat_ev["content"].as_s}")
-        end
+        text_count = render_session_event chat_ev, text_count
       end
     end
 
@@ -270,7 +277,7 @@ module Enkaidu
           if args = sel_prompt.arguments
             io << "## Arguments" << '\n'
             args.each do |arg|
-              io << "* `" << arg.name << "`: " << (arg.description || "_(No description)_")
+              io << "* `" << arg.name << "`: " << (arg.description || "_(No description)_") << '\n'
             end
             io << '\n'
           end
@@ -292,22 +299,12 @@ module Enkaidu
           end
         end
         renderer.mcp_prompt_use_end(prompt)
-        renderer.warning_with("WARN: MCP Prompt works with text prompts only. Report issue if you run into problems.")
         unless (prompt_result = prompt.call_with(arg_inputs)).nil?
-          q = String.build do |io|
-            prompt_result.each do |prompt_msg|
-              renderer.warning_with("WARN: Ignoring prompt message role: #{prompt_msg.role}") unless prompt_msg.role.user?
-              case content = prompt_msg.content
-              when MCP::Content::Text
-                io << content.text << '\n'
-              else
-                renderer.warning_with("WARN: Unsupported prompt content type: #{content.type}",
-                  help: "```json\n#{prompt_msg.to_json}\n```",
-                  markdown: true)
-              end
-            end
+          text_count = 0
+          chat.import(prompt_result, emit: true) do |chat_ev|
+            text_count = render_session_event chat_ev, text_count
           end
-          ask(q, render_query: true)
+          ask(query: nil, attach: nil)
         end
       end
     rescue ex
@@ -503,19 +500,31 @@ module Enkaidu
       renderer.mcp_error(ex)
     end
 
+    private macro m_process_and_record_ask_event
+          unless event["type"] == "done"
+            recorder << "," if ix.positive?
+            recorder << event.to_json
+            ix += 1
+            process_event(event, tools)
+          end
+    end
+
     def ask(query, attach : LLM::ChatInclusions? = nil, render_query = false)
       recorder << "["
       ix = 0
       tools = [] of JSON::Any
       # ask and handle the initial query and its events
-      renderer.user_query(query) if render_query
-      chat.ask query, attach do |event|
-        unless event["type"] == "done"
-          recorder << "," if ix.positive?
-          recorder << event.to_json
-          ix += 1
-          process_event(event, tools)
+      if query.nil? && attach.nil?
+        chat.re_ask do |event|
+          m_process_and_record_ask_event
         end
+      elsif query.is_a? String
+        renderer.user_query(query) if render_query
+        chat.ask query, attach do |event|
+          m_process_and_record_ask_event
+        end
+      else
+        raise InvalidSessionQuery.new("Cannot call #ask with nil query unless attach is also nil")
       end
       # deal with any tool calls and subsequent events repeatedly until
       # no more tool calls remain
