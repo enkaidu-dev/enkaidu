@@ -4,7 +4,11 @@ require "./prompt_message"
 
 module MCP
   class PromptResult
+    include JSON::Serializable
+
     private getter messages = [] of PromptMessage
+
+    protected def initialize; end
 
     delegate :<<, size, each, each_with_index, to: @messages
 
