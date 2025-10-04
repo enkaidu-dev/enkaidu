@@ -3,13 +3,28 @@ require "./work"
 require "./render_events/*"
 
 require "markterm"
+require "reply"
 
 module Enkaidu::WUI
+  class InputReader < Reply::Reader
+    property label : String
+
+    def initialize(@label)
+      super()
+    end
+
+    def prompt(io : IO, line_number : Int32, color : Bool) : Nil
+      q = label.colorize(:cyan) if color
+      io << q
+    end
+  end
+
   # This class is responsible for rendering console outputs into a queue
   # for retrieval by API
   class EventRenderer < SessionRenderer
     private getter queue = Deque(Render::Event).new
     private getter pending_confirmations = Hash(String, Channel(Bool)).new
+    private getter input = InputReader.new("> ")
 
     property? streaming = false
     private getter work_channel : Channel(Work)
@@ -39,8 +54,12 @@ module Enkaidu::WUI
       post_event Render::ErrorMessage.new(message, details: help.to_s, markdown: markdown)
     end
 
-    def user_query(query)
-      post_event Render::Query.new(query)
+    def user_query_text(query)
+      post_event Render::Query.new(Render::ContentType::Text, query)
+    end
+
+    def user_query_image_url(url)
+      post_event Render::Query.new(Render::ContentType::ImageUrl, url)
     end
 
     def user_confirm_shell_command?(command)
@@ -88,6 +107,10 @@ module Enkaidu::WUI
       post_event Render::LLMText.new(text)
     end
 
+    def llm_image_url(url)
+      post_event Render::LLMImageUrl.new(url)
+    end
+
     def mcp_initialized(uri)
       post_event Render::SuccessMessage.new("MCP connection: #{uri}")
     end
@@ -109,15 +132,27 @@ module Enkaidu::WUI
     end
 
     def mcp_prompt_use_begin(prompt)
-      STDERR.puts "~~~ #mcp_prompt_use_begin not implemented: #{prompt.to_json}"
+      STDERR.puts "~~~ MCP Prompt Input not yet implemented via WUI. Sorry".colorize(:red)
+      text = <<-PREFIX
+          #{prompt.description}
+
+      PREFIX
+      puts text.colorize(:cyan)
     end
 
     def mcp_prompt_use_end(prompt)
-      STDERR.puts "~~~ #mcp_prompt_use_end not implemented: #{prompt.to_json}"
+      puts
     end
 
     def mcp_prompt_ask_input(prompt_arg)
-      STDERR.puts "~~~ #mcp_prompt_ask_input not implemented: #{prompt_arg.to_json}"
+      text = if desc = prompt_arg.description
+               "    #{prompt_arg.name} [#{desc}] :"
+             else
+               "    #{prompt_arg.name}:"
+             end
+      puts text.colorize(:cyan)
+      input.label = "    > "
+      input.read_next
     end
 
     MCP_MAX_TOOL_CALL_ARGS_LENGTH = 72

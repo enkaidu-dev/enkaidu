@@ -1,10 +1,16 @@
 require "./event"
 
 module Enkaidu::WUI::Render
-  class Query < Event
-    getter prompt : String
+  enum ContentType
+    Text
+    ImageUrl
+  end
 
-    def initialize(@prompt)
+  class Query < Event
+    getter content_type : ContentType
+    getter content : String
+
+    def initialize(@content_type, @content)
       super("query")
     end
   end

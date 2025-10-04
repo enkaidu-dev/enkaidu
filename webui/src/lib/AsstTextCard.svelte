@@ -2,7 +2,7 @@
   import Markdown from "./Markdown.svelte";
   // import SvelteMarkdown from "@humanspeak/svelte-markdown";
 
-  let { message } = $props();
+  let { message }: { message: string } = $props();
 </script>
 
 <div

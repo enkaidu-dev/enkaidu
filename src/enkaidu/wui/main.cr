@@ -141,6 +141,7 @@ module Enkaidu
           # and exit when the original request is done.
           break if work.request_handled?
         end
+        resp.puts("")
       end
 
       # Do not call this directly from a server request handler; use

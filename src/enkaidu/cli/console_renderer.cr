@@ -50,9 +50,14 @@ module Enkaidu::CLI
       err_puts_text help, markdown
     end
 
-    def user_query(query)
+    def user_query_text(query)
       print "QUERY > ".colorize(:yellow)
       puts query
+    end
+
+    def user_query_image_url(url)
+      print "QUERY > ".colorize(:yellow)
+      puts "IMAGE #{trim_text(url, MAX_IMAGE_URL_LENGTH)}".colorize(:green)
     end
 
     def user_confirm_shell_command?(command)
@@ -103,6 +108,13 @@ module Enkaidu::CLI
 
     def llm_text_block(text)
       puts Markd.to_term(text)
+      puts
+    end
+
+    MAX_IMAGE_URL_LENGTH = 72
+
+    def llm_image_url(url)
+      puts "  IMAGE #{trim_text(url, MAX_IMAGE_URL_LENGTH)}".colorize(:green)
       puts
     end
 

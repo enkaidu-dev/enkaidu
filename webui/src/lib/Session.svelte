@@ -1,11 +1,14 @@
 <script lang="ts">
   import { enkaidu_post_request } from "../utilities";
 
-  import UserCard from "./UserCard.svelte";
-  import AsstCard from "./AsstCard.svelte";
   import MsgCard from "./MsgCard.svelte";
+  import AsstTextCard from "./AsstTextCard.svelte";
+  import AsstImageCard from "./AsstImageCard.svelte";
   import AsstThinkCard from "./AsstThinkCard.svelte";
   import ShellConfirmDialog from "./ShellConfirmDialog.svelte";
+  import UserTextCard from "./UserTextCard.svelte";
+  import UserImageCard from "./UserImageCard.svelte";
+  import ClarionCard from "./ClarionCard.svelte";
 
   const scrollToBottom = (node: HTMLElement, _list: Event[]) => {
     const scroll = () =>
@@ -45,7 +48,7 @@
     let last = entries.at(-1);
     if (last) {
       // Check if last one is text and if it has any text in it
-      if (last.type == "llm" || last.type == "think") {
+      if (last.type == "llm_text" || last.type == "llm_think") {
         let content = last.data[0].content?.trim();
         if (typeof content == "string" && content.length == 0) {
           // The previous one has empty text, so just drop it.
@@ -63,7 +66,7 @@
     let last = entries.at(-1);
     let ev_data = { subject: ev.subject, content: ev.content };
     if (last && last.type == ev.type) {
-      if (last.type == "llm" || last.type == "think") {
+      if (last.type == "llm_text" || last.type == "llm_think") {
         // append text if it's LLM or THINK text
         // this allows us to show streaming text
         let content = (last.data[0].content || "") + ev_data.content;
@@ -110,13 +113,19 @@
   <div class="space-y-3 grid grid-cols-1 w-full max-w-5xl p-3 mx-auto">
     {#each entries as entry}
       {#if entry.type == "query"}
-        <UserCard message={entry.data[0].content || "??"} />
+        <UserTextCard message={entry.data[0].content || "??"} />
       {:else if entry.type == "command"}
-        <UserCard message={entry.data[0].content || "/??"} command />
-      {:else if entry.type == "llm"}
-        <AsstCard message={entry.data[0].content} />
-      {:else if entry.type == "think"}
+        <UserTextCard message={entry.data[0].content || "/??"} command />
+      {:else if entry.type == "query_image_url"}
+        <UserImageCard image_url={entry.data[0].content || "??"} />
+      {:else if entry.type == "llm_text"}
+        <AsstTextCard message={entry.data[0].content || "??"} />
+      {:else if entry.type == "llm_think"}
         <AsstThinkCard message={entry.data[0].content} />
+      {:else if entry.type == "llm_image_url"}
+        <AsstImageCard image_url={entry.data[0].content || "??"} />
+      {:else if entry.type == "clarion"}
+        <ClarionCard subject={entry.data[0].content || "???"} />
       {:else if entry.type.startsWith("message_")}
         <MsgCard
           level={entry.type.split("_").at(-1) || "info"}

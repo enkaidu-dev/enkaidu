@@ -82,10 +82,10 @@ module Enkaidu
           args: chat_ev["content"].dig("function", "arguments"))
       when "tool_called"
       when "query/text"
-        renderer.user_query(chat_ev["content"].as_s)
+        renderer.user_query_text(chat_ev["content"].as_s)
         text_count += 1
       when "query/image_url"
-        renderer.info_with("INCLUDE image: #{chat_ev["content"].as_s}")
+        renderer.user_query_image_url(chat_ev["content"].as_s)
       when "query/file_data"
         renderer.info_with("INCLUDE file: #{chat_ev["content"].as_s}")
       end
@@ -519,7 +519,7 @@ module Enkaidu
           m_process_and_record_ask_event
         end
       elsif query.is_a? String
-        renderer.user_query(query) if render_query
+        renderer.user_query_text(query) if render_query
         chat.ask query, attach do |event|
           m_process_and_record_ask_event
         end
