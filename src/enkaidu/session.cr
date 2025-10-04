@@ -291,14 +291,7 @@ module Enkaidu
     def use_prompt(prompt_name)
       found = mcp_prompts.select { |prompt| prompt_name == prompt.name }
       if prompt = found.first
-        renderer.mcp_prompt_use_begin(prompt)
-        arg_inputs = {} of String => String
-        prompt.arguments.try &.each do |arg|
-          unless (value = renderer.mcp_prompt_ask_input(arg)).nil?
-            arg_inputs[arg.name] = value
-          end
-        end
-        renderer.mcp_prompt_use_end(prompt)
+        arg_inputs = renderer.mcp_prompt_ask_input(prompt)
         unless (prompt_result = prompt.call_with(arg_inputs)).nil?
           text_count = 0
           chat.import(prompt_result, emit: true) do |chat_ev|

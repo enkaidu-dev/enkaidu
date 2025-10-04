@@ -138,27 +138,32 @@ module Enkaidu::CLI
       puts "  FOUND prompt: #{prompt.name}".colorize(:green)
     end
 
-    def mcp_prompt_use_begin(prompt)
+    private def ask_param_input(name, description)
+      text = if description
+               "    #{name} [#{description}] :"
+             else
+               "    #{name} : "
+             end
+      puts text.colorize(:cyan)
+      input.label = "    > "
+      input.read_next
+    end
+
+    def mcp_prompt_ask_input(prompt) : Hash(String, String)
       text = <<-PREFIX
           #{prompt.description}
 
       PREFIX
       puts text.colorize(:cyan)
-    end
 
-    def mcp_prompt_use_end(prompt)
+      arg_inputs = {} of String => String
+      prompt.arguments.try &.each do |arg|
+        unless (value = ask_param_input(arg.name, arg.description)).nil?
+          arg_inputs[arg.name] = value
+        end
+      end
       puts
-    end
-
-    def mcp_prompt_ask_input(prompt_arg)
-      text = if desc = prompt_arg.description
-               "    #{prompt_arg.name} [#{desc}] :"
-             else
-               "    #{prompt_arg.name}:"
-             end
-      puts text.colorize(:cyan)
-      input.label = "    > "
-      input.read_next
+      arg_inputs
     end
 
     MCP_MAX_TOOL_CALL_ARGS_LENGTH = 72
