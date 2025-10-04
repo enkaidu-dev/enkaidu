@@ -114,7 +114,7 @@ Spectator.describe CommandParser do
       end
 
       context "membership in value lists" do
-        subject { parser.expect?(["first"], ["second", "other"], [["free", "standing"], ["some", "other"]], arr: Array(String), third: ["value", "other"], fourth: ["spaced out"]) }
+        subject { parser.expect?(["first"], ["second", "other"], [["free", "standing"], nil, ["some", "other"]], arr: Array(String), third: ["value", "other"], fourth: ["spaced out"]) }
         it "succeeds" do
           is_expected.to be_true
         end
@@ -122,6 +122,14 @@ Spectator.describe CommandParser do
 
       context "against regex" do
         subject { parser.expect?(/fir\w+/, /\w+/, Array(String), arr: Array(String), third: "value", fourth: "spaced out") }
+        it "succeeds" do
+          is_expected.to be_true
+        end
+      end
+
+      context "missing optional parameters" do
+        let(command) { "/use_mcp https://localhost:3001/mcp transport=http" }
+        subject { parser.expect?("/use_mcp", String, auth_env: String?, transport: ["auto", "legacy", "http", nil]) }
         it "succeeds" do
           is_expected.to be_true
         end

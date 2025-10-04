@@ -97,11 +97,21 @@ class CommandParser
     @named_args[name.to_s]?
   end
 
+  # private TRACE = 1
+
   # Use this to see if the command matches expected arguments and parameters, where
   # values can be `String` (exact match), array of `String` (match one), `Class` expressions (type match), or
   # any other "subsumption operator" matches (i.e. `===`) include Regex expression.
   # Example: `cmd.expect "/cmd", String, type: String?
   def expect?(*args, **params)
+    {% if @type.has_constant?("TRACE") %}    
+    {% if flag?(:test) %}
+      STDERR.puts
+    {% end %}
+    STDERR.puts "#expect? args: #{args}".colorize(:yellow)
+    STDERR.puts "         params: #{params}".colorize(:yellow)
+    STDERR.puts "         missed: #{missed}".colorize(:yellow)
+    {% end %}
     # If we have junk no point in checking anything else
     return false if missed
     # Check the positional args
@@ -118,6 +128,9 @@ class CommandParser
       next if expect_test(value_spec, arg_named? name)
       return false # mismatch
     end
+    {% if @type.has_constant?("TRACE") %}
+      STDERR.puts "#expect? checked_pos_count: #{checked_pos_count} >= positional_count: #{positional_count}, checked_name_count: #{checked_name_count} >= named_count: #{named_count}".colorize(:yellow)
+    {% end %}
     # Check that parser didn't capture more args than expected
     return false unless checked_pos_count >= positional_count &&
                         checked_name_count >= named_count
@@ -126,20 +139,25 @@ class CommandParser
 
   # Internal, to test if `arg_value` satisfies `value_spec`
   private def expect_test(value_spec, arg_value)
-    case value_spec
-    when String then value_spec == arg_value # match exact
-    when Array(String)
-      case arg_value
-      when String        then value_spec.includes?(arg_value) # match one of
-      when Array(String) then value_spec == arg_value
-      end
-    when Array(Array(String))
-      case arg_value
-      when Array(String) then value_spec.includes?(arg_value) # match one of
-      end
-    else
-      value_spec === arg_value # match type
-    end
+    {% if @type.has_constant?("TRACE") %}
+      STDERR.puts "#expect_test value_spec: #{value_spec.class}, arg_value: #{arg_value.try(&.class) || "<nil>"}"
+    {% end %}
+    result = case value_spec
+             when String then value_spec == arg_value # match exact
+             when Array
+               case arg_value
+               when Array
+                 value_spec.includes?(arg_value) || value_spec == arg_value
+               else
+                 value_spec.includes?(arg_value) # match one of
+               end
+             else
+               value_spec === arg_value # match type
+             end
+    {% if @type.has_constant?("TRACE") %}
+      STDERR.puts "#expect_test value_spec: #{value_spec}, arg_value: #{arg_value || "<nil>"} => #{result}"
+    {% end %}
+    result
   end
 
   private def disenquote(s)
