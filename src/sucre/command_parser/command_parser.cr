@@ -104,7 +104,7 @@ class CommandParser
   # any other "subsumption operator" matches (i.e. `===`) include Regex expression.
   # Example: `cmd.expect "/cmd", String, type: String?
   def expect?(*args, **params)
-    {% if @type.has_constant?("TRACE") %}    
+    {% if @type.has_constant?("TRACE") %}
     {% if flag?(:test) %}
       STDERR.puts
     {% end %}
