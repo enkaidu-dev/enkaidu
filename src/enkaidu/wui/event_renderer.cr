@@ -6,25 +6,19 @@ require "markterm"
 require "reply"
 
 module Enkaidu::WUI
-  class InputReader < Reply::Reader
-    property label : String
-
-    def initialize(@label)
-      super()
-    end
-
-    def prompt(io : IO, line_number : Int32, color : Bool) : Nil
-      q = label.colorize(:cyan) if color
-      io << q
-    end
-  end
+  alias ConfirmationChannel = Channel(Bool)
+  alias InputsChannel = Channel(Hash(String, String))
 
   # This class is responsible for rendering console outputs into a queue
   # for retrieval by API
   class EventRenderer < SessionRenderer
     private getter queue = Deque(Render::Event).new
-    private getter pending_confirmations = Hash(String, Channel(Bool)).new
-    private getter input = InputReader.new("> ")
+
+    # Confirmation requests made to the WUI
+    private getter pending_confirmations = Hash(String, ConfirmationChannel).new
+
+    # Input requests made to the WUI
+    private getter pending_inputs = Hash(String, InputsChannel).new
 
     property? streaming = false
     private getter work_channel : Channel(Work)
@@ -79,6 +73,7 @@ module Enkaidu::WUI
       post_event Render::SessionReset.new
     end
 
+    # Server handler calls to provide response to a pending confirmation request
     def respond_to_confirmation(confirmation_id : String, approved : Bool)
       if channel = pending_confirmations[confirmation_id]?
         channel.send(approved)
@@ -143,22 +138,23 @@ module Enkaidu::WUI
     end
 
     def mcp_prompt_ask_input(prompt) : Hash(String, String)
-      warning_with "WARN: Parameter input not yet supported here; see Enkaidu terminal for input."
+      input_id = Random::Secure.hex(16)
+      input_channel = InputsChannel.new
+      pending_inputs[input_id] = input_channel
 
-      text = <<-PREFIX
-          #{prompt.description}
+      post_event Render::AskForInputs.new(input_id, prompt)
 
-      PREFIX
-      puts text.colorize(:cyan)
+      # Wait for the response
+      result = input_channel.receive
+      pending_inputs.delete(input_id)
+      result
+    end
 
-      arg_inputs = {} of String => String
-      prompt.arguments.try &.each do |arg|
-        unless (value = ask_param_input(arg.name, arg.description)).nil?
-          arg_inputs[arg.name] = value
-        end
+    # Server handler calls to provide response to a pending confirmation request
+    def respond_to_input(input_id : String, inputs : Hash(String, String))
+      if channel = pending_inputs[input_id]?
+        channel.send(inputs)
       end
-      puts
-      arg_inputs
     end
 
     MCP_MAX_TOOL_CALL_ARGS_LENGTH = 72

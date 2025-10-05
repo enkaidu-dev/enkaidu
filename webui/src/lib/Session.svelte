@@ -1,5 +1,6 @@
 <script lang="ts">
   import { enkaidu_post_request } from "../utilities";
+  import * as Common from "../common_types";
 
   import MsgCard from "./MsgCard.svelte";
   import AsstTextCard from "./AsstTextCard.svelte";
@@ -9,6 +10,7 @@
   import UserTextCard from "./UserTextCard.svelte";
   import UserImageCard from "./UserImageCard.svelte";
   import ClarionCard from "./ClarionCard.svelte";
+  import InputsDialog from "./InputsDialog.svelte";
 
   const scrollToBottom = (node: HTMLElement, _list: Event[]) => {
     const scroll = () =>
@@ -38,10 +40,19 @@
   };
 
   let entries: SessionEntry[] = $state([]);
-  let shell_confirm_dialog = $state({
+
+  let shell_confirm_dialog: Common.ShellConfirmDialogConfig = $state({
     show: false,
     command: "",
     id: "",
+  });
+
+  let inputs_dialog: Common.InputDialogConfig = $state({
+    show: false,
+    id: "",
+    title: "",
+    description: "",
+    input_arguments: [],
   });
 
   function check_and_trim_last_entry() {
@@ -107,6 +118,32 @@
     shell_confirm_dialog.show = false;
     send_confirmation_response(id, approved);
   }
+
+  export function ask_for_inputs(
+    id: string,
+    title: string,
+    input_args: Common.InputArg[],
+    description?: string | undefined,
+  ) {
+    inputs_dialog.show = true;
+    inputs_dialog.id = id;
+    inputs_dialog.title = title;
+    inputs_dialog.description = description;
+    inputs_dialog.input_arguments = input_args;
+  }
+
+  async function send_inputs_response(id: string, inputs: Common.InputValues) {
+    try {
+      await enkaidu_post_request("inputs", { id, inputs });
+    } catch (error) {
+      console.error("Failed to send inputs response:", error);
+    }
+  }
+
+  function handle_inputs_submission(id: string, inputs: Common.InputValues) {
+    inputs_dialog.show = false;
+    send_inputs_response(id, inputs);
+  }
 </script>
 
 <div use:scrollToBottom={entries} class="mb-auto overflow-scroll">
@@ -141,4 +178,13 @@
   id={shell_confirm_dialog.id}
   show={shell_confirm_dialog.show}
   onconfirm={handle_shell_confirmation}
+/>
+
+<InputsDialog
+  id={inputs_dialog.id}
+  title={inputs_dialog.title}
+  description={inputs_dialog.description}
+  input_arguments={inputs_dialog.input_arguments}
+  show={inputs_dialog.show}
+  onsubmit={handle_inputs_submission}
 />

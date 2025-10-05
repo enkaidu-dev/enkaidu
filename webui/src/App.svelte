@@ -59,6 +59,14 @@
       if (line != null && line.length > 0) {
         let msg = JSON.parse(line);
         switch (msg.type) {
+          case "ask_for_inputs":
+            session.ask_for_inputs(
+              msg.id,
+              msg.title,
+              msg.arguments,
+              msg.description,
+            );
+            break;
           case "message":
             session.add_event({
               type: `message_${msg.level}`,

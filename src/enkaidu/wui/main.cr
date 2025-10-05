@@ -30,6 +30,13 @@ module Enkaidu
       {% end %}
     end
 
+    class InputsResponse
+      include JSON::Serializable
+
+      getter id : String
+      getter inputs : Hash(String, String)
+    end
+
     # `Sever` is the interim WIP entry point for the server-mode build of Enkaidu.
     # At some point it will be available via a `--server` switch from the same binary
     class Main
@@ -112,6 +119,16 @@ module Enkaidu
             confirmation_id = confirmation_data["id"].as_s
             approved = confirmation_data["approved"].as_bool
             queue.respond_to_confirmation(confirmation_id, approved)
+            resp.puts({"status": "ok"}.to_json)
+          else
+            raise ArgumentError.new("Nil body: #{req.method} #{req.path}")
+          end
+        end
+
+        web_server.post "/api/inputs" do |req, resp|
+          if body_io = req.body
+            body = InputsResponse.from_json(body_io.gets_to_end)
+            queue.respond_to_input(body.id, body.inputs)
             resp.puts({"status": "ok"}.to_json)
           else
             raise ArgumentError.new("Nil body: #{req.method} #{req.path}")
