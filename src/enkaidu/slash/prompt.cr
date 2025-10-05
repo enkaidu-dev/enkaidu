@@ -10,6 +10,8 @@ module Enkaidu::Slash
       - List all available prompt
     - `info <PROMPTNAME>`
       - Provide details about one prompt
+    - `use <PROMPTNAME>`
+      - Use (invoke) a prompt by name. If the prompt requirements arguments, you will be prompted for input per argument.
     HELP1
 
     def name : String
