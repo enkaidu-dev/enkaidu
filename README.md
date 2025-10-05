@@ -184,6 +184,12 @@ You can input your queries directly into Enkaidu. If the query is prefixed with 
 - **`/include text_file <PATH>`**: Include text from a file with the next query to the AI model.
 - **`/include any_file <PATH>`**: Include any supported file with the next query to the AI model.
 
+#### Prompts
+
+- **`/prompt ls`**: List available prompts
+- **`/prompt info <NAME>`**: List the details about the specific prompt.
+- **`/prompt use <NAME>`**: Use or invoke a prompt by name. If the prompt has arguments, you will be asked to enter values for each one.
+
 ### Advanced Usage
 
 You can configure Enkaidu to automatically load specific toolsets and models. This can be set up in the `enkaidu.yaml` configuration file described in the [Get Started](#get-started) section.
@@ -253,7 +259,7 @@ session:
     toolsets:
       - DateAndTime
       - name: FileManagement
-        select: 
+        select:
           - list_files
 llms:
   my_openai:
