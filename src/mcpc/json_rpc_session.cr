@@ -15,6 +15,11 @@ module MCPC
         setup_params(json) do
           json.field "capabilities" do
             json.object do
+              json.field "roots" do
+                json.object do
+                  json.field "listChanged", true
+                end
+              end
               # No client capabilities that we support yet
             end
           end
