@@ -275,7 +275,7 @@ module Enkaidu
                  end
           io << desc << '\n' << '\n'
           if args = sel_prompt.arguments
-            io << "## Arguments" << '\n'
+            io << "### Arguments" << '\n'
             args.each do |arg|
               io << "* `" << arg.name << "`: " << (arg.description || "_(No description)_") << '\n'
             end
@@ -288,9 +288,13 @@ module Enkaidu
       end
     end
 
-    def use_prompt(prompt_name)
+    def find_prompt?(prompt_name)
       found = mcp_prompts.select { |prompt| prompt_name == prompt.name }
-      if prompt = found.first
+      found.first
+    end
+
+    def use_prompt(prompt_name)
+      if prompt = find_prompt?(prompt_name)
         arg_inputs = renderer.mcp_prompt_ask_input(prompt)
         unless (prompt_result = prompt.call_with(arg_inputs)).nil?
           text_count = 0
@@ -379,7 +383,7 @@ module Enkaidu
       text = String.build do |io|
         Tools.each_toolset do |toolset|
           loaded = @loaded_toolsets.has_key?(toolset.name)
-          io << "## " << toolset.name
+          io << "### " << toolset.name
           io << (loaded ? " _(Loaded)_\n" : '\n')
           toolset.each_tool_info do |name, description|
             io << "* **" << name << "** : "
@@ -400,7 +404,7 @@ module Enkaidu
                    tool.description
                  end
           io << desc << '\n'
-          io << "## Input Schema (Parameters)\n```json\n"
+          io << "### Input Schema (Parameters)\n```json\n"
           io << JSON.parse(tool.input_json_schema).to_pretty_json
           io << "\n```\n"
         end
