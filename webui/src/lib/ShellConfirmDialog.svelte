@@ -1,14 +1,13 @@
 <script lang="ts">
+  import * as Common from "../common_types";
+
   let {
     onconfirm,
     command,
     id,
     show = true,
-  }: {
-    command: string;
-    id: string;
-    show: boolean;
-    onconfirm: (id: string, approved: boolean) => void;
+  }: Common.ShellConfirmDialogConfig & {
+    onconfirm: Common.ShellConfirmSubmit;
   } = $props();
 
   function handleApprove() {
