@@ -1,11 +1,26 @@
+require "reply"
 require "../session_renderer"
 
 require "markterm"
 
 module Enkaidu::CLI
+  class InputReader < Reply::Reader
+    property label : String
+
+    def initialize(@label)
+      super()
+    end
+
+    def prompt(io : IO, line_number : Int32, color : Bool) : Nil
+      q = label.colorize(:cyan) if color
+      io << q
+    end
+  end
+
   # This class is responsible for rendering console outputs.
   class ConsoleRenderer < SessionRenderer
     property? streaming = false
+    private getter input = InputReader.new("> ")
 
     private def prepare_text(help, markdown)
       markdown ? Markd.to_term(help.to_s) : help
@@ -35,10 +50,14 @@ module Enkaidu::CLI
       err_puts_text help, markdown
     end
 
-    def user_query(query)
-      puts "QUERY".colorize(:yellow)
+    def user_query_text(query)
+      print "QUERY > ".colorize(:yellow)
       puts query
-      puts "----".colorize(:green)
+    end
+
+    def user_query_image_url(url)
+      print "QUERY > ".colorize(:yellow)
+      puts "IMAGE #{trim_text(url, MAX_IMAGE_URL_LENGTH)}".colorize(:green)
     end
 
     def user_confirm_shell_command?(command)
@@ -92,6 +111,13 @@ module Enkaidu::CLI
       puts
     end
 
+    MAX_IMAGE_URL_LENGTH = 72
+
+    def llm_image_url(url)
+      puts "  IMAGE #{trim_text(url, MAX_IMAGE_URL_LENGTH)}".colorize(:green)
+      puts
+    end
+
     def mcp_initialized(uri)
       puts "  INIT MCP connection: #{uri}".colorize(:green)
     end
@@ -102,6 +128,59 @@ module Enkaidu::CLI
 
     def mcp_tool_ready(function)
       puts "  ADDED function: #{function.name}".colorize(:green)
+    end
+
+    def mcp_prompts_found(count)
+      puts "  FOUND #{count} prompts".colorize(:green)
+    end
+
+    def mcp_prompt_ready(prompt)
+      puts "  FOUND prompt: #{prompt.name}".colorize(:green)
+    end
+
+    private def ask_param_input(name, description, color)
+      text = if description
+               "    #{name} [#{description}] :"
+             else
+               "    #{name} : "
+             end
+      puts text.colorize(color)
+      input.label = "    > "
+      input.read_next
+    end
+
+    def mcp_prompt_ask_input(prompt : MCPPrompt) : Hash(String, String)
+      text = <<-PREFIX
+          #{prompt.description}
+
+      PREFIX
+      puts text.colorize(:cyan)
+
+      arg_inputs = {} of String => String
+      prompt.arguments.try &.each do |arg|
+        unless (value = ask_param_input(arg.name, arg.description, :cyan)).nil?
+          arg_inputs[arg.name] = value
+        end
+      end
+      puts
+      arg_inputs
+    end
+
+    def user_prompt_ask_input(prompt : TemplatePrompt) : Hash(String, String)
+      text = <<-PREFIX
+          #{prompt.description}
+
+      PREFIX
+      puts text.colorize(:green)
+
+      arg_inputs = {} of String => String
+      prompt.arguments.try &.each do |arg|
+        unless (value = ask_param_input(arg.name, arg.description, :green)).nil?
+          arg_inputs[arg.name] = value
+        end
+      end
+      puts
+      arg_inputs
     end
 
     MCP_MAX_TOOL_CALL_ARGS_LENGTH = 72

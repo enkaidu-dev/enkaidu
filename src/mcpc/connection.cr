@@ -1,5 +1,7 @@
 require "uri"
 
+require "../sucre/mcp_types"
+
 require "./http_transport"
 require "./json_rpc_session"
 require "./sensitive_data"
@@ -93,6 +95,41 @@ module MCPC
       STDERR.puts "~~ MCP (Connection) #{ex}".colorize(:yellow) if tracing?
       STDERR.puts "~~    Switch to modern".colorize(:yellow) if tracing?
       use_modern_http_transport
+    end
+
+    def list_prompts : JSON::Any?
+      STDERR.puts "---------- Connection#list_prompts" if tracing?
+      prompts = nil
+      transport.post(session.body_prompts_list) do |reply|
+        case reply
+        when JSON::Any
+          unless prompts = reply.dig?("result", "prompts")
+            raise ResultError.new("Result has no 'prompts'; see .data.", reply)
+          end
+        else
+          raise ResponseError.new("Unexpected transport response; see .details.", reply)
+        end
+      end
+      prompts # don't (can't, mustn't) rely on the #post return value
+    end
+
+    # Calls a tool and returns the content from the reply on success
+    def get_prompt(name : String,
+                   args : Hash(String, String)) : MCP::PromptResult?
+      STDERR.puts "---------- Connection#get_prompt" if tracing?
+      content = nil
+      transport.post(session.body_prompts_get(name, args)) do |reply|
+        case reply
+        when JSON::Any
+          unless content = reply.dig?("result", "messages")
+            raise ResultError.new("Result has no 'messages'; see .data.", reply)
+          end
+        else
+          raise ResponseError.new("Unexpected transport response; see .details.", reply)
+        end
+      end
+      # don't (can't, mustn't) rely on the #post return value
+      (content && MCP::PromptResult.import(content)) || nil
     end
 
     # Returns an array of tools, if any

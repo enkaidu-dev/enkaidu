@@ -7,10 +7,6 @@ module Enkaidu::CLI
       super()
     end
 
-    def read_next
-      super
-    end
-
     def prompt(io : IO, line_number : Int32, color : Bool) : Nil
       q = "QUERY > "
       q = q.colorize(:yellow) if color

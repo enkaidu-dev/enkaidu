@@ -15,11 +15,12 @@ module MCPC
         setup_params(json) do
           json.field "capabilities" do
             json.object do
-              json.field "tools" do
+              json.field "roots" do
                 json.object do
                   json.field "listChanged", true
                 end
               end
+              # No client capabilities that we support yet
             end
           end
           setup_client_info(json)
@@ -42,6 +43,30 @@ module MCPC
     def body_tools_list
       setup_request "tools/list" do |json|
         setup_params(json) do
+          setup_client_info(json)
+        end
+      end
+    end
+
+    def body_prompts_list
+      setup_request "prompts/list" do |json|
+        setup_params(json) do
+          setup_client_info(json)
+        end
+      end
+    end
+
+    def body_prompts_get(name : String, args : Hash(String, String))
+      setup_request "prompts/get" do |json|
+        setup_params(json) do
+          json.field "name", name
+          json.field "arguments" do
+            json.object do
+              args.each do |k, v|
+                json.field k, v
+              end
+            end
+          end
           setup_client_info(json)
         end
       end

@@ -85,6 +85,16 @@ module LLM::OpenAI
       {type: "error/unknown", content: tool_call}
     end
 
+    def import(prompt : MCP::PromptResult, emit = false, & : ChatEvent ->) : Nil
+      @sess.import(prompt, emit) { |event| yield event }
+    end
+
+    def re_ask(& : ChatEvent ->) : Nil
+      ask_post do |msg|
+        yield msg
+      end
+    end
+
     def ask(content : String, attach : ChatInclusions? = nil, & : LLM::ChatEvent ->) : Nil
       append_message Message::MultiContent.new(prompt: content, attach: attach)
 

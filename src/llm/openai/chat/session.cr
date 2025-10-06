@@ -29,7 +29,7 @@ module LLM::OpenAI
       @messages = [] of MessageWrap
     end
 
-    def append_message(msg, usage : Usage? = nil)
+    def append_message(msg : Message, usage : Usage? = nil)
       @messages << MessageWrap.new(msg, usage)
     end
 
@@ -69,6 +69,45 @@ module LLM::OpenAI
       # emit more than one
       @messages.each(start: start_index, count: @messages.size - start_index) do |msg|
         msg.message.emit { |chat_ev| yield chat_ev }
+      end
+    end
+
+    private def convert_for_user(content : MCP::Content) : Message::MultiContent
+      case content
+      when MCP::Content::Text
+        Message::MultiContent.new(content.text)
+      when MCP::Content::Image
+        mc = Message::MultiContent.new
+        mc.image_url "data:#{content.mime_type};base64,#{content.data}"
+        mc
+      else
+        raise UnexpectedMCPPrompt.new("Unexpected MCP prompt \"user\" message content: #{content.to_json}")
+      end
+    end
+
+    private def convert_for_asst(content : MCP::Content) : Message::Response
+      case content
+      when MCP::Content::Text
+        Message::Response.new(content.text)
+      else
+        raise UnexpectedMCPPrompt.new("Unexpected MCP prompt \"assistant\" message content: #{content.to_json}")
+      end
+    end
+
+    def import(prompt : MCP::PromptResult, emit = false, & : ChatEvent ->) : Nil
+      prompt.each do |prompt_msg|
+        msg = case prompt_msg.role
+              when MCP::Role::Assistant
+                convert_for_asst(prompt_msg.content)
+              when MCP::Role::User
+                convert_for_user(prompt_msg.content)
+              end
+        if msg.nil?
+          STDERR.puts "~~~ WTF: prompt: #{prompt.to_json}"
+        else
+          append_message(msg)
+          msg.emit { |event| yield event } if emit
+        end
       end
     end
   end

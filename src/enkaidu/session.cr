@@ -7,12 +7,16 @@ require "../tools"
 
 require "./version"
 require "./mcp_function"
+require "./mcp_prompt"
 require "./recorder"
 require "./session_options"
 require "./session_renderer"
+require "./template_prompt"
 
 module Enkaidu
   class InvalidSessionData < Exception; end
+
+  class InvalidSessionQuery < Exception; end
 
   class About
     include JSON::Serializable
@@ -39,7 +43,12 @@ module Enkaidu
     private getter chat : LLM::Chat
 
     private getter mcp_functions = [] of MCPFunction
+    private getter mcp_prompts = [] of MCPPrompt
     private getter mcp_connections = [] of MCPC::HttpConnection
+
+    private getter template_prompts = [] of TemplatePrompt
+
+    private getter prompts_by_name = {} of String => MCPPrompt | TemplatePrompt
 
     getter recorder : Recorder
     getter renderer : SessionRenderer
@@ -66,27 +75,32 @@ module Enkaidu
       chat.usage
     end
 
+    private def render_session_event(chat_ev, text_count)
+      case chat_ev["type"]
+      when "text"
+        renderer.llm_text_block(chat_ev["content"].as_s)
+        text_count += 1
+      when "tool_call"
+        text_count = 0
+        renderer.llm_tool_call(
+          name: chat_ev["content"].dig("function", "name").as_s,
+          args: chat_ev["content"].dig("function", "arguments"))
+      when "tool_called"
+      when "query/text"
+        renderer.user_query_text(chat_ev["content"].as_s)
+        text_count += 1
+      when "query/image_url"
+        renderer.user_query_image_url(chat_ev["content"].as_s)
+      when "query/file_data"
+        renderer.info_with("INCLUDE file: #{chat_ev["content"].as_s}")
+      end
+      text_count
+    end
+
     private def tail_session_events(num_chats)
       text_count = 0
       @chat.tail_session(num_chats) do |chat_ev|
-        case chat_ev["type"]
-        when "text"
-          renderer.llm_text_block(chat_ev["content"].as_s)
-          text_count += 1
-        when "tool_call"
-          text_count = 0
-          renderer.llm_tool_call(
-            name: chat_ev["content"].dig("function", "name").as_s,
-            args: chat_ev["content"].dig("function", "arguments"))
-        when "tool_called"
-        when "query/text"
-          renderer.user_query(chat_ev["content"].as_s)
-          text_count += 1
-        when "query/image_url"
-          renderer.info_with("INCLUDE image: #{chat_ev["content"].as_s}")
-        when "query/file_data"
-          renderer.info_with("INCLUDE file: #{chat_ev["content"].as_s}")
-        end
+        text_count = render_session_event chat_ev, text_count
       end
     end
 
@@ -131,6 +145,7 @@ module Enkaidu
       renderer.session_reset
       unload_all_toolsets
       unload_all_mcp_servers
+      unload_all_prompts
       @chat = setup_chat # new chat BEFORE loading tools, MCP servers
       auto_load
     end
@@ -198,6 +213,10 @@ module Enkaidu
       end
     end
 
+    private def register_prompt_by_name(name, prompt)
+      prompts_by_name[name] = prompt
+    end
+
     # Run auto loads specified in the session config
     def auto_load
       return unless config = opts.config
@@ -214,6 +233,19 @@ module Enkaidu
           renderer.info_with("INFO: Auto-loading toolsets: #{toolsets.join(", ")}")
           auto_load_toolsets(toolsets)
         end
+
+        if prompts = config.prompts
+          renderer.info_with("INFO: Auto-loading prompts: #{prompts.keys.join(", ")}")
+          auto_load_config_prompts(prompts)
+        end
+      end
+    end
+
+    private def auto_load_config_prompts(prompts)
+      prompts.each do |name, prompt|
+        tp = TemplatePrompt.new(name, prompt, self)
+        template_prompts << tp
+        register_prompt_by_name(name, tp)
       end
     end
 
@@ -242,6 +274,72 @@ module Enkaidu
       env.each do |name, value|
         ENV[name] = value
       end
+    end
+
+    def list_all_prompts
+      text = String.build do |io|
+        prompts_by_name.each_value do |prompt|
+          # mcp_prompts.each do |prompt|
+          io << "**" << prompt.name << "** (" << prompt.origin << "): "
+          io << prompt.description << "\n\n"
+        end
+        io << '\n'
+      end
+      renderer.info_with("List of available prompts.", text, markdown: true)
+    end
+
+    def list_prompt_details(prompt_name)
+      if sel_prompt = find_prompt?(prompt_name)
+        text = String.build do |io|
+          desc = if sel_prompt.description == prompt_name
+                   "_No description provided. Using tool name instead._"
+                 else
+                   sel_prompt.description
+                 end
+          io << desc << '\n' << '\n'
+          if args = sel_prompt.arguments
+            io << "### Arguments" << '\n'
+            args.each do |arg|
+              io << "* `" << arg.name << "`: " << (arg.description || "_(No description)_") << '\n'
+            end
+            io << '\n'
+          end
+        end
+        renderer.info_with("Prompt details: #{prompt_name} (#{sel_prompt.origin})", text, markdown: true)
+      else
+        renderer.info_with("INFO: No such prompt available: #{prompt_name}")
+      end
+    end
+
+    def find_prompt?(prompt_name)
+      prompts_by_name[prompt_name]?
+    end
+
+    def use_prompt(prompt_name)
+      if prompt = find_prompt?(prompt_name)
+        case prompt
+        when MCPPrompt
+          arg_inputs = renderer.mcp_prompt_ask_input(prompt)
+          unless (prompt_result = prompt.call_with(arg_inputs)).nil?
+            text_count = 0
+            chat.import(prompt_result, emit: true) do |chat_ev|
+              text_count = render_session_event chat_ev, text_count
+            end
+            ask(query: nil, attach: nil)
+          end
+        when TemplatePrompt
+          arg_inputs = renderer.user_prompt_ask_input(prompt)
+          prompt_text = prompt.call_with(arg_inputs)
+          ask(query: prompt_text, render_query: true)
+        end
+      end
+    rescue ex
+      handle_mcpc_error(ex)
+    end
+
+    private def unload_all_prompts
+      template_prompts.clear
+      prompts_by_name.clear
     end
 
     def list_all_tools
@@ -319,7 +417,7 @@ module Enkaidu
       text = String.build do |io|
         Tools.each_toolset do |toolset|
           loaded = @loaded_toolsets.has_key?(toolset.name)
-          io << "## " << toolset.name
+          io << "### " << toolset.name
           io << (loaded ? " _(Loaded)_\n" : '\n')
           toolset.each_tool_info do |name, description|
             io << "* **" << name << "** : "
@@ -340,7 +438,7 @@ module Enkaidu
                    tool.description
                  end
           io << desc << '\n'
-          io << "## Input Schema (Parameters)\n```json\n"
+          io << "### Input Schema (Parameters)\n```json\n"
           io << JSON.parse(tool.input_json_schema).to_pretty_json
           io << "\n```\n"
         end
@@ -374,6 +472,7 @@ module Enkaidu
 
     def unload_all_mcp_servers
       mcp_functions.clear
+      mcp_prompts.clear
       mcp_connections.each do |conn|
         renderer.info_with("INFO: MCP server connection unloaded: #{conn.uri}.")
         conn.close
@@ -416,6 +515,16 @@ module Enkaidu
           chat.with_tool(func)
         end
       end
+      if mcpc.supports_prompts? && (prompt_defs = mcpc.list_prompts)
+        prompt_defs = prompt_defs.as_a
+        renderer.mcp_prompts_found(prompt_defs.size)
+        prompt_defs.each do |prompt_spec|
+          prompt = MCPPrompt.new(prompt_spec, mcpc, cli: self)
+          mcp_prompts << prompt
+          renderer.mcp_prompt_ready(prompt)
+          register_prompt_by_name(prompt.name, prompt)
+        end
+      end
     rescue ex
       handle_mcpc_error(ex)
     end
@@ -424,19 +533,31 @@ module Enkaidu
       renderer.mcp_error(ex)
     end
 
+    private macro m_process_and_record_ask_event
+          unless event["type"] == "done"
+            recorder << "," if ix.positive?
+            recorder << event.to_json
+            ix += 1
+            process_event(event, tools)
+          end
+    end
+
     def ask(query, attach : LLM::ChatInclusions? = nil, render_query = false)
       recorder << "["
       ix = 0
       tools = [] of JSON::Any
       # ask and handle the initial query and its events
-      renderer.user_query(query) if render_query
-      chat.ask query, attach do |event|
-        unless event["type"] == "done"
-          recorder << "," if ix.positive?
-          recorder << event.to_json
-          ix += 1
-          process_event(event, tools)
+      if query.nil? && attach.nil?
+        chat.re_ask do |event|
+          m_process_and_record_ask_event
         end
+      elsif query.is_a? String
+        renderer.user_query_text(query) if render_query
+        chat.ask query, attach do |event|
+          m_process_and_record_ask_event
+        end
+      else
+        raise InvalidSessionQuery.new("Cannot call #ask with nil query unless attach is also nil")
       end
       # deal with any tool calls and subsequent events repeatedly until
       # no more tool calls remain

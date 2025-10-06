@@ -1,11 +1,16 @@
 <script lang="ts">
   import { enkaidu_post_request } from "../utilities";
+  import * as Common from "../common_types";
 
-  import UserCard from "./UserCard.svelte";
-  import AsstCard from "./AsstCard.svelte";
   import MsgCard from "./MsgCard.svelte";
+  import AsstTextCard from "./AsstTextCard.svelte";
+  import AsstImageCard from "./AsstImageCard.svelte";
   import AsstThinkCard from "./AsstThinkCard.svelte";
   import ShellConfirmDialog from "./ShellConfirmDialog.svelte";
+  import UserTextCard from "./UserTextCard.svelte";
+  import UserImageCard from "./UserImageCard.svelte";
+  import ClarionCard from "./ClarionCard.svelte";
+  import InputsDialog from "./InputsDialog.svelte";
 
   const scrollToBottom = (node: HTMLElement, _list: Event[]) => {
     const scroll = () =>
@@ -35,17 +40,26 @@
   };
 
   let entries: SessionEntry[] = $state([]);
-  let shell_confirm_dialog = $state({
+
+  let shell_confirm_dialog: Common.ShellConfirmDialogConfig = $state({
     show: false,
     command: "",
     id: "",
+  });
+
+  let inputs_dialog: Common.InputDialogConfig = $state({
+    show: false,
+    id: "",
+    title: "",
+    description: "",
+    input_arguments: [],
   });
 
   function check_and_trim_last_entry() {
     let last = entries.at(-1);
     if (last) {
       // Check if last one is text and if it has any text in it
-      if (last.type == "llm" || last.type == "think") {
+      if (last.type == "llm_text" || last.type == "llm_think") {
         let content = last.data[0].content?.trim();
         if (typeof content == "string" && content.length == 0) {
           // The previous one has empty text, so just drop it.
@@ -63,7 +77,7 @@
     let last = entries.at(-1);
     let ev_data = { subject: ev.subject, content: ev.content };
     if (last && last.type == ev.type) {
-      if (last.type == "llm" || last.type == "think") {
+      if (last.type == "llm_text" || last.type == "llm_think") {
         // append text if it's LLM or THINK text
         // this allows us to show streaming text
         let content = (last.data[0].content || "") + ev_data.content;
@@ -104,19 +118,51 @@
     shell_confirm_dialog.show = false;
     send_confirmation_response(id, approved);
   }
+
+  export function ask_for_inputs(
+    id: string,
+    title: string,
+    input_args: Common.InputArg[],
+    description?: string | undefined,
+  ) {
+    inputs_dialog.show = true;
+    inputs_dialog.id = id;
+    inputs_dialog.title = title;
+    inputs_dialog.description = description;
+    inputs_dialog.input_arguments = input_args;
+  }
+
+  async function send_inputs_response(id: string, inputs: Common.InputValues) {
+    try {
+      await enkaidu_post_request("inputs", { id, inputs });
+    } catch (error) {
+      console.error("Failed to send inputs response:", error);
+    }
+  }
+
+  function handle_inputs_submission(id: string, inputs: Common.InputValues) {
+    inputs_dialog.show = false;
+    send_inputs_response(id, inputs);
+  }
 </script>
 
 <div use:scrollToBottom={entries} class="mb-auto overflow-scroll">
   <div class="space-y-3 grid grid-cols-1 w-full max-w-5xl p-3 mx-auto">
     {#each entries as entry}
       {#if entry.type == "query"}
-        <UserCard message={entry.data[0].content || "??"} />
+        <UserTextCard message={entry.data[0].content || "??"} />
       {:else if entry.type == "command"}
-        <UserCard message={entry.data[0].content || "/??"} command />
-      {:else if entry.type == "llm"}
-        <AsstCard message={entry.data[0].content} />
-      {:else if entry.type == "think"}
+        <UserTextCard message={entry.data[0].content || "/??"} command />
+      {:else if entry.type == "query_image_url"}
+        <UserImageCard image_url={entry.data[0].content || "??"} />
+      {:else if entry.type == "llm_text"}
+        <AsstTextCard message={entry.data[0].content || "??"} />
+      {:else if entry.type == "llm_think"}
         <AsstThinkCard message={entry.data[0].content} />
+      {:else if entry.type == "llm_image_url"}
+        <AsstImageCard image_url={entry.data[0].content || "??"} />
+      {:else if entry.type == "clarion"}
+        <ClarionCard subject={entry.data[0].content || "???"} />
       {:else if entry.type.startsWith("message_")}
         <MsgCard
           level={entry.type.split("_").at(-1) || "info"}
@@ -132,4 +178,13 @@
   id={shell_confirm_dialog.id}
   show={shell_confirm_dialog.show}
   onconfirm={handle_shell_confirmation}
+/>
+
+<InputsDialog
+  id={inputs_dialog.id}
+  title={inputs_dialog.title}
+  description={inputs_dialog.description}
+  input_arguments={inputs_dialog.input_arguments}
+  show={inputs_dialog.show}
+  onsubmit={handle_inputs_submission}
 />

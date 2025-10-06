@@ -6,6 +6,9 @@
 
 <div class="card bg-accent card-sm shadow-sm w-7/8 place-self-end">
   <div class="card-body py-1">
-    <Markdown content={message} add_class="text-accent-content" />
+    <Markdown
+      content={command ? `\`${message}\`` : message}
+      add_class="text-accent-content"
+    />
   </div>
 </div>

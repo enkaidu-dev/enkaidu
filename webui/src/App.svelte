@@ -56,9 +56,17 @@
     let text_thinking = false;
 
     await read_line_by_line(resp, function (line) {
-      if (line != null) {
+      if (line != null && line.length > 0) {
         let msg = JSON.parse(line);
         switch (msg.type) {
+          case "ask_for_inputs":
+            session.ask_for_inputs(
+              msg.id,
+              msg.title,
+              msg.arguments,
+              msg.description,
+            );
+            break;
           case "message":
             session.add_event({
               type: `message_${msg.level}`,
@@ -67,10 +75,26 @@
             });
             break;
           case "query":
-            session.add_event({
-              type: msg.prompt.startsWith("/") ? "command" : "query",
-              content: msg.prompt,
-            });
+            switch (msg.content_type) {
+              case "text":
+                session.add_event({
+                  type: msg.content.startsWith("/") ? "command" : "query",
+                  content: msg.content,
+                });
+                break;
+              case "image_url":
+                session.add_event({
+                  type: "query_image_url",
+                  content: msg.content,
+                });
+                break;
+              default:
+                console.log(`clarion: ${line}`);
+                session.add_event({
+                  type: "clarion",
+                  subject: `Unexpected query: ${line}`,
+                });
+            }
             break;
           case "llm_text":
             let content = msg.content.trim();
@@ -79,24 +103,37 @@
             if (think_ix > 0) {
               let think = content.substring(0, think_ix + 8).trim();
               if (think.length > 0) {
-                session.add_event({ type: "think", content: think });
+                session.add_event({ type: "llm_think", content: think });
               }
               content = content.substring(think_ix + 8).trim();
             }
             if (content.length > 0) {
-              session.add_event({ type: "llm", content: content });
+              session.add_event({ type: "llm_text", content: content });
             }
             break;
           case "llm_text_fragment":
             let fragment = msg.fragment.trim();
             if (fragment == "<think>") text_thinking = true;
-            if (fragment.length > 0 || msg.fragment.includes("\n")) {
-              session.add_event({
-                type: text_thinking ? "think" : "llm",
-                content: msg.fragment,
-              });
-            }
+            // if (fragment.length > 0 || msg.fragment.includes("\n")) {
+            session.add_event({
+              type: text_thinking ? "llm_think" : "llm_text",
+              content: msg.fragment,
+            });
+            // }
             if (fragment == "</think>") text_thinking = false;
+            break;
+          case "llm_image_url":
+            session.add_event({
+              type: "llm_image_url",
+              content: msg.content,
+            });
+            break;
+          case "llm_tool_call":
+            session.add_event({
+              type: `message_success`,
+              subject: `CALL "${msg.name}" with`,
+              content: "`" + msg.args + "`",
+            });
             break;
           case "llm_tool_call":
             session.add_event({
@@ -111,6 +148,12 @@
           case "session_reset":
             session.reset();
             break;
+          default:
+            console.log(`clarion: ${line}`);
+            session.add_event({
+              type: "clarion",
+              content: `Unexpected message: ${line}`,
+            });
         }
       }
     });
@@ -141,8 +184,8 @@
       await handle_response(resp);
     } catch (error) {
       session.add_event({
-        type: "message_error",
-        subject: error as string,
+        type: "clarion",
+        content: error as string,
       });
     } finally {
       handling_request = false;

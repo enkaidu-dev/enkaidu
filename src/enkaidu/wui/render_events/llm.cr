@@ -25,4 +25,12 @@ module Enkaidu::WUI::Render
       super("llm_text")
     end
   end
+
+  class LLMImageUrl < Event
+    getter url : String
+
+    def initialize(@url)
+      super("llm_image_url")
+    end
+  end
 end

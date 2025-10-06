@@ -1,8 +1,11 @@
 require "./function"
 require "./chat_inclusions"
+require "../sucre/mcp_types"
 
 module LLM
   alias ChatEvent = NamedTuple(type: String, content: JSON::Any)
+
+  class UnexpectedMCPPrompt < Exception; end
 
   # `Chat` is an abstract class that serves as a base for creating various chat implementations.
   abstract class Chat
@@ -67,6 +70,11 @@ module LLM
     def each_tool
       @tools_by_name.each_value
     end
+
+    abstract def import(prompt : MCP::PromptResult, emit = false, & : ChatEvent ->) : Nil
+
+    # Resubmit current session as a query to get another answer
+    abstract def re_ask(& : ChatEvent ->) : Nil
 
     abstract def ask(content : String, attach : ChatInclusions? = nil, & : ChatEvent ->) : Nil
 

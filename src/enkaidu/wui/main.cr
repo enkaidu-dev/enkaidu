@@ -30,6 +30,13 @@ module Enkaidu
       {% end %}
     end
 
+    class InputsResponse
+      include JSON::Serializable
+
+      getter id : String
+      getter inputs : Hash(String, String)
+    end
+
     # `Sever` is the interim WIP entry point for the server-mode build of Enkaidu.
     # At some point it will be available via a `--server` switch from the same binary
     class Main
@@ -118,6 +125,16 @@ module Enkaidu
           end
         end
 
+        web_server.post "/api/inputs" do |req, resp|
+          if body_io = req.body
+            body = InputsResponse.from_json(body_io.gets_to_end)
+            queue.respond_to_input(body.id, body.inputs)
+            resp.puts({"status": "ok"}.to_json)
+          else
+            raise ArgumentError.new("Nil body: #{req.method} #{req.path}")
+          end
+        end
+
         web_server.unknown_get do |req, resp|
           path = req.path == "/" ? "/index.html" : req.path
           if file = FileStorage.get(path)
@@ -141,6 +158,7 @@ module Enkaidu
           # and exit when the original request is done.
           break if work.request_handled?
         end
+        resp.puts("")
       end
 
       # Do not call this directly from a server request handler; use

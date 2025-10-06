@@ -19,15 +19,19 @@ module LLM::OpenAI
       end
     end
 
-    private def text(text : String)
+    protected def initialize
+      @role = "user"
+    end
+
+    protected def text(text : String)
       content << Content::Text.new(text)
     end
 
-    private def image_url(url : String)
+    protected def image_url(url : String)
       content << Content::ImageUrl.new(url)
     end
 
-    private def file_data(base64_data : String, file_name : String)
+    protected def file_data(base64_data : String, file_name : String)
       content << Content::FileData.new(base64_data: base64_data, file_name: file_name)
     end
 

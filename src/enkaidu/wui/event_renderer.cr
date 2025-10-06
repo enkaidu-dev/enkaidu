@@ -3,13 +3,22 @@ require "./work"
 require "./render_events/*"
 
 require "markterm"
+require "reply"
 
 module Enkaidu::WUI
+  alias ConfirmationChannel = Channel(Bool)
+  alias InputsChannel = Channel(Hash(String, String))
+
   # This class is responsible for rendering console outputs into a queue
   # for retrieval by API
   class EventRenderer < SessionRenderer
     private getter queue = Deque(Render::Event).new
-    private getter pending_confirmations = Hash(String, Channel(Bool)).new
+
+    # Confirmation requests made to the WUI
+    private getter pending_confirmations = Hash(String, ConfirmationChannel).new
+
+    # Input requests made to the WUI
+    private getter pending_inputs = Hash(String, InputsChannel).new
 
     property? streaming = false
     private getter work_channel : Channel(Work)
@@ -39,8 +48,12 @@ module Enkaidu::WUI
       post_event Render::ErrorMessage.new(message, details: help.to_s, markdown: markdown)
     end
 
-    def user_query(query)
-      post_event Render::Query.new(query)
+    def user_query_text(query)
+      post_event Render::Query.new(Render::ContentType::Text, query)
+    end
+
+    def user_query_image_url(url)
+      post_event Render::Query.new(Render::ContentType::ImageUrl, url)
     end
 
     def user_confirm_shell_command?(command)
@@ -60,6 +73,7 @@ module Enkaidu::WUI
       post_event Render::SessionReset.new
     end
 
+    # Server handler calls to provide response to a pending confirmation request
     def respond_to_confirmation(confirmation_id : String, approved : Bool)
       if channel = pending_confirmations[confirmation_id]?
         channel.send(approved)
@@ -88,6 +102,10 @@ module Enkaidu::WUI
       post_event Render::LLMText.new(text)
     end
 
+    def llm_image_url(url)
+      post_event Render::LLMImageUrl.new(url)
+    end
+
     def mcp_initialized(uri)
       post_event Render::SuccessMessage.new("MCP connection: #{uri}")
     end
@@ -98,6 +116,47 @@ module Enkaidu::WUI
 
     def mcp_tool_ready(function)
       post_event Render::SuccessMessage.new("MCP added function: #{function.name}")
+    end
+
+    def mcp_prompts_found(count)
+      post_event Render::SuccessMessage.new("MCP found #{count} prompts")
+    end
+
+    def mcp_prompt_ready(prompt)
+      post_event Render::SuccessMessage.new("MCP found prompt: #{prompt.name}")
+    end
+
+    def mcp_prompt_ask_input(prompt : MCPPrompt) : Hash(String, String)
+      input_id = Random::Secure.hex(16)
+      input_channel = InputsChannel.new
+      pending_inputs[input_id] = input_channel
+
+      post_event Render::AskForInputs.new(input_id, prompt)
+
+      # Wait for the response
+      result = input_channel.receive
+      pending_inputs.delete(input_id)
+      result
+    end
+
+    def user_prompt_ask_input(prompt : TemplatePrompt) : Hash(String, String)
+      input_id = Random::Secure.hex(16)
+      input_channel = InputsChannel.new
+      pending_inputs[input_id] = input_channel
+
+      post_event Render::AskForInputs.new(input_id, prompt)
+
+      # Wait for the response
+      result = input_channel.receive
+      pending_inputs.delete(input_id)
+      result
+    end
+
+    # Server handler calls to provide response to a pending confirmation request
+    def respond_to_input(input_id : String, inputs : Hash(String, String))
+      if channel = pending_inputs[input_id]?
+        channel.send(inputs)
+      end
     end
 
     MCP_MAX_TOOL_CALL_ARGS_LENGTH = 72
