@@ -28,7 +28,7 @@ module Enkaidu
     def initialize(@name, prompt : Config::Prompt, @cli)
       @description = prompt.description
       @template = Liquid::Template.parse(prompt.template)
-      prompt.arguments.try(&.each { |name, arg| arguments << Argument.new(name, arg) })
+      prompt.arguments.try(&.each { |arg_name, arg| arguments << Argument.new(arg_name, arg) })
     end
 
     def call_with(args : Hash(String, String)) : String
