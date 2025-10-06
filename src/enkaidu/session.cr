@@ -11,6 +11,7 @@ require "./mcp_prompt"
 require "./recorder"
 require "./session_options"
 require "./session_renderer"
+require "./template_prompt"
 
 module Enkaidu
   class InvalidSessionData < Exception; end
@@ -44,6 +45,10 @@ module Enkaidu
     private getter mcp_functions = [] of MCPFunction
     private getter mcp_prompts = [] of MCPPrompt
     private getter mcp_connections = [] of MCPC::HttpConnection
+
+    private getter template_prompts = [] of TemplatePrompt
+
+    private getter prompts_by_name = {} of String => MCPPrompt | TemplatePrompt
 
     getter recorder : Recorder
     getter renderer : SessionRenderer
@@ -140,6 +145,7 @@ module Enkaidu
       renderer.session_reset
       unload_all_toolsets
       unload_all_mcp_servers
+      unload_all_prompts
       @chat = setup_chat # new chat BEFORE loading tools, MCP servers
       auto_load
     end
@@ -207,6 +213,10 @@ module Enkaidu
       end
     end
 
+    private def register_prompt_by_name(name, prompt)
+      prompts_by_name[name] = prompt
+    end
+
     # Run auto loads specified in the session config
     def auto_load
       return unless config = opts.config
@@ -223,6 +233,19 @@ module Enkaidu
           renderer.info_with("INFO: Auto-loading toolsets: #{toolsets.join(", ")}")
           auto_load_toolsets(toolsets)
         end
+
+        if prompts = config.prompts
+          renderer.info_with("INFO: Auto-loading prompts: #{prompts.keys.join(", ")}")
+          auto_load_config_prompts(prompts)
+        end
+      end
+    end
+
+    private def auto_load_config_prompts(prompts)
+      prompts.each do |name, prompt|
+        tp = TemplatePrompt.new(name, prompt, self)
+        template_prompts << tp
+        register_prompt_by_name(name, tp)
       end
     end
 
@@ -255,7 +278,8 @@ module Enkaidu
 
     def list_all_prompts
       text = String.build do |io|
-        mcp_prompts.each do |prompt|
+        prompts_by_name.each_value do |prompt|
+          # mcp_prompts.each do |prompt|
           io << "**" << prompt.name << "** (" << prompt.origin << "): "
           io << prompt.description << "\n\n"
         end
@@ -265,8 +289,7 @@ module Enkaidu
     end
 
     def list_prompt_details(prompt_name)
-      found = mcp_prompts.select { |prompt| prompt_name == prompt.name }
-      if sel_prompt = found.first
+      if sel_prompt = find_prompt?(prompt_name)
         text = String.build do |io|
           desc = if sel_prompt.description == prompt_name
                    "_No description provided. Using tool name instead._"
@@ -289,23 +312,34 @@ module Enkaidu
     end
 
     def find_prompt?(prompt_name)
-      found = mcp_prompts.select { |prompt| prompt_name == prompt.name }
-      found.first
+      prompts_by_name[prompt_name]?
     end
 
     def use_prompt(prompt_name)
       if prompt = find_prompt?(prompt_name)
-        arg_inputs = renderer.mcp_prompt_ask_input(prompt)
-        unless (prompt_result = prompt.call_with(arg_inputs)).nil?
-          text_count = 0
-          chat.import(prompt_result, emit: true) do |chat_ev|
-            text_count = render_session_event chat_ev, text_count
+        case prompt
+        when MCPPrompt
+          arg_inputs = renderer.mcp_prompt_ask_input(prompt)
+          unless (prompt_result = prompt.call_with(arg_inputs)).nil?
+            text_count = 0
+            chat.import(prompt_result, emit: true) do |chat_ev|
+              text_count = render_session_event chat_ev, text_count
+            end
+            ask(query: nil, attach: nil)
           end
-          ask(query: nil, attach: nil)
+        when TemplatePrompt
+          arg_inputs = renderer.user_prompt_ask_input(prompt)
+          prompt_text = prompt.call_with(arg_inputs)
+          ask(query: prompt_text, render_query: true)
         end
       end
     rescue ex
       handle_mcpc_error(ex)
+    end
+
+    private def unload_all_prompts
+      template_prompts.clear
+      prompts_by_name.clear
     end
 
     def list_all_tools
@@ -438,6 +472,7 @@ module Enkaidu
 
     def unload_all_mcp_servers
       mcp_functions.clear
+      mcp_prompts.clear
       mcp_connections.each do |conn|
         renderer.info_with("INFO: MCP server connection unloaded: #{conn.uri}.")
         conn.close
@@ -487,6 +522,7 @@ module Enkaidu
           prompt = MCPPrompt.new(prompt_spec, mcpc, cli: self)
           mcp_prompts << prompt
           renderer.mcp_prompt_ready(prompt)
+          register_prompt_by_name(prompt.name, prompt)
         end
       end
     rescue ex

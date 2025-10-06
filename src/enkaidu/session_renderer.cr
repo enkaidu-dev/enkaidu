@@ -1,3 +1,6 @@
+require "./mcp_prompt"
+require "./template_prompt"
+
 module Enkaidu
   # SessionRenderer defines the interface for rendering session output and
   # user prompts within the Enkaidu application. These are callbacks from the app session
@@ -13,6 +16,8 @@ module Enkaidu
     abstract def user_query_image_url(url)
 
     abstract def user_confirm_shell_command?(command)
+
+    abstract def user_prompt_ask_input(prompt : TemplatePrompt) : Hash(String, String)
 
     abstract def session_reset
 
@@ -34,7 +39,7 @@ module Enkaidu
 
     abstract def mcp_prompt_ready(prompt)
 
-    abstract def mcp_prompt_ask_input(prompt) : Hash(String, String)
+    abstract def mcp_prompt_ask_input(prompt : MCPPrompt) : Hash(String, String)
 
     abstract def mcp_calling_tool(uri, name, args)
 

@@ -114,12 +114,12 @@
           case "llm_text_fragment":
             let fragment = msg.fragment.trim();
             if (fragment == "<think>") text_thinking = true;
-            if (fragment.length > 0 || msg.fragment.includes("\n")) {
-              session.add_event({
-                type: text_thinking ? "llm_think" : "llm_text",
-                content: msg.fragment,
-              });
-            }
+            // if (fragment.length > 0 || msg.fragment.includes("\n")) {
+            session.add_event({
+              type: text_thinking ? "llm_think" : "llm_text",
+              content: msg.fragment,
+            });
+            // }
             if (fragment == "</think>") text_thinking = false;
             break;
           case "llm_image_url":

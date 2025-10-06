@@ -126,18 +126,20 @@ module Enkaidu::WUI
       post_event Render::SuccessMessage.new("MCP found prompt: #{prompt.name}")
     end
 
-    private def ask_param_input(name, description)
-      text = if description
-               "    #{name} [#{description}] :"
-             else
-               "    #{name} : "
-             end
-      puts text.colorize(:cyan)
-      input.label = "    > "
-      input.read_next
+    def mcp_prompt_ask_input(prompt : MCPPrompt) : Hash(String, String)
+      input_id = Random::Secure.hex(16)
+      input_channel = InputsChannel.new
+      pending_inputs[input_id] = input_channel
+
+      post_event Render::AskForInputs.new(input_id, prompt)
+
+      # Wait for the response
+      result = input_channel.receive
+      pending_inputs.delete(input_id)
+      result
     end
 
-    def mcp_prompt_ask_input(prompt) : Hash(String, String)
+    def user_prompt_ask_input(prompt : TemplatePrompt) : Hash(String, String)
       input_id = Random::Secure.hex(16)
       input_channel = InputsChannel.new
       pending_inputs[input_id] = input_channel

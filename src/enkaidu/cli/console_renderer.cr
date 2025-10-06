@@ -138,18 +138,18 @@ module Enkaidu::CLI
       puts "  FOUND prompt: #{prompt.name}".colorize(:green)
     end
 
-    private def ask_param_input(name, description)
+    private def ask_param_input(name, description, color)
       text = if description
                "    #{name} [#{description}] :"
              else
                "    #{name} : "
              end
-      puts text.colorize(:cyan)
+      puts text.colorize(color)
       input.label = "    > "
       input.read_next
     end
 
-    def mcp_prompt_ask_input(prompt) : Hash(String, String)
+    def mcp_prompt_ask_input(prompt : MCPPrompt) : Hash(String, String)
       text = <<-PREFIX
           #{prompt.description}
 
@@ -158,7 +158,24 @@ module Enkaidu::CLI
 
       arg_inputs = {} of String => String
       prompt.arguments.try &.each do |arg|
-        unless (value = ask_param_input(arg.name, arg.description)).nil?
+        unless (value = ask_param_input(arg.name, arg.description, :cyan)).nil?
+          arg_inputs[arg.name] = value
+        end
+      end
+      puts
+      arg_inputs
+    end
+
+    def user_prompt_ask_input(prompt : TemplatePrompt) : Hash(String, String)
+      text = <<-PREFIX
+          #{prompt.description}
+
+      PREFIX
+      puts text.colorize(:green)
+
+      arg_inputs = {} of String => String
+      prompt.arguments.try &.each do |arg|
+        unless (value = ask_param_input(arg.name, arg.description, :green)).nil?
           arg_inputs[arg.name] = value
         end
       end
