@@ -246,6 +246,15 @@ The configuration file is structured in several key sections. Here’s an overvi
   - **transport** _(optional)_: The MCP protocol supports either `http` (modern) or `legacy`; default is `auto` which tries to pick the right one. For quick connectivity specify the transport.
   - **bearer_auth_token** _(optional)_: Token or API key required for authenticated access to the server that supports authentication.
 
+#### Prompts
+- **prompts**: Define named custom parametrized prompt templates. These are auto-loaded when Enkaidu starts.
+  - **<prompt_name>**:
+    - **description**: A description of the prompt
+    - **arguments**: This is a named map of aguments:
+      - **<arg_name>**:
+        - **description**: A description of the argument
+    - **template**: The template is a string based on the [Liquid templating language](http://shopify.github.io/liquid/) as implemented by the [`liquid.cr`](https://github.com/amberframework/liquid.cr) Crystal shard.
+
 ### Example Configuration
 
 Here's an example of a typical `enkaidu.yaml` configuration:

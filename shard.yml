@@ -13,12 +13,15 @@ development_dependencies:
     gitlab: arctic-fox/spectator
 
 dependencies:
-  # baked_file_system:
-  #   github: schovi/baked_file_system
+  liquid:
+    github: amberframework/liquid.cr
   json-schema:
     github: spider-gazelle/json-schema
   markterm:
     github: ralsina/markterm
+    # --- markterm already pulls in ...
+    # baked_file_system:
+    #   github: schovi/baked_file_system
   reply:
     github: I3oris/reply
 
