@@ -233,11 +233,11 @@ module Enkaidu
           renderer.info_with("INFO: Auto-loading toolsets: #{toolsets.join(", ")}")
           auto_load_toolsets(toolsets)
         end
+      end
 
-        if prompts = config.prompts
-          renderer.info_with("INFO: Auto-loading prompts: #{prompts.keys.join(", ")}")
-          auto_load_config_prompts(prompts)
-        end
+      if prompts = config.prompts
+        renderer.info_with("INFO: Auto-loading prompts: #{prompts.keys.join(", ")}")
+        auto_load_config_prompts(prompts)
       end
     end
 
