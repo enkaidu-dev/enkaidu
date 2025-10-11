@@ -12,6 +12,7 @@ hooks:
 actions:
   build-webui:
     command: cd webui && npm run build && cd ..
+    description: Build the Svelte-based web UI
   build-release:
     command: ops build-webui && SHARDS_BIN_PATH=bin/release shards build $APP --release
     description: Build for release
@@ -22,6 +23,7 @@ actions:
     aliases: [build, bd]
   install:
     quiet: true
+    description: Build a release and copy it into the '$INSTALL_DIR' folder
     command: |
       BRANCH=$(git branch --show-current)
       [ "$BRANCH" == "main" ] || echo 1>&2 "ops: WARNING: not on 'main' branch."
@@ -33,6 +35,7 @@ actions:
       fi
   run:
     command: ops build-webui && ops build-debug && bin/debug/$APP
+    description: Build and run the debug build of Enkaidu
     load_secrets: true
   run_release:
     command: ops build-release && bin/release/$APP
@@ -47,16 +50,18 @@ actions:
     description: Clear build caches and prior builds
   lint:
     command: bin/ameba src/
+    description: Run Crystal source linter (ameba)
   test:
     command: crystal spec -Dtest
+    description: Run all tests (spectator)
   just-run-debug:
     alias: jrun
-    description: Run the debug build; make sure to run `ops build` before.
+    description: Just run the debug build; assume `ops build` was run already.
     command: bin/debug/$APP
     load_secrets: true
   just-run-release:
-    alias: jrelrun
-    description: Run the release build; make sure to run `ops br` before.
+    alias: jrr
+    description: Just run the release build; assume `ops br` was run already.
     command: bin/release/$APP
     load_secrets: true
 options:
