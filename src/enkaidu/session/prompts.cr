@@ -54,7 +54,7 @@ module Enkaidu
               chat.import(prompt_result, emit: true) do |chat_ev|
                 text_count = render_session_event chat_ev, text_count
               end
-              ask(query: nil, attach: nil)
+              re_ask
             end
           when TemplatePrompt
             arg_inputs = renderer.user_prompt_ask_input(prompt)
