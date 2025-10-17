@@ -43,7 +43,6 @@ module Enkaidu
 
     private getter loaded_toolsets = {} of String => Tools::ToolSet
 
-    include Session::Events
     include Session::Toolsets
     include Session::Lifecycle
     include Session::AutoLoad
@@ -104,29 +103,30 @@ module Enkaidu
         recorder << "," if ix.positive?
         recorder << {{event}}.to_json
         ix += 1
-        process_event({{event}}, tools)
+        process_event({{event}}) do |tool_call|
+          tools << tool_call
+        end
       end
     end
 
-    def ask(query, attach : LLM::ChatInclusions? = nil, render_query = false)
-      recorder << "["
-      ix = 0
-      tools = [] of JSON::Any
-      # ask and handle the initial query and its events
-      if query.nil? && attach.nil?
-        chat.re_ask do |event|
-          m_process_and_record_ask_event(event)
-        end
-      elsif query.is_a? String
-        renderer.user_query_text(query) if render_query
-        chat.ask query, attach do |event|
-          m_process_and_record_ask_event(event)
-        end
-      else
-        raise InvalidSessionQuery.new("Cannot call #ask with nil query unless attach is also nil")
+    # Process the given event and yield tool call if any
+    private def process_event(r, &)
+      case r["type"]
+      when "tool_call"
+        yield r["content"] # tool call
+        renderer.llm_tool_call(
+          name: r["content"].dig("function", "name").as_s,
+          args: r["content"].dig("function", "arguments"))
+      when "text"
+        renderer.llm_text(r["content"].as_s)
+      when .starts_with? "error"
+        renderer.llm_error(r["content"])
       end
-      # deal with any tool calls and subsequent events repeatedly until
-      # no more tool calls remain
+    end
+
+    # Perform tool calls and subsequent events repeatedly until
+    # no more tool calls remain
+    private def consume_tool_calls(tools, ix)
       until tools.empty?
         calls = tools
         tools = [] of JSON::Any
@@ -137,10 +137,38 @@ module Enkaidu
             recorder << "," if ix.positive?
             recorder << event.to_json
             ix += 1
-            process_event(event, tools)
+            process_event(event) do |tool_call|
+              tools << tool_call
+            end
           end
         end
       end
+    end
+
+    # Re-query LLM using current session history
+    def re_ask
+      recorder << "["
+      ix = 0
+      tools = [] of JSON::Any
+      # ask and handle the initial query and its events
+      chat.re_ask do |event|
+        m_process_and_record_ask_event(event)
+      end
+      consume_tool_calls(tools, ix)
+      recorder << "]"
+    end
+
+    # Query LLM using a prompt and optional attachments
+    def ask(query, attach : LLM::ChatInclusions? = nil, render_query = false)
+      recorder << "["
+      ix = 0
+      tools = [] of JSON::Any
+      # ask and handle the initial query and its events
+      renderer.user_query_text(query) if render_query
+      chat.ask query, attach do |event|
+        m_process_and_record_ask_event(event)
+      end
+      consume_tool_calls(tools, ix)
       recorder << "]"
     end
   end
