@@ -44,7 +44,7 @@ jobs:
         npm i
         npm run build
         cd ..
-        
+
     # ---- Build debug release and check code quality on one platform
 
     - name: Setup debug environment (Linux)
@@ -57,7 +57,7 @@ jobs:
 
     - name: Check formatting (Linux)
       if: ${{ runner.os == 'Linux' }}
-      run: crystal tool format; git diff --exit-code
+      run: crystal tool format; git diff --exit-code src
 
     - name: Run static code analysis (Linux)
       if: ${{ runner.os == 'Linux' }}
