@@ -13,6 +13,7 @@ actions:
   build-webui:
     command: cd webui && npm run build && cd ..
     description: Build the Svelte-based web UI
+    alias: bwui
   build-release:
     command: ops build-webui && SHARDS_BIN_PATH=bin/release shards build $APP --release
     description: Build for release
