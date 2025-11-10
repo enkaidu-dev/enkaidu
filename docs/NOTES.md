@@ -2,15 +2,33 @@
 
 ## TODO
 
+### Development
+
 - [ ] Write test specs
 - [ ] Figure out `curl` and `bash` installation script
 - [x] Document the code classes (viz. fix `ops lint` warnings)
 - [x] Support "including" text and image files in queries, especially for vision models
 - [x] Setup GH action to build Linux and macOS binaries
-- [x] Support configuring MCP servers in config YAML file
-- [x] Support session auto-loading of specific MCP servers
-- [x] Add a tool to save an image where the provided image is in the `data:` base-64-encoded form
 - [x] Does OpenAI protocol support input/output schema? The `parameters` value is a JSON schema (i.e. input), but non
+
+### Prompt
+
+- [ ] Consider built-in prompts in the code base, e.g. to create ENKAIDU.md file
+
+### Config
+
+- [ ] Find and include content of `ENKAIDU.md` file in initial prompt? system prompt?
+- [ ] Should config have option to disable auto-including `ENKAIDU.md`?
+- [ ] Should we detect `CLAUDE.md` file and use it if present?
+- [x] Support configuring MCP servers in config YAML file
+
+### Session
+
+- [x] Support session auto-loading of specific MCP servers
+
+### Tools
+
+- [x] Add a tool to save an image where the provided image is in the `data:` base-64-encoded form
 
 ### MCPC
 
@@ -24,27 +42,36 @@
 - [x] Support the deprecated SSE transport 'cuz there are so many servers out there.
 - [x] Support MCP server authentication using bearer token
 
-## MCP Support
-
-Now supports legacy (deprecated) SSE over dual-http connections as well as the modern HTTP streaming. Also support non-streaming HTTP but I haven't found a good server to test this.
-
-### Some MCP servers with tools
-
-Server | Type | Status | Comment
------|-----|-----|-----
-https://remote.mcpservers.org/fetch/mcp | Modern | Works |
-https://echo.mcp.inevitable.fyi/mcp | Modern | Works |
-https://time.mcp.inevitable.fyi/mcp | Modern | Works | Slow, but no problems in a while
-https://gitmcp.io/ANYGITHUBUSER/REPO | Modern | Works | Can be used with any  Github repo ... cool!
-https://gitmcp.io/nickthecook/ops | Modern | Works | Provides MCP tools for that repo. Amazing.
-https://mcp.llmtxt.dev/sse | Legacy (SSE) | Works | Can retrieve `llms.txt` for domains
-https://mcp.semgrep.ai/sse | Legacy (SSE) | Works | Full JSON schema support works
-https://huggingface.co/mcp | Modern |Works | (I had the wrong URL before.)
 
 ## Future
 
 These are major changes I'd like to make to Enkaidu
 
+### Branch sessions
+
+While configurable prompts can do a lot of useful work, complex prompts can result in a lot of intermediate actions that become part of the session context.
+
+#### Forked session
+
+Consider running prompts in a forked session (of current session) where the user can choose to bring the some or none of the output into the current session.
+
+This could also be a way to run forked session using a different LLM / model, like summarizing the current session or doing some analysis with a different model.
+
+#### Isolated sessions
+
+Instead of forking, we could also run a bare session with a model to do some utility work; e.g. analyze an image (though some of this might be more useful as a tool call for the main session.)
+
+## Agents
+
+A tool that can use AI and perform multi-step work (agentic, if you will) would be useful. These could be exposed as utility tools (e.g. summarize; analyze image) that the main session could use via tool calling.
+
+The open question for me is how we configure which AI models these tools would use.  Do we allow selecting models?
+
+Maybe we could add some tags when defining supported models in `enkaidu.yaml` (e.g. tool-calling, vision, summarize) so the agents can find the right model to use?
+
+### "Skills" in Claude Code
+
+TODO: Figure out how "Skills" work and how Enkaidu would support them.
 
 ### Build container image to run `enkaidu` with safe shell access
 
@@ -142,6 +169,23 @@ LLM models with vision capability can be sent image data as part of a query. Nee
 
 - Consider `/include image URL | FILEPATH` command that only affects the next query.
 - This could be a pattern for sending other file-types? e.g. documents
+
+### MCP Support
+
+Now supports legacy (deprecated) SSE over dual-http connections as well as the modern HTTP streaming. Also support non-streaming HTTP but I haven't found a good server to test this.
+
+#### Some MCP servers with tools
+
+Server | Type | Status | Comment
+-----|-----|-----|-----
+https://remote.mcpservers.org/fetch/mcp | Modern | Works |
+https://echo.mcp.inevitable.fyi/mcp | Modern | Works |
+https://time.mcp.inevitable.fyi/mcp | Modern | Works | Slow, but no problems in a while
+https://gitmcp.io/ANYGITHUBUSER/REPO | Modern | Works | Can be used with any  Github repo ... cool!
+https://gitmcp.io/nickthecook/ops | Modern | Works | Provides MCP tools for that repo. Amazing.
+https://mcp.llmtxt.dev/sse | Legacy (SSE) | Works | Can retrieve `llms.txt` for domains
+https://mcp.semgrep.ai/sse | Legacy (SSE) | Works | Full JSON schema support works
+https://huggingface.co/mcp | Modern |Works | (I had the wrong URL before.)
 
 References
 
