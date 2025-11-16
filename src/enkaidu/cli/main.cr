@@ -5,20 +5,19 @@ require "./query_reader"
 require "./console_renderer"
 
 require "../slash_commander"
-require "../session"
+require "../session_manager"
 
 module Enkaidu::CLI
   # `Main` is the entry point for executing the application, managing initialization and execution flow.
   class Main
-    private getter session
+    private getter session_manager : SessionManager
     private getter? done = false
     private getter count = 0
     private getter reader : CLI::QueryReader
     private getter opts : CLI::Options
     private getter commander : Slash::Commander
 
-    delegate recorder, to: @session
-    delegate renderer, to: @session
+    delegate session, to: @session_manager
 
     WELCOME_MSG = "Welcome to Enkaidu #{VERSION}"
     WELCOME     = <<-TEXT
@@ -36,13 +35,21 @@ module Enkaidu::CLI
       ui.info_with WELCOME_MSG, WELCOME, markdown: true
       ui.info_with ""
 
-      @session = Session.new(ui, opts: opts)
+      @session_manager = SessionManager.new(Session.new(ui, opts: opts))
       @reader = CLI::QueryReader.new(
         input_history_file: opts.config.try &.session.try &.input_history_file)
-      @commander = Slash::Commander.new(session)
+      @commander = Slash::Commander.new(session_manager)
 
       return unless session.streaming?
       renderer.warning_with "----\n| SORRY: Markdown formatted rendering is not supported when streaming is enabled (for now).\n----"
+    end
+
+    private def renderer
+      session.renderer
+    end
+
+    private def recorder
+      session.recorder
     end
 
     private def query(q)
