@@ -22,7 +22,8 @@ module Enkaidu::Slash
       HELP
     end
 
-    def handle(session, cmd : CommandParser)
+    def handle(session_manager : SessionManager, cmd : CommandParser)
+      session = session_manager.session
       if cmd.expect?(NAME, "ls")
         session.list_all_prompts
       elsif cmd.expect?(NAME, "info", String)

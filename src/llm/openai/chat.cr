@@ -38,6 +38,13 @@ module LLM::OpenAI
       @sess.tail_chats(num_responses) { |chat_ev| yield chat_ev }
     end
 
+    # Replace current session with a "fork" of the session from the given
+    # `Chat` instance; may fail if `self` is not compatible.
+    def fork_session(from : Chat) : Nil
+      @sess.branch(from.@sess)
+      @usage = @sess.last_usage
+    end
+
     def append_message(msg)
       usage = nil
       if msg.is_a? Message::Response

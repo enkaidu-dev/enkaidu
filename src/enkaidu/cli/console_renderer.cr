@@ -85,6 +85,14 @@ module Enkaidu::CLI
       puts RESET
     end
 
+    def session_pushed(depth, keep_tools, keep_prompts, keep_history)
+      puts "┌─── SESSION PUSHED (#{depth}) ─────────────────────#{keep_history ? "─────" : "─ No history ─────"}"
+    end
+
+    def session_popped(depth)
+      puts "└───────────────────────────────────────────────────────────"
+    end
+
     LLM_MAX_TOOL_CALL_ARGS_LENGTH = 72
 
     def llm_tool_call(name, args)

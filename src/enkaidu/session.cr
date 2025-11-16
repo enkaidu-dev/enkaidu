@@ -30,18 +30,18 @@ module Enkaidu
     getter recorder : Recorder
     getter renderer : SessionRenderer
 
-    private getter opts : SessionOptions
-    private getter connection : LLM::Connection
-    private getter chat : LLM::Chat
+    protected getter opts : SessionOptions
+    protected getter connection : LLM::Connection
+    protected getter chat : LLM::Chat
 
-    private getter mcp_functions = [] of MCPFunction
-    private getter mcp_prompts = [] of MCPPrompt
-    private getter mcp_connections = [] of MCPC::HttpConnection
+    protected getter mcp_functions = [] of MCPFunction
+    protected getter mcp_prompts = [] of MCPPrompt
+    protected getter mcp_connections = [] of MCPC::HttpConnection
 
-    private getter template_prompts = [] of TemplatePrompt
-    private getter prompts_by_name = {} of String => MCPPrompt | TemplatePrompt
+    protected getter template_prompts = [] of TemplatePrompt
+    protected getter prompts_by_name = {} of String => MCPPrompt | TemplatePrompt
 
-    private getter loaded_toolsets = {} of String => Tools::ToolSet
+    protected getter loaded_toolsets = {} of String => Tools::ToolSet
 
     include Session::Toolsets
     include Session::Lifecycle
@@ -66,6 +66,30 @@ module Enkaidu
 
       @chat = setup_chat
       @renderer.streaming = chat.streaming?
+    end
+
+    # Create a new session "forked" from a given `Session` to create a duplicate session.
+    def initialize(fork_from : Session, keep_tools = true, keep_prompts = true, keep_history = true)
+      @recorder = fork_from.recorder
+      @opts = fork_from.opts
+      @renderer = fork_from.renderer
+      @connection = fork_from.connection
+
+      @chat = setup_chat
+      chat.fork_session(fork_from.chat) if keep_history
+
+      if keep_tools
+        @mcp_functions = fork_from.mcp_functions.dup
+        @mcp_connections = fork_from.mcp_connections.dup
+        @loaded_toolsets = fork_from.loaded_toolsets.dup if keep_tools
+        fork_from.chat.each_tool do |tool|
+          chat.with_tool tool
+        end
+      end
+      if keep_prompts
+        @mcp_prompts = fork_from.mcp_prompts.dup
+        @prompts_by_name = fork_from.prompts_by_name.dup
+      end
     end
 
     # Helper to setup the Chat's initial config

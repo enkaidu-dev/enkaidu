@@ -29,6 +29,10 @@ module LLM::OpenAI
       @messages = [] of MessageWrap
     end
 
+    def branch(from : Session)
+      @messages = from.@messages.dup
+    end
+
     def append_message(msg : Message, usage : Usage? = nil)
       @messages << MessageWrap.new(msg, usage)
     end

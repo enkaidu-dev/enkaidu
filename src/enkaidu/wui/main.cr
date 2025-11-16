@@ -13,7 +13,7 @@ require "./event_renderer"
 require "./work"
 
 require "../slash_commander"
-require "../session"
+require "../session_manager"
 
 module Enkaidu
   module WUI
@@ -48,7 +48,7 @@ module Enkaidu
 
       private getter web_server : WebServer
 
-      private getter session : Session
+      private getter session_manager : SessionManager
       private getter commander : Slash::Commander
 
       alias SessionRequests = Symbol | ACPA::Request::PromptParams
@@ -56,7 +56,7 @@ module Enkaidu
       private getter session_requests = Channel(SessionRequests).new(2)
       private getter session_work = Channel(Work).new(10)
 
-      delegate recorder, to: @session
+      delegate session, to: @session_manager
 
       WELCOME_MSG = "Welcome to Enkaidu (WebUI Server Mode) #{VERSION}"
       WELCOME     = <<-TEXT
@@ -77,12 +77,16 @@ module Enkaidu
 
         queue.info_with(WELCOME_MSG, WELCOME, markdown: true)
 
-        @session = Session.new(queue, opts: opts)
-        @commander = Slash::Commander.new(session)
+        @session_manager = SessionManager.new(Session.new(queue, opts: opts))
+        @commander = Slash::Commander.new(session_manager)
 
         session.auto_load
 
         prepare_web_server
+      end
+
+      private def recorder
+        session.recorder
       end
 
       private def gather_queue_events

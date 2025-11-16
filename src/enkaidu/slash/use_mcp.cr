@@ -25,25 +25,28 @@ module Enkaidu::Slash
       HELP
     end
 
-    def handle(session, cmd : CommandParser)
-      # Check if command meets expectation
-      if cmd.expect?(NAME, String)
-        first_arg = cmd.arg_at?(1)
-        raise ArgumentError.new("No MCP server URL or name given.") if first_arg.nil?
+    def handle(session_manager : SessionManager, cmd : CommandParser)
+      session = session_manager.session
+      begin
+        # Check if command meets expectation
+        if cmd.expect?(NAME, String)
+          first_arg = cmd.arg_at?(1)
+          raise ArgumentError.new("No MCP server URL or name given.") if first_arg.nil?
 
-        uri = URI.parse(first_arg.as(String))
-        if uri.scheme.nil?
-          handle_use_mcp_with_name(session, first_arg.as(String))
-        else
+          uri = URI.parse(first_arg.as(String))
+          if uri.scheme.nil?
+            handle_use_mcp_with_name(session, first_arg.as(String))
+          else
+            handle_use_mcp_with_url(session, cmd)
+          end
+        elsif cmd.expect?(NAME, String, auth_env: String?, transport: ["auto", "legacy", "http", nil])
           handle_use_mcp_with_url(session, cmd)
+        else
+          raise ArgumentError.new("ERROR: Unknown or incomplete sub-command: '#{cmd.input}'")
         end
-      elsif cmd.expect?(NAME, String, auth_env: String?, transport: ["auto", "legacy", "http", nil])
-        handle_use_mcp_with_url(session, cmd)
-      else
-        raise ArgumentError.new("ERROR: Unknown or incomplete sub-command: '#{cmd.input}'")
+      rescue e : ArgumentError
+        session.renderer.warning_with(e.message || e.class.name, help: HELP, markdown: true)
       end
-    rescue e : ArgumentError
-      session.renderer.warning_with(e.message || e.class.name, help: HELP, markdown: true)
     end
 
     private def handle_use_mcp_with_name(session, name)
