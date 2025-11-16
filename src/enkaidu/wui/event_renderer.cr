@@ -73,6 +73,14 @@ module Enkaidu::WUI
       post_event Render::SessionReset.new
     end
 
+    def session_pushed(depth, keep_tools, keep_prompts, keep_history)
+      post_event Render::SuccessMessage.new("SESSION PUSHED (#{depth}) #{keep_history ? "with" : "without"} session history")
+    end
+
+    def session_popped(depth)
+      post_event Render::SuccessMessage.new("SESSION POPPED (#{depth})")
+    end
+
     # Server handler calls to provide response to a pending confirmation request
     def respond_to_confirmation(confirmation_id : String, approved : Bool)
       if channel = pending_confirmations[confirmation_id]?

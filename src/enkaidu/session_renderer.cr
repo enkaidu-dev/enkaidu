@@ -20,6 +20,8 @@ module Enkaidu
     abstract def user_prompt_ask_input(prompt : TemplatePrompt) : Hash(String, String)
 
     abstract def session_reset
+    abstract def session_pushed(depth, keep_tools, keep_prompts, keep_history)
+    abstract def session_popped(depth)
 
     abstract def llm_tool_call(name, args)
 
