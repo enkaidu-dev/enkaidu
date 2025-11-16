@@ -78,6 +78,10 @@ module LLM
 
     abstract def ask(content : String, attach : ChatInclusions? = nil, & : ChatEvent ->) : Nil
 
+    # Replace current session with a "fork" of the session from the given
+    # `Chat` instance; may fail if `self` is not compatible.
+    abstract def fork_session(from : Chat) : Nil
+
     abstract def save_session(io : IO | JSON::Builder) : Nil
 
     abstract def load_session(io : IO | String) : Nil
