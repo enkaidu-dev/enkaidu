@@ -92,9 +92,9 @@ class CommandParser
     @named_args[name.to_s]
   end
 
-  # Get the value of a named argument, return `nil` if no such named argument
-  def arg_named?(name)
-    @named_args[name.to_s]?
+  # Get the value of a named argument, return specified default value or `nil` if no such named argument
+  def arg_named?(name, default = nil)
+    @named_args[name.to_s]? || default
   end
 
   # private TRACE = 1
