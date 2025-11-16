@@ -53,28 +53,14 @@ module Enkaidu::Slash
         elsif cmd.expect?(NAME, "reset")
           session.reset_session
         elsif cmd.expect?(NAME, "save", String)
-          path = Path.new(cmd.arg_at(2).as(String))
-          File.open(path, "w") do |file|
-            session.save_session(file)
-          end
-          session.renderer.info_with("Session saved to JSONL file: #{path}")
+          handle_session_save(session, cmd)
         elsif cmd.expect?(NAME, "load", String, tail: String?)
-          path = Path.new(cmd.arg_at(2).as(String))
-          tail_n = cmd.arg_named?("tail").try(&.as(String).to_i) || -1
-          session.renderer.info_with("Loading previously saved session: #{path}")
-          File.open(path, "r") do |file|
-            session.load_session(file, tail_num_chats: tail_n)
-          end
+          handle_session_load(session, cmd)
         elsif cmd.expect?(NAME, "push",
                 keep_tools: ["yes", "no", nil],
                 keep_prompts: ["yes", "no", nil],
                 keep_history: ["yes", "no", nil])
-          keep_history = cmd.arg_named?("keep_history", "yes").try(&.!=("no"))
-          keep_tools = cmd.arg_named?("keep_tools", "yes").try(&.!=("no"))
-          keep_prompts = cmd.arg_named?("keep_prompts", "yes").try(&.!=("no"))
-          session_manager.push_session(keep_history: keep_history, keep_tools: keep_tools, keep_prompts: keep_prompts)
-          session.renderer.session_pushed(depth: session_manager.depth,
-            keep_history: keep_history, keep_tools: keep_tools, keep_prompts: keep_prompts)
+          handle_session_push(session_manager, cmd)
         elsif cmd.expect?(NAME, "pop")
           if session_manager.pop_session
             session.renderer.session_popped(depth: session_manager.depth)
@@ -87,6 +73,32 @@ module Enkaidu::Slash
         session.renderer.warning_with("ERROR: #{e.message}",
           help: HELP, markdown: true)
       end
+    end
+
+    private def handle_session_save(session, cmd)
+      path = Path.new(cmd.arg_at(2).as(String))
+      File.open(path, "w") do |file|
+        session.save_session(file)
+      end
+      session.renderer.info_with("Session saved to JSONL file: #{path}")
+    end
+
+    private def handle_session_load(session, cmd)
+      path = Path.new(cmd.arg_at(2).as(String))
+      tail_n = cmd.arg_named?("tail").try(&.as(String).to_i) || -1
+      session.renderer.info_with("Loading previously saved session: #{path}")
+      File.open(path, "r") do |file|
+        session.load_session(file, tail_num_chats: tail_n)
+      end
+    end
+
+    private def handle_session_push(session_manager, cmd)
+      keep_history = cmd.arg_named?("keep_history", "yes").try(&.!=("no"))
+      keep_tools = cmd.arg_named?("keep_tools", "yes").try(&.!=("no"))
+      keep_prompts = cmd.arg_named?("keep_prompts", "yes").try(&.!=("no"))
+      session_manager.push_session(keep_history: keep_history, keep_tools: keep_tools, keep_prompts: keep_prompts)
+      session_manager.session.renderer.session_pushed(depth: session_manager.depth,
+        keep_history: keep_history, keep_tools: keep_tools, keep_prompts: keep_prompts)
     end
   end
 end
