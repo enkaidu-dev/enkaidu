@@ -44,27 +44,30 @@ module Enkaidu::Slash
       @inclusions ||= LLM::ChatInclusions.new
     end
 
-    def handle(session, cmd : CommandParser)
-      ok = nil
-      if filepath = cmd.arg_at?(2).try(&.as(String))
-        basename = Path.new(filepath).basename
-        if cmd.expect? NAME, "image_file", String
-          inclusions.image_data load_image_file_as_data_url(filepath), basename
-          ok = query_indicators << "I:#{basename}"
-        elsif cmd.expect? NAME, "text_file", String
-          inclusions.text File.read(filepath), basename
-          ok = query_indicators << "T:#{basename}"
-        elsif cmd.expect? NAME, "any_file", String
-          inclusions.file_data load_file_as_data_url(filepath), basename
-          ok = query_indicators << "F:#{basename}"
+    def handle(session_manager : SessionManager, cmd : CommandParser)
+      session = session_manager.session
+      begin
+        ok = nil
+        if filepath = cmd.arg_at?(2).try(&.as(String))
+          basename = Path.new(filepath).basename
+          if cmd.expect? NAME, "image_file", String
+            inclusions.image_data load_image_file_as_data_url(filepath), basename
+            ok = query_indicators << "I:#{basename}"
+          elsif cmd.expect? NAME, "text_file", String
+            inclusions.text File.read(filepath), basename
+            ok = query_indicators << "T:#{basename}"
+          elsif cmd.expect? NAME, "any_file", String
+            inclusions.file_data load_file_as_data_url(filepath), basename
+            ok = query_indicators << "F:#{basename}"
+          end
         end
+        session.renderer.warning_with(
+          "ERROR: Unknown or incomplete sub-command: '#{cmd.input}'",
+          help: HELP, markdown: true) if ok.nil?
+      rescue e
+        session.renderer.warning_with("ERROR: #{e.message}",
+          help: HELP, markdown: true)
       end
-      session.renderer.warning_with(
-        "ERROR: Unknown or incomplete sub-command: '#{cmd.input}'",
-        help: HELP, markdown: true) if ok.nil?
-    rescue e
-      session.renderer.warning_with("ERROR: #{e.message}",
-        help: HELP, markdown: true)
     end
   end
 end

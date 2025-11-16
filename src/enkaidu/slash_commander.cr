@@ -9,11 +9,15 @@ module Enkaidu::Slash
 
     private getter include_command = IncludeCommand.new
 
-    getter session : Session
-    delegate renderer, to: @session
+    private getter session_manager : SessionManager
+    delegate session, to: @session_manager
 
-    def initialize(@session)
+    def initialize(@session_manager)
       register_commands
+    end
+
+    def renderer
+      session.renderer
     end
 
     private def register_commands
@@ -73,7 +77,7 @@ module Enkaidu::Slash
           help: help, markdown: true
       else
         if command = commands[cmd_name]?
-          command.handle(session, cmd)
+          command.handle(session_manager, cmd)
         else
           renderer.warning_with("ERROR: Unknown command: #{q}")
         end
