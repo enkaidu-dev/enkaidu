@@ -96,22 +96,25 @@ module LLM::OpenAI
       @sess.import(prompt, emit) { |event| yield event }
     end
 
-    def re_ask(& : ChatEvent ->) : Nil
-      ask_post do |msg|
+    def re_ask(response_schema : ResponseSchema? = nil, & : ChatEvent ->) : Nil
+      ask_post(response_schema: response_schema) do |msg|
         yield msg
       end
     end
 
-    def ask(content : String, attach : ChatInclusions? = nil, & : LLM::ChatEvent ->) : Nil
+    def ask(content : String,
+            attach : ChatInclusions? = nil,
+            response_schema : ResponseSchema? = nil,
+            & : ChatEvent ->) : Nil
       append_message Message::MultiContent.new(prompt: content, attach: attach)
 
-      ask_post do |msg|
+      ask_post(response_schema: response_schema) do |msg|
         yield msg
       end
     end
 
-    private def ask_post(& : LLM::ChatEvent ->) : Nil
-      body = to_body
+    private def ask_post(response_schema : ResponseSchema? = nil, & : LLM::ChatEvent ->) : Nil
+      body = to_body(response_schema)
 
       yield({type: "debug/request", content: JSON.parse(body)}) if debug?
 
@@ -297,12 +300,13 @@ module LLM::OpenAI
       yield({type: "finish_reason", content: fini})
     end
 
-    private def to_body
+    private def to_body(response_schema : ResponseSchema? = nil)
       JSON.build do |json|
         chat_to_json(json, model, system_message,
           stream: streaming?,
           session: @sess,
-          tools: each_tool)
+          tools: each_tool,
+          response_schema: response_schema)
       end
     end
   end

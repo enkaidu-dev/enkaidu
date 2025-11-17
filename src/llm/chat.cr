@@ -1,4 +1,5 @@
 require "./function"
+require "./response_schema"
 require "./chat_inclusions"
 require "../sucre/mcp_types"
 
@@ -74,9 +75,13 @@ module LLM
     abstract def import(prompt : MCP::PromptResult, emit = false, & : ChatEvent ->) : Nil
 
     # Resubmit current session as a query to get another answer
-    abstract def re_ask(& : ChatEvent ->) : Nil
+    abstract def re_ask(response_schema : ResponseSchema? = nil, & : ChatEvent ->) : Nil
 
-    abstract def ask(content : String, attach : ChatInclusions? = nil, & : ChatEvent ->) : Nil
+    # Submit a query, with optional attachments and request for response as a JSON object by specifying a JSON schema.
+    abstract def ask(content : String,
+                     attach : ChatInclusions? = nil,
+                     response_schema : ResponseSchema? = nil,
+                     & : ChatEvent ->) : Nil
 
     # Replace current session with a "fork" of the session from the given
     # `Chat` instance; may fail if `self` is not compatible.

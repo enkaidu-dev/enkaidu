@@ -2,6 +2,7 @@ require "json"
 
 require "./function_call"
 require "../function"
+require "../response_schema"
 
 module LLM::OpenAI
   private module Converters
@@ -34,7 +35,9 @@ module LLM::OpenAI
       end
     end
 
-    private def chat_to_json(json : JSON::Builder, model, system_message, stream, session, tools)
+    private def chat_to_json(json : JSON::Builder, model,
+                             system_message, stream, session, tools,
+                             response_schema : ResponseSchema? = nil)
       json.object do
         json.field "model", model if model
         json.field "stream", stream
@@ -43,6 +46,14 @@ module LLM::OpenAI
           json.field "stream_options" do
             json.object do
               json.field "include_usage", true
+            end
+          end
+        end
+        if response_schema
+          json.field "response_format" do
+            json.object do
+              json.field "type", "json_schema"
+              json.field "json_schema", response_schema
             end
           end
         end
