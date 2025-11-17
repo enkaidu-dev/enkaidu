@@ -14,6 +14,10 @@ module Enkaidu::Slash
       - Use (invoke) a prompt by name. If the prompt requirements arguments, you will be prompted for input per argument.
     HELP1
 
+    private getter commander : Commander
+
+    def initialize(@commander); end
+
     def name : String
       NAME
     end
@@ -29,7 +33,9 @@ module Enkaidu::Slash
       elsif cmd.expect?(NAME, "info", String)
         session.list_prompt_details((cmd.arg_at? 2).as(String))
       elsif cmd.expect?(NAME, "use", String)
-        session.use_prompt((cmd.arg_at? 2).as(String))
+        schema = commander.take_response_schema!
+        # Ignore the inclusions
+        session.use_prompt((cmd.arg_at? 2).as(String), response_schema: schema)
       else
         session.renderer.warning_with(
           "ERROR: Unknown or incomplete sub-command: #{cmd.arg_at? 0}",
