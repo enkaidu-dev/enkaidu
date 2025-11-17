@@ -170,12 +170,12 @@ module Enkaidu
     end
 
     # Re-query LLM using current session history
-    def re_ask
+    def re_ask(response_json_schema : LLM::ResponseSchema? = nil)
       recorder << "["
       ix = 0
       tools = [] of JSON::Any
       # ask and handle the initial query and its events
-      chat.re_ask do |event|
+      chat.re_ask(response_schema: response_json_schema) do |event|
         m_process_and_record_ask_event(event)
       end
       consume_tool_calls(tools, ix)
@@ -183,13 +183,15 @@ module Enkaidu
     end
 
     # Query LLM using a prompt and optional attachments
-    def ask(query, attach : LLM::ChatInclusions? = nil, render_query = false)
+    def ask(query, attach : LLM::ChatInclusions? = nil,
+            response_json_schema : LLM::ResponseSchema? = nil,
+            render_query = false)
       recorder << "["
       ix = 0
       tools = [] of JSON::Any
       # ask and handle the initial query and its events
       renderer.user_query_text(query) if render_query
-      chat.ask query, attach do |event|
+      chat.ask(query, attach: attach, response_schema: response_json_schema) do |event|
         m_process_and_record_ask_event(event)
       end
       consume_tool_calls(tools, ix)
