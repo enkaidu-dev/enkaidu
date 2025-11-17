@@ -8,6 +8,9 @@ module Enkaidu::Slash
     # Track any query indicators
     getter query_indicators = [] of String
 
+    # Track response schema, if any
+    getter response_json_schema : LLM::ResponseSchema? = nil
+
     NAME = "/include"
 
     HELP = <<-HELP1
@@ -20,6 +23,11 @@ module Enkaidu::Slash
     - `any_file <PATH>`
       - Prepare a file (with it's base name) to _include_ with the next query;
         make sure the LLM model supports file data along.
+    - `response_json_schema <PATH>`
+      - Use the given file as the JSON schema description to tell the model that the
+        next request's response should be a JSON object matching the schema.
+      - The input should be a file with a JSON object defined as follows:
+        `{ "name" : <string>, "description": <string>, "strict": <bool>, "schema": <object> }`
     HELP1
 
     def name : String
@@ -31,12 +39,20 @@ module Enkaidu::Slash
     end
 
     # Returns a `ChatInclusions` if present, removing it from the command state.
-    # I.e. This method will clear the inclusions held by this command.
+    # The response schema is not cleared
     def take_inclusions!
       hold = @inclusions
       @inclusions = nil
       @query_indicators.clear
       hold
+    end
+
+    # Returns the `ResponseSchema` if present, removing it from the command state.
+    # The inclusions are not cleared.
+    def take_response_schema!
+      schema = @response_json_schema
+      @response_json_schema = nil
+      schema
     end
 
     # Current inclusions collector
@@ -59,6 +75,9 @@ module Enkaidu::Slash
           elsif cmd.expect? NAME, "any_file", String
             inclusions.file_data load_file_as_data_url(filepath), basename
             ok = query_indicators << "F:#{basename}"
+          elsif cmd.expect? NAME, "response_json_schema", String
+            @response_json_schema = LLM::ResponseSchema.from_json(File.read(filepath))
+            ok = true
           end
         end
         session.renderer.warning_with(

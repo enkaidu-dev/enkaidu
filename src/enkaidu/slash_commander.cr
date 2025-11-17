@@ -5,14 +5,15 @@ require "./slash/*"
 module Enkaidu::Slash
   # `Slash::Commander` provides the `/` command handling support.
   class Commander
-    private getter commands = {} of String => Command
-
+    private getter commands
     private getter include_command = IncludeCommand.new
-
     private getter session_manager : SessionManager
+
     delegate session, to: @session_manager
+    delegate query_indicators, take_inclusions!, take_response_schema!, response_json_schema, to: @include_command
 
     def initialize(@session_manager)
+      @commands = {} of String => Command
       register_commands
     end
 
@@ -23,7 +24,7 @@ module Enkaidu::Slash
     private def register_commands
       [
         include_command, # tracked locally to access inclusions
-        PromptCommand.new,
+        PromptCommand.new(self),
         SessionCommand.new,
         ToolCommand.new,
         ToolsetCommand.new,
@@ -61,8 +62,6 @@ module Enkaidu::Slash
         end
       end
     end
-
-    delegate query_indicators, take_inclusions!, to: @include_command
 
     # Returns :done if user says `/bye`
     def make_it_so(q)

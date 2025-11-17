@@ -183,6 +183,8 @@ You can input your queries directly into Enkaidu. If the query is prefixed with 
 - **`/include image_file <PATH>`**: Include an image from a file with the next query to the AI model.
 - **`/include text_file <PATH>`**: Include text from a file with the next query to the AI model.
 - **`/include any_file <PATH>`**: Include any supported file with the next query to the AI model.
+- **`/include response_json_schema <PATH>`**: Specify a JSON schema description to tell the model that the
+        next response should be a JSON object matching the schema.
 
 #### Prompts
 

@@ -44,7 +44,7 @@ module Enkaidu
         prompts_by_name[prompt_name]?
       end
 
-      def use_prompt(prompt_name)
+      def use_prompt(prompt_name, response_schema : LLM::ResponseSchema? = nil)
         if prompt = find_prompt?(prompt_name)
           case prompt
           when MCPPrompt
@@ -54,12 +54,12 @@ module Enkaidu
               chat.import(prompt_result, emit: true) do |chat_ev|
                 text_count = render_session_event chat_ev, text_count
               end
-              re_ask
+              re_ask(response_json_schema: response_schema)
             end
           when TemplatePrompt
             arg_inputs = renderer.user_prompt_ask_input(prompt)
             prompt_text = prompt.call_with(arg_inputs)
-            ask(query: prompt_text, render_query: true)
+            ask(query: prompt_text, response_json_schema: response_schema, render_query: true)
           end
         end
       rescue ex

@@ -176,7 +176,9 @@ module Enkaidu
             session_requests.send(:quit)
           end
         else
-          session.ask(query)
+          session.ask(query: query,
+            attach: commander.take_inclusions!,
+            response_json_schema: commander.take_response_schema!)
         end
       end
 

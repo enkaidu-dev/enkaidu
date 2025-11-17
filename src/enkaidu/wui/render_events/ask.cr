@@ -42,7 +42,6 @@ module Enkaidu::WUI::Render
 
     def initialize(@id, prompt : TemplatePrompt)
       prompt_args = prompt.arguments
-      raise InvalidInputAsk.new("Asking for input requires arguments") if prompt_args.empty?
 
       super("ask_for_inputs")
       @title = "Input required for User Prompt: #{prompt.name}"
