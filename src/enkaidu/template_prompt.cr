@@ -2,16 +2,18 @@ require "colorize"
 require "liquid"
 
 require "./config"
+require "./env"
 
 module Enkaidu
-  # Defines a templated prompt from configuration
+  # Defines a templated prompt that can be invoked with arguments as well as
+  # system and profile properties.
+  #
+  # - Arguments are available with the `arg.` prefix
+  # - Profile variables are available with the `var.` prefix
+  # - System properties are available via the `sys.` prefix
   class TemplatePrompt
-    @[JSON::Field(ignore: true)]
     protected getter cli : Session
-
-    def origin
-      "Enkaidu/Config"
-    end
+    getter origin : String
 
     class Argument < Config::Prompt::Arg
       getter name : String
@@ -25,18 +27,43 @@ module Enkaidu
     getter description : String
     getter name : String
 
-    def initialize(@name, prompt : Config::Prompt, @cli)
+    def initialize(@name, prompt : Config::Prompt, @cli, @origin = "Enkaidu/Config")
       @description = prompt.description
       @template = Liquid::Template.parse(prompt.template)
       prompt.arguments.try(&.each { |arg_name, arg| arguments << Argument.new(arg_name, arg) })
     end
 
-    def call_with(args : Hash(String, String)) : String
+    def call_with(args : Hash(String, String), profile : Env::Profile? = nil) : String
       ctx = Liquid::Context.new
-      args.each do |key, value|
-        ctx.set(key, value)
-      end
+      liquify(ctx, "arg", args)
+
+      #
+      # YUCK - don't generate these every time; right now I can't yet think of
+      #        way that doesn't leak the use of the `Liquid::Any` type
+      liquify(ctx, "var", profile.variables)
+      liquify(ctx, "sys", Env::SYSTEM_PROPERTIES)
+
       @template.render(ctx)
+    end
+
+    private def liquify(ctx, name, vars : Env::Profile::Variables)
+      ctx.set(name, vars.transform_values do |value|
+        case value
+        when Array
+          Liquid::Any.new(value.map { |item| Liquid::Any.new(item) })
+        when Hash
+          Liquid::Any.new(value.transform_values do |val|
+            case val
+            when Array
+              Liquid::Any.new(val.map { |item| Liquid::Any.new(item) })
+            else
+              Liquid::Any.new(val)
+            end
+          end)
+        else
+          Liquid::Any.new(value)
+        end
+      end)
     end
   end
 end
