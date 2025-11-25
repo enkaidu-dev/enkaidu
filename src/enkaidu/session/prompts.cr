@@ -58,7 +58,7 @@ module Enkaidu
             end
           when TemplatePrompt
             arg_inputs = renderer.user_prompt_ask_input(prompt)
-            prompt_text = prompt.call_with(arg_inputs)
+            prompt_text = prompt.call_with(arg_inputs, profile: opts.profile)
             ask(query: prompt_text, response_json_schema: response_schema, render_query: true)
           end
         end
