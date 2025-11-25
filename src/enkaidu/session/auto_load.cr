@@ -21,15 +21,20 @@ module Enkaidu
           end
         end
 
+        unless (prompts = opts.profile.prompts).empty?
+          renderer.info_with("INFO: Auto-loading profile prompts: #{prompts.keys.join(", ")}")
+          auto_load_config_prompts(prompts, origin: "Enkaidu/Profile")
+        end
+
         if prompts = config.prompts
-          renderer.info_with("INFO: Auto-loading prompts: #{prompts.keys.join(", ")}")
-          auto_load_config_prompts(prompts)
+          renderer.info_with("INFO: Auto-loading config prompts: #{prompts.keys.join(", ")}")
+          auto_load_config_prompts(prompts, origin: "Enkaidu/Config")
         end
       end
 
-      private def auto_load_config_prompts(prompts)
+      private def auto_load_config_prompts(prompts, origin = nil)
         prompts.each do |name, prompt|
-          tp = TemplatePrompt.new(name, prompt, self)
+          tp = TemplatePrompt.new(name, prompt, self, origin: origin)
           template_prompts << tp
           register_prompt_by_name(name, tp)
         end
