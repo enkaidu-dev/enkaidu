@@ -2,6 +2,7 @@ require "option_parser"
 
 require "../session_options"
 require "../config"
+require "../env"
 
 require "./trace_http"
 
@@ -19,6 +20,7 @@ module Enkaidu::CLI
     getter? webui = false
 
     getter recorder_file : IO? = nil
+    getter profile : Env::Profile
 
     getter config_for_llm : Config::LLM?
     getter config : Config?
@@ -40,7 +42,9 @@ module Enkaidu::CLI
         end
       end
 
-      load_config
+      @profile = Env::Profile.new(Env::CURRENT_DIR, renderer,
+        (opt_config_file_path = @options[:config_file]?) && Path.new(opt_config_file_path))
+      @config = profile.config
       check_config_for_defaults
       verify_required_options
     end
@@ -173,28 +177,6 @@ module Enkaidu::CLI
       elsif provider_type == "ollama" && model_name.nil?
         error_and_exit_with "FATAL: Model required by Ollama provider.", help
       end
-    end
-
-    private def load_config
-      config_file = @options[:config_file]?
-      auto_config = config_file.nil?
-      config_file = Config.find_default_file unless config_file
-
-      if file = config_file
-        renderer.info_with "INFO: Reading config file: #{file}"
-        @config = Config.parse(File.read(file), file)
-      end
-    rescue IO::Error
-      # If we fail to find default config file, it's OK.
-      unless auto_config
-        # Only a problem if user specified one
-        error_and_exit_with "FATAL: Failed to open config file: #{file}", help
-      end
-    rescue ex : Config::TooManyDefaultFiles | Config::UnknownFileFormat
-      error_and_exit_with "FATAL: #{ex}", help
-    rescue ex : Config::ParseError
-      # Config parsing errors are always bad
-      error_and_exit_with "FATAL: Error parsing config file: #{file}\n#{ex}", help
     end
 
     def error_and_exit_with(message, help)
