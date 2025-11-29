@@ -11,10 +11,10 @@ module Enkaidu::Env
   # Supported default config file names
   CONFIG_FILE_NAMES = ["enkaidu.yml", "enkaidu.yaml"]
 
-  class Profile
-    alias VarValue = String | Array(String) | Hash(String, String | Array(String))
-    alias Variables = Hash(String, VarValue)
+  alias VarValue = String | Array(String) | Hash(String, String | Array(String))
+  alias Variables = Hash(String, VarValue)
 
+  class Profile
     VAR_FILE_NAMES = ["variables.yml", "variables.yaml"]
 
     # The `SessionRenderer` for this environment
