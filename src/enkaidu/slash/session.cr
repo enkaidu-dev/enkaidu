@@ -19,10 +19,11 @@ module Enkaidu::Slash
       - Clears all active tools and MCP connections
       - Restores toolsets and re-establishes MCP server connections
       - Optionally specify how many `N` recent chats to display after loading the session.
-    - `reset`
+    - `reset [system_prompt_name=name]`
       - Clears all active tools and MCP connections
       - Throws away the current session / context
       - Auto loads tools and MCP connections in the configuration
+      - Replaces the system prompt referenced by name if specified
     - `push [keep_tools=yes|no] [keep_prompts=yes|no] [keep_history=yes|no]`
       - Pushes current session onto session stack
       - Forks a new session, keeping tools, prompts, and history as specified
@@ -50,8 +51,8 @@ module Enkaidu::Slash
           else
             session.renderer.info_with("No usage data for curent session at this time.")
           end
-        elsif cmd.expect?(NAME, "reset")
-          session.reset_session
+        elsif cmd.expect?(NAME, "reset", system_prompt_name: String?)
+          session.reset_session(sys_prompt: cmd.arg_named?("system_prompt_name").try(&.as(String)))
         elsif cmd.expect?(NAME, "save", String)
           handle_session_save(session, cmd)
         elsif cmd.expect?(NAME, "load", String, tail: String?)
