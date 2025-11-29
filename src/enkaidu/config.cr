@@ -112,18 +112,6 @@ module Enkaidu
     EXTENSIONS   = [".yaml", ".yml"]
     FORMATS      = ["YAML"]
 
-    # Check if a default config file exists
-    def self.find_default_file : String?
-      exists = [] of String
-      EXTENSIONS.each do |ext|
-        file = "#{DEFAULT_NAME}#{ext}"
-        exists << file if File.exists?(file)
-      end
-
-      raise TooManyDefaultFiles.new(exists) if exists.size > 1
-      exists[0]?
-    end
-
     # Parse a config file's contents, and include file name so we can check if
     # it matches known format
     def self.parse(text : String, file_name : String)

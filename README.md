@@ -8,6 +8,33 @@ Out of the box, with the use of _your preferred_ AI large language models, Enkai
 
 Additionally, by integrating with MCP servers _of your choice_, Enkaidu can help you do even more.
 
+<!-- TOC -->
+- [Install](#install)
+- [Get Started](#get-started)
+  - [Start with Ollama](#start-with-ollama)
+  - [Start with LMStudio](#start-with-lmstudio)
+  - [Start with Chat GPT](#start-with-chat-gpt)
+- [Understanding LLM Providers](#understanding-llm-providers)
+  - [Provider: `ollama`](#provider-ollama)
+  - [Provider: `openai`](#provider-openai)
+  - [Provider: `azure_openai`](#provider-azure_openai)
+- [Usage](#usage)
+  - [User Queries](#user-queries)
+  - [Slash Commands](#slash-commands)
+  - [Advanced Usage](#advanced-usage)
+- [Configuration](#configuration)
+  - [Overview of Configuration Sections](#overview-of-configuration-sections)
+  - [Structure of the Configuration File](#structure-of-the-configuration-file)
+  - [Example Configuration](#example-configuration)
+- [Profile](#profile)
+  - [System Properties](#system-properties)
+  - [Variables](#variables)
+  - [Arguments](#arguments)
+  - [Example](#example)
+- [Contributions](#contributions)
+  - [By invitation](#by-invitation)
+<!-- /TOC -->
+
 ## Install
 
 > COMING SOON: pre-built binaries
@@ -248,14 +275,18 @@ The configuration file is structured in several key sections. Here’s an overvi
   - **transport** _(optional)_: The MCP protocol supports either `http` (modern) or `legacy`; default is `auto` which tries to pick the right one. For quick connectivity specify the transport.
   - **bearer_auth_token** _(optional)_: Token or API key required for authenticated access to the server that supports authentication.
 
-#### Prompts
+#### Custom Prompts
 - **prompts**: Define named custom parametrized prompt templates. These are auto-loaded when Enkaidu starts.
   - **<prompt_name>**:
     - **description**: A description of the prompt
     - **arguments**: This is a named map of aguments:
       - **<arg_name>**:
         - **description**: A description of the argument
-    - **template**: The template is a string based on the [Liquid templating language](http://shopify.github.io/liquid/) as implemented by the [`liquid.cr`](https://github.com/amberframework/liquid.cr) Crystal shard.
+    - **template**: The template is a string based on the [Liquid templating language](http://shopify.github.io/liquid/) as implemented by the [`liquid.cr`](https://github.com/amberframework/liquid.cr) Crystal shard. The template is invoked with arguments as well as
+  system and profile properties as follows:
+      - Arguments are available with the `arg.` prefix
+      - Profile variables are available with the `var.` prefix
+      - System properties are available via the `sys.` prefix
 
 ### Example Configuration
 
@@ -286,6 +317,58 @@ mcp_servers:
     transport: http
 ```
 
+## Profile
+
+A "profile" is defined by setting up `.enkaidu/` in the current directory. Enkaidu will look for this folder from which it loads the following:
+
+1. `enkaidu.yaml|yml` config file, if none exists in the current folder or somewhere else explicitly specified
+2. `variables.yaml|yml` file that can be used to define variables accessible by prompt templates under `var.`
+    - Values can be strings, arrays of strings
+    - Values can also be hash maps, but only one level deep
+3. `prompts/` folder inside which Enkaidu will find any file that has `.yaml|yml` extension and attempts to load is a prompts definition, defined as `prompts:` in the config file.
+    - Prompts with the same name in the config file will override prompts defined here.
+
+> MORE TO COME ... the idea is that profiles can be defined in their own repos and then cloned into the working folder, or includes as git submodules as part of the repo.
+
+### System Properties
+
+The following system properties are available to the templates.
+
+Name | Description
+----|------
+`sys` |
+&nbsp;&nbsp;&nbsp;`.os_arch` | OS architecture extracted from the LLVM target tuple
+&nbsp;&nbsp;&nbsp;`.os_name` | OS name extracted from the LLVM target tuple
+
+### Variables
+
+Variables defined in `.enkaidu/variables.yaml|yml` are available under `var.` in the template.
+
+### Arguments
+
+Arguments defined by a prompt are available under `arg.` in the template.
+
+### Example
+
+This example hows how a prompt is defined in the config file. In a profile's prompt definition files you don't need to specify `prompts:`.
+
+```yaml
+prompts:
+  test:
+    description: Test variables
+    arguments:
+      lang:
+        description: Type in the name of a programming language.
+    template: |
+      OS Architecture: {{ sys.os_arch }}
+      OS Name: {{ sys.os_name }}
+      Language: {{ arg.lang }}
+      Values: {{ var.various }}
+      What kind of platform am I working on?
+```
+
 ## Contributions
 
-By invitation only limited to people I know and see often. This is early days, I am busy with family and work, and this will help me manage my bandwidth.
+### By invitation
+
+At this time, contributions are by invitation only and limited to people I know and see often. These are early days for Enkaidu, and I am busy with family and work. At this time I want to work on this at a manage-able pace.
