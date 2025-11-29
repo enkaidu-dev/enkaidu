@@ -29,6 +29,9 @@ module Enkaidu::Env
     getter prompts : Hash(String, Config::Prompt)
     # Hash of SystemPrompts loaded from `system_prompts/` folder in the profile
     getter system_prompts : Hash(String, Config::SystemPrompt)
+    # Hash of Macros loaded from `macros/` folder in the profile
+    getter macros : Hash(String, Config::Macro)
+
     # Variables loaded from the `variables.*` file
     getter variables : Variables
 
@@ -39,6 +42,7 @@ module Enkaidu::Env
       @config = load_config(opt_config_file_path)
       @prompts = load_prompts
       @system_prompts = load_system_prompts
+      @macros = load_macros
       @variables = load_variables
     end
 
@@ -120,6 +124,16 @@ module Enkaidu::Env
         sys_prompts.merge!(prompt_map)
       end
       sys_prompts
+    end
+
+    # Load YAML files in the `macros/` folder as `Config::Macro`
+    private def load_macros
+      macros = {} of String => Config::Macro
+      each_yaml_file_for("macros") do |file|
+        macro_map = Hash(String, Config::Macro).from_yaml(File.read(file))
+        macros.merge!(macro_map)
+      end
+      macros
     end
 
     private def each_yaml_file_for(scope, &)
