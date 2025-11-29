@@ -33,9 +33,16 @@ module Enkaidu
       prompt.arguments.try(&.each { |arg_name, arg| arguments << Argument.new(arg_name, arg) })
     end
 
-    def call_with(args : Hash(String, String), profile : Env::Profile? = nil) : String
+    def initialize(@name, sys_prompt : Config::SystemPrompt, @cli, @origin = "Enkaidu/Config")
+      @description = sys_prompt.description || "(A system prompt)"
+      @template = Liquid::Template.parse(sys_prompt.template)
+    end
+
+    def render(args : Hash(String, String)? = nil, profile : Env::Profile? = nil) : String
       ctx = Liquid::Context.new
-      ctx.set("arg", liquify(args))
+      if args
+        ctx.set("arg", liquify(args))
+      end
 
       #
       # YUCK - don't generate these every time; right now I can't yet think of

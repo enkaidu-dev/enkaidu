@@ -30,12 +30,29 @@ module Enkaidu
           renderer.info_with("INFO: Auto-loading config prompts: #{prompts.keys.join(", ")}")
           auto_load_config_prompts(prompts, origin: "Enkaidu/Config")
         end
+
+        unless (sys_prompts = opts.profile.system_prompts).empty?
+          renderer.info_with("INFO: Auto-loading profile system prompts: #{sys_prompts.keys.join(", ")}")
+          auto_load_system_prompts(sys_prompts, origin: "Enkaidu/Profile")
+        end
+
+        if sys_prompts = config.system_prompts
+          renderer.info_with("INFO: Auto-loading system prompts: #{sys_prompts.keys.join(", ")}")
+          auto_load_system_prompts(sys_prompts, origin: "Enkaidu/Config")
+        end
+      end
+
+      private def auto_load_system_prompts(sys_prompts, origin = nil)
+        sys_prompts.each do |name, sys_prompt|
+          tp = TemplatePrompt.new(name, sys_prompt, self, origin: origin)
+          register_system_prompt_by_name(name, tp)
+        end
       end
 
       private def auto_load_config_prompts(prompts, origin = nil)
         prompts.each do |name, prompt|
           tp = TemplatePrompt.new(name, prompt, self, origin: origin)
-          template_prompts << tp
+          config_prompts << tp
           register_prompt_by_name(name, tp)
         end
       end

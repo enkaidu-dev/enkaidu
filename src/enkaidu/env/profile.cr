@@ -27,6 +27,8 @@ module Enkaidu::Env
     getter config_path : Path? = nil
     # Hash of Prompts loaded from `prompts/` folder in the profile
     getter prompts : Hash(String, Config::Prompt)
+    # Hash of SystemPrompts loaded from `system_prompts/` folder in the profile
+    getter system_prompts : Hash(String, Config::SystemPrompt)
     # Variables loaded from the `variables.*` file
     getter variables : Variables
 
@@ -36,6 +38,7 @@ module Enkaidu::Env
       @profile_path = locate_profile_path(base_path)
       @config = load_config(opt_config_file_path)
       @prompts = load_prompts
+      @system_prompts = load_system_prompts
       @variables = load_variables
     end
 
@@ -117,6 +120,29 @@ module Enkaidu::Env
         if Dir.exists?(prompts_path)
           Dir.new(prompts_path).each do |file|
             yield Path.new(prompts_path, file) if file.ends_with?(".yaml") || file.ends_with?(".yml")
+          end
+        end
+      end
+    end
+
+    # Load YAML files in the `system_prompts/` folder as `Config::SystemPrompt`
+    private def load_system_prompts
+      sys_prompts = {} of String => Config::SystemPrompt
+      each_system_prompt_file do |file|
+        prompt_map = Hash(String, Config::SystemPrompt).from_yaml(File.read(file))
+        sys_prompts.merge!(prompt_map)
+      end
+      sys_prompts
+    end
+
+    private def each_system_prompt_file(&)
+      # From farthest to nearest env dir, so nearer prompts
+      # with same name will override those defined farther away
+      if dir = profile_path
+        sys_prompts_path = Path.new(dir, "system_prompts")
+        if Dir.exists?(sys_prompts_path)
+          Dir.new(sys_prompts_path).each do |file|
+            yield Path.new(sys_prompts_path, file) if file.ends_with?(".yaml") || file.ends_with?(".yml")
           end
         end
       end

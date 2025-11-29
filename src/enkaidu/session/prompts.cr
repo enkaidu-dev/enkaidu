@@ -49,7 +49,7 @@ module Enkaidu
           case prompt
           when MCPPrompt
             arg_inputs = renderer.mcp_prompt_ask_input(prompt)
-            unless (prompt_result = prompt.call_with(arg_inputs)).nil?
+            unless (prompt_result = prompt.render(arg_inputs)).nil?
               text_count = 0
               chat.import(prompt_result, emit: true) do |chat_ev|
                 text_count = render_session_event chat_ev, text_count
@@ -58,7 +58,7 @@ module Enkaidu
             end
           when TemplatePrompt
             arg_inputs = renderer.user_prompt_ask_input(prompt)
-            prompt_text = prompt.call_with(arg_inputs, profile: opts.profile)
+            prompt_text = prompt.render(arg_inputs, profile: opts.profile)
             ask(query: prompt_text, response_json_schema: response_schema, render_query: true)
           end
         end
@@ -67,7 +67,7 @@ module Enkaidu
       end
 
       private def unload_all_prompts
-        template_prompts.clear
+        config_prompts.clear
         prompts_by_name.clear
       end
     end

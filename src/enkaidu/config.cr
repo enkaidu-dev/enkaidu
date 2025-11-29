@@ -49,6 +49,11 @@ module Enkaidu
       getter system_prompt : String?
     end
 
+    class SystemPrompt < ConfigSerializable
+      getter template : String
+      getter description : String?
+    end
+
     class Prompt < ConfigSerializable
       class Arg < ConfigSerializable
         getter description : String
@@ -63,6 +68,7 @@ module Enkaidu
     getter session : Session?
     getter llms : Hash(String, LLM)?
     getter mcp_servers : Hash(String, MCPServer)?
+    getter system_prompts : Hash(String, SystemPrompt)?
     getter prompts : Hash(String, Prompt)?
 
     # ---------------------- end of content definition
