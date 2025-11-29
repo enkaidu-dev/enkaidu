@@ -12,7 +12,7 @@ module Enkaidu
 
     abstract def error_with(message, help = nil, markdown = false)
 
-    abstract def user_query_text(query)
+    abstract def user_query_text(query, via_macro = false)
     abstract def user_query_image_url(url)
 
     abstract def user_confirm_shell_command?(command)
