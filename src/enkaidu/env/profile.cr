@@ -143,7 +143,10 @@ module Enkaidu::Env
           # Sort the file names to ensure override order for entries with
           # the same name is deterministic.
           Dir.new(path).children.sort!.each do |file|
-            yield Path.new(path, file) if file.ends_with?(".yaml") || file.ends_with?(".yml")
+            if file.ends_with?(".yaml") || file.ends_with?(".yml")
+              file_path = Path.new(path, file)
+              yield file_path if File.file?(file_path)
+            end
           end
         end
       end
