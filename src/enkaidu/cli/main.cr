@@ -72,7 +72,7 @@ module Enkaidu::CLI
 
     private def macro_next?(queue) : String?
       if q = queue.shift?
-        renderer.user_query_text(q)
+        renderer.user_query_text(q, via_macro: true)
         return q
       end
       nil
