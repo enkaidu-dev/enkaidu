@@ -54,6 +54,11 @@ module Enkaidu
       getter description : String?
     end
 
+    class Macro < ConfigSerializable
+      getter description : String
+      getter queries : Array(String)
+    end
+
     class Prompt < ConfigSerializable
       class Arg < ConfigSerializable
         getter description : String
@@ -70,6 +75,7 @@ module Enkaidu
     getter mcp_servers : Hash(String, MCPServer)?
     getter system_prompts : Hash(String, SystemPrompt)?
     getter prompts : Hash(String, Prompt)?
+    getter macros : Hash(String, Macro)?
 
     # ---------------------- end of content definition
 

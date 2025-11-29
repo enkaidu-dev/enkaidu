@@ -225,6 +225,16 @@ You can configure Enkaidu to automatically load specific toolsets and models. Th
 
 Remember to explore and experiment with the commands and configurations to fully leverage the power of Enkaidu in your coding and creative endeavors.
 
+## Macros
+
+Macros are defined with names, and any macro can be run by typing `!<name>` where `<name>` is the name used when defining the macro.
+
+```
+QUERY> !test
+```
+
+The above example will run a macro named `test`.
+
 ## Configuration
 
 Enkaidu utilizes a configuration file to store various settings for its behavior and interaction with Large Language Models (LLMs) and MCP servers. By default, this configuration is specified in a YAML file located at `./enkaidu.yaml` (or `.yml`). Customizing this file allows you to optimize Enkaidu for your environment and needs.
@@ -295,6 +305,27 @@ The configuration file is structured in several key sections. Here’s an overvi
     - **template**: The template is a string based on the [Liquid templating language](http://shopify.github.io/liquid/) as implemented by the [`liquid.cr`](https://github.com/amberframework/liquid.cr) Crystal shard. The template is invoked with system and profile properties as follows:
       - Profile variables are available with the `var.` prefix
       - System properties are available via the `sys.` prefix
+
+#### Macros
+- **macros**: Defined named macros that can be invoked using `!<name>`
+  - **<name>**:
+    - **description**: An description of the macro (required)
+    - **queries**: An array of queries where each entry is treated as if the user typed in a query.
+
+<details>
+<summary>Example of a macro</summary>
+
+```yaml
+macros:
+  test:
+    description: A test macro
+    queries:
+      - /session push
+      - /prompt use test
+      - /session pop
+```
+</details>
+
 
 ### Example Configuration
 
