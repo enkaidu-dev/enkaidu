@@ -288,6 +288,14 @@ The configuration file is structured in several key sections. Here’s an overvi
       - Profile variables are available with the `var.` prefix
       - System properties are available via the `sys.` prefix
 
+#### System Prompts
+- **system_prompts**: Define named system prompts as templates. These are auto-loaded when Enkaidu starts.
+  - **<prompt_name>**:
+    - **description**: An optional description of the prompt
+    - **template**: The template is a string based on the [Liquid templating language](http://shopify.github.io/liquid/) as implemented by the [`liquid.cr`](https://github.com/amberframework/liquid.cr) Crystal shard. The template is invoked with system and profile properties as follows:
+      - Profile variables are available with the `var.` prefix
+      - System properties are available via the `sys.` prefix
+
 ### Example Configuration
 
 Here's an example of a typical `enkaidu.yaml` configuration:
@@ -325,8 +333,10 @@ A "profile" is defined by setting up `.enkaidu/` in the current directory. Enkai
 2. `variables.yaml|yml` file that can be used to define variables accessible by prompt templates under `var.`
     - Values can be strings, arrays of strings
     - Values can also be hash maps, but only one level deep
-3. `prompts/` folder inside which Enkaidu will find any file that has `.yaml|yml` extension and attempts to load is a prompts definition, defined as `prompts:` in the config file.
+3. `prompts/` folder inside which Enkaidu will find any file that has `.yaml|yml` extension and attempts to load the prompts definitions, defined the same way as `prompts:` in the config file.
     - Prompts with the same name in the config file will override prompts defined here.
+3. `system_prompts/` folder inside which Enkaidu will find any file that has `.yaml|yml` extension and attempts to load system prompt definitions, defined the same way as `system_prompts:` in the config file.
+    - System prompts with the same name in the config file will override those defined in the profile.
 
 > MORE TO COME ... the idea is that profiles can be defined in their own repos and then cloned into the working folder, or includes as git submodules as part of the repo.
 

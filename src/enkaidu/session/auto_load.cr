@@ -31,6 +31,11 @@ module Enkaidu
           auto_load_config_prompts(prompts, origin: "Enkaidu/Config")
         end
 
+        unless (sys_prompts = opts.profile.system_prompts).empty?
+          renderer.info_with("INFO: Auto-loading profile system prompts: #{sys_prompts.keys.join(", ")}")
+          auto_load_system_prompts(sys_prompts, origin: "Enkaidu/Profile")
+        end
+
         if sys_prompts = config.system_prompts
           renderer.info_with("INFO: Auto-loading system prompts: #{sys_prompts.keys.join(", ")}")
           auto_load_system_prompts(sys_prompts, origin: "Enkaidu/Config")
