@@ -55,7 +55,6 @@ module Enkaidu::Env
           end
         end
       end
-      STDERR.puts vars
       vars
     end
 
