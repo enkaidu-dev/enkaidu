@@ -55,8 +55,8 @@ module Enkaidu::CLI
       prefix0 = "QUERY > ".colorize(color)
       prefix1 = "      > ".colorize(color)
       query_lines = query.split('\n')
-      query_lines.each_with_index do |line, ix|
-        print ix.zero? ? prefix0 : prefix1
+      query_lines.each_with_index do |line, index|
+        print index.zero? ? prefix0 : prefix1
         puts line
       end
     end
