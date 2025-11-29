@@ -77,8 +77,15 @@
           case "query":
             switch (msg.content_type) {
               case "text":
+                let type =
+                  msg.content.startsWith("/") || msg.content.startsWith("!")
+                    ? "command"
+                    : "query";
+                if (msg.via_macro) {
+                  type = type + "_via_macro";
+                }
                 session.add_event({
-                  type: msg.content.startsWith("/") ? "command" : "query",
+                  type: type,
                   content: msg.content,
                 });
                 break;
@@ -174,7 +181,8 @@
 
       query = query.trim();
       session.add_event({
-        type: query.startsWith("/") ? "command" : "query",
+        type:
+          query.startsWith("/") || query.startsWith("!") ? "command" : "query",
         content: query,
       });
       let resp = await enkaidu_post_request(

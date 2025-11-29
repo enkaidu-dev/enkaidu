@@ -225,6 +225,16 @@ You can configure Enkaidu to automatically load specific toolsets and models. Th
 
 Remember to explore and experiment with the commands and configurations to fully leverage the power of Enkaidu in your coding and creative endeavors.
 
+## Macros
+
+Macros are defined with names, and any macro can be run by typing `!<name>` where `<name>` is the name used when defining the macro.
+
+```
+QUERY> !test
+```
+
+The above example will run a macro named `test`.
+
 ## Configuration
 
 Enkaidu utilizes a configuration file to store various settings for its behavior and interaction with Large Language Models (LLMs) and MCP servers. By default, this configuration is specified in a YAML file located at `./enkaidu.yaml` (or `.yml`). Customizing this file allows you to optimize Enkaidu for your environment and needs.
@@ -296,6 +306,27 @@ The configuration file is structured in several key sections. Here’s an overvi
       - Profile variables are available with the `var.` prefix
       - System properties are available via the `sys.` prefix
 
+#### Macros
+- **macros**: Define named macros that can be invoked using `!<name>`
+  - **<name>**:
+    - **description**: An description of the macro (required)
+    - **queries**: An array of queries where each entry is treated as if the user typed in a query.
+
+<details>
+<summary>Example of a macro</summary>
+
+```yaml
+macros:
+  test:
+    description: A test macro
+    queries:
+      - /session push
+      - /prompt use test
+      - /session pop
+```
+</details>
+
+
 ### Example Configuration
 
 Here's an example of a typical `enkaidu.yaml` configuration:
@@ -334,9 +365,11 @@ A "profile" is defined by setting up `.enkaidu/` in the current directory. Enkai
     - Values can be strings, arrays of strings
     - Values can also be hash maps, but only one level deep
 3. `prompts/` folder inside which Enkaidu will find any file that has `.yaml|yml` extension and attempts to load the prompts definitions, defined the same way as `prompts:` in the config file.
-    - Prompts with the same name in the config file will override prompts defined here.
-3. `system_prompts/` folder inside which Enkaidu will find any file that has `.yaml|yml` extension and attempts to load system prompt definitions, defined the same way as `system_prompts:` in the config file.
-    - System prompts with the same name in the config file will override those defined in the profile.
+    - Prompts in the config file will override prompts with the same name defined in the profile.
+4. `system_prompts/` folder inside which Enkaidu will find any file that has `.yaml|yml` extension and attempts to load system prompt definitions, defined the same way as `system_prompts:` in the config file.
+    - System prompts in the config file will override those with the same name defined in the profile.
+5. `macros/` folder inside which Enkaidu will find any file that has `.yaml|yml` extension and attempts to load macro definitions, defined the same way as `macros:` in the config file.
+    - Macros in the config file will override those with the same name defined in the profile.
 
 > MORE TO COME ... the idea is that profiles can be defined in their own repos and then cloned into the working folder, or includes as git submodules as part of the repo.
 

@@ -24,9 +24,10 @@ module Enkaidu::Slash
     private def register_commands
       [
         include_command, # tracked locally to access inclusions
+        MacroCommand.new,
         PromptCommand.new(self),
-        SystemPromptCommand.new,
         SessionCommand.new,
+        SystemPromptCommand.new,
         ToolCommand.new,
         ToolsetCommand.new,
         UseMcpCommand.new,

@@ -60,20 +60,40 @@ module Enkaidu::CLI
       @count += 1
     end
 
+    private def show_query_prompt
+      puts
+      unless commander.query_indicators.empty?
+        reader.editor.output.puts "----[ #{commander.query_indicators.join(" | ")} ]----".colorize.yellow
+      end
+      if schema = commander.response_json_schema
+        reader.editor.output.puts "----[ JSON response schema (name: #{schema.name}, strict? #{schema.strict?}) ]----".colorize.yellow
+      end
+    end
+
+    private def macro_next?(queue) : String?
+      if q = queue.shift?
+        renderer.user_query_text(q, via_macro: true)
+        return q
+      end
+      nil
+    end
+
     def run
       session.auto_load
-
       recorder << "["
+
+      # Queue of queries, appended to when macros are run
+      macro_query_queue = [] of String
       while !done?
-        puts
-        unless commander.query_indicators.empty?
-          reader.editor.output.puts "----[ #{commander.query_indicators.join(" | ")} ]----".colorize.yellow
-        end
-        if schema = commander.response_json_schema
-          reader.editor.output.puts "----[ JSON response schema (name: #{schema.name}, strict? #{schema.strict?}) ]----".colorize.yellow
-        end
-        if q = reader.read_next
+        show_query_prompt
+        if q = macro_next?(macro_query_queue) || reader.read_next
           case q = q.strip
+          when .starts_with?("!")
+            if mac = session.find_macro_by_name?(q[1..])
+              macro_query_queue.concat(mac.queries)
+            else
+              renderer.warning_with("Unknown macro: #{q}")
+            end
           when .starts_with?("/")
             @done = commander.make_it_so(q) == :done
           else

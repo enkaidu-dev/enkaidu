@@ -50,9 +50,15 @@ module Enkaidu::CLI
       err_puts_text help, markdown
     end
 
-    def user_query_text(query)
-      print "QUERY > ".colorize(:yellow)
-      puts query
+    def user_query_text(query, via_macro = false)
+      color = via_macro ? :magenta : :yellow
+      prefix0 = "QUERY > ".colorize(color)
+      prefix1 = "      > ".colorize(color)
+      query_lines = query.split('\n')
+      query_lines.each_with_index do |line, index|
+        print index.zero? ? prefix0 : prefix1
+        puts line
+      end
     end
 
     def user_query_image_url(url)
@@ -81,8 +87,8 @@ module Enkaidu::CLI
     ANSI
 
     def session_reset
-      3.times { puts }
-      puts RESET
+      puts
+      puts RESET.colorize(:light_green)
     end
 
     def session_pushed(depth, keep_tools, keep_prompts, keep_history)

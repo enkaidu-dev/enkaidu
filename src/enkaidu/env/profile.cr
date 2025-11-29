@@ -29,6 +29,9 @@ module Enkaidu::Env
     getter prompts : Hash(String, Config::Prompt)
     # Hash of SystemPrompts loaded from `system_prompts/` folder in the profile
     getter system_prompts : Hash(String, Config::SystemPrompt)
+    # Hash of Macros loaded from `macros/` folder in the profile
+    getter macros : Hash(String, Config::Macro)
+
     # Variables loaded from the `variables.*` file
     getter variables : Variables
 
@@ -39,6 +42,7 @@ module Enkaidu::Env
       @config = load_config(opt_config_file_path)
       @prompts = load_prompts
       @system_prompts = load_system_prompts
+      @macros = load_macros
       @variables = load_variables
     end
 
@@ -105,44 +109,44 @@ module Enkaidu::Env
     # Load YAML files in the `prompts/` folder as `Config::Prompt`
     private def load_prompts
       prompts = {} of String => Config::Prompt
-      each_prompt_file do |file|
+      each_yaml_file_for("prompts") do |file|
         prompt_map = Hash(String, Config::Prompt).from_yaml(File.read(file))
         prompts.merge!(prompt_map)
       end
       prompts
     end
 
-    private def each_prompt_file(&)
-      # From farthest to nearest env dir, so nearer prompts
-      # with same name will override those defined farther away
-      if dir = profile_path
-        prompts_path = Path.new(dir, "prompts")
-        if Dir.exists?(prompts_path)
-          Dir.new(prompts_path).each do |file|
-            yield Path.new(prompts_path, file) if file.ends_with?(".yaml") || file.ends_with?(".yml")
-          end
-        end
-      end
-    end
-
     # Load YAML files in the `system_prompts/` folder as `Config::SystemPrompt`
     private def load_system_prompts
       sys_prompts = {} of String => Config::SystemPrompt
-      each_system_prompt_file do |file|
+      each_yaml_file_for("system_prompts") do |file|
         prompt_map = Hash(String, Config::SystemPrompt).from_yaml(File.read(file))
         sys_prompts.merge!(prompt_map)
       end
       sys_prompts
     end
 
-    private def each_system_prompt_file(&)
-      # From farthest to nearest env dir, so nearer prompts
-      # with same name will override those defined farther away
+    # Load YAML files in the `macros/` folder as `Config::Macro`
+    private def load_macros
+      macros = {} of String => Config::Macro
+      each_yaml_file_for("macros") do |file|
+        macro_map = Hash(String, Config::Macro).from_yaml(File.read(file))
+        macros.merge!(macro_map)
+      end
+      macros
+    end
+
+    private def each_yaml_file_for(scope, &)
       if dir = profile_path
-        sys_prompts_path = Path.new(dir, "system_prompts")
-        if Dir.exists?(sys_prompts_path)
-          Dir.new(sys_prompts_path).each do |file|
-            yield Path.new(sys_prompts_path, file) if file.ends_with?(".yaml") || file.ends_with?(".yml")
+        path = Path.new(dir, scope)
+        if Dir.exists?(path)
+          # Sort the file names to ensure override order for entries with
+          # the same name is deterministic.
+          Dir.new(path).children.sort!.each do |file|
+            if file.ends_with?(".yaml") || file.ends_with?(".yml")
+              file_path = Path.new(path, file)
+              yield file_path if File.file?(file_path)
+            end
           end
         end
       end

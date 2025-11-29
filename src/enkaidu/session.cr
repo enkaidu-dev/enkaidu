@@ -51,6 +51,7 @@ module Enkaidu
     include Session::Prompts
     include Session::SystemPrompts
     include Session::McpServers
+    include Session::Macros
 
     delegate streaming?, usage, to: @chat
     delegate debug?, to: @opts
