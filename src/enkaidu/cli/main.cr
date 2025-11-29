@@ -89,14 +89,10 @@ module Enkaidu::CLI
         if q = macro_next?(macro_query_queue) || reader.read_next
           case q = q.strip
           when .starts_with?("!")
-            if macros = opts.config.try(&.macros)
-              if mac = macros[q[1..]]?
-                macro_query_queue.concat(mac.queries)
-              else
-                renderer.warning_with("Unknown macro: #{q}")
-              end
+            if mac = session.find_macro_by_name?(q[1..])
+              macro_query_queue.concat(mac.queries)
             else
-              renderer.warning_with("No macros defined.")
+              renderer.warning_with("Unknown macro: #{q}")
             end
           when .starts_with?("/")
             @done = commander.make_it_so(q) == :done

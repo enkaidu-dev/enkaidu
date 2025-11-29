@@ -179,15 +179,11 @@ module Enkaidu
           queue.user_query_text(query, via_macro: true) if echo_query
 
           if query.starts_with? '!'
-            if macros = opts.config.try(&.macros)
-              if mac = macros[query[1..]]?
-                query_queue.concat(mac.queries)
-                echo_query = true
-              else
-                queue.warning_with("Unknown macro: #{query}")
-              end
+            if mac = session.find_macro_by_name?(query[1..])
+              query_queue.concat(mac.queries)
+              echo_query = true
             else
-              queue.warning_with("No macros defined.")
+              queue.warning_with("Unknown macro: #{query}")
             end
           elsif query.starts_with? '/'
             if commander.make_it_so(query) == :done
