@@ -169,18 +169,36 @@ module Enkaidu
       # #channal_acpa_session_request to use async channels to dispatch
       # request and gather up responses
       private def handle_prompt_request(req : ACPA::Request::PromptParams)
-        query = req.prompt.first.text.strip
-        if query.starts_with? '!'
-          queue.warning_with("Macros not supported in the Web UI. Coming soon.")
-        elsif query.starts_with? '/'
-          if commander.make_it_so(query) == :done
-            queue.info_with("GOOD BYE!")
-            session_requests.send(:quit)
+        # Stuff request query into queue of queries
+        # This lets us stuff macro expansions into the queue so we can
+        # run through them as if they were queries from the user
+        query_queue = [req.prompt.first.text.strip]
+        echo_query = false
+        while query = query_queue.shift?
+          # Make sure user sees macro's queries
+          queue.user_query_text(query, via_macro: true) if echo_query
+
+          if query.starts_with? '!'
+            if macros = opts.config.try(&.macros)
+              if mac = macros[query[1..]]?
+                query_queue.concat(mac.queries)
+                echo_query = true
+              else
+                queue.warning_with("Unknown macro: #{query}")
+              end
+            else
+              queue.warning_with("No macros defined.")
+            end
+          elsif query.starts_with? '/'
+            if commander.make_it_so(query) == :done
+              queue.info_with("GOOD BYE!")
+              session_requests.send(:quit)
+            end
+          else
+            session.ask(query: query,
+              attach: commander.take_inclusions!,
+              response_json_schema: commander.take_response_schema!)
           end
-        else
-          session.ask(query: query,
-            attach: commander.take_inclusions!,
-            response_json_schema: commander.take_response_schema!)
         end
       end
 
