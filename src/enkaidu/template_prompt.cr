@@ -35,19 +35,19 @@ module Enkaidu
 
     def call_with(args : Hash(String, String), profile : Env::Profile? = nil) : String
       ctx = Liquid::Context.new
-      liquify(ctx, "arg", args)
+      ctx.set("arg", liquify(args))
 
       #
       # YUCK - don't generate these every time; right now I can't yet think of
       #        way that doesn't leak the use of the `Liquid::Any` type
-      liquify(ctx, "var", profile.variables)
-      liquify(ctx, "sys", Env::SYSTEM_PROPERTIES)
+      ctx.set("var", liquify(profile.variables))
+      ctx.set("sys", liquify(Env::SYSTEM_PROPERTIES))
 
       @template.render(ctx)
     end
 
-    private def liquify(ctx, name, vars : Env::Profile::Variables)
-      ctx.set(name, vars.transform_values do |value|
+    private def liquify(vars)
+      vars.transform_values do |value|
         case value
         when Array
           Liquid::Any.new(value.map { |item| Liquid::Any.new(item) })
@@ -63,7 +63,7 @@ module Enkaidu
         else
           Liquid::Any.new(value)
         end
-      end)
+      end
     end
   end
 end
