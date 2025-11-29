@@ -25,6 +25,7 @@ module Enkaidu::Slash
       [
         include_command, # tracked locally to access inclusions
         PromptCommand.new(self),
+        SystemPromptCommand.new,
         SessionCommand.new,
         ToolCommand.new,
         ToolsetCommand.new,

@@ -38,8 +38,10 @@ module Enkaidu
     protected getter mcp_prompts = [] of MCPPrompt
     protected getter mcp_connections = [] of MCPC::HttpConnection
 
-    protected getter template_prompts = [] of TemplatePrompt
+    protected getter config_prompts = [] of TemplatePrompt
     protected getter prompts_by_name = {} of String => MCPPrompt | TemplatePrompt
+
+    protected getter system_prompts = {} of String => TemplatePrompt
 
     protected getter loaded_toolsets = {} of String => Tools::ToolSet
 
@@ -47,6 +49,7 @@ module Enkaidu
     include Session::Lifecycle
     include Session::AutoLoad
     include Session::Prompts
+    include Session::SystemPrompts
     include Session::McpServers
 
     delegate streaming?, usage, to: @chat
@@ -93,7 +96,7 @@ module Enkaidu
     end
 
     # Helper to setup the Chat's initial config
-    private def setup_chat
+    private def setup_chat(override_system_prompt : String? = nil)
       connection.new_chat do
         unless (m = opts.model_name).nil?
           with_model m
@@ -101,7 +104,7 @@ module Enkaidu
         end
         with_debug if opts.debug?
         with_streaming if opts.stream?
-        with_system_message system_prompt
+        with_system_message override_system_prompt || system_prompt
       end
     end
 
