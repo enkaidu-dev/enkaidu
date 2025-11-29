@@ -170,7 +170,9 @@ module Enkaidu
       # request and gather up responses
       private def handle_prompt_request(req : ACPA::Request::PromptParams)
         query = req.prompt.first.text.strip
-        if query.strip.starts_with? '/'
+        if query.starts_with? '!'
+          queue.warning_with("Macros not supported in the Web UI. Coming soon.")
+        elsif query.starts_with? '/'
           if commander.make_it_so(query) == :done
             queue.info_with("GOOD BYE!")
             session_requests.send(:quit)
