@@ -266,7 +266,8 @@ The configuration file is structured in several key sections. Here’s an overvi
   - **model** _(optional)_: Defines the model used for the session, e.g., `gpt4`. When defining `llms` in the configuration, this can be the name of a model and there is no need for the above **provide_type** property.
   - **recording_file** _(optional)_: Path to a file where session recordings are saved.
   - **input_history_file** _(optional)_: Path to a file for saving input history.
-  - **system_prompt** _(optional)_: Custom system prompt for the session.
+  - ~~_system_prompt_~~ _(optional)_: Custom system prompt for the session - **deprecated**.
+  - **system_prompt_name** _(optional)_: Specify the session's system prompt by using the name of the system prompt template.
   - **auto_load** _(optional)_: Contains settings for automatically loading specific resources.
     - **mcp_servers** _(optional)_: List of MCP servers to automatically connect to on startup.
     - **toolsets** _(optional)_: List of toolsets to automatically load, where each toolset can be specified by name to load all tools, or as a map of `name:` and `select:` to specify the tools to load from the named toolset.

@@ -47,6 +47,7 @@ module Enkaidu
       getter input_history_file : String?
       getter auto_load : AutoLoad?
       getter system_prompt : String?
+      getter system_prompt_name : String?
     end
 
     class SystemPrompt < ConfigSerializable
