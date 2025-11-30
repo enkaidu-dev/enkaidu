@@ -123,6 +123,7 @@ module Enkaidu
       return from_env unless from_config = opts.config.try(&.session).try(&.system_prompt)
 
       renderer.info_with("INFO: Using system prompt from config file; #{from_config.size} characters")
+      renderer.warning_with("WARN: The `system_prompt` property in config is deprecated. Use `system_prompt_name` instead.")
       from_config
     end
 
