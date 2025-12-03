@@ -34,8 +34,8 @@ module Enkaidu::Slash
         session.list_prompt_details((cmd.arg_at? 2).as(String))
       elsif cmd.expect?(NAME, "use", String)
         schema = commander.take_response_schema!
-        # Ignore the inclusions
-        session.use_prompt((cmd.arg_at? 2).as(String), response_schema: schema)
+        inclusions = commander.take_inclusions!
+        session.use_prompt(prompt_name: (cmd.arg_at? 2).as(String), attach: inclusions, response_schema: schema)
       else
         session.renderer.warning_with(
           "ERROR: Unknown or incomplete sub-command: #{cmd.arg_at? 0}",
