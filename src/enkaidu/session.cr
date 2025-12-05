@@ -73,13 +73,17 @@ module Enkaidu
     end
 
     # Create a new session "forked" from a given `Session` to create a duplicate session.
-    def initialize(fork_from : Session, keep_tools = true, keep_prompts = true, keep_history = true)
+    def initialize(fork_from : Session, keep_tools = true, keep_prompts = true, keep_history = true, system_prompt_name = nil)
       @recorder = fork_from.recorder
       @opts = fork_from.opts
       @renderer = fork_from.renderer
       @connection = fork_from.connection
+      @system_prompts = fork_from.system_prompts.dup
 
-      @chat = setup_chat
+      override_sys_prompt = if system_prompt_name
+                              render_system_prompt(system_prompt_name)
+                            end
+      @chat = setup_chat(override_sys_prompt)
       chat.fork_session(fork_from.chat) if keep_history
 
       if keep_tools
@@ -201,6 +205,10 @@ module Enkaidu
       end
       consume_tool_calls(tools, ix)
       recorder << "]"
+    end
+
+    def transfer_tail_chats(to : Session, num = 1, filter_by_role : String? = nil)
+      chat.send_tail_session(to: to.chat, num_responses: num, filter_by_role: filter_by_role)
     end
   end
 end

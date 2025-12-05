@@ -24,13 +24,20 @@ module Enkaidu::Slash
       - Throws away the current session / context
       - Auto loads tools and MCP connections in the configuration
       - Replaces the system prompt referenced by name if specified
-    - `push [keep_tools=yes|no] [keep_prompts=yes|no] [keep_history=yes|no]`
+    - `push [keep_tools=yes|no] [keep_prompts=yes|no] [keep_history=yes|no] [system_prompt_name=NAME]`
       - Pushes current session onto session stack
       - Forks a new session, keeping tools, prompts, and history as specified
+      - Switches the system prompt if the name of a system prompt template is provided
       - By default the new session keeps all state
     - `pop`
       - Restores last pushed session (if any)
-      - Throws away current session
+      - Throws away current (interim) session
+    - `pop_and_take [response_only=yes|no] [reset_parent=yes|no]`
+      - Restores last pushed session (if any)
+      - Resets the restored session if `reset_parent=yes` is specified
+      - Appends the last chat from the interim session, keeping the both the query and response unless
+        `response_only=yes` is specified, in which case only the response is kept.
+      - Throws away current (interim) session
     HELP1
 
     def name : String
@@ -44,28 +51,24 @@ module Enkaidu::Slash
     def handle(session_manager : SessionManager, cmd : CommandParser)
       session = session_manager.session
       begin
-        if cmd.expect?(NAME, "usage")
-          if usage = session.usage
-            session.renderer.info_with(
-              "Current session usage: #{usage.total_tokens} tokens (prompt: #{usage.prompt_tokens}, completion: #{usage.completion_tokens}})")
-          else
-            session.renderer.info_with("No usage data for curent session at this time.")
-          end
-        elsif cmd.expect?(NAME, "reset", system_prompt_name: String?)
-          session.reset_session(sys_prompt: cmd.arg_named?("system_prompt_name").try(&.as(String)))
-        elsif cmd.expect?(NAME, "save", String)
-          handle_session_save(session, cmd)
-        elsif cmd.expect?(NAME, "load", String, tail: String?)
-          handle_session_load(session, cmd)
-        elsif cmd.expect?(NAME, "push",
-                keep_tools: ["yes", "no", nil],
-                keep_prompts: ["yes", "no", nil],
-                keep_history: ["yes", "no", nil])
-          handle_session_push(session_manager, cmd)
-        elsif cmd.expect?(NAME, "pop")
-          if session_manager.pop_session
+        case cmd
+        when .expect?(NAME, "usage")                       then handle_session_usage(session)
+        when .expect?(NAME, "save", String)                then handle_session_save(session, cmd)
+        when .expect?(NAME, "load", String, tail: String?) then handle_session_load(session, cmd)
+        when .expect?(NAME, "push",
+          system_prompt_name: String?,
+          keep_tools: ["yes", "no", nil],
+          keep_prompts: ["yes", "no", nil],
+          keep_history: ["yes", "no", nil]) then handle_session_push(session_manager, cmd)
+        when .expect?(NAME, "pop_and_take",
+          response_only: ["yes", "no", nil],
+          reset_parent: ["yes", "no", nil]) then handle_session_pop_take(session_manager, cmd)
+        when .expect?(NAME, "pop")
+          session_manager.pop_session do
             session.renderer.session_popped(depth: session_manager.depth)
           end
+        when .expect?(NAME, "reset", system_prompt_name: String?)
+          session.reset_session(sys_prompt: cmd.arg_named?("system_prompt_name").try(&.as(String)))
         else
           session.renderer.warning_with("ERROR: Unknown or incomplete sub-command: '#{cmd.input}'",
             help: HELP, markdown: true)
@@ -73,6 +76,15 @@ module Enkaidu::Slash
       rescue e
         session.renderer.warning_with("ERROR: #{e.message}",
           help: HELP, markdown: true)
+      end
+    end
+
+    private def handle_session_usage(session)
+      if usage = session.usage
+        session.renderer.info_with(
+          "Current session usage: #{usage.total_tokens} tokens (prompt: #{usage.prompt_tokens}, completion: #{usage.completion_tokens}})")
+      else
+        session.renderer.info_with("No usage data for curent session at this time.")
       end
     end
 
@@ -93,11 +105,22 @@ module Enkaidu::Slash
       end
     end
 
+    private def handle_session_pop_take(session_manager, cmd)
+      filter_role = cmd.arg_named?("response_only", "no").try(&.==("yes")) ? "assistant" : nil
+      reset_parent = cmd.arg_named?("reset_parent", "no").try(&.!=("no"))
+      session_manager.pop_session(transfer_last_num: 1, filter_by_role: filter_role, reset_parent: reset_parent) do
+        # Render session popped
+        session_manager.session.renderer.session_popped(depth: session_manager.depth)
+      end
+    end
+
     private def handle_session_push(session_manager, cmd)
+      sys_prompt_name = cmd.arg_named?("system_prompt_name").try(&.as(String))
       keep_history = cmd.arg_named?("keep_history", "yes").try(&.!=("no"))
       keep_tools = cmd.arg_named?("keep_tools", "yes").try(&.!=("no"))
       keep_prompts = cmd.arg_named?("keep_prompts", "yes").try(&.!=("no"))
-      session_manager.push_session(keep_history: keep_history, keep_tools: keep_tools, keep_prompts: keep_prompts)
+      session_manager.push_session(keep_history: keep_history, keep_tools: keep_tools, keep_prompts: keep_prompts,
+        system_prompt_name: sys_prompt_name)
       session_manager.session.renderer.session_pushed(depth: session_manager.depth,
         keep_history: keep_history, keep_tools: keep_tools, keep_prompts: keep_prompts)
     end
