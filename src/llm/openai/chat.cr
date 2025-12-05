@@ -214,44 +214,50 @@ module LLM::OpenAI
     private def prepare_message_from_streamed_data(stream_io, &)
       tool_calls = [] of JSON::Any
       usage = nil
-      content = String.build do |text_io|
-        recent_tool_call = nil
-        stream_io.each_line do |line|
-          next if line.empty?
+      content = ""
+      reasoning = String.build do |think_io|
+        content = String.build do |text_io|
+          recent_tool_call = nil
+          stream_io.each_line do |line|
+            next if line.empty?
 
-          if line.ends_with? "[DONE]"
-            yield({type: "done", content: JSON::Any.new(nil)})
-          else
-            STDERR.puts "*** #{line}" if TRACE
-            data = JSON.parse(line.lchop("data: "))
-            process_data(data, from_stream: true) do |msg|
-              # gather up the stream chunks
-              case msg["type"]
-              when "text"
-                text_io << msg["content"]
-                yield msg
-              when "tool_call"
-                yield(wrap_up_tool_call(recent_tool_call, tool_calls)) if recent_tool_call
-                # and start a new one
-                recent_tool_call = extract_tool_call_from_message(msg)
-              when "tool_call_merge"
-                merge_with_recent_tool_call(msg, recent_tool_call) if recent_tool_call
-              when "finish_reason"
-                if recent_tool_call
-                  yield wrap_up_tool_call(recent_tool_call, tool_calls)
-                  recent_tool_call = nil
+            if line.ends_with? "[DONE]"
+              yield({type: "done", content: JSON::Any.new(nil)})
+            else
+              STDERR.puts "*** #{line}" if TRACE
+              data = JSON.parse(line.lchop("data: "))
+              process_data(data, from_stream: true) do |msg|
+                # gather up the stream chunks
+                case msg["type"]
+                when "text"
+                  text_io << msg["content"]
+                  yield msg
+                when "reasoning"
+                  think_io << msg["content"]
+                  yield msg
+                when "tool_call"
+                  yield(wrap_up_tool_call(recent_tool_call, tool_calls)) if recent_tool_call
+                  # and start a new one
+                  recent_tool_call = extract_tool_call_from_message(msg)
+                when "tool_call_merge"
+                  merge_with_recent_tool_call(msg, recent_tool_call) if recent_tool_call
+                when "finish_reason"
+                  if recent_tool_call
+                    yield wrap_up_tool_call(recent_tool_call, tool_calls)
+                    recent_tool_call = nil
+                  end
+                when "usage"
+                  usage = Usage.from_json(msg["content"].to_json)
+                else
+                  yield msg
                 end
-              when "usage"
-                usage = Usage.from_json(msg["content"].to_json)
-              else
-                yield msg
               end
             end
           end
         end
       end
-
-      msg = Message::Response.new(content: content, tool_calls: tool_calls)
+      msg = Message::Response.new(
+        content: content, reasoning: reasoning, tool_calls: tool_calls)
       msg.usage = usage if usage
       msg
     end
@@ -266,6 +272,12 @@ module LLM::OpenAI
     private def process_content(content, &) : Nil
       if content && content.raw && content.raw != "" # in case property exists with null value
         yield({type: "text", content: content})
+      end
+    end
+
+    private def process_reasoning(text, &) : Nil
+      if text && text.raw && text.raw != "" # in case property exists with null value
+        yield({type: "reasoning", content: text})
       end
     end
 
@@ -288,6 +300,15 @@ module LLM::OpenAI
       # check for text content
       content = data.dig?("choices", 0, selector, "content")
       process_content(content) { |msg| yield msg }
+
+      # check for reasoning content
+      # - some models use `reasoning` property
+      # - some models use `reasoning_content` property
+      if content = data.dig?("choices", 0, selector, "reasoning")
+        process_reasoning(content) { |msg| yield msg }
+      elsif content = data.dig?("choices", 0, selector, "reasoning_content")
+        process_reasoning(content) { |msg| yield msg }
+      end
 
       # check for tool calling
       if tool_calls = data.dig?("choices", 0, selector, "tool_calls")
