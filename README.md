@@ -191,7 +191,10 @@ You can input your queries directly into Enkaidu. If the query is prefixed with 
 - **`/session usage`**: Shows the token usage/size for the current session based on the most recent response from the LLM.
 - **`/session save <FILEPATH>`**: Saves the current chat session to a JSONL file. The file should not be edited.
 - **`/session load <FILEPATH> [tail=<N>]`**: Loads a saved chat session from its JSONL file, and optionally _tails_ last `N` chats.
-- **`/session reset`**: Resets and cleares the current session including tools and MCP connections and starts anew per config.
+- **`/session reset [system_prompt_name=name]`**: Resets and clears the current session including tools and MCP connections and starts a new per config, optionally switching to the specific system prompt.
+- **`/session push [keep_tools=yes|no] [keep_prompts=yes|no] [keep_history=yes|no] [system_prompt_name=NAME]`**: Pushes the current session and forks a new one, keeping tools, prompts, and history as specified, and optionally switching to the specific system prompt.
+- **`/session pop`**: Restores the previously pushed session.
+- **`/session pop_and_take [response_only=yes|no] [reset_parent=yes|no]`**: Restores the previously pushed session and takes and appends last chat from the interim session, after resetting the parent session if requested.
 
 #### Tools management
 
@@ -218,6 +221,14 @@ You can input your queries directly into Enkaidu. If the query is prefixed with 
 - **`/prompt ls`**: List available prompts
 - **`/prompt info <NAME>`**: List the details about the specific prompt.
 - **`/prompt use <NAME>`**: Use or invoke a prompt by name. If the prompt has arguments, you will be asked to enter values for each one.
+
+#### System prompts
+
+- **`/system_prompt ls`**: List available system prompts
+
+#### Macros
+
+- **`/macro ls`**: List available macros
 
 ### Advanced Usage
 

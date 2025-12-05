@@ -7,6 +7,12 @@ module Enkaidu
       def auto_load
         return unless config = opts.config
 
+        auto_load_essentials(config)
+        auto_load_system_prompts(config)
+        check_and_set_system_prompt(config)
+      end
+
+      private def auto_load_essentials(config)
         if auto_load = config.session.try &.auto_load
           if mcp_servers = config.mcp_servers
             if (mcp_server_names = auto_load.mcp_servers) && mcp_server_names.present?
@@ -22,7 +28,6 @@ module Enkaidu
         end
 
         auto_load_config_prompts(config)
-        auto_load_system_prompts(config)
       end
 
       private def auto_load_system_prompts(config)
@@ -35,7 +40,9 @@ module Enkaidu
           renderer.info_with("INFO: Auto-loading system prompts: #{sys_prompts.keys.join(", ")}")
           load_system_prompts(sys_prompts, origin: "Enkaidu/Config")
         end
+      end
 
+      private def check_and_set_system_prompt(config)
         if session = config.session
           if name = session.system_prompt_name
             if session.system_prompt

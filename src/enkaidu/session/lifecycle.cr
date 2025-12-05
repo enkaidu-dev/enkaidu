@@ -50,8 +50,14 @@ module Enkaidu
                                 render_system_prompt(sys_prompt)
                               end
         @chat = setup_chat(override_sys_prompt)
+
         # new chat BEFORE loading tools, MCP servers
-        auto_load
+        if config = opts.config
+          auto_load_essentials(config)
+          unless override_sys_prompt
+            check_and_set_system_prompt(config)
+          end
+        end
       end
 
       # Save session to a JSONL file,  where each line in order is as follows:

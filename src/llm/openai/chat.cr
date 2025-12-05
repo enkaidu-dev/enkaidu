@@ -38,6 +38,11 @@ module LLM::OpenAI
       @sess.tail_chats(num_responses) { |chat_ev| yield chat_ev }
     end
 
+    def send_tail_session(to : Chat, num_responses = 1, filter_by_role : String? = nil) : Nil
+      @sess.transfer_tail_chats(to: to.@sess,
+        num: num_responses, filter_by_role: filter_by_role)
+    end
+
     # Replace current session with a "fork" of the session from the given
     # `Chat` instance; may fail if `self` is not compatible.
     def fork_session(from : Chat) : Nil
