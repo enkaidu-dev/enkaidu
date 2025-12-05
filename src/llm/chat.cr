@@ -92,5 +92,7 @@ module LLM
     abstract def load_session(io : IO | String) : Nil
 
     abstract def tail_session(num_responses = 1, & : ChatEvent ->) : Nil
+
+    abstract def send_tail_session(to : Chat, num_responses = 1, filter_by_role : String = nil) : Nil
   end
 end

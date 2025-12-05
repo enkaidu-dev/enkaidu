@@ -54,9 +54,7 @@ module LLM::OpenAI
       nil
     end
 
-    # Emit the last N request responses. Always tries to emit the query before the response. May include
-    # tool calls as a result. Use N=-1 to list all
-    def tail_chats(num = -1, &)
+    private def tail_chat_messages(num = 1, &)
       return if num.zero?
 
       start_index = num < 0 ? 0 : @messages.size - 1
@@ -69,10 +67,23 @@ module LLM::OpenAI
       end
       start_index = 0 if start_index.nil?
 
-      # yield each one via it's emitter because some
-      # emit more than one
-      @messages.each(start: start_index, count: @messages.size - start_index) do |msg|
-        msg.message.emit { |chat_ev| yield chat_ev }
+      @messages.each(start: start_index, count: @messages.size - start_index) do |msgplus|
+        yield msgplus
+      end
+    end
+
+    def transfer_tail_chats(to : Session, num = 1, filter_by_role : String? = nil)
+      tail_chat_messages(num) do |msgplus|
+        msg = msgplus.message
+        to.append_message(msg, msgplus.usage) if filter_by_role.nil? || filter_by_role == msg.role
+      end
+    end
+
+    # Emit the last N request responses. Always tries to emit the query before the response. May include
+    # tool calls as a result. Use N=-1 to list all
+    def tail_chats(num = -1, & : ChatEvent ->)
+      tail_chat_messages(num) do |msgplus|
+        msgplus.message.emit { |chat_ev| yield chat_ev }
       end
     end
 
