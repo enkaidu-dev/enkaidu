@@ -12,16 +12,18 @@ module Enkaidu::WUI::Render
 
   class LLMTextFragment < Event
     getter fragment : String
+    getter? reasoning : Bool
 
-    def initialize(@fragment)
+    def initialize(@fragment, @reasoning)
       super("llm_text_fragment")
     end
   end
 
   class LLMText < Event
     getter content : String
+    getter? reasoning : Bool
 
-    def initialize(@content)
+    def initialize(@content, @reasoning)
       super("llm_text")
     end
   end
