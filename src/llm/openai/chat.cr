@@ -153,10 +153,27 @@ module LLM::OpenAI
         STDERR.puts "~~~ #{data}" if TRACE
         yield({type: "error/server", content: data})
       else
+        content = nil
+        reasoning = nil
+        tool_calls = [] of JSON::Any
+        usage = nil
         process_data(data) do |msg|
+          case msg["type"]
+          when "text"
+            content = msg["content"].to_s
+          when "reasoning"
+            reasoning = msg["content"].to_s
+          when "tool_call"
+            tool_calls << msg["content"]
+          when "usage"
+            usage = Usage.from_json(msg["content"].to_json)
+          end
           yield msg
         end
-        append_message prepare_message_from(data)
+        msg = Message::Response.new(
+          content: content, reasoning: reasoning, tool_calls: tool_calls)
+        msg.usage = usage if usage
+        append_message(msg)
       end
     end
 
@@ -297,22 +314,24 @@ module LLM::OpenAI
 
       selector = from_stream ? "delta" : "message"
 
-      # check for text content
-      content = data.dig?("choices", 0, selector, "content")
-      process_content(content) { |msg| yield msg }
+      if data_selector = data.dig?("choices", 0, selector)
+        # check for reasoning content first
+        # - some models use `reasoning` property
+        # - some models use `reasoning_content` property
+        if content = data_selector["reasoning"]? ||
+                     data_selector["reasoning_content"]? ||
+                     data_selector["thinking"]?
+          process_reasoning(content) { |msg| yield msg }
+        end
 
-      # check for reasoning content
-      # - some models use `reasoning` property
-      # - some models use `reasoning_content` property
-      if content = data.dig?("choices", 0, selector, "reasoning")
-        process_reasoning(content) { |msg| yield msg }
-      elsif content = data.dig?("choices", 0, selector, "reasoning_content")
-        process_reasoning(content) { |msg| yield msg }
-      end
+        # check for text content
+        content = data_selector["content"]?
+        process_content(content) { |msg| yield msg }
 
-      # check for tool calling
-      if tool_calls = data.dig?("choices", 0, selector, "tool_calls")
-        process_tool_calls(tool_calls) { |msg| yield msg }
+        # check for tool calling
+        if tool_calls = data_selector["tool_calls"]?
+          process_tool_calls(tool_calls) { |msg| yield msg }
+        end
       end
 
       # check for usage chunk
