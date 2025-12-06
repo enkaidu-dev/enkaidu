@@ -113,7 +113,10 @@ module Enkaidu
       private def render_session_event(chat_ev, text_count)
         case chat_ev["type"]
         when "text"
-          renderer.llm_text_block(chat_ev["content"].as_s)
+          renderer.llm_text_block(chat_ev["content"].as_s, reasoning: false)
+          text_count += 1
+        when "reasoning"
+          renderer.llm_text_block(chat_ev["content"].as_s, reasoning: true)
           text_count += 1
         when "tool_call"
           text_count = 0

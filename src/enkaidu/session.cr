@@ -144,14 +144,18 @@ module Enkaidu
 
     # Process the given event and yield tool call if any
     private def process_event(r, &)
-      case r["type"]
+      case type = r["type"]
       when "tool_call"
         yield r["content"] # tool call
         renderer.llm_tool_call(
           name: r["content"].dig("function", "name").as_s,
           args: r["content"].dig("function", "arguments"))
-      when "text"
-        renderer.llm_text(r["content"].as_s)
+      when "text", "reasoning"
+        if streaming?
+          renderer.llm_text(r["content"].as_s, reasoning: type == "reasoning")
+        else
+          renderer.llm_text_block(r["content"].as_s, reasoning: type == "reasoning")
+        end
       when .starts_with? "error"
         renderer.llm_error(r["content"])
       end
