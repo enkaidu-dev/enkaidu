@@ -103,7 +103,7 @@ module LLM::OpenAI
     private def convert_for_asst(content : MCP::Content) : Message::Response
       case content
       when MCP::Content::Text
-        Message::Response.new(content.text)
+        Message::Response.new(content: content.text, reasoning: nil)
       else
         raise UnexpectedMCPPrompt.new("Unexpected MCP prompt \"assistant\" message content: #{content.to_json}")
       end

@@ -153,10 +153,27 @@ module LLM::OpenAI
         STDERR.puts "~~~ #{data}" if TRACE
         yield({type: "error/server", content: data})
       else
+        content = nil
+        reasoning = nil
+        tool_calls = [] of JSON::Any
+        usage = nil
         process_data(data) do |msg|
+          case msg["type"]
+          when "text"
+            content = msg["content"].to_s
+          when "reasoning"
+            reasoning = msg["content"].to_s
+          when "tool_call"
+            tool_calls << msg["content"]
+          when "usage"
+            usage = Usage.from_json(msg["content"].to_json)
+          end
           yield msg
         end
-        append_message prepare_message_from(data)
+        msg = Message::Response.new(
+          content: content, reasoning: reasoning, tool_calls: tool_calls)
+        msg.usage = usage if usage
+        append_message(msg)
       end
     end
 
@@ -214,44 +231,50 @@ module LLM::OpenAI
     private def prepare_message_from_streamed_data(stream_io, &)
       tool_calls = [] of JSON::Any
       usage = nil
-      content = String.build do |text_io|
-        recent_tool_call = nil
-        stream_io.each_line do |line|
-          next if line.empty?
+      content = ""
+      reasoning = String.build do |think_io|
+        content = String.build do |text_io|
+          recent_tool_call = nil
+          stream_io.each_line do |line|
+            next if line.empty?
 
-          if line.ends_with? "[DONE]"
-            yield({type: "done", content: JSON::Any.new(nil)})
-          else
-            STDERR.puts "*** #{line}" if TRACE
-            data = JSON.parse(line.lchop("data: "))
-            process_data(data, from_stream: true) do |msg|
-              # gather up the stream chunks
-              case msg["type"]
-              when "text"
-                text_io << msg["content"]
-                yield msg
-              when "tool_call"
-                yield(wrap_up_tool_call(recent_tool_call, tool_calls)) if recent_tool_call
-                # and start a new one
-                recent_tool_call = extract_tool_call_from_message(msg)
-              when "tool_call_merge"
-                merge_with_recent_tool_call(msg, recent_tool_call) if recent_tool_call
-              when "finish_reason"
-                if recent_tool_call
-                  yield wrap_up_tool_call(recent_tool_call, tool_calls)
-                  recent_tool_call = nil
+            if line.ends_with? "[DONE]"
+              yield({type: "done", content: JSON::Any.new(nil)})
+            else
+              STDERR.puts "*** #{line}" if TRACE
+              data = JSON.parse(line.lchop("data: "))
+              process_data(data, from_stream: true) do |msg|
+                # gather up the stream chunks
+                case msg["type"]
+                when "text"
+                  text_io << msg["content"]
+                  yield msg
+                when "reasoning"
+                  think_io << msg["content"]
+                  yield msg
+                when "tool_call"
+                  yield(wrap_up_tool_call(recent_tool_call, tool_calls)) if recent_tool_call
+                  # and start a new one
+                  recent_tool_call = extract_tool_call_from_message(msg)
+                when "tool_call_merge"
+                  merge_with_recent_tool_call(msg, recent_tool_call) if recent_tool_call
+                when "finish_reason"
+                  if recent_tool_call
+                    yield wrap_up_tool_call(recent_tool_call, tool_calls)
+                    recent_tool_call = nil
+                  end
+                when "usage"
+                  usage = Usage.from_json(msg["content"].to_json)
+                else
+                  yield msg
                 end
-              when "usage"
-                usage = Usage.from_json(msg["content"].to_json)
-              else
-                yield msg
               end
             end
           end
         end
       end
-
-      msg = Message::Response.new(content: content, tool_calls: tool_calls)
+      msg = Message::Response.new(
+        content: content, reasoning: reasoning, tool_calls: tool_calls)
       msg.usage = usage if usage
       msg
     end
@@ -269,6 +292,12 @@ module LLM::OpenAI
       end
     end
 
+    private def process_reasoning(text, &) : Nil
+      if text && text.raw && text.raw != "" # in case property exists with null value
+        yield({type: "reasoning", content: text})
+      end
+    end
+
     private def process_tool_calls(tool_calls, &) : Nil
       tool_calls.as_a.each do |call|
         if call.dig?("function", "name") # in case function block is a dud
@@ -280,18 +309,30 @@ module LLM::OpenAI
       end
     end
 
+    # ameba:disable Metrics/CyclomaticComplexity: It's too messy if I split this up more.
     private def process_data(data : JSON::Any, from_stream = false, &) : Nil
       yield({type: "debug/data", content: data}) if debug?
 
       selector = from_stream ? "delta" : "message"
 
-      # check for text content
-      content = data.dig?("choices", 0, selector, "content")
-      process_content(content) { |msg| yield msg }
+      if data_selector = data.dig?("choices", 0, selector)
+        # check for reasoning content first
+        # - some models use `reasoning` property
+        # - some models use `reasoning_content` property
+        if content = data_selector["reasoning"]? ||
+                     data_selector["reasoning_content"]? ||
+                     data_selector["thinking"]?
+          process_reasoning(content) { |msg| yield msg }
+        end
 
-      # check for tool calling
-      if tool_calls = data.dig?("choices", 0, selector, "tool_calls")
-        process_tool_calls(tool_calls) { |msg| yield msg }
+        # check for text content
+        content = data_selector["content"]?
+        process_content(content) { |msg| yield msg }
+
+        # check for tool calling
+        if tool_calls = data_selector["tool_calls"]?
+          process_tool_calls(tool_calls) { |msg| yield msg }
+        end
       end
 
       # check for usage chunk

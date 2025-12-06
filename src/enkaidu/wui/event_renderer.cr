@@ -98,16 +98,16 @@ module Enkaidu::WUI
       warning_with("ERROR:\n#{err.to_json}")
     end
 
-    def llm_text(text)
+    def llm_text(text, reasoning : Bool)
       if streaming?
-        post_event Render::LLMTextFragment.new(text)
+        post_event Render::LLMTextFragment.new(text, reasoning: reasoning)
       else
-        llm_text_block(text)
+        llm_text_block(text, reasoning: reasoning)
       end
     end
 
-    def llm_text_block(text)
-      post_event Render::LLMText.new(text)
+    def llm_text_block(text, reasoning : Bool)
+      post_event Render::LLMText.new(text, reasoning: reasoning)
     end
 
     def llm_image_url(url)

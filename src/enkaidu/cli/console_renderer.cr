@@ -112,16 +112,19 @@ module Enkaidu::CLI
       warning_with("ERROR:\n#{err.to_json}")
     end
 
-    def llm_text(text)
+    def llm_text(text, reasoning : Bool)
       if streaming?
+        text = text.colorize(:dark_gray).italic if reasoning
         print text
       else
-        puts Markd.to_term(text)
+        llm_text_block(text, reasoning)
       end
     end
 
-    def llm_text_block(text)
+    def llm_text_block(text, reasoning : Bool)
+      puts "┌─ ─ ─ ─<#{"reasoning".colorize(:dark_gray).italic}>─ ─ ─ ─ ─ ─ " if reasoning
       puts Markd.to_term(text)
+      puts "└─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ " if reasoning
       puts
     end
 

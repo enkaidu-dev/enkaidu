@@ -6,6 +6,9 @@ module LLM::OpenAI
   class Message::Response < Message
     property content : String?
 
+    @[JSON::Field(ignore_serialize: ((reasoning = @reasoning).nil? || reasoning.empty?))]
+    property reasoning : String?
+
     @[JSON::Field(ignore_serialize: ((toolcalls = @tool_calls).nil? || toolcalls.empty?))]
     property tool_calls : Array(JSON::Any)?
 
@@ -15,12 +18,15 @@ module LLM::OpenAI
     @[JSON::Field(ignore: true)]
     property usage : Usage? = nil
 
-    def initialize(@content, @tool_calls = nil)
+    def initialize(@content, @reasoning, @tool_calls = nil)
       @role = "assistant"
     end
 
     # Emit this message as one or more `ChatEvent` objects
     def emit(& : ChatEvent ->) : Nil
+      if text = reasoning
+        yield({type: "reasoning", content: JSON::Any.new(text)})
+      end
       if text = content
         yield({type: "text", content: JSON::Any.new(text)})
       end
