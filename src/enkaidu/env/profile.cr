@@ -136,9 +136,13 @@ module Enkaidu::Env
       macros
     end
 
+    YAML_EXTS = [".yaml", ".yml"]
+
     private def each_yaml_file_for(scope, &)
       if dir = profile_path
         path = Path.new(dir, scope)
+        # Look for and look inside a folder with the name of the scope
+        # E.g. `macros/` or `prompts/`
         if Dir.exists?(path)
           # Sort the file names to ensure override order for entries with
           # the same name is deterministic.
@@ -148,6 +152,17 @@ module Enkaidu::Env
               yield file_path if File.file?(file_path)
             end
           end
+        end
+        # Look for a YAML file with the name of the scope
+        # E.g. `macros.yaml` or `prompts.yml`
+        found = [] of Path
+        YAML_EXTS.each do |suffix|
+          path = Path.new(dir, "#{scope}#{suffix}")
+          found << path if File.exists?(path)
+        end
+        error_and_exit_with("FATAL: Only one of these is allowed: #{found}") if found.size > 1
+        if path = found.first?
+          yield path
         end
       end
     end

@@ -383,6 +383,13 @@ A "profile" is defined by setting up `.enkaidu/` in the current directory. Enkai
 5. `macros/` folder inside which Enkaidu will find any file that has `.yaml|yml` extension and attempts to load macro definitions, defined the same way as `macros:` in the config file.
     - Macros in the config file will override those with the same name defined in the profile.
 
+Prompts and macros can also be defined in a single file without using the scoped folders.
+- `prompts.yaml|yml`
+- `system_prompts.yaml|yml`
+- `macros.yaml|yml`
+
+If these files and files within folders exist, the folders are processed first, ensuring that the contents of the files supercede any of the same name defined in the files in the folders.
+
 > MORE TO COME ... the idea is that profiles can be defined in their own repos and then cloned into the working folder, or includes as git submodules as part of the repo.
 
 ### System Properties
