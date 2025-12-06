@@ -309,6 +309,7 @@ module LLM::OpenAI
       end
     end
 
+    # ameba:disable Metrics/CyclomaticComplexity: It's too messy if I split this up more.
     private def process_data(data : JSON::Any, from_stream = false, &) : Nil
       yield({type: "debug/data", content: data}) if debug?
 
