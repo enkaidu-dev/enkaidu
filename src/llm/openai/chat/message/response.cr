@@ -24,6 +24,9 @@ module LLM::OpenAI
 
     # Emit this message as one or more `ChatEvent` objects
     def emit(& : ChatEvent ->) : Nil
+      if text = reasoning
+        yield({type: "reasoning", content: JSON::Any.new(text)})
+      end
       if text = content
         yield({type: "text", content: JSON::Any.new(text)})
       end
