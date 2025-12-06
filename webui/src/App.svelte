@@ -104,6 +104,11 @@
             }
             break;
           case "llm_text":
+            if (msg.reasoning) {
+              session.add_event({ type: "llm_think", content: msg.content });
+              break;
+            }
+            // else, check for <think> just in case
             let content = msg.content.trim();
             let think_ix = content.indexOf("</think>");
             // Split think block if present
@@ -119,6 +124,11 @@
             }
             break;
           case "llm_text_fragment":
+            if (msg.reasoning) {
+              session.add_event({ type: "llm_think", content: msg.fragment });
+              break;
+            }
+            // else, check for <think> just in case
             let fragment = msg.fragment.trim();
             if (fragment == "<think>") text_thinking = true;
             // if (fragment.length > 0 || msg.fragment.includes("\n")) {
