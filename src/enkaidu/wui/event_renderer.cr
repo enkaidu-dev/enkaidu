@@ -135,6 +135,8 @@ module Enkaidu::WUI
     end
 
     def mcp_prompt_ask_input(prompt : MCPPrompt) : Hash(String, String)
+      return {} of String => String unless (args = prompt.arguments) && args.size.positive?
+
       input_id = Random::Secure.hex(16)
       input_channel = InputsChannel.new
       pending_inputs[input_id] = input_channel
@@ -148,6 +150,8 @@ module Enkaidu::WUI
     end
 
     def user_prompt_ask_input(prompt : TemplatePrompt) : Hash(String, String)
+      return {} of String => String unless (args = prompt.arguments) && args.size.positive?
+
       input_id = Random::Secure.hex(16)
       input_channel = InputsChannel.new
       pending_inputs[input_id] = input_channel
