@@ -13,19 +13,30 @@ module Tools::ShellAccess
 
     UNSAFE_STRINGS = ["..", "|", "<", ">", ";", "&"]
 
+    @@allowed : Array(String)?
+    @@approved : Array(String)?
+
+    # Allowed to execute, includes the approved one.
     def self.allowed_executables : Array(String)
-      ENV.fetch("ENKAIDU_ALLOWED_EXECUTABLES", "ls cat grep whoami file wc find").split(" ")
+      @@allowed ||= ENV.fetch("ENKAIDU_ALLOWED_EXECUTABLES", "ls cat grep whoami file wc find").split(" ") |
+                    ShellCommandTool.approved_executables
+    end
+
+    # The ones approved to execute without confirmation
+    def self.approved_executables : Array(String)
+      @@approved ||= ENV.fetch("ENKAIDU_APPROVED_EXECUTABLES", "").split(" ")
     end
 
     name "shell_command"
 
     # Provide a description for the tool
-    description "Executes one of the allowed shell commands (
-    #{ShellCommandTool.allowed_executables.join(", ")} within the current project's root directory and
-    returns the shell command's output."
+    description "Executes one of the allowed shell commands " \
+                "(#{ShellCommandTool.allowed_executables.join(", ")}) within the " \
+                "current project's root directory and returns the shell command's output."
 
     # Define the acceptable parameter using the `param` method
-    param "command", type: Param::Type::Str, description: "The shell command to execute.", required: true
+    param "command", type: Param::Type::Str,
+      description: "The shell command to execute.", required: true
 
     # Replace `runner` macro to create with self
     def new_runner : Runner
@@ -74,7 +85,11 @@ module Tools::ShellAccess
       end
 
       def requires_confirmation?(command)
-        true
+        if (name = command.split(' ', 2).first) && ShellCommandTool.approved_executables.includes?(name)
+          false
+        else
+          true
+        end
       end
 
       def user_confirms?(command)
