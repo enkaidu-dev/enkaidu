@@ -90,7 +90,9 @@ module Enkaidu::CLI
           case q = q.strip
           when .starts_with?("!")
             if mac = session.find_macro_by_name?(q[1..])
-              macro_query_queue.concat(mac.queries)
+              # Expand the macro at the top of the queue, where
+              # next query awaits; essentially inserting the macro
+              macro_query_queue.insert_all(0, mac.queries)
             else
               renderer.warning_with("Unknown macro: #{q}")
             end
