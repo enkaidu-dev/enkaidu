@@ -43,7 +43,7 @@ jobs:
         npm i
         npm run build
         cd ..
-        
+
     # ---- Build releases on all platforms
 
     # Non-Windows
@@ -69,10 +69,15 @@ jobs:
       env:
         SHARDS_BIN_PATH: "bin/release"
       run: |
+        echo $Env:SHARDS_BIN_PATH
+        echo "Current Folder ---------"
+        Get-ChildItem
+        echo "Bin path ----------"
+        Get-ChildItem -Path "bin\release"
         shards build --release
 
     - name: Upload release bundle artifact
       uses: actions/upload-artifact@v4
       with:
         name: enkaidu-${{ matrix.os }}
-        path: bin/release/enkaidu
+        path: bin/release/enkaidu.exe
