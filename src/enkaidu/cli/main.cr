@@ -37,7 +37,7 @@ module Enkaidu::CLI
 
       @session_manager = SessionManager.new(Session.new(ui, opts: opts))
       @reader = CLI::QueryReader.new(
-        input_history_file: opts.config.try &.session.try &.input_history_file)
+        input_history_file: opts.config.session.try &.input_history_file)
       @commander = Slash::Commander.new(session_manager)
 
       return unless session.streaming?

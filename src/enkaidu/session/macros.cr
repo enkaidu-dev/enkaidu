@@ -4,13 +4,13 @@ module Enkaidu
       # Locate a macro by name, prioritizing config macros with the same name over
       # profile ones.
       def find_macro_by_name?(name) : Config::Macro?
-        ((macros = opts.config.try(&.macros)) && macros[name]?) || opts.profile.macros[name]?
+        ((macros = opts.config.macros) && macros[name]?) || opts.profile.macros[name]?
       end
 
       # Traverse macros, prioritizing config macros with the same name over
       # profile ones.
       private def each_macro(&)
-        if config_macros = opts.config.try(&.macros)
+        if config_macros = opts.config.macros
           config_macros.each do |name, mac|
             yield name, mac, "Config"
           end
