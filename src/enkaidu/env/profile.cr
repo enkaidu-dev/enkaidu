@@ -8,21 +8,20 @@ module Enkaidu::Env
   HOME_DIR = Path.home
   # Current directory from which Enkaidu was run
   CURRENT_DIR = Path.new(Dir.current)
-  # Supported default config file names
-  CONFIG_FILE_NAMES = ["enkaidu.yml", "enkaidu.yaml"]
 
   alias VarValue = String | Array(String) | Hash(String, String | Array(String))
   alias Variables = Hash(String, VarValue)
 
   class Profile
-    VAR_FILE_NAMES = ["variables.yml", "variables.yaml"]
+    CONFIG_FILE_NAME = "config"
+    VAR_FILE_NAMES   = ["variables.yml", "variables.yaml"]
 
     # The `SessionRenderer` for this environment
     getter renderer : SessionRenderer
     # The profile DOT_ENKAIDU path if one exists
     getter profile_path : Path?
-    # Loaded configuration, if any found
-    getter config : Config? = nil
+    # Loaded profile configuration, if any found
+    getter config : ProfileConfig? = nil
     # Path to loaded configuration, if any found
     getter config_path : Path? = nil
     # Hash of Prompts loaded from `prompts/` folder in the profile
@@ -37,9 +36,9 @@ module Enkaidu::Env
 
     # Create a profile using the given base directory where we will look for
     # a DOT_ENKAIDU folder
-    def initialize(base_path, @renderer, opt_config_file_path : Path?)
+    def initialize(base_path, @renderer)
       @profile_path = locate_profile_path(base_path)
-      @config = load_config(opt_config_file_path)
+      @config = load_profile_config
       @prompts = load_prompts
       @system_prompts = load_system_prompts
       @macros = load_macros
@@ -66,44 +65,31 @@ module Enkaidu::Env
     end
 
     # Read and parse config file, or fail with exceptions
-    private def parse_config_file(file) : Config
+    private def parse_config_file(file) : ProfileConfig
       text = File.read(file)
-      config = Config.parse(text, file.basename)
-      renderer.info_with "INFO: Reading config file: ./#{file.relative_to?(CURRENT_DIR)}"
+      config = ProfileConfig.from_yaml(text)
+      renderer.info_with "INFO: Reading profile config file: ./#{file.relative_to?(CURRENT_DIR)}"
       @config_path = file
       config
     end
 
     # Find and load config file, starting with the specific path and then the current one and then the profile directory
-    private def load_config(opt_config_file_path) : Config?
-      file = opt_config_file_path ||
-             find_config_file(CURRENT_DIR) ||
-             ((dir = profile_path) && find_config_file(dir))
-      return nil unless file
-      parse_config_file(file)
-    rescue IO::Error
-      # If we fail to find default config file, it's OK.
-      if opt_config_file_path
-        # Only a problem if user specified one
-        error_and_exit_with "FATAL: Failed to open config file: #{opt_config_file_path}"
+    private def load_profile_config : ProfileConfig?
+      if file = (dir = profile_path) &&
+                Config.find_config_file(dir, base_name = CONFIG_FILE_NAME)
+        begin
+          parse_config_file(file)
+        rescue IO::Error
+          error_and_exit_with "FATAL: Failed to open profile config file: #{file.relative_to?(CURRENT_DIR)}"
+        rescue ex : TooManyDefaultConfigFiles | UnknownConfigFileFormat
+          error_and_exit_with "FATAL: #{ex}"
+        rescue ex : ConfigParseError
+          # Config parsing errors are always bad
+          error_and_exit_with "FATAL: Error parsing profile config file: #{file.relative_to?(CURRENT_DIR)}\n#{ex}"
+        end
+      else
+        nil
       end
-    rescue ex : Config::TooManyDefaultFiles | Config::UnknownFileFormat
-      error_and_exit_with "FATAL: #{ex}"
-    rescue ex : Config::ParseError
-      # Config parsing errors are always bad
-      error_and_exit_with "FATAL: Error parsing config file: #{file}\n#{ex}"
-    end
-
-    # Given a path, look for the supported config file name/extension variants
-    private def find_config_file(path : Path) : Path?
-      found = [] of Path
-      CONFIG_FILE_NAMES.each do |file_name|
-        file_path = Path.new(path, file_name)
-        found << file_path if File.exists?(file_path)
-      end
-
-      raise Config::TooManyDefaultFiles.new(found) if found.size > 1
-      found.first?
     end
 
     # Load YAML files in the `prompts/` folder as `Config::Prompt`
