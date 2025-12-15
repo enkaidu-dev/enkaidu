@@ -76,7 +76,7 @@ module Enkaidu::Env
     # Find and load config file, starting with the specific path and then the current one and then the profile directory
     private def load_profile_config : ProfileConfig?
       if file = (dir = profile_path) &&
-                Config.find_config_file(dir, base_name = CONFIG_FILE_NAME)
+                Config.find_config_file(dir, base_name: CONFIG_FILE_NAME)
         begin
           parse_config_file(file)
         rescue IO::Error
