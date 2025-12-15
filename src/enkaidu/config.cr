@@ -26,10 +26,10 @@ module Enkaidu
   class ProfileConfig < ConfigSerializable
     # Autoload session settings for Enkaidu.
     class AutoLoad < ConfigSerializable
-      getter_with_presence mcp_servers : Array(String)?
-      getter_with_presence toolsets : Array(String | NamedTuple(name: String, select: Array(String)))?
-      getter_with_presence system_prompt : String?
-      getter_with_presence system_prompt_name : String?
+      getter_with_presence mcp_servers, Array(String)?
+      getter_with_presence toolsets, Array(String | NamedTuple(name: String, select: Array(String)))?
+      getter_with_presence system_prompt, String?
+      getter_with_presence system_prompt_name, String?
 
       protected def merge(from : AutoLoad)
         @mcp_servers = from.mcp_servers unless mcp_servers_present
@@ -39,7 +39,7 @@ module Enkaidu
       end
     end
 
-    getter_with_presence auto_load : AutoLoad?
+    getter_with_presence auto_load, AutoLoad?
   end
 
   # Application level configuration class facilitates settings for the Enkaidu application.
@@ -103,14 +103,14 @@ module Enkaidu
       getter template : String
     end
 
-    getter_with_presence debug : Debug?
-    getter_with_presence session : Session?
-    getter_with_presence llms : Hash(String, LLM)?
+    getter debug : Debug?
+    getter session : Session?
+    getter llms : Hash(String, LLM)?
 
-    getter_with_presence mcp_servers : Hash(String, MCPServer)?
-    getter_with_presence system_prompts : Hash(String, SystemPrompt)?
-    getter_with_presence prompts : Hash(String, Prompt)?
-    getter_with_presence macros : Hash(String, Macro)?
+    getter mcp_servers : Hash(String, MCPServer)?
+    getter system_prompts : Hash(String, SystemPrompt)?
+    getter prompts : Hash(String, Prompt)?
+    getter macros : Hash(String, Macro)?
 
     # ---------------------- end of content definition
 
