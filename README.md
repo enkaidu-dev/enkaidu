@@ -37,7 +37,7 @@ Additionally, by integrating with MCP servers _of your choice_, Enkaidu can help
 
 ## Install
 
-> COMING SOON: pre-built binaries
+> COMING SOON
 
 See [DEVELOPMENT](./DEVELOPMENT.md) for how to build and run `enkaidu`.
 
@@ -264,24 +264,39 @@ Below is an overview of the configuration file, detailing the purpose and option
 
 ### Structure of the Configuration File
 
+> **BREAKING CHANGES**
+> - `global` section has been removed
+> - `debug` section added, with `trace_mcp` property
+> - `session` section modified
+>   - removed `auto_load`, `system_prompt_name`, `system_prompt`, `recording_file` properties
+>   - added `streaming`
+> - `auto_load` section is at the top level, and
+>   - now includes `system_prompt_name`, `system_prompt` properties
+>   - retains `toolsets` and `mcp_servers`
+
 The configuration file is structured in several key sections. Here’s an overview of each section and its properties:
 
-#### Global Settings
-- **global**: Configurations applicable to the whole application.
+#### Debug Settings
+- **debug**: Debug configuration applicable to the whole application.
   - **trace_mcp**: Enables tracing of MCP communication, useful for debugging purposes.
-  - **streaming**: Indicates whether streaming responses are supported. When disabled (default) the responses are formatted but take time to appear all at once.
+  - **recording_file** _(optional)_: Path to a file where session recordings are saved.
 
 #### Session Settings
 - **session**: Configurations specific to a user session.
   - **provider_type** _(optional)_: Specifies the type of LLM provider to be used, such as `openai` or `ollama`. You never need this _if_ you define `llms`, in which case you only need **model** property.
   - **model** _(optional)_: Defines the model used for the session, e.g., `gpt4`. When defining `llms` in the configuration, this can be the name of a model and there is no need for the above **provide_type** property.
-  - **recording_file** _(optional)_: Path to a file where session recordings are saved.
+  - **streaming**: Indicates whether streaming responses are supported. When disabled (default) the responses are formatted but take time to appear all at once.
   - **input_history_file** _(optional)_: Path to a file for saving input history.
+
+#### Autoload Settings
+
+> **NOTE**: The `auto_load:` section is supported by the profile config file where some or all can be set to defaults for the profile
+
+- **auto_load**: Contains settings for automatically loading specific resources.
   - ~~_system_prompt_~~ _(optional)_: Custom system prompt for the session - **deprecated**.
   - **system_prompt_name** _(optional)_: Specify the session's system prompt by using the name of the system prompt template.
-  - **auto_load** _(optional)_: Contains settings for automatically loading specific resources.
-    - **mcp_servers** _(optional)_: List of MCP servers to automatically connect to on startup.
-    - **toolsets** _(optional)_: List of toolsets to automatically load, where each toolset can be specified by name to load all tools, or as a map of `name:` and `select:` to specify the tools to load from the named toolset.
+  - **mcp_servers** _(optional)_: List of MCP servers to automatically connect to on startup.
+  - **toolsets** _(optional)_: List of toolsets to automatically load, where each toolset can be specified by name to load all tools, or as a map of `name:` and `select:` to specify the tools to load from the named toolset.
 
 #### LLM Providers
 - **llms**: Defines the configuration for different LLM providers as a named map of LLM definitions where _each_ can have the following properties.
@@ -372,7 +387,7 @@ mcp_servers:
 
 A "profile" is defined by setting up `.enkaidu/` in the current directory. Enkaidu will look for this folder from which it loads the following:
 
-1. `enkaidu.yaml|yml` config file, if none exists in the current folder or somewhere else explicitly specified
+1. `config.yaml|yml` config file with defaults for `auto_load:` block (see configuration section above) when it, or its properties, are not specified in the app configuration.
 2. `variables.yaml|yml` file that can be used to define variables accessible by prompt templates under `var.`
     - Values can be strings, arrays of strings
     - Values can also be hash maps, but only one level deep
