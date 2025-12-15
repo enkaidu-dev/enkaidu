@@ -359,16 +359,15 @@ macros:
 Here's an example of a typical `enkaidu.yaml` configuration:
 
 ```yaml
-global:
-  streaming: false
 session:
+  streaming: false
   model: gpt4
-  auto_load:
-    toolsets:
-      - DateAndTime
-      - name: FileManagement
-        select:
-          - list_files
+auto_load:
+  toolsets:
+    - DateAndTime
+    - name: FileManagement
+      select:
+        - list_files
 llms:
   my_openai:
     provider: openai
