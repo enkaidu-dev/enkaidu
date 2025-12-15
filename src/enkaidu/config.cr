@@ -1,8 +1,51 @@
 require "./config_serializable"
 
 module Enkaidu
-  # Configuration class facilitates settings for the Enkaidu application.
-  class Config < ConfigSerializable
+  # Config parsing error
+  alias ConfigParseError = YAML::ParseException
+
+  CONFIG_EXTENSIONS = [".yaml", ".yml"]
+  CONFIG_FORMATS    = ["YAML"]
+
+  # When more than one default file is found, because we support
+  # more than one extension for YAML
+  class TooManyDefaultConfigFiles < Exception
+    def initialize(files)
+      super("Use one default config file format; only one allowed! Found: #{files.join(", ")}")
+    end
+  end
+
+  # Not an expected config file (by extension)
+  class UnknownConfigFileFormat < Exception
+    def initialize(file_name)
+      super("Unknown config file format, only {#{CONFIG_EXTENSIONS.join('|')}} supported! Cannot use: #{file_name}")
+    end
+  end
+
+  # Profile level configuration facilitates minimal settings that can be specified in the profile folder
+  class ProfileConfig < ConfigSerializable
+    # Autoload session settings for Enkaidu.
+    class AutoLoad < ConfigSerializable
+      getter_with_presence mcp_servers : Array(String)?
+      getter_with_presence toolsets : Array(String | NamedTuple(name: String, select: Array(String)))?
+      getter_with_presence system_prompt : String?
+      getter_with_presence system_prompt_name : String?
+
+      protected def merge(from : AutoLoad)
+        @mcp_servers = from.mcp_servers unless mcp_servers_present
+        @toolsets = from.toolsets unless toolsets_present
+        @system_prompt = from.system_prompt unless system_prompt_present
+        @system_prompt_name = from.system_prompt_name unless system_prompt_name_present
+      end
+    end
+
+    getter_with_presence auto_load : AutoLoad?
+  end
+
+  # Application level configuration class facilitates settings for the Enkaidu application.
+  class Config < ProfileConfig
+    DEFAULT_NAME = "enkaidu"
+
     # ---------------------- start of content definition
 
     # Represents a Language Model configuration within the Enkaidu application.
@@ -20,34 +63,24 @@ module Enkaidu
       getter env = {} of String => String
     end
 
+    # Debug configuration settings for Enkaidu.
+    class Debug < ConfigSerializable
+      getter? trace_mcp = false
+    end
+
+    # Session configuration settings for Enkaidu.
+    class Session < ConfigSerializable
+      getter? streaming = false
+      getter provider_type : String?
+      getter model : String?
+      getter input_history_file : String?
+    end
+
     # Configuration for the MCP Server.
     class MCPServer < ConfigSerializable
       getter url : String
       getter transport : String = "auto"
       getter bearer_auth_token : String?
-    end
-
-    # Global configuration settings for Enkaidu.
-    class Global < ConfigSerializable
-      getter? trace_mcp = false
-      getter? streaming = false
-    end
-
-    # Session configuration settings for Enkaidu.
-    class Session < ConfigSerializable
-      # Configuration for auto-loading settings within a Session.
-      class AutoLoad < ConfigSerializable
-        getter mcp_servers : Array(String)?
-        getter toolsets : Array(String | NamedTuple(name: String, select: Array(String)))?
-      end
-
-      getter provider_type : String?
-      getter model : String?
-      getter recording_file : String?
-      getter input_history_file : String?
-      getter auto_load : AutoLoad?
-      getter system_prompt : String?
-      getter system_prompt_name : String?
     end
 
     class SystemPrompt < ConfigSerializable
@@ -70,15 +103,35 @@ module Enkaidu
       getter template : String
     end
 
-    getter global : Global?
-    getter session : Session?
-    getter llms : Hash(String, LLM)?
-    getter mcp_servers : Hash(String, MCPServer)?
-    getter system_prompts : Hash(String, SystemPrompt)?
-    getter prompts : Hash(String, Prompt)?
-    getter macros : Hash(String, Macro)?
+    getter_with_presence debug : Debug?
+    getter_with_presence session : Session?
+    getter_with_presence llms : Hash(String, LLM)?
+
+    getter_with_presence mcp_servers : Hash(String, MCPServer)?
+    getter_with_presence system_prompts : Hash(String, SystemPrompt)?
+    getter_with_presence prompts : Hash(String, Prompt)?
+    getter_with_presence macros : Hash(String, Macro)?
 
     # ---------------------- end of content definition
+
+    # Merge in a profile configuration, using settings from the profile
+    # configuration when none have been specific in the app configuration
+    def merge_profile_config(profile_config : ProfileConfig, renderer)
+      # Profile config has auto_load only. So
+      # use those if none in the app config
+      if profile_auto_load = profile_config.auto_load
+        if my_auto_load = auto_load
+          # not nil
+          my_auto_load.merge(profile_auto_load)
+        elsif auto_load_present
+          # nil set explicitly in app config
+          renderer.warning_with("WARN: Using `auto_load: nil` from app config, IGNORING `auto_load` in profile config.")
+        else
+          # no override, so use from profile
+          @auto_load = profile_auto_load
+        end
+      end
+    end
 
     # Look for a model by its unique name and, if one exists, return its
     # model's enclosing LLM
@@ -101,35 +154,16 @@ module Enkaidu
       nil
     end
 
-    # Config setup helpers and errors and so on
-
-    # Config parsing error
-    alias ParseError = YAML::ParseException
-
-    # When more than one default config file is found, because we support
-    # more than one extension for YAML
-    class TooManyDefaultFiles < Exception
-      def initialize(files)
-        super("Use one default config file format; only one allowed! Found: #{files.join(", ")}")
+    # Given a path, look for the supported config file name/extension variants
+    def self.find_config_file(path : Path, base_name = DEFAULT_NAME) : Path?
+      found = [] of Path
+      CONFIG_EXTENSIONS.each do |ext|
+        file_path = Path.new(path, "#{base_name}#{ext}")
+        found << file_path if File.exists?(file_path)
       end
-    end
 
-    # Not a YAML config file (by extension)
-    class UnknownFileFormat < Exception
-      def initialize(file_name)
-        super("Unknown config file format, only {#{Config::EXTENSIONS.join('|')}} supported! Cannot use: #{file_name}")
-      end
-    end
-
-    DEFAULT_NAME = "enkaidu"
-    EXTENSIONS   = [".yaml", ".yml"]
-    FORMATS      = ["YAML"]
-
-    # Parse a config file's contents, and include file name so we can check if
-    # it matches known format
-    def self.parse(text : String, file_name : String)
-      raise UnknownFileFormat.new(file_name) unless EXTENSIONS.any? { |ext| file_name.ends_with?(ext) }
-      from_yaml(text)
+      raise TooManyDefaultConfigFiles.new(found) if found.size > 1
+      found.first?
     end
   end
 end
