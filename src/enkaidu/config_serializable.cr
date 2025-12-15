@@ -8,6 +8,8 @@ module Enkaidu
   # with values of type `String`, `String?`, `Hash(String,String)` and `Array(String)`
   class ConfigSerializable
     include YAML::Serializable
+    include YAML::Serializable::Strict
+
     include JSON::Serializable
 
     private def gsub_with_env(value : String)
@@ -67,6 +69,27 @@ module Enkaidu
           @{{var}} = tmp_{{var}}
         {% end %}
       {% end %}
+      {% end %}
+    end
+
+    macro getter_with_presence(type_declaration)
+      {% if type_declaration.is_a?(TypeDeclaration) %}
+        # Extract name and declare non-serializable `<name>_present` member
+        {% presence_name = "#{type_declaration.var}_present".id %}
+        {% if @top_level.has_constant?("JSON") %}
+          @[JSON::Field(ignore: true)]
+        {% end %}
+        {% if @top_level.has_constant?("YAML") %}
+          @[YAML::Field(ignore: true)]
+        {% end %}
+        getter {{presence_name}} : Bool
+        # Now declare the getter for which we want to detect presence
+        {% if @top_level.has_constant?("YAML") %}
+          @[YAML::Field(presence: true)]
+        {% end %}
+        getter {{ type_declaration }}
+      {% else %}
+        {% raise "The following is not a type declaration: #{type_declaration}" %}
       {% end %}
     end
 
