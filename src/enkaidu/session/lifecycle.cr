@@ -52,11 +52,9 @@ module Enkaidu
         @chat = setup_chat(override_sys_prompt)
 
         # new chat BEFORE loading tools, MCP servers
-        if config = opts.config
-          auto_load_essentials(config)
-          unless override_sys_prompt
-            check_and_set_system_prompt(config)
-          end
+        auto_load_essentials(opts.config)
+        unless override_sys_prompt
+          check_and_set_system_prompt(opts.config)
         end
       end
 
@@ -80,7 +78,7 @@ module Enkaidu
       private def save_active_mcp_servers(io : IO) : Nil
         mcp_server_names = [] of String
         mcp_connections.each do |conn|
-          if name = opts.config.try &.find_mcp_server_by_url?(conn.uri.to_s)
+          if name = opts.config.find_mcp_server_by_url?(conn.uri.to_s)
             mcp_server_names << name
           else
             renderer.warning_with("WARNING: MCP server not in config cannot be saved with session: #{conn.uri}")

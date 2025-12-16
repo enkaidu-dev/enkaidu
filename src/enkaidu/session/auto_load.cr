@@ -13,7 +13,7 @@ module Enkaidu
       end
 
       private def auto_load_essentials(config)
-        if auto_load = config.session.try &.auto_load
+        if auto_load = config.auto_load
           if mcp_servers = config.mcp_servers
             if (mcp_server_names = auto_load.mcp_servers) && mcp_server_names.present?
               renderer.info_with("INFO: Auto-loading MCP servers: #{mcp_server_names.join(", ")}")
@@ -43,9 +43,9 @@ module Enkaidu
       end
 
       private def check_and_set_system_prompt(config)
-        if session = config.session
-          if name = session.system_prompt_name
-            if session.system_prompt
+        if autoload = config.auto_load
+          if name = autoload.system_prompt_name
+            if autoload.system_prompt
               renderer.warning_with("WARN: Deprecated `system_prompt` config property has priority over `system_prompt_name`")
             elsif sys_prompt = render_system_prompt(name)
               @chat.with_system_message(sys_prompt)

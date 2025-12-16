@@ -8,6 +8,8 @@ module Enkaidu
   # with values of type `String`, `String?`, `Hash(String,String)` and `Array(String)`
   class ConfigSerializable
     include YAML::Serializable
+    include YAML::Serializable::Strict
+
     include JSON::Serializable
 
     private def gsub_with_env(value : String)
@@ -68,6 +70,19 @@ module Enkaidu
         {% end %}
       {% end %}
       {% end %}
+    end
+
+    # This convenience macro intentionally doesn't use `TypeDeclaration` macro-level type node
+    # to work around an emaba bug: https://github.com/crystal-ameba/ameba/issues/447
+    macro getter_with_presence(name, type)
+      {% presence_name = "#{name}_present".id %}
+      {% if @top_level.has_constant?("JSON") %}  @[JSON::Field(ignore: true)]   {% end %}
+      {% if @top_level.has_constant?("YAML") %}  @[YAML::Field(ignore: true)]   {% end %}
+      getter {{presence_name}} : Bool
+
+      # Now declare the getter for which we want to detect presence
+      {% if @top_level.has_constant?("YAML") %}  @[YAML::Field(presence: true)]  {% end %}
+      getter {{ name }} : {{ type }}
     end
 
     # Support env var substitution for all instance vars with

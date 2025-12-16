@@ -124,7 +124,7 @@ module Enkaidu
 
     private def system_prompt
       from_env = ENV.fetch("ENKAIDU_SYSTEM_PROMPT", DEFAULT_SYSTEM_PROMPT)
-      return from_env unless from_config = opts.config.try(&.session).try(&.system_prompt)
+      return from_env unless from_config = opts.config.auto_load.try(&.system_prompt)
 
       renderer.info_with("INFO: Using system prompt from config file; #{from_config.size} characters")
       renderer.warning_with("WARN: The `system_prompt` property in config is deprecated. Use `system_prompt_name` instead.")
