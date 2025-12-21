@@ -10,8 +10,9 @@ module Tools::FileManagement
   class DeleteFileTool < BuiltInFunction
     name "delete_file"
 
-    description "Deletes a specified file by moving it to a '.deleted_files/' folder with a timestamp prepended to the filename. " \
-                "This allows for file recovery if deletion was accidental. The directory structure is preserved in the deleted_files folder."
+    description "Deletes a specified file by moving it to a '.deleted_files/' folder with a ms-resolution timestamp " \
+                "prepended to the filename. This allows for file recovery if deletion was accidental. The directory " \
+                "structure is preserved in the deleted_files folder."
 
     param "file_path", type: Param::Type::Str,
       description: "The path of the file to be deleted.", required: true
@@ -46,7 +47,7 @@ module Tools::FileManagement
         end
 
         # Generate timestamp and new filename
-        timestamp = Time.local.to_s("%Y%m%d_%H%M%S")
+        timestamp = Time.local.to_s("%Y%m%d_%H%M%S_%L")
         filename = File.basename(resolved_file_path)
 
         # Preserve directory structure in the deleted_files folder
