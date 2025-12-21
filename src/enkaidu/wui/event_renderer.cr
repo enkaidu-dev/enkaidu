@@ -48,6 +48,10 @@ module Enkaidu::WUI
       post_event Render::ErrorMessage.new(message, details: help.to_s, markdown: markdown)
     end
 
+    def time_elapsed(duration : Time::Span, label : String? = nil)
+      info_with("#{label}#{duration.total_seconds}s elapsed.")
+    end
+
     def user_query_text(query, via_macro = false)
       post_event Render::Query.new(Render::ContentType::Text, query, via_macro)
     end

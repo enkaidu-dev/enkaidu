@@ -50,6 +50,10 @@ module Enkaidu::CLI
       err_puts_text help, markdown
     end
 
+    def time_elapsed(duration : Time::Span, label : String? = nil)
+      puts "#{label}#{duration.total_seconds.format(decimal_places: 3, only_significant: true)}s elapsed.".colorize(:yellow)
+    end
+
     def user_query_text(query, via_macro = false)
       color = via_macro ? :magenta : :yellow
       prefix0 = "QUERY > ".colorize(color)
@@ -102,10 +106,11 @@ module Enkaidu::CLI
     LLM_MAX_TOOL_CALL_ARGS_LENGTH = 72
 
     def llm_tool_call(name, args)
+      puts if streaming?
       print "  CALL".colorize(:green)
       puts " #{name.colorize(:red)} " \
            "with #{trim_text(args.to_s, LLM_MAX_TOOL_CALL_ARGS_LENGTH).colorize(:red)}"
-      puts
+      puts unless streaming?
     end
 
     def llm_error(err)
@@ -122,9 +127,9 @@ module Enkaidu::CLI
     end
 
     def llm_text_block(text, reasoning : Bool)
-      puts "┌─ ─ ─ ─<#{"reasoning".colorize(:dark_gray).italic}>─ ─ ─ ─ ─ ─ " if reasoning
+      puts "╭╶╶╶╶╶╶╶╶╶╶<#{"reasoning".colorize(:dark_gray).italic}>╶╶╶╶╶╶╶╶╶╶╶" if reasoning
       puts Markd.to_term(text)
-      puts "└─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ " if reasoning
+      puts "╰╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶" if reasoning
       puts
     end
 
