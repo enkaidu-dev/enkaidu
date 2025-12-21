@@ -7,6 +7,7 @@ module Tools
       hold ListFilesTool
       hold CreateDirectoryTool
       hold RenameFileTool
+      hold DeleteFileTool
     end
     Tools.register(toolset)
   end

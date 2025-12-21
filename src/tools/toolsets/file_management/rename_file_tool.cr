@@ -8,12 +8,13 @@ module Tools::FileManagement
   class RenameFileTool < BuiltInFunction
     name "rename_file"
 
-    description "Renames a specified file to a new name within the current directory."
+    description "Renames a specified file to a new name within the current directory, including support for " \
+                "moving a file to a different path within the current directory."
 
     param "current_path", type: Param::Type::Str,
       description: "The current path of the file to be renamed.", required: true
     param "new_name", type: Param::Type::Str,
-      description: "The new name for the file.", required: true
+      description: "The new name / path for the file.", required: true
 
     runner Runner
 
