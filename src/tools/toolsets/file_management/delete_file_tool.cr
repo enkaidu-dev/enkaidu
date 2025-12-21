@@ -30,8 +30,13 @@ module Tools::FileManagement
         return error_response("Access to the specified path '#{file_path}' is not allowed.") unless within_current_directory?(resolved_file_path)
         return error_response("The specified file '#{file_path}' does not exist.") unless valid_file?(resolved_file_path)
 
-        # Create the deleted_files directory if it doesn't exist
+        # Prevent deletion of files from the .deleted_files folder
         deleted_dir = resolve_path(".deleted_files")
+        if resolved_file_path.starts_with?(deleted_dir)
+          return error_response("Cannot delete files from the `.deleted_files/` folder.")
+        end
+
+        # Create the deleted_files directory if it doesn't exist
         unless Dir.exists?(deleted_dir)
           begin
             Dir.mkdir(deleted_dir)
