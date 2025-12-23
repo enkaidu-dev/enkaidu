@@ -9,15 +9,15 @@ module Tools::TextEditing
   class ReplaceTextInTextFileTool < BuiltInFunction
     name "replace_text_in_text_file"
 
-    description "Replaces specified text in a text-based file with new text. " +
+    description "Searches for the specified text in a text-based file and replaces it with alternative text. " +
                 "Ensures the file is within the current directory and is a text file."
 
     param "file_path", type: Param::Type::Str,
       description: "The relative path to the file where you want to perform the replacement.", required: true
-    param "search_text", type: Param::Type::Str,
+    param "search", type: Param::Type::Str,
       description: "The text to search for in the file.", required: true
-    param "replacement_text", type: Param::Type::Str,
-      description: "The text to replace the search_text with in the file.", required: true
+    param "replace_with", type: Param::Type::Str,
+      description: "The text to use to replace the text we searched for in the file.", required: true
 
     runner Runner
 
@@ -26,9 +26,12 @@ module Tools::TextEditing
       include FileHelper
 
       def execute(args : JSON::Any) : String
-        file_path = args["file_path"]?.try &.as_s? || return error_response("The required file_path was not specified")
-        search_text = args["search_text"]?.try &.as_s? || return error_response("The required search_text was not specified")
-        replacement_text = args["replacement_text"]?.try &.as_s? || return error_response("The required replacement_text was not specified")
+        file_path = args["file_path"]?.try &.as_s? ||
+                    return error_response("The required file_path was not specified")
+        search_text = args["search"]?.try &.as_s? ||
+                      return error_response("The required search_text was not specified")
+        replacement_text = args["replace_with"]?.try &.as_s? ||
+                           return error_response("The required replacement_text was not specified")
 
         resolved_path = resolve_path(file_path)
 
@@ -36,8 +39,14 @@ module Tools::TextEditing
         return error_response("The specified file '#{file_path}' does not exist.") unless valid_file?(resolved_path)
 
         begin
+          changes = 0
           content = File.read(resolved_path)
-          new_content = content.gsub(search_text, replacement_text)
+          new_content = content.gsub(search_text) do
+            changes += 1 # Count changes so we can detect if nothing changed
+            replacement_text
+          end
+          raise RuntimeError.new("Unable to find search text in the file") if changes.zero?
+          # Changes made
           File.write(resolved_path, new_content)
           success_response(file_path, new_content)
         rescue e
