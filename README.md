@@ -2,7 +2,7 @@
 
 ![Enkaidu](./webui/public/favicon.png)
 
-Enkaidu is your _second-in-command(-line)_ for coding and creativity. Inspired by Enkidu, the loyal and dynamic companion from Mesopotamian mythology, Enkaidu embodies collaboration, adaptability, and a touch of chaos to spark innovation.
+[Enkaidu](https://enkaidu.dev) is your _second-in-command(-line)_ for coding and creativity. Inspired by Enkidu, the loyal and dynamic companion from Mesopotamian mythology, Enkaidu embodies collaboration, adaptability, and a touch of chaos to spark innovation.
 
 Out of the box, with the use of _your preferred_ AI large language models, Enkaidu is designed to assist you with writing & maintaining code (and other text-based content).
 
@@ -37,7 +37,20 @@ Additionally, by integrating with MCP servers _of your choice_, Enkaidu can help
 
 ## Install
 
+### Using Homebrew
+
+On macOS and Linux, using [`brew`](https://brew.sh/):
+
+```sh
+brew tap enkaidu-dev/tap
+brew install enkaidu
+```
+
+### Other ways and means
+
 > COMING SOON
+
+### From source
 
 See [DEVELOPMENT](./DEVELOPMENT.md) for how to build and run `enkaidu`.
 
@@ -55,9 +68,9 @@ If you have Ollama running, create a file `enkaidu.yaml` and copy in the followi
 ```yaml
 session:
   model: qwen3                # <---
-  auto_load:
-    toolsets:
-      - DateAndTime
+auto_load:
+  toolsets:
+    - DateAndTime
 llms:
   my_ollama:
     provider: ollama
@@ -80,9 +93,9 @@ If you have LMStudio running, create a file `enkaidu.yaml` and copy in the follo
 ```yaml
 session:
   model: qwen3                       # <---
-  auto_load:
-    toolsets:
-      - DateAndTime
+auto_load:
+  toolsets:
+    - DateAndTime
 llms:
   my_lmstudio:
     provider: openai
@@ -108,9 +121,9 @@ If you have an OpenAI Chat GPT account, create a file `enkaidu.yaml` and copy in
 ```yaml
 session:
   model: gpt4
-  auto_load:
-    toolsets:
-      - DateAndTime
+auto_load:
+  toolsets:
+    - DateAndTime
 llms:
   my_openai:
     provider: openai
