@@ -200,10 +200,14 @@ module Enkaidu
         config
       end
 
-      # Find and load config file, starting with the specific path and then the current one and then the profile directory
+      # Find and load config file,
+      # - starting with the specific path,
+      # - then the current directory, and
+      # - finally the $HOME directory.
       private def load_config : Config?
         if file = @options[:config_file]? ||
-                  Config.find_config_file(Env::CURRENT_DIR)
+                  Config.find_config_file(Env::CURRENT_DIR) ||
+                  Config.find_config_file(Env::HOME_DIR)
           parse_config_file(file)
         end
       rescue IO::Error
