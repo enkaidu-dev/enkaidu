@@ -4,7 +4,7 @@ module Enkaidu
   class About
     include JSON::Serializable
     getter app = "Enkaidu"
-    getter ver = VERSION
+    getter ver : String = VERSION
 
     protected def initialize; end
 
