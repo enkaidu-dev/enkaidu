@@ -8,6 +8,8 @@ Out of the box, with the use of _your preferred_ AI large language models, Enkai
 
 Additionally, by integrating with MCP servers _of your choice_, Enkaidu can help you do even more.
 
+> *HEADS UP!* Much of this is moving to the [documentation website](https://enkaidu-dev). The docs there are more likely to be correct. I'm slowly cleaning this up. Thanks for your understanding.
+
 <!-- TOC -->
 - [Install](#install)
 - [Get Started](#get-started)
@@ -180,7 +182,7 @@ Azure OpenAI needs many parameters to select the model to use, so you have to se
 
 Env var | Description
 -----|-----
-`AZURE_OPENAI_API_VER` | For example, `2024-02-15-preview`. Use the one suitable for your model.
+`AZURE_OPENAI_API_VER` | For example, `2024-08-01-preview`. Use the one suitable for your model.
 `AZURE_OPENAI_MODEL` | Defaults to `gpt-4o` if not specified.
 `AZURE_OPENAI_ENDPOINT` | For example, `https://X.openai.azure.com` for your deployment `X`. Just the bare endpoint only please!
 `AZURE_OPENAI_API_KEY` | The API key for your deployment
@@ -261,19 +263,28 @@ The above example will run a macro named `test`.
 
 ## Configuration
 
-Enkaidu utilizes a configuration file to store various settings for its behavior and interaction with Large Language Models (LLMs) and MCP servers. By default, this configuration is specified in a YAML file located at `./enkaidu.yaml` (or `.yml`). Customizing this file allows you to optimize Enkaidu for your environment and needs.
+Enkaidu will look for and load a configuration file for setting its behavior and interaction with Large Language Models (LLMs) and MCP servers. The config file is written in YAML and can be either `enkaidu.yml` or `enkaidu.yaml` (but not both.) Enkaidu looks for the config file as followS:
+
+1. If Enkaidu is launched with `--config=FILENAME` option, then it will attempt to load that file and fail if unable to do so.
+2. Then it will look for the config file in the current directory.
+3. Lastly it will look for the config in your home directory.
+
+This means you can keep a general purpose config in your home directory and project-specific ones in your project folders.
 
 ### Overview of Configuration Sections
 
 Below is an overview of the configuration file, detailing the purpose and optionality of each top-level section:
 
-- **global** _(optional)_: Controls application-wide settings, such as debugging and streaming capabilities.
+- **auto_load** _(optional)_: Specifies when and which tools, toolsets, system prompts to enable / load when starting Enkaidu.
 
 - **session** _(optional)_: Manages user session-specific configurations, including model selection and auto-loading preferences. Some properties within this section are optional.
 
 - **llms** _(optional)_: Specifies configurations related to Large Language Model providers, detailing which models to use and their respective settings.
 
 - **mcp_servers** _(optional)_: Details the configuration for MCP (Multiple Control Protocol) servers, enabling extended functionalities through server connections.
+
+- **debug** _(optional)_: Controls debug settings useful when trouble-shooting connectivity issues.
+
 
 ### Structure of the Configuration File
 
