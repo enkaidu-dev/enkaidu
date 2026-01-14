@@ -12,9 +12,13 @@ shards:
     git: https://github.com/crystal-china/base58.cr.git
     version: 0.1.0+git.commit.f7193c497efff614cf87b03f0bd07741915a592f
 
+  crimage:
+    git: https://github.com/naqvis/crimage.git
+    version: 1.0.4+git.commit.b65f67df27f4cb8807a34d94a90dfd4162acf45a
+
   docopt:
-    git: https://github.com/chenkovsky/docopt.cr.git
-    version: 0.2.0+git.commit.620fce4f334ff15d7321e5ecb6665ad258fe9297
+    git: https://github.com/ralsina/docopt.cr.git
+    version: 0.3.1
 
   json-schema:
     git: https://github.com/spider-gazelle/json-schema.git
@@ -30,11 +34,7 @@ shards:
 
   markterm:
     git: https://github.com/ralsina/markterm.git
-    version: 0.6.2
-
-  pcf-parser:
-    git: https://github.com/l3kn/pcf-parser.git
-    version: 0.1.1
+    version: 0.6.3
 
   reply:
     git: https://github.com/i3oris/reply.git
@@ -42,25 +42,13 @@ shards:
 
   sixteen:
     git: https://github.com/ralsina/sixteen.git
-    version: 0.5.2
+    version: 0.6.3
 
   spectator:
     git: https://gitlab.com/arctic-fox/spectator.git
-    version: 0.12.1
-
-  stumpy_core:
-    git: https://github.com/stumpycr/stumpy_core.git
-    version: 1.9.1
-
-  stumpy_png:
-    git: https://github.com/stumpycr/stumpy_png.git
-    version: 5.0.1
-
-  stumpy_utils:
-    git: https://github.com/stumpycr/stumpy_utils.git
-    version: 0.5.1
+    version: 0.12.2
 
   tartrazine:
     git: https://github.com/ralsina/tartrazine.git
-    version: 0.13.0
+    version: 0.20.0
 
