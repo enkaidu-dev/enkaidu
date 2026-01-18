@@ -24,6 +24,8 @@ dependencies:
     #   github: schovi/baked_file_system
   reply:
     github: I3oris/reply
+  html5:
+    github: naqvis/crystal-html5
 
 targets:
   enkaidu:
