@@ -65,12 +65,12 @@ class HtmlToMarkdown
         rtext = text.rstrip
         markdown << ' ' if text.size < content.size && !started_newline?
         markdown << rtext
-        unless text.rindex('\n').nil?
-          markdown << '\n'
-          @started_newline = true
-        else
+        if text.rindex('\n').nil?
           markdown << ' ' if rtext.size < text.size
           @started_newline = false
+        else
+          markdown << '\n'
+          @started_newline = true
         end
       end
     end
@@ -94,6 +94,7 @@ class HtmlToMarkdown
   end
 
   # Renders the start of an HTML tag, converting it to appropriate Markdown syntax.
+  # ameba:disable Metrics/CyclomaticComplexity: For now I want to see it all in one switch
   private def render_start_tag(markdown : IO, name : String, attributes : Array(HTML5::Attribute), self_closing = false)
     case name
     when "pre"
@@ -172,6 +173,7 @@ class HtmlToMarkdown
   end
 
   # Renders the end of an HTML tag, closing Markdown syntax appropriately.
+  # ameba:disable Metrics/CyclomaticComplexity: For now I want to see it all in one switch
   private def render_end_tag(markdown : IO, name : String)
     case name
     when "pre"
@@ -209,6 +211,7 @@ class HtmlToMarkdown
 
   # Skips HTML content until a matching closing tag is found.
   # Used to ignore tags like <head>, <script>, and <style>.
+  # ameba:disable Metrics/CyclomaticComplexity: Not worth splitting this up.
   private def skip_until(closing_tag : String)
     save_tag_stack = tag_stack
     @tag_stack = [] of String
@@ -233,8 +236,6 @@ class HtmlToMarkdown
             STDERR.puts("#skip_until: Expected \"#{peek}\", but found: #{name}")
           end
         end
-      else
-        # skip
       end
     end
     @tag_stack = save_tag_stack
@@ -261,6 +262,7 @@ class HtmlToMarkdown
   end
 
   # Processes a single HTML token and converts it to Markdown.
+  # ameba:disable Metrics/CyclomaticComplexity: Not worth splitting this up.
   private def process_token(markdown : IO, token : HTML5::Token)
     case token.type
     when .error?
