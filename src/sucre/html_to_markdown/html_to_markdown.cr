@@ -20,6 +20,7 @@ class HtmlToMarkdown
     "span", "small", "link", "meta", "big", "header",
     "nav", "label", "input", "html", "body", "article",
     "main", "aside", "footer", "section", "cite",
+    "noscript",
   ]
 
   private getter io : IO
@@ -153,6 +154,11 @@ class HtmlToMarkdown
       end
     when "head", "script", "style", "form", "button", "svg"
       skip_until(name)
+    when "table", "thead", "tbody", "th", "tr", "td"
+      # keep the tags in the Markdown
+      markdown << '\n' if !started_newline? && name == "table"
+      markdown << '<' << name << '>'
+      @started_newline = false
     when "li"
       markdown << '\n' unless started_newline?
       (list_nesting - 1).times do
@@ -202,6 +208,12 @@ class HtmlToMarkdown
         @started_newline = true
       end
       @list_nesting = Math.max(0, list_nesting - 1)
+    when "table", "thead", "tbody", "th", "tr", "td"
+      # keep the tags in the Markdown
+      markdown << "</" << name << '>'
+      if @started_newline = (name == "table")
+        markdown << '\n'
+      end
     else
       unless IGNORE_KNOWN_TAGS.includes?(name)
         STDERR.puts "Unable to render; ignoring end tag: </#{name}>"

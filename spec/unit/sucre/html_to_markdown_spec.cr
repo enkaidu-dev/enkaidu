@@ -146,5 +146,34 @@ Spectator.describe HtmlToMarkdown do
         end
       end
     end
+
+    context "tables" do
+      context "(preserves table tags)" do
+        let(expected_markdown) {
+          <<-MD_
+          ### A table
+
+          <table><tr><th>ID</th><th>Description</th></tr><tr><td>1</td><td>Coffee</td></tr><tr><td>2</td><td>_Tea_</td></tr></table>
+          MD_
+        }
+        let(html) {
+          <<-HTMLSRC_
+          <html>
+          <body>
+            <h3>A table</h3>
+            <table>
+            <tr><th>ID</th><th>Description</th></tr>
+            <tr><td>1</td><td>Coffee</td></tr>
+            <tr><td>2</td><td><em>Tea</em></td></tr>
+            </table>
+          </body>
+          </html>
+          HTMLSRC_
+        }
+        it "OK" do
+          expect(markdown.strip).to eq(expected_markdown)
+        end
+      end
+    end
   end
 end
