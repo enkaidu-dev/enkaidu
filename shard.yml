@@ -1,5 +1,5 @@
 name: enkaidu
-version: 0.8.2
+version: 0.8.3
 license: MPL-2.0
 description: Command line tool that can use local and remote AI models to assist with local editing and refinement tasks.
 authors:
@@ -24,6 +24,8 @@ dependencies:
     #   github: schovi/baked_file_system
   reply:
     github: I3oris/reply
+  html5:
+    github: naqvis/crystal-html5
 
 targets:
   enkaidu:
