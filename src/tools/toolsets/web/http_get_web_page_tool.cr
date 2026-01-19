@@ -6,14 +6,12 @@ require "xml"
 require "../../built_in_function"
 
 module Tools::Web
-  # The `HttpGetTextTool` class defines a tool for making HTTP GET requests to retrieve text content.
-  class HttpGetTextTool < BuiltInFunction
-    MAX_CONTENT_SIZE = 256*1024
-
-    name "http_get_text_tool"
+  # The `HttpGetWebPageTool` class defines a tool for making HTTP GET requests to retrieve text content.
+  class HttpGetWebPageTool < BuiltInFunction
+    name "http_get_web_page"
 
     description <<-DESC
-    Makes an HTTP GET request to a given URL that returns text, andreturns the content type and content.
+    Makes an HTTP GET request to a given URL that returns text and returns the content type and content.
     It strips line indents and coalesces line breaks for HTML, JSON and XML. Unless asked not to,
     it removes the `head`, `script`, and `style` elements as well as all `class` attributes
     from HTML content. Content size of response must be less than #{MAX_CONTENT_SIZE//1024}K.
@@ -27,14 +25,14 @@ module Tools::Web
       description: "Optional user agent header; default is Firefox for macOS.",
       required: false
 
-    param "preserve_html", type: Param::Type::Bool,
-      description: "Optional flag to preserve all the HTML content; default is false."
-
     param "accept", type: Param::Type::Str,
       description: <<-DESCR
       Optionally specify an acceptable content type (e.g. `text/markdown`) to ask the
       server for specific format. Default is none.
       DESCR
+
+    param "preserve_source", type: Param::Type::Bool,
+      description: "Optional flag to ask to preserve the content from the server without any attempts to condense the text; default is false."
 
     runner Runner
 
@@ -45,25 +43,25 @@ module Tools::Web
       def execute(args : JSON::Any) : String
         url = args["url"].as_s? || return error_response("The required URL was not specified")
         user_agent = args["user_agent"]?.try(&.as_s?) || USER_AGENT
-        preserve_html = args["preserve_html"]? || false
+        preserve_source = args["preserve_source"]? || false
         accept = args["accept"]?.try(&.as_s?) || nil
 
         headers = HTTP::Headers{
           "User-Agent" => user_agent,
         }
         headers.add("Accept", accept) if accept
-        fetch(url, headers, preserve_html)
+        fetch(url, headers, preserve_source)
       end
 
       # Setup the HTTP request and process content if appropriate,
       # returning error or success JSON.
-      private def fetch(url, headers, preserve_html)
+      private def fetch(url, headers, preserve_source)
         HTTP::Client.get(url, headers) do |response|
           if response.status_code == 200
-            if (ctype = response.content_type) && text?(ctype)
+            if (ctype = response.content_type) && Web.text?(ctype)
               content = gather_content(response)
               if content.size <= MAX_CONTENT_SIZE
-                success_response(ctype, content, preserve_html)
+                success_response(ctype, content, preserve_source)
               else
                 error_response("Received content > #{MAX_CONTENT_SIZE}. Response is too big.")
               end
@@ -93,17 +91,17 @@ module Tools::Web
       end
 
       # Create a success response as a JSON string
-      def success_response(content_type, content, preserve_html)
-        reduced_content = case content_type
-                          when .ends_with?("html") then reduce_html(content, preserve_html)
-                          when .ends_with?("json") then reduce_line_indents_and_breaks(content)
-                          when .ends_with?("xml")  then reduce_line_indents_and_breaks(content)
-                          else
-                            content
-                          end
+      def success_response(content_type, content, preserve_source)
+        reduced_content = unless preserve_source
+          case content_type
+          when .ends_with?("html") then reduce_html(content)
+          when .ends_with?("json") then reduce_line_indents_and_breaks(content)
+          when .ends_with?("xml")  then reduce_line_indents_and_breaks(content)
+          end
+        end
         {
           content_type: content_type,
-          body:         reduced_content,
+          body:         reduced_content || content,
         }.to_json
       end
 
@@ -124,31 +122,16 @@ module Tools::Web
         content.gsub(/[\n\r]+/, "\n")
       end
 
-      private def reduce_html(content, preserve_html)
+      private def reduce_html(content)
         content = reduce_line_indents_and_breaks(content)
-        unless preserve_html
-          # Remove head, script, style tags and their contents
-          content = content.gsub(/<head\b[^<]*>.*?<\/head>/mi, "")
-          content = content.gsub(/<script\b[^<]*>.*?<\/script>/mi, "")
-          content = content.gsub(/<style\b[^<]*>.*?<\/style>/mi, "")
-          # Remove class attributes from all elements
-          content = content.gsub(/class\s*=\s*'[^']*'/i, "")
-          content = content.gsub(/class\s*=\s*"[^"]*"/i, "")
-        end
+        # Remove head, script, style tags and their contents
+        content = content.gsub(/<head\b[^<]*>.*?<\/head>/mi, "")
+        content = content.gsub(/<script\b[^<]*>.*?<\/script>/mi, "")
+        content = content.gsub(/<style\b[^<]*>.*?<\/style>/mi, "")
+        # Remove class attributes from all elements
+        content = content.gsub(/class\s*=\s*'[^']*'/i, "")
+        content = content.gsub(/class\s*=\s*"[^"]*"/i, "")
         content
-      end
-
-      TEXT_CTYPE_PREFIXES = [
-        "text/",
-      ]
-      TEXT_CTYPE_SUFFIXES = [
-        "/json",
-        "/xml",
-      ]
-
-      private def text?(content_type)
-        TEXT_CTYPE_PREFIXES.any? { |prefix| content_type.starts_with?(prefix) } ||
-          TEXT_CTYPE_SUFFIXES.any? { |suffix| content_type.ends_with?(suffix) }
       end
     end
   end
