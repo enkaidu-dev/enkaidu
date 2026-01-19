@@ -18,7 +18,7 @@ module Tools::Web
     DESC
 
     param "url", type: Param::Type::Str,
-      description: "The URL to GET text from.",
+      description: "The URL to GET the web page from.",
       required: true
 
     param "user_agent", type: Param::Type::Str,

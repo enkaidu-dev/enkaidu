@@ -19,7 +19,7 @@ module Tools::Web
     DESC
 
     param "url", type: Param::Type::Str,
-      description: "The URL to GET text from.",
+      description: "The URL to GET the web page from.",
       required: true
 
     param "user_agent", type: Param::Type::Str,
@@ -85,13 +85,8 @@ module Tools::Web
         end
       end
 
-      def success_markdown(content)
-        {
-          markdown: content,
-        }.to_json
-      end
-
-      # Wraps up the content
+      # Wraps up the content in a Markdown code block, specifying a content type
+      # hint if we can figure one out
       def success_text(response, content_type)
         markdown = String.build do |io|
           if format_hint = text_format_name?(content_type)
@@ -124,6 +119,13 @@ module Tools::Web
       # Create an error response as a JSON string
       private def error_response(message)
         {error: message}.to_json
+      end
+
+      # Create a successful response with markdown content
+      def success_markdown(content)
+        {
+          markdown: content,
+        }.to_json
       end
     end
   end
