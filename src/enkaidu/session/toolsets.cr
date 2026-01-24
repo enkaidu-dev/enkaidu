@@ -61,9 +61,13 @@ module Enkaidu
                       String.build do |str|
                         str << "INFO: Loaded built-in tools from toolset: "
                         ix = 0
-                        toolset.produce(renderer, selection: selection) do |tool|
-                          str << ", " if ix.positive?
+                        toolset.retrieve(selection: selection) do |built_in_function_class|
+                          name = built_in_function_class.function_name
+                          settings = opts.config.tool_settings_by_name(name)
+                          tool = built_in_function_class.new(renderer, settings)
+
                           chat.with_tool(tool)
+                          str << ", " if ix.positive?
                           str << tool.name
                           ix += 1
                         end
