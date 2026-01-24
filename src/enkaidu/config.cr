@@ -130,16 +130,13 @@ module Enkaidu
         merge_profile_autoload_config(profile_auto_load, renderer)
       end
 
-      p! profile_config.tool_settings
       if profile_tool_settings = profile_config.tool_settings
         merge_profile_tool_settings(profile_tool_settings, renderer)
       end
-      p! tool_settings
     end
 
     # Merge tool settings config from profile
     private def merge_profile_tool_settings(profile_tool_settings : ProfileConfig::ToolSettings, renderer)
-      p! tool_settings
       if my_tool_settings = tool_settings
         # Merge with config's tool settings having priority
         my_tool_settings.merge!(profile_tool_settings) do |_key, config_value, _profile_value|
