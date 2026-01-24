@@ -32,14 +32,18 @@ module Enkaidu
       getter_with_presence system_prompt_name, String?
 
       protected def merge(from : AutoLoad)
-        @mcp_servers = from.mcp_servers unless mcp_servers_present
-        @toolsets = from.toolsets unless toolsets_present
-        @system_prompt = from.system_prompt unless system_prompt_present
-        @system_prompt_name = from.system_prompt_name unless system_prompt_name_present
+        @mcp_servers = from.mcp_servers unless mcp_servers_present?
+        @toolsets = from.toolsets unless toolsets_present?
+        @system_prompt = from.system_prompt unless system_prompt_present?
+        @system_prompt_name = from.system_prompt_name unless system_prompt_name_present?
       end
     end
 
+    alias ToolSettings = Hash(String, Tools::Settings)
+
     getter_with_presence auto_load, AutoLoad?
+
+    getter tool_settings : ToolSettings?
   end
 
   # Application level configuration class facilitates settings for the Enkaidu application.
@@ -114,22 +118,50 @@ module Enkaidu
 
     # ---------------------- end of content definition
 
+    # Return tool settings if any
+    def tool_settings_by_name(tool_name : String) : Tools::Settings?
+      tool_settings.try &.[tool_name]?
+    end
+
     # Merge in a profile configuration, using settings from the profile
     # configuration when none have been specific in the app configuration
     def merge_profile_config(profile_config : ProfileConfig, renderer)
-      # Profile config has auto_load only. So
-      # use those if none in the app config
       if profile_auto_load = profile_config.auto_load
-        if my_auto_load = auto_load
-          # not nil
-          my_auto_load.merge(profile_auto_load)
-        elsif auto_load_present
-          # nil set explicitly in app config
-          renderer.warning_with("WARN: Using `auto_load: nil` from app config, IGNORING `auto_load` in profile config.")
-        else
-          # no override, so use from profile
-          @auto_load = profile_auto_load
+        merge_profile_autoload_config(profile_auto_load, renderer)
+      end
+
+      p! profile_config.tool_settings
+      if profile_tool_settings = profile_config.tool_settings
+        merge_profile_tool_settings(profile_tool_settings, renderer)
+      end
+      p! tool_settings
+    end
+
+    # Merge tool settings config from profile
+    private def merge_profile_tool_settings(profile_tool_settings : ProfileConfig::ToolSettings, renderer)
+      p! tool_settings
+      if my_tool_settings = tool_settings
+        # Merge with config's tool settings having priority
+        my_tool_settings.merge!(profile_tool_settings) do |_key, config_value, _profile_value|
+          config_value
         end
+      else
+        # no override, so use from profile
+        @tool_settings = profile_tool_settings
+      end
+    end
+
+    # Merge auto_load config from profile
+    private def merge_profile_autoload_config(profile_auto_load : ProfileConfig::AutoLoad, renderer)
+      if my_auto_load = auto_load
+        # not nil
+        my_auto_load.merge(profile_auto_load)
+      elsif auto_load_present?
+        # nil set explicitly in app config
+        renderer.warning_with("WARN: Using `auto_load: nil` from app config, IGNORING `auto_load` in profile config.")
+      else
+        # no override, so use from profile
+        @auto_load = profile_auto_load
       end
     end
 
