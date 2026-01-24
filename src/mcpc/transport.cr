@@ -142,7 +142,7 @@ module MCPC
       #     we might get real notifications here but I'll
       #     fight that dragon later
       message = nil
-      start = Time.monotonic
+      start = Time.instant
       while message.nil? || message.empty?
         STDERR.puts "~~    skipping empty SSE message".colorize(:yellow) if tracing? && message
         message = extract_sse_event(io)
@@ -151,7 +151,7 @@ module MCPC
           STDERR.puts "~~    skipping SSE message: #{data.inspect}".colorize(:yellow) if tracing?
         end
         # abort if this is taking too long
-        break if wait_time_ms.positive? && (Time.monotonic - start).total_milliseconds > wait_time_ms
+        break if wait_time_ms.positive? && (Time.instant - start).total_milliseconds > wait_time_ms
       end
       message || {} of String => String
     end

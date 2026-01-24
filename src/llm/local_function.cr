@@ -93,17 +93,27 @@ module LLM
       end
     end
 
-    # Set the description for the function.
-    macro description(str)
-      # The description of the function.
+    # Define the static description _only_ for the function.
+    macro static_description(str)
+      # The pre-loaded static description of the function.
       def self.description : String
         {{str}}
       end
+    end
 
-      # The description of the function.
+    # Define the runtime description _only_ for the function.
+    macro runtime_description(str)
+      # The runtime description of the function.
       def description : String
         {{str}}
       end
+    end
+
+    # Define the description for the function, same for both static and runtime.
+    macro description(str)
+      static_description {{str}}
+
+      runtime_description {{str}}
     end
 
     # Define a parameter for this LLM Function.

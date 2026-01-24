@@ -78,7 +78,7 @@ module Enkaidu
       {% presence_name = "#{name}_present".id %}
       {% if @top_level.has_constant?("JSON") %}  @[JSON::Field(ignore: true)]   {% end %}
       {% if @top_level.has_constant?("YAML") %}  @[YAML::Field(ignore: true)]   {% end %}
-      getter {{presence_name}} : Bool
+      getter? {{presence_name}} : Bool
 
       # Now declare the getter for which we want to detect presence
       {% if @top_level.has_constant?("YAML") %}  @[YAML::Field(presence: true)]  {% end %}

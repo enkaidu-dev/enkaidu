@@ -33,13 +33,14 @@ module Tools
       @tool_names ||= @tools.keys
     end
 
-    # Call this method to instantiate the tools held within this `ToolSet`, optionally
-    # using a `selection` of tool names to limit the tools that get "produced".
-    def produce(renderer : Enkaidu::SessionRenderer, selection : Enumerable(String)? = nil, & : LLM::Function ->)
+    # Call this method to retrieve built-in tool/function classes
+    # from this `ToolSet`, optionally using a `selection` of tool names to filter the tools
+    def retrieve(selection : Enumerable(String)? = nil,
+                 & : BuiltInFunction.class ->)
       @tools.each_value do |fun_class|
         next if selection && !selection.includes?(fun_class.function_name)
 
-        yield fun_class.new(renderer)
+        yield fun_class
       end
     end
   end
