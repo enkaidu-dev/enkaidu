@@ -10,7 +10,7 @@ Additionally, by integrating with MCP servers _of your choice_, Enkaidu can help
 
 ## Getting started
 
-Please go to [https://enkaidu.dev](https://enkaidu-dev).
+Please go to [https://enkaidu.dev](https://enkaidu.dev).
 
 The documentation there is the best source of how to get started as well as what Enkaidu does and how it works.
 
