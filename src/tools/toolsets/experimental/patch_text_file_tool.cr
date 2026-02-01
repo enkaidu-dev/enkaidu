@@ -6,11 +6,21 @@ module Tools::Experimental
   class PatchTextFileTool < BuiltInFunction
     name "apply_patch_to_text_file"
 
+    @@patch_version : String? = nil
+
+    def self.patch_version
+      @@patch_version ||= `patch -v`.strip || "Not found"
+    end
+
     PATCHVER = `patch -v`.strip
 
-    description "Applies a patch using the diff format to a specified text file using the " +
-                "`patch` command (version `#{PATCHVER}`). " +
-                "Ensures the file is within the current directory and is a text file."
+    static_description "Applies a patch using the diff format to a specified text file using the " +
+                       "`patch` command. " +
+                       "Ensures the file is within the current directory and is a text file."
+
+    runtime_description "Applies a patch using the diff format to a specified text file using the " +
+                        "`patch` command (version #{self.class.patch_version}). " +
+                        "Ensures the file is within the current directory and is a text file."
 
     param "file_path", type: Param::Type::Str,
       description: "The relative path to the file to be patched.", required: true
