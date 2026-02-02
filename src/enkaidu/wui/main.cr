@@ -73,7 +73,8 @@ module Enkaidu
         console.info_with WELCOME_MSG, WELCOME, markdown: true
         console.info_with ""
 
-        @web_server = WebServer.new(8765)
+        @web_server = WebServer.new(8765,
+          bind_to_all_nics: ENV.fetch("ENKAIDU_BIND_TO_ALL", nil) != nil)
 
         queue.info_with(WELCOME_MSG, WELCOME, markdown: true)
 

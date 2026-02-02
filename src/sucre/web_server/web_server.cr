@@ -18,11 +18,15 @@ class WebServer
   private getter work_finished = Channel(Bool).new
   private getter active_handlers = 0
 
-  def initialize(@port)
+  def initialize(@port, bind_to_all_nics = false)
     @server = HTTP::Server.new do |context|
       handle(context)
     end
-    @address = @server.bind_tcp port
+    @address = if bind_to_all_nics
+                 @server.bind_tcp "0.0.0.0", port
+               else
+                 @server.bind_tcp port
+               end
   end
 
   private def start_tracking
