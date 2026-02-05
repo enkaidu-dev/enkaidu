@@ -57,7 +57,29 @@ After building the standalone Linux binary, run it within a different Linux cont
 podman run --rm -it -v $(pwd):/workspace -w /workspace debian:bookworm-slim /bin/sh -c "bin/release/linux/enkaidu"
 ```
 
-Voila!
+### Run Enkaidu in a Linux container
+
+Enkaidu can be built and run as a container image using Podman or Docker.
+
+To build the container image:
+```sh
+podman build -f Containerfile -t enkaidu-for-devs
+```
+
+To run Enkaidu via container with host networking:
+```sh
+podman run --rm -it --add-host=<HOSTNAME>.local:host-gateway \
+  -v $(pwd):/workspace -w /workspace localhost/enkaidu-for-devs
+```
+
+To run Enkaidu in web UI mode:
+```sh
+podman run --rm -it --add-host=kotinga.local:host-gateway \
+  -p 8765:8765/tcp -v $(pwd):/workspace -w /workspace \
+  localhost/enkaidu-for-devs --webui
+```
+
+The `--add-host` flag allows using your host name in Enkaidu config files when referring to local LLM servers, avoiding the need to use 'localhost'. This makes config files portable between host and container execution.
 
 ## Contributions
 
