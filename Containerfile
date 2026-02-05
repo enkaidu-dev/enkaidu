@@ -1,40 +1,18 @@
 # Enkaidu Container Image
 #
-# Enkaidu is your _second-in-command(-line)_ for coding and creativity.
-# Inspired by Enkidu, the loyal and dynamic companion from Mesopotamian mythology,
-# Enkaidu embodies collaboration, adaptability, and a touch of chaos to spark innovation.
+# 1. Used by Github action to publish image; relies on action to setup shards lib/ and build web UI dist/
+# 2. Can be used to build local container images; see DEVELOPMENT.md for how to build
 #
-# This Containerfile builds Enkaidu as a standalone Linux binary container image.
-# The same commands work with Docker instead of Podman if preferred.
-#
-# To build the container image:
-#   podman build -f Containerfile -t enkaidu-for-devs
-#
-# To run Enkaidu via container with host networking:
-#   podman run --rm -it --add-host=<HOSTNAME>.local:host-gateway \
-#     -v $(pwd):/workspace -w /workspace localhost/enkaidu-for-devs
-#
-# The --add-host flag allows using your host name in Enkaidu config files
-# when referring to local LLM servers, avoiding the need to use 'localhost'.
-# This makes config files portable between host and container execution.
-#
-# To run Enkaidu in web UI mode:
-#   podman run --rm -it --add-host=kotinga.local:host-gateway \
-#     -p 8765:8765/tcp -v $(pwd):/workspace -w /workspace \
-#     localhost/enkaidu-for-devs --webui
-#
-FROM nogginly/alpine-crystal-nodejs:latest AS builder
+FROM crystallang/crystal:latest-alpine AS builder
 
 # Copy the entire project into the container
 COPY src /workspace/src
+COPY lib /workspace/lib
 COPY webui /workspace/webui
 COPY shard* /workspace/
 
 # Ensure we're in the workspace directory before building
 WORKDIR /workspace
-
-# Build the web UI
-RUN cd webui && npm i && npm run build && cd ..
 
 # Build the static binary
 RUN shards --production build enkaidu --release --static
