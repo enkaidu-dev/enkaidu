@@ -61,6 +61,13 @@ podman run --rm -it -v $(pwd):/workspace -w /workspace debian:bookworm-slim /bin
 
 Enkaidu can be built and run as a container image using Podman or Docker.
 
+Make sure the Crystal and Web UI dependencies are build locally:
+
+```sh
+ops up
+ops build-webui
+```
+
 To build the container image:
 ```sh
 podman build -f Containerfile -t enkaidu-for-devs
