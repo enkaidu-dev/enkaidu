@@ -46,6 +46,10 @@ RUN SHARDS_BIN_PATH=bin/release/linux shards build enkaidu --release --static
 # Final image based on Alpine Linux
 FROM ubuntu:noble AS final
 
+LABEL name="enkaidu"
+LABEL description="Run Enkaidu, a command line AI assistant for local models, from within a container. "
+LABEL version="<REPLACE_VERSION>"
+
 # Copy the built binary from the builder stage
 COPY --from=builder /workspace/bin/release/linux/enkaidu /usr/bin/enkaidu
 
