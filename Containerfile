@@ -36,22 +36,17 @@ WORKDIR /workspace
 # Build the web UI
 RUN cd webui && npm i && npm run build && cd ..
 
-# Create output directory
-RUN mkdir -p bin/release/linux
-RUN ls -lah
-
 # Build the static binary
-RUN SHARDS_BIN_PATH=bin/release/linux shards build enkaidu --release --static
+RUN shards --production build enkaidu --release --static
 
 # Final image based on Alpine Linux
 FROM ubuntu:noble AS final
 
 LABEL name="enkaidu"
 LABEL description="Run Enkaidu, a command line AI assistant for local models, from within a container. "
-LABEL version="<REPLACE_VERSION>"
 
 # Copy the built binary from the builder stage
-COPY --from=builder /workspace/bin/release/linux/enkaidu /usr/bin/enkaidu
+COPY --from=builder /workspace/bin/enkaidu /usr/bin/enkaidu
 
 # Set the entrypoint or default command
 ENTRYPOINT ["/usr/bin/enkaidu"]
