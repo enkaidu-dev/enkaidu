@@ -27,7 +27,6 @@ FROM nogginly/alpine-crystal-nodejs:latest AS builder
 
 # Copy the entire project into the container
 COPY src /workspace/src
-COPY lib /workspace/lib
 COPY webui /workspace/webui
 COPY shard* /workspace/
 
