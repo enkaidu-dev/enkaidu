@@ -31,7 +31,6 @@ jobs:
             exit 1
           fi
           echo "version=$VERSION" >> $GITHUB_OUTPUT
-          sed -i "s/<REPLACE_VERSION>/$VERSION/g" Containerfile
 
       - name: Build and push
         uses: docker/build-push-action@v4
