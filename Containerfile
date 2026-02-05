@@ -33,11 +33,12 @@ COPY shard* /workspace/
 # Ensure we're in the workspace directory before building
 WORKDIR /workspace
 
-# Create output directory
-RUN mkdir -p bin/release/linux
-
 # Build the web UI
 RUN cd webui && npm i && npm run build && cd ..
+
+# Create output directory
+RUN mkdir -p bin/release/linux
+RUN ls -lah
 
 # Build the static binary
 RUN SHARDS_BIN_PATH=bin/release/linux shards build enkaidu --release --static
