@@ -17,7 +17,7 @@ WORKDIR /workspace
 # Build the static binary
 RUN shards --production build enkaidu --release --static
 
-# Final image based on Alpine Linux
+# Final image based on more suitable Linux for dev tooling
 FROM ubuntu:noble AS final
 
 LABEL name="enkaidu"
