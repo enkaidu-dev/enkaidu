@@ -56,8 +56,6 @@ module Enkaidu
       private getter session_requests = Channel(SessionRequests).new(2)
       private getter session_work = Channel(Work).new(10)
 
-      delegate session, to: @session_manager
-
       WELCOME_MSG = "Welcome to Enkaidu (WebUI Server Mode) #{VERSION}"
       WELCOME     = <<-TEXT
     This is your second-in-command(-line) designed to assist you with
@@ -84,6 +82,10 @@ module Enkaidu
         session.auto_load
 
         prepare_web_server
+      end
+
+      private def session
+        session_manager.current.session
       end
 
       private def recorder

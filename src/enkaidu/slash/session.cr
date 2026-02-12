@@ -4,8 +4,20 @@ module Enkaidu::Slash
   class SessionCommand < Command
     NAME = "/session"
 
+    HELP_STACK = <<-HELP2
+    `#{NAME} stack [<sub-command>]`
+    - `ls`
+      - List all available session stacks by name
+    - `goto <NAME>`
+      - Switch to an active session stack by name.
+    - `new <NAME>`
+      - Create a new session stack and switch to it immediately
+    HELP2
+
     HELP = <<-HELP1
     `#{NAME} [<sub-command>]`
+    - `stack ...`
+      - Session stack subcommmands. Use `/session stack` to get more information
     - `usage`
       - Show the token usage / size for the current session based on
         most recent response from LLM
@@ -49,26 +61,24 @@ module Enkaidu::Slash
     end
 
     def handle(session_manager : SessionManager, cmd : CommandParser)
-      session = session_manager.session
+      return handle_stack_commands(session_manager, cmd) if cmd.arg_at?(1) == "stack"
+
+      current_session_stack = session_manager.current
+      session = current_session_stack.session
       begin
         case cmd
-        when .expect?(NAME, "usage")                       then handle_session_usage(session)
-        when .expect?(NAME, "save", String)                then handle_session_save(session, cmd)
-        when .expect?(NAME, "load", String, tail: String?) then handle_session_load(session, cmd)
-        when .expect?(NAME, "push",
-          system_prompt_name: String?,
+        when .expect?(NAME, "usage")                              then handle_session_usage(session)
+        when .expect?(NAME, "save", String)                       then handle_session_save(session, cmd)
+        when .expect?(NAME, "load", String, tail: String?)        then handle_session_load(session, cmd)
+        when .expect?(NAME, "reset", system_prompt_name: String?) then handle_session_reset(session, cmd)
+        when .expect?(NAME, "pop")                                then handle_session_pop(current_session_stack)
+        when .expect?(NAME, "push", system_prompt_name: String?,
           keep_tools: ["yes", "no", nil],
           keep_prompts: ["yes", "no", nil],
-          keep_history: ["yes", "no", nil]) then handle_session_push(session_manager, cmd)
+          keep_history: ["yes", "no", nil]) then handle_session_push(current_session_stack, cmd)
         when .expect?(NAME, "pop_and_take",
           response_only: ["yes", "no", nil],
-          reset_parent: ["yes", "no", nil]) then handle_session_pop_take(session_manager, cmd)
-        when .expect?(NAME, "pop")
-          session_manager.pop_session do
-            session.renderer.session_popped(depth: session_manager.depth)
-          end
-        when .expect?(NAME, "reset", system_prompt_name: String?)
-          session.reset_session(sys_prompt: cmd.arg_named?("system_prompt_name").try(&.as(String)))
+          reset_parent: ["yes", "no", nil]) then handle_session_pop_take(current_session_stack, cmd)
         else
           session.renderer.warning_with("ERROR: Unknown or incomplete sub-command: '#{cmd.input}'",
             help: HELP, markdown: true)
@@ -77,6 +87,65 @@ module Enkaidu::Slash
         session.renderer.warning_with("ERROR: #{e.message}",
           help: HELP, markdown: true)
       end
+    end
+
+    def handle_stack_commands(session_manager : SessionManager, cmd : CommandParser)
+      current_session_stack = session_manager.current
+      session = current_session_stack.session
+      begin
+        case cmd
+        when .expect?(NAME, "stack", "ls")           then handle_stack_list(session_manager)
+        when .expect?(NAME, "stack", "goto", String) then handle_stack_goto(session_manager, cmd)
+        when .expect?(NAME, "stack", "new", String)  then handle_stack_new(session_manager, cmd)
+        else
+          session.renderer.warning_with("ERROR: Unknown or incomplete session stack sub-command: '#{cmd.input}'",
+            help: HELP_STACK, markdown: true)
+        end
+      end
+    end
+
+    private def handle_stack_new(session_manager, cmd)
+      entry_session = session_manager.current.session
+      name = cmd.arg_at?(3).as(String)
+      if session_manager.has_session_stack?(name)
+        entry_session.renderer.error_with("ERROR: Another session exist with that name: #{name}")
+      else
+        session_manager.new_session_stack(name) do |session|
+          session.renderer.session_stack_new(name)
+        end
+      end
+    end
+
+    private def handle_stack_goto(session_manager, cmd)
+      current_session_stack = session_manager.current
+      name = cmd.arg_at?(3).as(String)
+      if current_session_stack.name == name
+        session_manager.current.session.renderer.info_with("INFO: No change to session stack: #{name}")
+        session_manager.current.session.renderer.session_stack_changed(name)
+      else
+        if session_manager.has_session_stack?(name)
+          session_manager.goto_session_stack(name)
+          session_manager.current.session.renderer.session_stack_changed(name)
+        else
+          session_manager.current.session.renderer.info_with("ERROR: Unknown session stack: #{name}")
+        end
+      end
+    end
+
+    private def handle_stack_list(session_manager)
+      current_session_stack = session_manager.current
+      content = String.build do |str|
+        session_manager.each do |name, stack|
+          current = stack == current_session_stack
+          str << "* "
+          str << "**" if current
+          str << '`' << name << "`"
+          str << "** _(current)_" if current
+          str.puts
+        end
+      end
+      current_session_stack.session.renderer.info_with("INFO: Active session stacks by name:",
+        help: content, markdown: true)
     end
 
     private def handle_session_usage(session)
@@ -105,23 +174,33 @@ module Enkaidu::Slash
       end
     end
 
-    private def handle_session_pop_take(session_manager, cmd)
-      filter_role = cmd.arg_named?("response_only", "no").try(&.==("yes")) ? "assistant" : nil
-      reset_parent = cmd.arg_named?("reset_parent", "no").try(&.!=("no"))
-      session_manager.pop_session(transfer_last_num: 1, filter_by_role: filter_role, reset_parent: reset_parent) do
-        # Render session popped
-        session_manager.session.renderer.session_popped(depth: session_manager.depth)
+    private def handle_session_reset(session, cmd)
+      session.reset_session(sys_prompt: cmd.arg_named?("system_prompt_name").try(&.as(String)))
+    end
+
+    private def handle_session_pop(session_stack)
+      session_stack.pop_session do
+        session_stack.session.renderer.session_popped(depth: session_stack.depth)
       end
     end
 
-    private def handle_session_push(session_manager, cmd)
+    private def handle_session_pop_take(session_stack, cmd)
+      filter_role = cmd.arg_named?("response_only", "no").try(&.==("yes")) ? "assistant" : nil
+      reset_parent = cmd.arg_named?("reset_parent", "no").try(&.!=("no"))
+      session_stack.pop_session(transfer_last_num: 1, filter_by_role: filter_role, reset_parent: reset_parent) do
+        # Render session popped
+        session_stack.session.renderer.session_popped(depth: session_stack.depth)
+      end
+    end
+
+    private def handle_session_push(session_stack, cmd)
       sys_prompt_name = cmd.arg_named?("system_prompt_name").try(&.as(String))
       keep_history = cmd.arg_named?("keep_history", "yes").try(&.!=("no"))
       keep_tools = cmd.arg_named?("keep_tools", "yes").try(&.!=("no"))
       keep_prompts = cmd.arg_named?("keep_prompts", "yes").try(&.!=("no"))
-      session_manager.push_session(keep_history: keep_history, keep_tools: keep_tools, keep_prompts: keep_prompts,
+      session_stack.push_session(keep_history: keep_history, keep_tools: keep_tools, keep_prompts: keep_prompts,
         system_prompt_name: sys_prompt_name)
-      session_manager.session.renderer.session_pushed(depth: session_manager.depth,
+      session_stack.session.renderer.session_pushed(depth: session_stack.depth,
         keep_history: keep_history, keep_tools: keep_tools, keep_prompts: keep_prompts)
     end
   end

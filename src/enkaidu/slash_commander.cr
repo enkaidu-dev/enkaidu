@@ -9,7 +9,6 @@ module Enkaidu::Slash
     private getter include_command = IncludeCommand.new
     private getter session_manager : SessionManager
 
-    delegate session, to: @session_manager
     delegate query_indicators, take_inclusions!, take_response_schema!, response_json_schema, to: @include_command
 
     def initialize(@session_manager)
@@ -19,6 +18,10 @@ module Enkaidu::Slash
 
     def renderer
       session.renderer
+    end
+
+    def session
+      @session_manager.current.session
     end
 
     private def register_commands

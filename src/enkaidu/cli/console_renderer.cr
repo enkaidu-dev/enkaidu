@@ -90,8 +90,17 @@ module Enkaidu::CLI
 
     ANSI
 
+    private SWITCHED = <<-ANSI
+                                       __                   __                       __
+                              __      /\\ \\__               /\\ \\                     /\\ \\
+      ____     __  __  __    /\\_\\     \\ \\ ,_\\      ___     \\ \\ \\___         __      \\_\\ \\
+     /',__\\   /\\ \\/\\ \\/\\ \\   \\/\\ \\     \\ \\ \\/     /'___\\    \\ \\  _ `\\     /'__`\\    /'_` \\
+    /\\__, `\\  \\ \\ \\_/ \\_/ \\   \\ \\ \\     \\ \\ \\_   /\\ \\__/     \\ \\ \\ \\ \\   /\\  __/   /\\ \\L\\ \\
+    \\/\\____/   \\ \\___x___/'    \\ \\_\\     \\ \\__\\  \\ \\____\\     \\ \\_\\ \\_\\  \\ \\____\\  \\ \\___,_\\
+     \\/___/     \\/__//__/       \\/_/      \\/__/   \\/____/      \\/_/\\/_/   \\/____/   \\/__,_ /
+    ANSI
+
     def session_reset
-      puts
       puts RESET.colorize(:light_green)
     end
 
@@ -101,6 +110,16 @@ module Enkaidu::CLI
 
     def session_popped(depth)
       puts "└───────────────────────────────────────────────────────────"
+    end
+
+    def session_stack_new(name)
+      # IMPROVE this later
+      session_stack_changed(name)
+    end
+
+    def session_stack_changed(name)
+      puts
+      puts SWITCHED.colorize(:light_green)
     end
 
     LLM_MAX_TOOL_CALL_ARGS_LENGTH = 72

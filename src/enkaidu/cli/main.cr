@@ -17,8 +17,6 @@ module Enkaidu::CLI
     private getter opts : CLI::Options
     private getter commander : Slash::Commander
 
-    delegate session, to: @session_manager
-
     WELCOME_MSG = "Welcome to Enkaidu #{VERSION}"
     WELCOME     = <<-TEXT
     This is your second-in-command(-line) designed to assist you with
@@ -40,8 +38,14 @@ module Enkaidu::CLI
         input_history_file: opts.config.session.try &.input_history_file)
       @commander = Slash::Commander.new(session_manager)
 
+      reader.prefix = session_manager.current.name
+
       return unless session.streaming?
       renderer.warning_with "----\n| SORRY: Markdown formatted rendering is not supported when streaming is enabled (for now).\n----"
+    end
+
+    private def session
+      session_manager.current.session
     end
 
     private def renderer
@@ -98,6 +102,7 @@ module Enkaidu::CLI
             end
           when .starts_with?("/")
             @done = commander.make_it_so(q) == :done
+            reader.prefix = session_manager.current.name
           else
             query(q)
           end
