@@ -61,7 +61,7 @@ module Enkaidu::Slash
     end
 
     def handle(session_manager : SessionManager, cmd : CommandParser)
-      session = session_manager.session
+      session = session_manager.current.session
       begin
         ok = nil
         if filepath = cmd.arg_at?(2).try(&.as(String))

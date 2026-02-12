@@ -26,7 +26,7 @@ module Enkaidu::Slash
     end
 
     def handle(session_manager : SessionManager, cmd : CommandParser)
-      session = session_manager.session
+      session = session_manager.current.session
       begin
         # Check if command meets expectation
         if cmd.expect?(NAME, String)
