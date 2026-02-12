@@ -4,22 +4,16 @@ module Enkaidu::Slash
   class SessionCommand < Command
     NAME = "/session"
 
-    HELP_STACK = <<-HELP2
-    `#{NAME} stack [<sub-command>]`
-    - `ls`
-      - List all available session stacks by name
-    - `goto <NAME>`
-      - Switch to an active session stack by name.
-    - `new <NAME>`
-      - Create a new session stack and switch to it immediately
-    HELP2
-
     HELP = <<-HELP1
     `#{NAME} [<sub-command>]`
-    - `stack ...`
-      - Session stack subcommmands. Use `/session stack` to get more information
+    - `ls`
+      - List all available session named sessions
+    - `goto <NAME>`
+      - Switch to an active named session.
+    - `new <NAME>`
+      - Create a new named session and switch to it immediately
     - `usage`
-      - Show the token usage / size for the current session based on
+      - Show the token usage / size for the current chat session based on
         most recent response from LLM
     - `save <FILEPATH>`
       - Save the current chat session to a JSONL file
@@ -32,24 +26,21 @@ module Enkaidu::Slash
       - Restores toolsets and re-establishes MCP server connections
       - Optionally specify how many `N` recent chats to display after loading the session.
     - `reset [system_prompt_name=name]`
-      - Clears all active tools and MCP connections
+      - Clear all active tools and MCP connections from the current chat session
       - Throws away the current session / context
       - Auto loads tools and MCP connections in the configuration
       - Replaces the system prompt referenced by name if specified
     - `push [keep_tools=yes|no] [keep_prompts=yes|no] [keep_history=yes|no] [system_prompt_name=NAME]`
-      - Pushes current session onto session stack
-      - Forks a new session, keeping tools, prompts, and history as specified
+      - Push current chat session onto session stack and fork a new chat session, keeping tools, prompts, and history as specified
       - Switches the system prompt if the name of a system prompt template is provided
       - By default the new session keeps all state
     - `pop`
-      - Restores last pushed session (if any)
-      - Throws away current (interim) session
+      - Throws away current chat session and restore last pushed (parent) chat session (if any)
     - `pop_and_take [response_only=yes|no] [reset_parent=yes|no]`
-      - Restores last pushed session (if any)
-      - Resets the restored session if `reset_parent=yes` is specified
-      - Appends the last chat from the interim session, keeping the both the query and response unless
+      - Throws away current chat session and restore last pushed (parent) chat session (if any), with following caveats:
+        - Resets the restored session if `reset_parent=yes` is specified
+        - Appends the last chat from the interim session, keeping the both the query and response unless
         `response_only=yes` is specified, in which case only the response is kept.
-      - Throws away current (interim) session
     HELP1
 
     def name : String
@@ -60,53 +51,57 @@ module Enkaidu::Slash
       HELP
     end
 
-    def handle(session_manager : SessionManager, cmd : CommandParser)
-      return handle_stack_commands(session_manager, cmd) if cmd.arg_at?(1) == "stack"
+    YES_NO_NIL = ["yes", "no", nil]
 
-      current_session_stack = session_manager.current
-      session = current_session_stack.session
-      begin
-        case cmd
-        when .expect?(NAME, "usage")                              then handle_session_usage(session)
-        when .expect?(NAME, "save", String)                       then handle_session_save(session, cmd)
-        when .expect?(NAME, "load", String, tail: String?)        then handle_session_load(session, cmd)
-        when .expect?(NAME, "reset", system_prompt_name: String?) then handle_session_reset(session, cmd)
-        when .expect?(NAME, "pop")                                then handle_session_pop(current_session_stack)
-        when .expect?(NAME, "push", system_prompt_name: String?,
-          keep_tools: ["yes", "no", nil],
-          keep_prompts: ["yes", "no", nil],
-          keep_history: ["yes", "no", nil]) then handle_session_push(current_session_stack, cmd)
-        when .expect?(NAME, "pop_and_take",
-          response_only: ["yes", "no", nil],
-          reset_parent: ["yes", "no", nil]) then handle_session_pop_take(current_session_stack, cmd)
-        else
-          session.renderer.warning_with("ERROR: Unknown or incomplete sub-command: '#{cmd.input}'",
-            help: HELP, markdown: true)
-        end
-      rescue e
-        session.renderer.warning_with("ERROR: #{e.message}",
-          help: HELP, markdown: true)
+    def handle(session_manager : SessionManager, cmd : CommandParser)
+      case cmd
+      when .expect?(NAME, ["ls", "usage", "pop"])          then handle_bare_commands(session_manager, cmd)
+      when .expect?(NAME, ["goto", "new", "save"], String) then handle_one_string_commands(session_manager, cmd)
+      else
+        handle_compound_commands(session_manager, cmd)
+      end
+    rescue e
+      session_manager.current.session.renderer.warning_with("ERROR: #{e.message}",
+        help: HELP, markdown: true)
+    end
+
+    private def handle_bare_commands(session_manager, cmd)
+      case cmd.arg_at(1).as(String)
+      when "ls"    then handle_stack_list(session_manager)
+      when "usage" then handle_session_usage(session_manager.current.session)
+      when "pop"   then handle_session_pop(session_manager.current)
       end
     end
 
-    def handle_stack_commands(session_manager : SessionManager, cmd : CommandParser)
+    private def handle_one_string_commands(session_manager, cmd)
+      case cmd.arg_at(1).as(String)
+      when "goto" then handle_stack_goto(session_manager, cmd)
+      when "new"  then handle_stack_new(session_manager, cmd)
+      when "save" then handle_session_save(session_manager.current.session, cmd)
+      end
+    end
+
+    private def handle_compound_commands(session_manager, cmd)
       current_session_stack = session_manager.current
       session = current_session_stack.session
-      begin
-        case cmd
-        when .expect?(NAME, "stack", "ls")           then handle_stack_list(session_manager)
-        when .expect?(NAME, "stack", "goto", String) then handle_stack_goto(session_manager, cmd)
-        when .expect?(NAME, "stack", "new", String)  then handle_stack_new(session_manager, cmd)
-        else
-          session.renderer.warning_with("ERROR: Unknown or incomplete session stack sub-command: '#{cmd.input}'",
-            help: HELP_STACK, markdown: true)
-        end
+      case cmd
+      when .expect?(NAME, "load", String, tail: String?)        then handle_session_load(session, cmd)
+      when .expect?(NAME, "reset", system_prompt_name: String?) then handle_session_reset(session, cmd)
+      when .expect?(NAME, "push", system_prompt_name: String?,
+        keep_tools: YES_NO_NIL, keep_prompts: YES_NO_NIL, keep_history: YES_NO_NIL)
+        handle_session_push(current_session_stack, cmd)
+      when .expect?(NAME, "pop_and_take",
+        response_only: YES_NO_NIL, reset_parent: YES_NO_NIL)
+        handle_session_pop_take(current_session_stack, cmd)
+      else
+        session.renderer.warning_with("ERROR: Unknown or incomplete sub-command: '#{cmd.input}'",
+          help: HELP, markdown: true)
       end
     end
 
     private def handle_stack_new(session_manager, cmd)
       entry_session = session_manager.current.session
-      name = cmd.arg_at?(3).as(String)
+      name = cmd.arg_at?(2).as(String)
       if session_manager.has_session_stack?(name)
         entry_session.renderer.error_with("ERROR: Another session exist with that name: #{name}")
       else
@@ -118,7 +113,7 @@ module Enkaidu::Slash
 
     private def handle_stack_goto(session_manager, cmd)
       current_session_stack = session_manager.current
-      name = cmd.arg_at?(3).as(String)
+      name = cmd.arg_at?(2).as(String)
       if current_session_stack.name == name
         session_manager.current.session.renderer.info_with("INFO: No change to session stack: #{name}")
         session_manager.current.session.renderer.session_stack_changed(name)
