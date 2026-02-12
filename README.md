@@ -14,6 +14,13 @@ Please go to [https://enkaidu.dev](https://enkaidu.dev).
 
 The documentation there is the best source of how to get started as well as what Enkaidu does and how it works.
 
+## Run as a container
+
+If you have `docker` or `podman` on your system where you want to run Enkaidu, check out:
+
+- [Enkaidu docs here](https://enkaidu.dev/docs/getting_started/install/), or
+- [Container image overview here](https://hub.docker.com/r/nogginly/enkaidu) on Docker Hub
+
 ## Install
 
 ### Using Homebrew
