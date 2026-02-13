@@ -10,8 +10,9 @@ module Enkaidu::Slash
       - List all available session named sessions
     - `goto <NAME>`
       - Switch to an active named session.
-    - `new <NAME>`
+    - `new <NAME> [model=name]`
       - Create a new named session and switch to it immediately
+      - Optionally specify a model name from the config to use for the new session
     - `usage`
       - Show the token usage / size for the current chat session based on
         most recent response from LLM
@@ -55,8 +56,8 @@ module Enkaidu::Slash
 
     def handle(session_manager : SessionManager, cmd : CommandParser)
       case cmd
-      when .expect?(NAME, ["ls", "usage", "pop"])          then handle_bare_commands(session_manager, cmd)
-      when .expect?(NAME, ["goto", "new", "save"], String) then handle_one_string_commands(session_manager, cmd)
+      when .expect?(NAME, ["ls", "usage", "pop"])   then handle_bare_commands(session_manager, cmd)
+      when .expect?(NAME, ["goto", "save"], String) then handle_one_string_commands(session_manager, cmd)
       else
         handle_compound_commands(session_manager, cmd)
       end
@@ -76,7 +77,6 @@ module Enkaidu::Slash
     private def handle_one_string_commands(session_manager, cmd)
       case cmd.arg_at(1).as(String)
       when "goto" then handle_stack_goto(session_manager, cmd)
-      when "new"  then handle_stack_new(session_manager, cmd)
       when "save" then handle_session_save(session_manager.current.session, cmd)
       end
     end
@@ -87,6 +87,8 @@ module Enkaidu::Slash
       case cmd
       when .expect?(NAME, "load", String, tail: String?)        then handle_session_load(session, cmd)
       when .expect?(NAME, "reset", system_prompt_name: String?) then handle_session_reset(session, cmd)
+      when .expect?(NAME, "new", String, model: String?)
+        handle_stack_new(session_manager, cmd)
       when .expect?(NAME, "push", system_prompt_name: String?,
         keep_tools: YES_NO_NIL, keep_prompts: YES_NO_NIL, keep_history: YES_NO_NIL)
         handle_session_push(current_session_stack, cmd)
@@ -102,10 +104,12 @@ module Enkaidu::Slash
     private def handle_stack_new(session_manager, cmd)
       entry_session = session_manager.current.session
       name = cmd.arg_at?(2).as(String)
+      model_name = cmd.arg_named?("model").try(&.as(String))
+
       if session_manager.has_session_stack?(name)
         entry_session.renderer.error_with("ERROR: Another session exist with that name: #{name}")
       else
-        session_manager.new_session_stack(name) do |session|
+        session_manager.new_session_stack(name, model_name) do |session|
           session.renderer.session_stack_new(name)
         end
       end
@@ -133,9 +137,16 @@ module Enkaidu::Slash
         session_manager.each do |name, stack|
           current = stack == current_session_stack
           str << "* "
-          str << "**" if current
-          str << '`' << name << "`"
-          str << "** _(current)_" if current
+          if current
+            str << "**`" << name << "`**"
+          else
+            str << "`" << name << "`"
+          end
+          str << " _depth:_ `#{stack.depth}`" if stack.depth > 1
+          str << " _model:_ `#{stack.session.chat.model}`"
+          if current
+            str << " <-- _(current)_"
+          end
           str.puts
         end
       end

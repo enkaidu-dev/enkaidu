@@ -13,11 +13,12 @@ module Enkaidu
     end
 
     # Creates a new named session stack and switches to it
-    def new_session_stack(name : String, &)
+    def new_session_stack(name : String, model_name : String?, &)
       raise ArgumentError.new("Session stack already exist with that name: #{name}") if has_session_stack?(name)
 
       curr_session = current.session
-      session = Session.new(curr_session.renderer, curr_session.opts)
+      session = Session.new(curr_session.renderer, curr_session.opts,
+        unique_model_name: model_name)
       @stacks[name] = SessionStack.new(name, session)
       yield session
       goto_session_stack(name)
