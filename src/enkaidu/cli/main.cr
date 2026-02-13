@@ -38,7 +38,7 @@ module Enkaidu::CLI
         input_history_file: opts.config.session.try &.input_history_file)
       @commander = Slash::Commander.new(session_manager)
 
-      reader.prefix = session_manager.current.name
+      reader.prefix = query_prefix
 
       return unless session.streaming?
       renderer.warning_with "----\n| SORRY: Markdown formatted rendering is not supported when streaming is enabled (for now).\n----"
@@ -82,6 +82,16 @@ module Enkaidu::CLI
       nil
     end
 
+    private def query_prefix
+      stack = session_manager.current
+      depth = stack.depth
+
+      String.build do |str|
+        str << '@' << stack.name
+        str << ':' << depth if depth > 1
+      end
+    end
+
     def run
       session.auto_load
       recorder << "["
@@ -102,7 +112,7 @@ module Enkaidu::CLI
             end
           when .starts_with?("/")
             @done = commander.make_it_so(q) == :done
-            reader.prefix = session_manager.current.name
+            reader.prefix = query_prefix
           else
             query(q)
           end
