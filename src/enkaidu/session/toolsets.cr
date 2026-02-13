@@ -62,8 +62,8 @@ module Enkaidu
                         str << "INFO: Loaded built-in tools from toolset: "
                         ix = 0
                         toolset.retrieve(selection: selection) do |built_in_function_class|
-                          name = built_in_function_class.function_name
-                          settings = opts.config.tool_settings_by_name(name)
+                          fun_name = built_in_function_class.function_name
+                          settings = opts.config.tool_settings_by_name(fun_name)
                           tool = built_in_function_class.new(renderer, settings)
 
                           chat.with_tool(tool)
