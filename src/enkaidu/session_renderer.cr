@@ -25,6 +25,9 @@ module Enkaidu
     abstract def session_pushed(depth, keep_tools, keep_prompts, keep_history)
     abstract def session_popped(depth)
 
+    abstract def session_stack_new(name)
+    abstract def session_stack_changed(name)
+
     abstract def llm_tool_call(name, args)
 
     abstract def llm_text(text, reasoning : Bool)

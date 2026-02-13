@@ -81,17 +81,22 @@ module Enkaidu::CLI
     end
 
     private RESET = <<-ANSI
-     ______     ______     ______     ______     ______
-    /\\  == \\   /\\  ___\\   /\\  ___\\   /\\  ___\\   /\\__  _\\
-    \\ \\  __<   \\ \\  __\\   \\ \\___  \\  \\ \\  __\\   \\/_/\\ \\/
-     \\ \\_\\ \\_\\  \\ \\_____\\  \\/\\_____\\  \\ \\_____\\    \\ \\_\\
-      \\/_/ /_/   \\/_____/   \\/_____/   \\/_____/     \\/_/
+    ░░░░░░  ░░░░░░░ ░░░░░░░ ░░░░░░░ ░░░░░░░░
+    ▒▒   ▒▒ ▒▒      ▒▒      ▒▒         ▒▒
+    ▒▒▒▒▒▒  ▒▒▒▒▒   ▒▒▒▒▒▒▒ ▒▒▒▒▒      ▒▒
+    ▓▓   ▓▓ ▓▓           ▓▓ ▓▓         ▓▓
+    ██   ██ ███████ ███████ ███████    ██
+    ANSI
 
-
+    private SWITCHED = <<-ANSI
+    ░░░░░░░ ░░     ░░ ░░ ░░░░░░░░  ░░░░░░ ░░   ░░ ░░░░░░░ ░░░░░░
+    ▒▒      ▒▒     ▒▒ ▒▒    ▒▒    ▒▒      ▒▒   ▒▒ ▒▒      ▒▒   ▒▒
+    ▒▒▒▒▒▒▒ ▒▒  ▒  ▒▒ ▒▒    ▒▒    ▒▒      ▒▒▒▒▒▒▒ ▒▒▒▒▒   ▒▒   ▒▒
+         ▓▓ ▓▓ ▓▓▓ ▓▓ ▓▓    ▓▓    ▓▓      ▓▓   ▓▓ ▓▓      ▓▓   ▓▓
+    ███████  ███ ███  ██    ██     ██████ ██   ██ ███████ ██████
     ANSI
 
     def session_reset
-      puts
       puts RESET.colorize(:light_green)
     end
 
@@ -101,6 +106,16 @@ module Enkaidu::CLI
 
     def session_popped(depth)
       puts "└───────────────────────────────────────────────────────────"
+    end
+
+    def session_stack_new(name)
+      # IMPROVE this later
+      session_stack_changed(name)
+    end
+
+    def session_stack_changed(name)
+      puts
+      puts SWITCHED.colorize(:light_green)
     end
 
     LLM_MAX_TOOL_CALL_ARGS_LENGTH = 72

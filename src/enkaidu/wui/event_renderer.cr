@@ -85,6 +85,15 @@ module Enkaidu::WUI
       post_event Render::SuccessMessage.new("SESSION POPPED (#{depth})")
     end
 
+    def session_stack_new(name)
+      # IMPROVE this later
+      session_stack_changed(name)
+    end
+
+    def session_stack_changed(name)
+      post_event Render::SuccessMessage.new("SESSION STACK CHANGED (#{name})")
+    end
+
     # Server handler calls to provide response to a pending confirmation request
     def respond_to_confirmation(confirmation_id : String, approved : Bool)
       if channel = pending_confirmations[confirmation_id]?

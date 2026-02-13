@@ -44,7 +44,7 @@ module Enkaidu
         prompts_by_name[prompt_name]?
       end
 
-      def use_prompt(prompt_name, attach : LLM::ChatInclusions? = nil, response_schema : LLM::ResponseSchema? = nil)
+      def use_prompt(prompt_name, show = true, attach : LLM::ChatInclusions? = nil, response_schema : LLM::ResponseSchema? = nil)
         if prompt = find_prompt?(prompt_name)
           case prompt
           when MCPPrompt
@@ -60,7 +60,7 @@ module Enkaidu
           when TemplatePrompt
             arg_inputs = renderer.user_prompt_ask_input(prompt)
             prompt_text = prompt.render(arg_inputs, profile: opts.profile)
-            ask(query: prompt_text, attach: attach, response_json_schema: response_schema, render_query: true)
+            ask(query: prompt_text, attach: attach, response_json_schema: response_schema, render_query: show)
           end
         end
       rescue ex

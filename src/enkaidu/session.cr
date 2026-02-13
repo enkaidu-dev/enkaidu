@@ -56,11 +56,19 @@ module Enkaidu
     delegate streaming?, usage, to: @chat
     delegate debug?, to: @opts
 
-    def initialize(@renderer, @opts)
+    def initialize(@renderer, @opts,
+                   unique_model_name : String? = nil)
       @recorder = Recorder.new(opts.recorder_file)
 
+      provider_type = nil
+      model_name = nil
+      if unique_model_name && (ai = opts.config.find_llm_and_model_by?(unique_model_name))
+        provider_type = ai[:llm].provider
+        model_name = ai[:model].model
+      end
+
       setup_envs_from_config
-      @connection = case opts.provider_type
+      @connection = case provider_type || opts.provider_type
                     when "openai"       then LLM::OpenAI::Connection.new
                     when "azure_openai" then LLM::AzureOpenAI::Connection.new
                     when "ollama"       then LLM::Ollama::Connection.new
@@ -68,7 +76,7 @@ module Enkaidu
                       opts.error_and_exit_with "FATAL: Unknown provider type: #{opts.provider_type}", opts.help
                     end
 
-      @chat = setup_chat
+      @chat = setup_chat(override_model_name: model_name)
       @renderer.streaming = chat.streaming?
     end
 
@@ -101,9 +109,10 @@ module Enkaidu
     end
 
     # Helper to setup the Chat's initial config
-    private def setup_chat(override_system_prompt : String? = nil)
+    private def setup_chat(override_system_prompt : String? = nil,
+                           override_model_name : String? = nil)
       connection.new_chat do
-        unless (m = opts.model_name).nil?
+        unless (m = override_model_name || opts.model_name).nil?
           with_model m
           renderer.info_with("INFO: Using model #{model}")
         end

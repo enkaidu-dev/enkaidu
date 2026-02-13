@@ -20,7 +20,7 @@ module Enkaidu::Slash
     end
 
     def handle(session_manager : SessionManager, cmd : CommandParser)
-      session = session_manager.session
+      session = session_manager.current.session
       if cmd.expect?(NAME, "ls")
         session.list_all_macros
       else

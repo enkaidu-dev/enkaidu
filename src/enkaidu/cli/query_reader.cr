@@ -7,8 +7,10 @@ module Enkaidu::CLI
       super()
     end
 
+    property prefix = "QUERY"
+
     def prompt(io : IO, line_number : Int32, color : Bool) : Nil
-      q = "QUERY > "
+      q = "#{prefix} > "
       q = q.colorize(:yellow) if color
 
       io << q
