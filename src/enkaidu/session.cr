@@ -68,7 +68,7 @@ module Enkaidu
       end
 
       setup_envs_from_config
-      @connection = case (provider_type || opts.provider_type)
+      @connection = case provider_type || opts.provider_type
                     when "openai"       then LLM::OpenAI::Connection.new
                     when "azure_openai" then LLM::AzureOpenAI::Connection.new
                     when "ollama"       then LLM::Ollama::Connection.new
