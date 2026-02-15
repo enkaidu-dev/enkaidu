@@ -30,7 +30,16 @@ module Tools::TextEditing
         file_exists = file_exists?(resolved_path)
 
         return error_response("Access to the specified path '#{file_path}' is not allowed.") unless within_current_directory?(resolved_path)
-        return error_response("The file '#{file_path}' already exists.") if !overwrite && file_exists
+
+        if file_exists
+          if overwrite
+            if path_in_deleted_files_folder?(resolved_path)
+              return error_response("Cannot overwrite files in the `#{DELETED_FILES_PATH}` folder.")
+            end
+          else
+            return error_response("The file '#{file_path}' already exists.")
+          end
+        end
 
         begin
           # Ensure directory-sub-tree for file exists

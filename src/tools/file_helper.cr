@@ -5,12 +5,19 @@ module Tools
   class FileLoadingError < Exception; end
 
   module FileHelper
+    DELETED_FILES_PATH = ".deleted_files/"
+
     def resolve_path(path)
       File.expand_path(path)
     end
 
     private def file_exists?(path)
       File.exists?(path)
+    end
+
+    def path_in_deleted_files_folder?(path : String)
+      path.starts_with?(DELETED_FILES_PATH) ||
+        path.includes?("/#{DELETED_FILES_PATH}")
     end
 
     def within_current_directory?(requested_path)
