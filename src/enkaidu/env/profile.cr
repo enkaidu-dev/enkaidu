@@ -124,19 +124,14 @@ module Enkaidu::Env
 
     YAML_EXTS = [".yaml", ".yml"]
 
-    private def each_yaml_file_for(scope, &)
+    private def each_yaml_file_for(scope : String, &)
       if dir = profile_path
         path = Path.new(dir, scope)
         # Look for and look inside a folder with the name of the scope
         # E.g. `macros/` or `prompts/`
         if Dir.exists?(path)
-          # Sort the file names to ensure override order for entries with
-          # the same name is deterministic.
-          Dir.new(path).children.sort!.each do |file|
-            if file.ends_with?(".yaml") || file.ends_with?(".yml")
-              file_path = Path.new(path, file)
-              yield file_path if File.file?(file_path)
-            end
+          each_yaml_file(Dir.new(path)) do |yaml_file|
+            yield yaml_file
           end
         end
         # Look for a YAML file with the name of the scope
@@ -150,6 +145,29 @@ module Enkaidu::Env
         if path = found.first?
           yield path
         end
+      end
+    end
+
+    MAX_DIR_DEPTH = 8
+
+    # Recursively yield YAML files in the directory, upto `MAX_DIR_DEPTH`.
+    private def each_yaml_file(base_dir : Dir, & : Path ->)
+      dirs = [base_dir]
+
+      # Maintain stack of nested directories to avoid recursion
+      while current_dir = dirs.pop?
+        # Sort the file names to ensure override order for entries with
+        # the same name is deterministic.
+        current_dir.children.sort!.each do |file|
+          path = Path.new(current_dir.path, file)
+          if File.directory?(path)
+            dirs.push(Dir.new(path))
+          elsif File.file?(path)
+            yield path if file.ends_with?(".yaml") || file.ends_with?(".yml")
+          end
+        end
+        # Limit depth to avoid chasing symlink loop
+        break if dirs.size > MAX_DIR_DEPTH
       end
     end
 
