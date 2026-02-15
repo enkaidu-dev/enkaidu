@@ -28,6 +28,12 @@ module Enkaidu::CLI
     - Press `Alt-Enter` or `Option-Enter` to start multi-line editing.
     TEXT
 
+    WELCOME_PRERELEASE = <<-TEXT
+    ┌─── CAUTION ───────────────────────────┐
+    │ This is a PRE-RELEASE in development. │
+    └───────────────────────────────────────┘
+    TEXT
+
     def initialize(@opts)
       ui = opts.renderer
       ui.info_with WELCOME_MSG, WELCOME, markdown: true
@@ -39,6 +45,10 @@ module Enkaidu::CLI
       @commander = Slash::Commander.new(session_manager)
 
       reader.prefix = query_prefix
+
+      if PRERELEASE
+        puts WELCOME_PRERELEASE.colorize(:red)
+      end
 
       return unless session.streaming?
       renderer.warning_with "----\n| SORRY: Markdown formatted rendering is not supported when streaming is enabled (for now).\n----"
