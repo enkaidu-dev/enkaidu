@@ -39,7 +39,7 @@ module Enkaidu::Slash
       - Throws away current chat session and restore last pushed (parent) chat session (if any)
     - `pop_and_take [response_only=yes|no] [reset_parent=yes|no]`
       - Throws away current chat session and restore last pushed (parent) chat session (if any), with following caveats:
-        - Resets the restored session if `reset_parent=yes` is specified
+        - Resets the parent's session history if `reset_parent=yes` without affecting any other session configuration.
         - Appends the last chat from the interim session, keeping the both the query and response unless
         `response_only=yes` is specified, in which case only the response is kept.
     HELP1
@@ -193,7 +193,7 @@ module Enkaidu::Slash
     private def handle_session_pop_take(session_stack, cmd)
       filter_role = cmd.arg_named?("response_only", "no").try(&.==("yes")) ? "assistant" : nil
       reset_parent = cmd.arg_named?("reset_parent", "no").try(&.!=("no"))
-      session_stack.pop_session(transfer_last_num: 1, filter_by_role: filter_role, reset_parent: reset_parent) do
+      session_stack.pop_session(transfer_last_num: 1, filter_by_role: filter_role, reset_history: reset_parent) do
         # Render session popped
         session_stack.session.renderer.session_popped(depth: session_stack.depth)
       end

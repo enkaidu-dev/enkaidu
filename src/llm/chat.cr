@@ -72,6 +72,9 @@ module LLM
       @tools_by_name.each_value
     end
 
+    # Erase history but keep connection
+    abstract def erase_history : Nil
+
     abstract def import(prompt : MCP::PromptResult, emit = false, & : ChatEvent ->) : Nil
 
     # Resubmit current session as a query to get another answer
@@ -85,14 +88,18 @@ module LLM
 
     # Replace current session with a "fork" of the session from the given
     # `Chat` instance; may fail if `self` is not compatible.
-    abstract def fork_session(from : Chat) : Nil
+    abstract def fork(from : Chat) : Nil
 
-    abstract def save_session(io : IO | JSON::Builder) : Nil
+    # Save chat history
+    abstract def save(io : IO | JSON::Builder) : Nil
 
-    abstract def load_session(io : IO | String) : Nil
+    # Load chat history
+    abstract def load(io : IO | String) : Nil
 
-    abstract def tail_session(num_responses = 1, & : ChatEvent ->) : Nil
+    # Yield the latest `num_responses` messages from chat history
+    abstract def tail(num_responses = 1, & : ChatEvent ->) : Nil
 
-    abstract def send_tail_session(to : Chat, num_responses = 1, filter_by_role : String = nil) : Nil
+    # Append latest `num_responses` messages to the target chat's history
+    abstract def send_tail(to : Chat, num_responses = 1, filter_by_role : String = nil) : Nil
   end
 end

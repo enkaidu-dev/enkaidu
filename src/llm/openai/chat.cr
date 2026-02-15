@@ -3,7 +3,7 @@ require "http"
 require "../chat"
 require "./chat/content"
 require "./chat/message"
-require "./chat/session"
+require "./chat/history"
 
 require "./converters"
 require "./function_call"
@@ -13,41 +13,46 @@ module LLM::OpenAI
     include Converters
 
     @conn : Connection
-    @sess : Session
+    @history : History
 
     # Usage report in most recent response from LLM.
     getter usage : Usage? = nil
 
     def initialize(@conn)
       super()
-      @sess = Session.new
+      @history = History.new
       @model = @conn.model
       @usage = nil
     end
 
-    def save_session(io : IO | JSON::Builder) : Nil
-      @sess.to_json(io)
+    def erase_history : Nil
+      @history = History.new
+      @usage = nil
     end
 
-    def load_session(io : IO | String) : Nil
-      @sess = Session.from_json(io)
-      @usage = @sess.last_usage
+    def save(io : IO | JSON::Builder) : Nil
+      @history.to_json(io)
     end
 
-    def tail_session(num_responses = 1, & : ChatEvent ->) : Nil
-      @sess.tail_chats(num_responses) { |chat_ev| yield chat_ev }
+    def load(io : IO | String) : Nil
+      @history = History.from_json(io)
+      @usage = @history.last_usage
     end
 
-    def send_tail_session(to : Chat, num_responses = 1, filter_by_role : String? = nil) : Nil
-      @sess.transfer_tail_chats(to: to.@sess,
+    def tail(num_responses = 1, & : ChatEvent ->) : Nil
+      @history.tail_chats(num_responses) { |chat_ev| yield chat_ev }
+    end
+
+    def send_tail(to : Chat, num_responses = 1, filter_by_role : String? = nil) : Nil
+      @history.transfer_tail_chats(to: to.@history,
         num: num_responses, filter_by_role: filter_by_role)
     end
 
     # Replace current session with a "fork" of the session from the given
     # `Chat` instance; may fail if `self` is not compatible.
-    def fork_session(from : Chat) : Nil
-      @sess.branch(from.@sess)
-      @usage = @sess.last_usage
+    def fork(from : Chat) : Nil
+      @history.branch(from.@history)
+      @usage = @history.last_usage
     end
 
     def append_message(msg)
@@ -55,7 +60,7 @@ module LLM::OpenAI
       if msg.is_a? Message::Response
         @usage = usage = msg.usage
       end
-      @sess.append_message msg, usage
+      @history.append_message msg, usage
     end
 
     def with_model(model : String)
@@ -98,7 +103,7 @@ module LLM::OpenAI
     end
 
     def import(prompt : MCP::PromptResult, emit = false, & : ChatEvent ->) : Nil
-      @sess.import(prompt, emit) { |event| yield event }
+      @history.import(prompt, emit) { |event| yield event }
     end
 
     def re_ask(response_schema : ResponseSchema? = nil, & : ChatEvent ->) : Nil
@@ -350,7 +355,7 @@ module LLM::OpenAI
       JSON.build do |json|
         chat_to_json(json, model, system_message,
           stream: streaming?,
-          session: @sess,
+          session: @history,
           tools: each_tool,
           response_schema: response_schema)
       end

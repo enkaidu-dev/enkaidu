@@ -28,11 +28,11 @@ module Enkaidu
         system_prompt_name: system_prompt_name)
     end
 
-    def pop_session(transfer_last_num = 0, filter_by_role : String? = nil, reset_parent = false, &) : Bool
+    def pop_session(transfer_last_num = 0, filter_by_role : String? = nil, reset_history = false, &) : Bool
       if @session_stack.size > 1
         prev = @session_stack.pop
         yield true # Notify to indicate we're back in the parent session
-        session.reset_session(nil) if reset_parent
+        session.erase_history if reset_history
         if transfer_last_num.positive?
           prev.transfer_tail_chats(to: session, num: transfer_last_num,
             filter_by_role: filter_by_role)
