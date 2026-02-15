@@ -92,7 +92,7 @@ module Enkaidu
                               render_system_prompt(system_prompt_name)
                             end
       @chat = setup_chat(override_sys_prompt)
-      chat.fork_session(fork_from.chat) if keep_history
+      chat.fork(fork_from.chat) if keep_history
 
       if keep_tools
         @mcp_functions = fork_from.mcp_functions.dup
@@ -232,7 +232,7 @@ module Enkaidu
     end
 
     def transfer_tail_chats(to : Session, num = 1, filter_by_role : String? = nil)
-      chat.send_tail_session(to: to.chat, num_responses: num, filter_by_role: filter_by_role)
+      chat.send_tail(to: to.chat, num_responses: num, filter_by_role: filter_by_role)
     end
   end
 end

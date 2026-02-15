@@ -34,7 +34,7 @@ module Enkaidu
 
         # load chat session
         sess = io.gets.as(String)
-        @chat.load_session(sess)
+        @chat.load(sess)
         tail_session_events(tail_num_chats)
       end
 
@@ -58,6 +58,11 @@ module Enkaidu
         end
       end
 
+      # Reset session history without affecting any other configuration.
+      def erase_history
+        @chat.erase_history
+      end
+
       # Save session to a JSONL file,  where each line in order is as follows:
       #   - about the file / app
       #   - active MCP server connection info
@@ -70,7 +75,7 @@ module Enkaidu
         save_active_mcp_servers(io)
         save_active_toolsets(io)
 
-        chat.save_session(io)
+        chat.save(io)
         io.puts
       end
 
@@ -135,7 +140,7 @@ module Enkaidu
 
       private def tail_session_events(num_chats)
         text_count = 0
-        @chat.tail_session(num_chats) do |chat_ev|
+        @chat.tail(num_chats) do |chat_ev|
           text_count = render_session_event chat_ev, text_count
         end
       end
