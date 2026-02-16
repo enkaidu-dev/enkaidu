@@ -5,7 +5,8 @@ module Tools
   class FileLoadingError < Exception; end
 
   module FileHelper
-    DELETED_FILES_PATH = ".deleted_files/"
+    DELETED_FILES_PATH    = ".deleted_files/"
+    MAX_FIND_FILE_MATCHES = 1000
 
     def resolve_path(path)
       File.expand_path(path)
@@ -21,12 +22,20 @@ module Tools
     end
 
     def within_current_directory?(requested_path)
-      current_dir = File.expand_path(".")
-      requested_path.starts_with?(current_dir)
+      requested_path.starts_with?(Dir.current)
     end
 
     def valid_file?(resolved_path)
       File.exists?(resolved_path) && File.file?(resolved_path)
+    end
+
+    def find_files(glob_pattern : String, max = MAX_FIND_FILE_MATCHES)
+      matches = [] of String
+      Dir.glob(glob_pattern) do |path|
+        matches << path
+        break if matches.size >= max
+      end
+      matches
     end
 
     def text_file?(resolved_path)
