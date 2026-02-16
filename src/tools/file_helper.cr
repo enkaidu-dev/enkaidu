@@ -31,11 +31,19 @@ module Tools
 
     def find_files(glob_pattern : String, max = MAX_FIND_FILE_MATCHES)
       matches = [] of String
-      Dir.glob(glob_pattern) do |path|
+      find_files(glob_pattern, max) do |path|
         matches << path
-        break if matches.size >= max
       end
       matches
+    end
+
+    def find_files(glob_pattern : String, max = MAX_FIND_FILE_MATCHES, &)
+      count = 0
+      Dir.glob(glob_pattern) do |path|
+        yield path
+        break if (count += 1) >= max
+      end
+      count
     end
 
     def text_file?(resolved_path)
