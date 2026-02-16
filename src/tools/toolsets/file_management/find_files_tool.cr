@@ -19,6 +19,8 @@ module Tools::FileManagement
                    "character ranges [a-z] and negated ranges [^a-z],"
     param "max", type: Param::Type::Num,
       description: "Optional, maxmimum number of matches to return (default is #{FileHelper::MAX_FIND_FILE_MATCHES})"
+    param "sort", type: Param::Type::Bool,
+      description: "Optional, set to false to disable sorting (default is true)"
 
     runner Runner
 
@@ -29,6 +31,8 @@ module Tools::FileManagement
       def execute(args : JSON::Any) : String
         pattern = args["pattern"]?.try(&.as_s?) || "*"
         max = args["max"]?.try(&.as_i?) || MAX_FIND_FILE_MATCHES
+        sort = args["sort"]?.try(&.as_bool?)
+        sort = true if sort.nil?
 
         unless within_current_directory?(resolve_path(pattern))
           return error_response("Looking outside current directory not allowed.")
@@ -40,7 +44,7 @@ module Tools::FileManagement
 
         # Move the file to the deleted_files directory
         begin
-          success_response(find_files(pattern, max))
+          success_response(find_files(pattern, max, sort))
         rescue e
           error_response("An error occurred while finding file: #{e.message}")
         end

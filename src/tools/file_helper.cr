@@ -29,11 +29,12 @@ module Tools
       File.exists?(resolved_path) && File.file?(resolved_path)
     end
 
-    def find_files(glob_pattern : String, max = MAX_FIND_FILE_MATCHES)
+    def find_files(glob_pattern : String, max = MAX_FIND_FILE_MATCHES, sort = false)
       matches = [] of String
       find_files(glob_pattern, max) do |path|
         matches << path
       end
+      matches.sort! if sort
       matches
     end
 
