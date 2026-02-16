@@ -4,6 +4,7 @@ require "./file_management/*"
 module Tools
   module FileManagement
     toolset = ToolSet.create("FileManagement") do
+      hold SearchFilesTool
       hold ListFilesTool
       hold FindFilesTool
       hold CreateDirectoryTool
