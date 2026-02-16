@@ -5,6 +5,7 @@ module Tools
   module FileManagement
     toolset = ToolSet.create("FileManagement") do
       hold ListFilesTool
+      hold FindFilesTool
       hold CreateDirectoryTool
       hold RenameFileTool
       hold DeleteFileTool
