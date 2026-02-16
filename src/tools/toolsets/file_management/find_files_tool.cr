@@ -10,7 +10,7 @@ module Tools::FileManagement
     name "find_files"
 
     # Provide a description for the tool
-    description "Finds files and directories that match a specific glob pattern."
+    description "Finds files and directories in a directory hierarchy by matching a glob pattern."
 
     # Define the acceptable parameter using the `param` method
     param "pattern", required: true,
