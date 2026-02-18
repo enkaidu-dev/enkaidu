@@ -14,9 +14,9 @@ module Tools::FileManagement
 
     # Define the acceptable parameter using the `param` method
     param "starting_path", required: false,
-      description: "The starting point from which this tool looks for " \
+      description: "The starting point from where this tool looks for " \
                    "files and directories matching the path pattern. Defaults to \".\" if not" \
-                   "specified."
+                   "specified. Cannot be empty."
     param "path_pattern", required: true,
       description: "The glob pattern expression with which to find matching files and directories. "
     param "max", type: Param::Type::Num, required: false,
@@ -32,7 +32,12 @@ module Tools::FileManagement
 
       def execute(args : JSON::Any) : String
         pattern = args["path_pattern"]?.try(&.as_s?) || return error_response("The required `path_pattern` was not specified")
+
         start = args["starting_path"]?.try(&.as_s?) || "."
+        if start.empty?
+          return error_response("Empty `starting_path` not allowed; use `.` for current directory.")
+        end
+
         max = args["max"]?.try(&.as_i?) || MAX_FIND_FILE_MATCHES
         sort = args["sort"]?.try(&.as_bool?)
         sort = true if sort.nil?
