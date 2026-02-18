@@ -13,14 +13,16 @@ module Tools::FileManagement
     description "Finds files and directories in a directory hierarchy by matching a glob pattern."
 
     # Define the acceptable parameter using the `param` method
-    param "pattern", required: true,
-      description: "The glob pattern expression with which to find matching files. " \
-                   "Supports wildcards `*`, globstars `**`, branching `{a,n}`, " \
-                   "character ranges [a-z] and negated ranges [^a-z],"
-    param "max", type: Param::Type::Num,
-      description: "Optional, maxmimum number of matches to return (default is #{FileHelper::MAX_FIND_FILE_MATCHES})"
-    param "sort", type: Param::Type::Bool,
-      description: "Optional, set to false to disable sorting (default is true)"
+    param "starting_path", required: false,
+      description: "The starting point from where this tool looks for " \
+                   "files and directories matching the path pattern. Defaults to \".\" if not" \
+                   "specified. Cannot be empty."
+    param "path_pattern", required: true,
+      description: "The glob pattern expression with which to find matching files and directories. "
+    param "max", type: Param::Type::Num, required: false,
+      description: "Maxmimum number of matches to return (default is #{FileHelper::MAX_FIND_FILE_MATCHES})"
+    param "sort", type: Param::Type::Bool, required: false,
+      description: "Set to false to disable sorting (default is true)"
 
     runner Runner
 
@@ -29,22 +31,30 @@ module Tools::FileManagement
       include FileHelper
 
       def execute(args : JSON::Any) : String
-        pattern = args["pattern"]?.try(&.as_s?) || "*"
+        pattern = args["path_pattern"]?.try(&.as_s?) || return error_response("The required `path_pattern` was not specified")
+
+        start = args["starting_path"]?.try(&.as_s?) || "."
+        if start.empty?
+          return error_response("Empty `starting_path` not allowed; use `.` for current directory.")
+        end
+
         max = args["max"]?.try(&.as_i?) || MAX_FIND_FILE_MATCHES
         sort = args["sort"]?.try(&.as_bool?)
         sort = true if sort.nil?
 
-        unless within_current_directory?(resolve_path(pattern))
+        find_pattern = "#{start}/#{pattern}"
+
+        unless within_current_directory?(resolve_path(find_pattern))
           return error_response("Looking outside current directory not allowed.")
         end
 
-        if pattern.includes?("../") || pattern.includes?("/..")
+        if find_pattern.includes?("../") || find_pattern.includes?("/..")
           return error_response("Reverse path navigation (via `..`) not allowed.")
         end
 
         # Move the file to the deleted_files directory
         begin
-          success_response(find_files(pattern, max, sort))
+          success_response(find_files(find_pattern, max, sort))
         rescue e
           error_response("An error occurred while finding file: #{e.message}")
         end
