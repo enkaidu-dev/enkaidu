@@ -24,13 +24,14 @@ actions:
     aliases: [build, bd]
   install:
     quiet: true
-    description: Build a release and copy it into the '$INSTALL_DIR' folder
+    description: Build a release and copy it into the '$INSTALL_DIR' folder with version appended.
     command: |
       BRANCH=$(git branch --show-current)
       [ "$BRANCH" == "main" ] || echo 1>&2 "ops: WARNING: not on 'main' branch."
 
+      VERSION=$(grep -E '^version:' shard.yml | awk '{print $2}')
       if [ -e "$INSTALL_DIR" ]; then
-        ops build-release && cp bin/release/$APP "$INSTALL_DIR/"
+        ops build-release && cp bin/release/$APP "$INSTALL_DIR/$APP-${VERSION}"
       else
         echo 1>&2 "ops: The directory '$INSTALL_DIR' does not exist."
       fi
