@@ -15,17 +15,22 @@ development_dependencies:
 dependencies:
   liquid:
     github: amberframework/liquid.cr
+    version: 1.0.0
   json-schema:
     github: spider-gazelle/json-schema
+    version: 1.3.2
   markterm:
     github: ralsina/markterm
+    version: 0.7.0
     # --- markterm already pulls in ...
     # baked_file_system:
     #   github: schovi/baked_file_system
   reply:
     github: I3oris/reply
+    version: 0.4.0
   html5:
     github: naqvis/crystal-html5
+    version: 0.5.1
 
 targets:
   enkaidu:
