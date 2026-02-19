@@ -79,6 +79,71 @@ module LLM::OpenAI
       end
     end
 
+    # Append last whole conversation, starting with most recent `user`
+    # message,
+    # - either all messages, or
+    # - user and assistant only
+    def append_last_conversation(to : History, outer = false)
+      # Find most recent "user" message
+      start_index = @messages.rindex do |msg|
+        msg.message.is_a? Message::MultiContent # role == "user"
+      end
+      unless start_index.nil?
+        if outer
+          # first user message, and last assistant message
+          if (first = @messages[start_index]?) && (last = @messages.last?)
+            first_msg = first.message
+            last_msg = last.message
+            to.append_message(first_msg)
+            to.append_message(last_msg)
+          end
+        else
+          # Append rest of conversation
+          @messages.each(start: start_index, count: @messages.size - start_index) do |msgplus|
+            msg = msgplus.message
+            to.append_message(msg, msgplus.usage)
+          end
+        end
+      end
+      true # always, even if empty
+    end
+
+    # # Append first (user) and last (assistant) messages.
+    # def append_outermost_conversation(to : History)
+    #   return true if @messages.empty?
+
+    #   if (first = @messages.first?) && (last = @messages.last?) && (first != last)
+    #     first_msg = first.message
+    #     last_msg = last.message
+    #     if first_msg.role == "user" && last_msg.role == "assistant"
+    #       to.append_message(first_msg)
+    #       to.append_message(last_msg)
+    #       return true
+    #     end
+    #   end
+
+    #   # It would be super unusual for
+    #   # - either first and last to be same record
+    #   # - or first to not be `user` and last to not be `assistant`
+    #   # Log it.
+    #   STDERR.puts <<-WHOA
+    #               ----- UNEXPECTED, PLEASE REPORT -------
+    #               FIRST: #{first_msg.inspect}
+    #               LAST: #{last_msg.inspect}
+    #               --------------------
+    #               WHOA
+    #   false
+    # end
+
+    # # Append all messages
+    # def append_all_conversations(to : History) : Bool
+    #   @messages.each do |msgplus|
+    #     msg = msgplus.message
+    #     to.append_message(msg, msgplus.usage)
+    #   end
+    #   true # always, even if empty
+    # end
+
     # Emit the last N request responses. Always tries to emit the query before the response. May include
     # tool calls as a result. Use N=-1 to list all
     def tail_chats(num = -1, & : ChatEvent ->)

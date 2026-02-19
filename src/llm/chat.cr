@@ -6,6 +6,11 @@ require "../sucre/mcp_types"
 module LLM
   alias ChatEvent = NamedTuple(type: String, content: JSON::Any)
 
+  enum Conversation
+    LatestFull
+    LatestOuter
+  end
+
   class UnexpectedMCPPrompt < Exception; end
 
   # `Chat` is an abstract class that serves as a base for creating various chat implementations.
@@ -101,5 +106,8 @@ module LLM
 
     # Append latest `num_responses` messages to the target chat's history
     abstract def send_tail(to : Chat, num_responses = 1, filter_by_role : String = nil) : Nil
+
+    # Append conversations to target chat's history
+    abstract def append_conversations(to : Chat, which : Conversation) : Bool
   end
 end
