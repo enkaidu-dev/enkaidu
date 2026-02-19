@@ -35,9 +35,12 @@ module Enkaidu::Slash
       - Push current chat session onto session stack and fork a new chat session, keeping tools, prompts, and history as specified
       - Switches the system prompt if the name of a system prompt template is provided
       - By default the new session keeps all state
-    - `pop`
-      - Throws away current chat session and restore last pushed (parent) chat session (if any)
-    - `pop_and_take [response_only=yes|no] [reset_parent=yes|no]`
+    - `pop [retain=none|last_full|last_outline] [replace=yes|no]`
+      - Return to last pushed (parent) chat session and
+        - Retain some of the chat history is `retain=` specified, otherwise `none` and
+        - Replace parent chat history if `replace=yes`, otherwise `no`
+      - Without parameters, throws away session history
+    - (DEPRECATED) `pop_and_take [response_only=yes|no] [reset_parent=yes|no]`
       - Throws away current chat session and restore last pushed (parent) chat session (if any), with following caveats:
         - Resets the parent's session history if `reset_parent=yes` without affecting any other session configuration.
         - Appends the last chat from the interim session, keeping the both the query and response unless
@@ -56,7 +59,7 @@ module Enkaidu::Slash
 
     def handle(session_manager : SessionManager, cmd : CommandParser)
       case cmd
-      when .expect?(NAME, ["ls", "usage", "pop"])   then handle_bare_commands(session_manager, cmd)
+      when .expect?(NAME, ["ls", "usage"])          then handle_bare_commands(session_manager, cmd)
       when .expect?(NAME, ["goto", "save"], String) then handle_one_string_commands(session_manager, cmd)
       else
         handle_compound_commands(session_manager, cmd)
@@ -70,7 +73,6 @@ module Enkaidu::Slash
       case cmd.arg_at(1).as(String)
       when "ls"    then handle_stack_list(session_manager)
       when "usage" then handle_session_usage(session_manager.current.session)
-      when "pop"   then handle_session_pop(session_manager.current)
       end
     end
 
@@ -92,6 +94,8 @@ module Enkaidu::Slash
       when .expect?(NAME, "push", system_prompt_name: String?,
         keep_tools: YES_NO_NIL, keep_prompts: YES_NO_NIL, keep_history: YES_NO_NIL)
         handle_session_push(current_session_stack, cmd)
+      when .expect?(NAME, "pop", retain: ["none", "last_full", "last_outline", nil], replace: YES_NO_NIL)
+        handle_session_pop_with(current_session_stack, cmd)
       when .expect?(NAME, "pop_and_take",
         response_only: YES_NO_NIL, reset_parent: YES_NO_NIL)
         handle_session_pop_take(current_session_stack, cmd)
@@ -184,16 +188,40 @@ module Enkaidu::Slash
       session.reset_session(sys_prompt: cmd.arg_named?("system_prompt_name").try(&.as(String)))
     end
 
-    private def handle_session_pop(session_stack)
-      session_stack.pop_session do
+    # private def handle_session_pop(session_stack)
+    #   session_stack.pop_session_deprecated do
+    #     session_stack.session.renderer.session_popped(depth: session_stack.depth)
+    #   end
+    # end
+
+    private def handle_session_pop_with(session_stack, cmd)
+      # /session pop retain={none|last|all|outline} [replace={yes|no}]
+      # where `retain=`
+      #   - `none` (default) means bring nothing
+      #   - `all` means bring everything
+      #   - `last` means entire conversation starting with latest `role: user` message
+      #   - `outline` means first `user` message and last `assistant` message, ignore all inbetween.
+      # and `replace=`
+      #   - `yes` means replace parent's chat history
+      #   - `no` (default) means keep parent's history and append if `with != none`
+      #
+      retain = cmd.arg_named?("retain", "none").try(&.to_s)
+      replace_history = cmd.arg_named?("replace", "no").try(&.!=("no"))
+      session_stack.pop_session(SessionStack::Retain.parse(retain), replace_history) do
+        # Render session popped
         session_stack.session.renderer.session_popped(depth: session_stack.depth)
       end
     end
 
+    # Deprecate this.
     private def handle_session_pop_take(session_stack, cmd)
+      session_stack.session.renderer.warning_with("WARN: DEPRECATED COMMAND: /session pop_and_take")
+
       filter_role = cmd.arg_named?("response_only", "no").try(&.==("yes")) ? "assistant" : nil
       reset_parent = cmd.arg_named?("reset_parent", "no").try(&.!=("no"))
-      session_stack.pop_session(transfer_last_num: 1, filter_by_role: filter_role, reset_history: reset_parent) do
+      session_stack.pop_session_deprecated(transfer_last_num: 1,
+        filter_by_role: filter_role,
+        reset_history: reset_parent) do
         # Render session popped
         session_stack.session.renderer.session_popped(depth: session_stack.depth)
       end

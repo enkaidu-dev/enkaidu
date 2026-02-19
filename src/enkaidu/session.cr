@@ -235,6 +235,10 @@ module Enkaidu
       recorder << "]"
     end
 
+    def append_conversations(to : Session, which : LLM::Conversation)
+      chat.append_conversations(to: to.chat, which: which)
+    end
+
     def transfer_tail_chats(to : Session, num = 1, filter_by_role : String? = nil)
       chat.send_tail(to: to.chat, num_responses: num, filter_by_role: filter_by_role)
     end
