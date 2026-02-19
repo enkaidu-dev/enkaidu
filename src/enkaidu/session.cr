@@ -62,9 +62,13 @@ module Enkaidu
 
       provider_type = nil
       model_name = nil
-      if unique_model_name && (ai = opts.config.find_llm_and_model_by?(unique_model_name))
-        provider_type = ai[:llm].provider
-        model_name = ai[:model].model
+      if unique_model_name
+        if ai = opts.config.find_llm_and_model_by?(unique_model_name)
+          provider_type = ai[:llm].provider
+          model_name = ai[:model].model
+        else
+          renderer.warning_with("WARN: Unknown model '#{unique_model_name}`; using default from config.")
+        end
       end
 
       setup_envs_from_config
@@ -91,7 +95,7 @@ module Enkaidu
       override_sys_prompt = if system_prompt_name
                               render_system_prompt(system_prompt_name)
                             end
-      @chat = setup_chat(override_sys_prompt)
+      @chat = setup_chat(override_sys_prompt, override_model_name: fork_from.chat.model)
       chat.fork(fork_from.chat) if keep_history
 
       if keep_tools
@@ -114,7 +118,7 @@ module Enkaidu
       connection.new_chat do
         unless (m = override_model_name || opts.model_name).nil?
           with_model m
-          renderer.info_with("INFO: Using model #{model}")
+          renderer.info_with("INFO: Using model #{m}")
         end
         with_debug if opts.debug?
         with_streaming if opts.stream?
