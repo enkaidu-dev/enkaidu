@@ -7,6 +7,8 @@ module Enkaidu
       None
       LastFull
       LastOutline
+      Session
+      SessionOutline
     end
 
     @session_stack = [] of Session
@@ -44,18 +46,14 @@ module Enkaidu
 
         # Should we bring any back?
         case retain
-        # when .all?
-        #   STDERR.puts "UNSUPPORTED: Retain::All"
-        #   # Consider ...
-        #   # prev.append_all_conversations(to: session)
-        # when .outline?
-        #   STDERR.puts "UNSUPPORTED: Retain::Outline"
-        #   # Consider ...
-        #   # prev.append_outermost_conversation(to: session)
         when .last_full?
           prev.append_conversations(to: session, which: LLM::Conversation::LatestFull)
         when .last_outline?
           prev.append_conversations(to: session, which: LLM::Conversation::LatestOuter)
+        when .session?
+          prev.append_conversations(to: session, which: LLM::Conversation::SessionFull)
+        when .session_outline?
+          prev.append_conversations(to: session, which: LLM::Conversation::SessionOuter)
         else
           # none
         end

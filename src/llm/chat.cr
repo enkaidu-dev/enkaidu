@@ -9,6 +9,8 @@ module LLM
   enum Conversation
     LatestFull
     LatestOuter
+    SessionFull
+    SessionOuter
   end
 
   class UnexpectedMCPPrompt < Exception; end

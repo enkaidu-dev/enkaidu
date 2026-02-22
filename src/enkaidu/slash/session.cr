@@ -35,9 +35,9 @@ module Enkaidu::Slash
       - Push current chat session onto session stack and fork a new chat session, keeping tools, prompts, and history as specified
       - Switches the system prompt if the name of a system prompt template is provided
       - By default the new session keeps all state
-    - `pop [retain=none|last_full|last_outline] [replace=yes|no]`
+    - `pop [retain=none|last_full|last_outline|session|session_outline] [replace=yes|no]`
       - Return to last pushed (parent) chat session and
-        - Retain some of the chat history is `retain=` specified, otherwise `none` and
+        - Retain some of the chat history if `retain=` specified, otherwise `none` and
         - Replace parent chat history if `replace=yes`, otherwise `no`
       - Without parameters, throws away session history
     - (DEPRECATED) `pop_and_take [response_only=yes|no] [reset_parent=yes|no]`
@@ -83,6 +83,8 @@ module Enkaidu::Slash
       end
     end
 
+    SESSION_POP_RETAIN_NIL = ["none", "last_full", "last_outline", "session", "session_outline", nil]
+
     private def handle_compound_commands(session_manager, cmd)
       current_session_stack = session_manager.current
       session = current_session_stack.session
@@ -94,7 +96,7 @@ module Enkaidu::Slash
       when .expect?(NAME, "push", system_prompt_name: String?,
         keep_tools: YES_NO_NIL, keep_prompts: YES_NO_NIL, keep_history: YES_NO_NIL)
         handle_session_push(current_session_stack, cmd)
-      when .expect?(NAME, "pop", retain: ["none", "last_full", "last_outline", nil], replace: YES_NO_NIL)
+      when .expect?(NAME, "pop", retain: SESSION_POP_RETAIN_NIL, replace: YES_NO_NIL)
         handle_session_pop_with(current_session_stack, cmd)
       when .expect?(NAME, "pop_and_take",
         response_only: YES_NO_NIL, reset_parent: YES_NO_NIL)
@@ -187,12 +189,6 @@ module Enkaidu::Slash
     private def handle_session_reset(session, cmd)
       session.reset_session(sys_prompt: cmd.arg_named?("system_prompt_name").try(&.as(String)))
     end
-
-    # private def handle_session_pop(session_stack)
-    #   session_stack.pop_session_deprecated do
-    #     session_stack.session.renderer.session_popped(depth: session_stack.depth)
-    #   end
-    # end
 
     private def handle_session_pop_with(session_stack, cmd)
       # /session pop retain={none|last|all|outline} [replace={yes|no}]

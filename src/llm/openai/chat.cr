@@ -50,12 +50,14 @@ module LLM::OpenAI
 
     def append_conversations(to : Chat, which : Conversation) : Bool
       case which
-      # when .all?        then @history.append_all_conversations(to: to.@history)
-      # when .outer_most? then @history.append_outermost_conversation(to: to.@history)
       when .latest_full?
         @history.append_last_conversation(to: to.@history)
       when .latest_outer?
         @history.append_last_conversation(to: to.@history, outer: true)
+      when .session_full?
+        @history.append_session_conversation(to: to.@history)
+      when .session_outer?
+        @history.append_session_conversation(to: to.@history, outer: true)
       end
       true
     end

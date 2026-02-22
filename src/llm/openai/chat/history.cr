@@ -24,6 +24,10 @@ module LLM::OpenAI
 
     getter format : String
 
+    # Use this to identify a point in the history from which
+    # can perform some operations.
+    private getter branch_index = 0
+
     def initialize
       @format = self.class.name
       @messages = [] of MessageWrap
@@ -31,6 +35,8 @@ module LLM::OpenAI
 
     def branch(from : History)
       @messages = from.@messages.dup
+      # Remember the pointer f
+      @branch_index = @messages.size
     end
 
     def append_message(msg : Message, usage : Usage? = nil)
@@ -108,41 +114,28 @@ module LLM::OpenAI
       true # always, even if empty
     end
 
-    # # Append first (user) and last (assistant) messages.
-    # def append_outermost_conversation(to : History)
-    #   return true if @messages.empty?
-
-    #   if (first = @messages.first?) && (last = @messages.last?) && (first != last)
-    #     first_msg = first.message
-    #     last_msg = last.message
-    #     if first_msg.role == "user" && last_msg.role == "assistant"
-    #       to.append_message(first_msg)
-    #       to.append_message(last_msg)
-    #       return true
-    #     end
-    #   end
-
-    #   # It would be super unusual for
-    #   # - either first and last to be same record
-    #   # - or first to not be `user` and last to not be `assistant`
-    #   # Log it.
-    #   STDERR.puts <<-WHOA
-    #               ----- UNEXPECTED, PLEASE REPORT -------
-    #               FIRST: #{first_msg.inspect}
-    #               LAST: #{last_msg.inspect}
-    #               --------------------
-    #               WHOA
-    #   false
-    # end
-
-    # # Append all messages
-    # def append_all_conversations(to : History) : Bool
-    #   @messages.each do |msgplus|
-    #     msg = msgplus.message
-    #     to.append_message(msg, msgplus.usage)
-    #   end
-    #   true # always, even if empty
-    # end
+    # Append conversation from the branch-point of this session, starting with most recent `user`
+    # message,
+    # - either all messages, or
+    # - user and assistant only
+    def append_session_conversation(to : History, outer = false)
+      if outer
+        # first user message, and last assistant message
+        if (first = @messages[branch_index]?) && (last = @messages.last?)
+          first_msg = first.message
+          last_msg = last.message
+          to.append_message(first_msg)
+          to.append_message(last_msg)
+        end
+      else
+        # Append rest of conversation
+        @messages.each(start: branch_index, count: @messages.size - branch_index) do |msgplus|
+          msg = msgplus.message
+          to.append_message(msg, msgplus.usage)
+        end
+      end
+      true # always, even if empty
+    end
 
     # Emit the last N request responses. Always tries to emit the query before the response. May include
     # tool calls as a result. Use N=-1 to list all
