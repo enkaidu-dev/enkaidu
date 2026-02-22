@@ -48,6 +48,20 @@ module LLM::OpenAI
         num: num_responses, filter_by_role: filter_by_role)
     end
 
+    def append_conversations(to : Chat, which : Conversation) : Bool
+      case which
+      when .latest_full?
+        @history.append_last_conversation(to: to.@history)
+      when .latest_outer?
+        @history.append_last_conversation(to: to.@history, outer: true)
+      when .session_full?
+        @history.append_session_conversation(to: to.@history)
+      when .session_outer?
+        @history.append_session_conversation(to: to.@history, outer: true)
+      end
+      true
+    end
+
     # Replace current session with a "fork" of the session from the given
     # `Chat` instance; may fail if `self` is not compatible.
     def fork(from : Chat) : Nil

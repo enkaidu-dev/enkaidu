@@ -3,6 +3,14 @@ require "./session"
 module Enkaidu
   # Stack of sessions
   class SessionStack
+    enum Retain
+      None
+      LastFull
+      LastOutline
+      Session
+      SessionOutline
+    end
+
     @session_stack = [] of Session
 
     getter name : String
@@ -28,7 +36,33 @@ module Enkaidu
         system_prompt_name: system_prompt_name)
     end
 
-    def pop_session(transfer_last_num = 0, filter_by_role : String? = nil, reset_history = false, &) : Bool
+    def pop_session(retain : Retain, replace : Bool = false, &)
+      if @session_stack.size > 1
+        prev = @session_stack.pop
+        yield true # We're back in the parent session
+
+        # Should we replace parent's chat history?
+        session.erase_history if replace
+
+        # Should we bring any back?
+        case retain
+        when .last_full?
+          prev.append_conversations(to: session, which: LLM::Conversation::LatestFull)
+        when .last_outline?
+          prev.append_conversations(to: session, which: LLM::Conversation::LatestOuter)
+        when .session?
+          prev.append_conversations(to: session, which: LLM::Conversation::SessionFull)
+        when .session_outline?
+          prev.append_conversations(to: session, which: LLM::Conversation::SessionOuter)
+        else
+          # none
+        end
+        return true
+      end
+      false
+    end
+
+    def pop_session_deprecated(transfer_last_num = 0, filter_by_role : String? = nil, reset_history = false, &) : Bool
       if @session_stack.size > 1
         prev = @session_stack.pop
         yield true # Notify to indicate we're back in the parent session
