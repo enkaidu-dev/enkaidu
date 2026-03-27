@@ -72,14 +72,14 @@ module Enkaidu
       def find_and_prepare_macro(macro_call)
         if macro_call.starts_with? '!'
           cmd = CommandParser.new(macro_call)
-          mac_qs = [] of String
+          prepared_queries = [] of String
           mac_name = cmd.arg_at(0)[1..]
           if mac = find_macro_by_name?(mac_name)
             # substitute args
-            mac.queries.each do |q|
-              mac_qs << substitute_macro_call_args(q, cmd)
+            mac.queries.each do |query|
+              prepared_queries << substitute_macro_call_args(query, cmd)
             end
-            mac_qs
+            prepared_queries
           else
             renderer.warning_with("WARN: Unable to find macro: #{macro_call}")
             nil
