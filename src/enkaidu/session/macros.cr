@@ -28,12 +28,66 @@ module Enkaidu
       def list_all_macros
         text = String.build do |io|
           each_macro do |name, mac, origin|
-            io << "**" << name << "** (" << origin << "): "
+            io << "### **" << name << "** (_" << origin << "_)\n"
             io << mac.description << "\n\n"
           end
           io << '\n'
         end
         renderer.info_with("List of available macros.", text, markdown: true)
+      end
+
+      private def substitute_macro_call_args(line : String, cmd : CommandParser)
+        # check if `line` has %{X} in it and replace with argument,
+        # using %{<N>} for positional or %{<KEY>} for named
+        tmp = line.gsub /(%+)\{([A-za-z0-9_]+)\}/ do |var, matches|
+          if matches[1].size.odd?
+            # odd no. of '%', so keep even number (or none if 1), and interpolate
+            keep = matches[1][1..]
+            key = matches[2]
+            if key =~ /\d+/
+              if val = cmd.arg_at?(key)
+                keep + val.to_s
+              else
+                raise InvalidMacroCall.new("WARN: Missing positional arg %{#{key}} in macro call")
+              end
+            else
+              if val = cmd.arg_named?(key)
+                keep + val.to_s
+              else
+                raise InvalidMacroCall.new("WARN: Missing named arg %{#{key}} in macro call")
+              end
+            end
+          else
+            var # don't interpolate
+          end
+        end
+        tmp
+      end
+
+      # Invoking a macro supports positional and named parameter substitution. For a found macro,
+      # each query is prepared for use by looking for `%{number}` or `%{word}` patterns, where
+      # `number` patterns are replaced with positional arguments (0 is the macro name) and
+      # `word` patterns are replaced with named arguments. If any are not found, the macro call is
+      # aborted and a warning with the missing parameter is issued.
+      def find_and_prepare_macro(macro_call)
+        if macro_call.starts_with? '!'
+          cmd = CommandParser.new(macro_call)
+          prepared_queries = [] of String
+          mac_name = cmd.arg_at(0)[1..]
+          if mac = find_macro_by_name?(mac_name)
+            # substitute args
+            mac.queries.each do |query|
+              prepared_queries << substitute_macro_call_args(query, cmd)
+            end
+            prepared_queries
+          else
+            renderer.warning_with("WARN: Unable to find macro: #{macro_call}")
+            nil
+          end
+        end
+      rescue ex : InvalidMacroCall
+        renderer.warning_with(ex.to_s)
+        nil
       end
     end
   end
