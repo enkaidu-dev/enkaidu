@@ -20,6 +20,8 @@ module Enkaidu
 
   class InvalidSessionQuery < Exception; end
 
+  class InvalidMacroCall < Exception; end
+
   # The Session class manages connection setup, logging, and the processing of
   # different types of events for user queries via the command line app
   class Session
