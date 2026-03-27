@@ -182,13 +182,11 @@ module Enkaidu
           queue.user_query_text(query, via_macro: true) if echo_query
 
           if query.starts_with? '!'
-            if mac = session.find_macro_by_name?(query[1..])
+            if mac_queries = session.find_and_prepare_macro(query)
               # Expand the macro at the top of the queue, where
               # next query awaits; essentially inserting the macro
-              query_queue.insert_all(0, mac.queries)
+              query_queue.insert_all(0, mac_queries)
               echo_query = true
-            else
-              queue.warning_with("Unknown macro: #{query}")
             end
           elsif query.starts_with? '/'
             if commander.make_it_so(query) == :done

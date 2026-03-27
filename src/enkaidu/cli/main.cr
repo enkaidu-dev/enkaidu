@@ -113,12 +113,10 @@ module Enkaidu::CLI
         if q = macro_next?(macro_query_queue) || reader.read_next
           case q = q.strip
           when .starts_with?("!")
-            if mac = session.find_macro_by_name?(q[1..])
+            if mac_queries = session.find_and_prepare_macro(q)
               # Expand the macro at the top of the queue, where
               # next query awaits; essentially inserting the macro
-              macro_query_queue.insert_all(0, mac.queries)
-            else
-              renderer.warning_with("Unknown macro: #{q}")
+              macro_query_queue.insert_all(0, mac_queries)
             end
           when .starts_with?("/")
             @done = commander.make_it_so(q) == :done
