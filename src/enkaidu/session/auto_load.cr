@@ -1,4 +1,5 @@
 require "../../tools"
+require "../ask_function"
 
 module Enkaidu
   class Session
@@ -10,6 +11,9 @@ module Enkaidu
         auto_load_essentials(config)
         auto_load_system_prompts(config)
         check_and_set_system_prompt(config)
+
+        # Always enable asking Enkaidu tool ... for now.
+        chat.with_tool(AskEnkaiduFunction.new(self))
       end
 
       private def auto_load_essentials(config)

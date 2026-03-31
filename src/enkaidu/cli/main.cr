@@ -107,22 +107,25 @@ module Enkaidu::CLI
       recorder << "["
 
       # Queue of queries, appended to when macros are run
-      macro_query_queue = [] of String
+      query_queue = [] of String
       while !done?
         show_query_prompt
-        if q = macro_next?(macro_query_queue) || reader.read_next
+        if q = macro_next?(query_queue) || reader.read_next
           case q = q.strip
           when .starts_with?("!")
             if mac_queries = session.find_and_prepare_macro(q)
               # Expand the macro at the top of the queue, where
               # next query awaits; essentially inserting the macro
-              macro_query_queue.insert_all(0, mac_queries)
+              query_queue.insert_all(0, mac_queries)
             end
           when .starts_with?("/")
             @done = commander.make_it_so(q) == :done
             reader.prefix = query_prefix
           else
             query(q)
+            session.take_pending_queries do |query|
+              query_queue << query
+            end
           end
         else
           @done = true

@@ -197,6 +197,9 @@ module Enkaidu
             session.ask(query: query,
               attach: commander.take_inclusions!,
               response_json_schema: commander.take_response_schema!)
+            session.take_pending_queries do |pending_query|
+              query_queue << pending_query
+            end
           end
         end
       end

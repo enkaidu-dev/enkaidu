@@ -47,6 +47,10 @@ module Enkaidu
 
     protected getter loaded_toolsets = {} of String => Tools::ToolSet
 
+    # Queue of pending simulated user queries that CLI will
+    # insert into the user input flow
+    private getter pending_queries = [] of String
+
     include Session::Toolsets
     include Session::Lifecycle
     include Session::AutoLoad
@@ -243,6 +247,22 @@ module Enkaidu
 
     def transfer_tail_chats(to : Session, num = 1, filter_by_role : String? = nil)
       chat.send_tail(to: to.chat, num_responses: num, filter_by_role: filter_by_role)
+    end
+
+    def queue_query(query)
+      input = query.strip
+      return if input.empty?
+
+      pending_queries << input
+    end
+
+    def take_pending_queries(&) : Nil
+      return if pending_queries.empty?
+
+      pending_queries.each do |query|
+        yield query
+      end
+      pending_queries.clear
     end
   end
 end
