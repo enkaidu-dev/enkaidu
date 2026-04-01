@@ -1,6 +1,7 @@
 require "json"
 require "option_parser"
 require "markterm"
+require "uuid"
 
 require "../llm"
 require "../tools"
@@ -58,6 +59,8 @@ module Enkaidu
     include Session::SystemPrompts
     include Session::McpServers
     include Session::Macros
+
+    getter id = UUID.v7.to_s
 
     delegate streaming?, usage, to: @chat
     delegate debug?, to: @opts
