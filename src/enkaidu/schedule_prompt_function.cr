@@ -1,14 +1,14 @@
-require "colorize"
+require "../llm"
 
 module Enkaidu
   # Defines a tool / function to make a single query to Enkaidu
-  class AskEnkaiduFunction < LLM::LocalFunction
-    name "ask_enkaidu"
+  class SchedulePromptFunction < LLM::LocalFunction
+    name "schedule_AI_prompt"
 
     description <<-DESC
-    Send Enkaidu a query / prompt to execute, as if the user typed this at the Enkaidu prompt.
-    This can include slash (/) commands, macro calls (!) as well as plain text prompts. This
-    function returns immediately after scheduling the query.
+    Schedule deferred execution of a query / prompt to the LLM in the current session.
+    The prompt is executed later as if the user entered in their assistant's chat interface.
+    This function returns with
     DESC
 
     param "query", type: Param::Type::Str, required: true,
@@ -24,7 +24,7 @@ module Enkaidu
     # This defines the runner that is instantiated to
     # execute the function.
     class Runner < LLM::Function::Runner
-      private getter func : AskEnkaiduFunction
+      private getter func : SchedulePromptFunction
 
       def initialize(@func); end
 
@@ -43,7 +43,8 @@ module Enkaidu
 
       # Create a success response as a JSON string
       private def success_response
-        {status: "Query queued. Don't wait for response, just stop so the query can executed by the app."}.to_json
+        {status:  "Scheduled",
+         message: "The query will be executed by the current session's model later."}.to_json
       end
 
       # Create an error response as a JSON string
