@@ -8,7 +8,6 @@ module Enkaidu
     description <<-DESC
     Schedule deferred execution of a query / prompt to the LLM in the current session.
     The prompt is executed later as if the user entered in their assistant's chat interface.
-    This function returns with
     DESC
 
     param "query", type: Param::Type::Str, required: true,
