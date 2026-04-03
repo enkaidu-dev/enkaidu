@@ -259,13 +259,12 @@ module Enkaidu
       pending_queries << input
     end
 
-    def take_pending_queries(&) : Nil
+    def take_pending_queries : Array(String)?
       return if pending_queries.empty?
 
-      pending_queries.each do |query|
-        yield query
-      end
-      pending_queries.clear
+      hold_queries = pending_queries
+      pending_queries = [] of String
+      hold_queries
     end
   end
 end

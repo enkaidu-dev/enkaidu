@@ -1,5 +1,4 @@
 require "../../tools"
-require "../schedule_prompt_function"
 
 module Enkaidu
   class Session
@@ -11,9 +10,6 @@ module Enkaidu
         auto_load_essentials(config)
         auto_load_system_prompts(config)
         check_and_set_system_prompt(config)
-
-        # Always enable tool for scheduling a prompt for Enkaidu.
-        chat.with_tool(SchedulePromptFunction.new(self))
       end
 
       private def auto_load_essentials(config)
