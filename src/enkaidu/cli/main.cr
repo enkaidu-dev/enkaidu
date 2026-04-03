@@ -123,8 +123,8 @@ module Enkaidu::CLI
             reader.prefix = query_prefix
           else
             query(q)
-            session.take_pending_queries do |query|
-              query_queue << query
+            if pending_queries = session.take_pending_queries
+              query_queue.insert_all(0, pending_queries)
             end
           end
         else
