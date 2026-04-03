@@ -263,7 +263,7 @@ module Enkaidu
       return if pending_queries.empty?
 
       hold_queries = pending_queries
-      pending_queries = [] of String
+      @pending_queries = [] of String
       hold_queries
     end
   end

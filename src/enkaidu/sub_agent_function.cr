@@ -6,11 +6,11 @@ module Enkaidu
     name "sub_agent"
 
     description <<-DESC
-    Use a sub-agent to query / prompt the LLM in a separate session with an isolated context. 
-    The prompt is executed immediately and, upon completion, returns the outline (initial query, final response) of the session 
+    Use a sub-agent to query / prompt the LLM in a separate session with an isolated context.
+    The prompt is executed immediately and, upon completion, returns the outline (initial query, final response) of the session
     as an array of messages. Use this tool to perform tasks that require a lot of context that is
     best isolated from the current session's context. Sub-agents can invoke nested sub-agents to further manage
-    the context and perform complex tasks. 
+    the context and perform complex tasks.
     DESC
 
     param "prompt", type: Param::Type::Str, required: true,
@@ -37,7 +37,7 @@ module Enkaidu
         prompt = prompt.strip
         return error_response("Required `prompt` was empty") if prompt.empty?
 
-        return func.session_manager.ask_forked_session(prompt) ||
+        func.session_manager.ask_forked_session(prompt) ||
           error_response("Nil response")
       rescue ex
         error_response(ex.message)
