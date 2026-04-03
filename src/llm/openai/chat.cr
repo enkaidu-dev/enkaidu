@@ -62,6 +62,23 @@ module LLM::OpenAI
       true
     end
 
+    # Extract conversations and return as a JSON string
+    def extract_conversations(which : Conversation) : String?
+      extract = case which
+                when .latest_full?
+                  @history.extract_last_conversation
+                when .latest_outer?
+                  @history.extract_last_conversation(outer: true)
+                when .session_full?
+                  @history.extract_session_conversation
+                when .session_outer?
+                  @history.extract_session_conversation(outer: true)
+                else
+                  nil
+                end
+      extract.try(&.to_json)
+    end
+
     # Replace current session with a "fork" of the session from the given
     # `Chat` instance; may fail if `self` is not compatible.
     def fork(from : Chat) : Nil
