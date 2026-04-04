@@ -23,6 +23,13 @@ module Enkaidu
     def initialize(@options, @renderer)
       @session_manager = SessionManager.new(Session.new(renderer, opts: options))
       @commander = Slash::Commander.new(session_manager)
+
+      # Always enable tool for sub-agent prompting
+      session_manager.inject_function SubAgentPromptFunction.new(session_manager)
+      # HACK ALERT
+      # I don't like this; but for now I don't have a better way.
+      # Revisit one day.
+      session_manager.deploy_injected_functions(session)
     end
 
     def execute_query(query : String, &)

@@ -15,13 +15,6 @@ module Enkaidu::Slash
     def initialize(@session_manager)
       @commands = {} of String => Command
       register_commands
-
-      # Always enable tool for sub-agent prompting
-      session_manager.inject_function SubAgentPromptFunction.new(session_manager)
-      # HACK ALERT
-      # I don't like this; but for now I don't have a better way.
-      # Revisit one day.
-      session_manager.deploy_injected_functions(session)
     end
 
     def renderer
