@@ -153,13 +153,13 @@
         <UserTextCard message={entry.data[0].content || "??"} />
       {:else if entry.type == "command"}
         <UserTextCard message={entry.data[0].content || "/??"} command />
-      {:else if entry.type == "query_via_macro"}
-        <UserTextCard message={entry.data[0].content || "??"} via_macro />
-      {:else if entry.type == "command_via_macro"}
+      {:else if entry.type == "query_via_query_queue"}
+        <UserTextCard message={entry.data[0].content || "??"} via_query_queue />
+      {:else if entry.type == "command_via_query_queue"}
         <UserTextCard
           message={entry.data[0].content || "/??"}
           command
-          via_macro
+          via_query_queue
         />
       {:else if entry.type == "query_image_url"}
         <UserImageCard image_url={entry.data[0].content || "??"} />
