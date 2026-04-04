@@ -182,7 +182,6 @@ module Enkaidu
         # Stuff request query into queue of queries
         # This lets us stuff macro expansions into the queue so we can
         # run through them as if they were queries from the user
-        is_done = false
         runtime.execute_query(req.prompt.first.text.strip) do |runtime_event|
           case runtime_event
           when Runtime::Event::Done
