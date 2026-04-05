@@ -3,18 +3,25 @@ require "../llm"
 module Enkaidu
   # Defines a tool / function to make a single query to Enkaidu
   class SubAgentPromptFunction < LLM::LocalFunction
-    name "sub_agent"
+    name "spawn_agent"
 
     description <<-DESC
-    Use a sub-agent to query / prompt the LLM in a separate session with an isolated context.
-    The prompt is executed immediately and, upon completion, returns the outline (initial query, final response) of the session
-    as an array of messages. Use this tool to perform tasks that require a lot of context that is
-    best isolated from the current session's context. Sub-agents can invoke nested sub-agents to further manage
-    the context and perform complex tasks.
+    Run a prompt in a completely fresh, isolated context window and receive the result as `[query, response]`.
+
+    **Use this tool whenever the task:**
+    - would consume significant tokens (large codebases, long or many documents, multi-step research)
+    - is self-contained and doesn't need the current session's history
+    - benefits from a clean slate to avoid context pollution or confusion
+
+    Sub-agents can invoke their own sub-agents for further decomposition. Prefer sub-agents over doing heavy work inline — they keep the main session focused and prevent context window exhaustion.
     DESC
 
     param "prompt", type: Param::Type::Str, required: true,
-      description: "The prompt to be executed by the sub-agent in an isolated context"
+      description: "the full instruction for the sub-agent; be explicit, as it has no other context"
+    param "include_caller_history", type: Param::Type::Bool, required: false,
+      description: <<-PDESC
+      set to true when the task requires awareness of the current session, e.g. summarizing the conversation, continuing a thread, or referencing prior decisions
+      PDESC
 
     # Accessible to the function's Runner
     protected getter session_manager : SessionManager
@@ -33,11 +40,13 @@ module Enkaidu
       # Implement this method to handle the LLM function call, and return a
       # String with the JSON value.
       def execute(args : JSON::Any) : String
+        keep_history = args["include_caller_history"]?.try(&.as_bool?) || false
         prompt = args["prompt"]?.try(&.as_s?) || return error_response("Required `prompt` was not specified")
         prompt = prompt.strip
+
         return error_response("Required `prompt` was empty") if prompt.empty?
 
-        func.session_manager.ask_forked_session(prompt) ||
+        func.session_manager.ask_forked_session(prompt, keep_history) ||
           error_response("Nil response")
       rescue ex
         error_response(ex.message)
