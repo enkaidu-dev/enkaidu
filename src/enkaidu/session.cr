@@ -26,9 +26,16 @@ module Enkaidu
   # The Session class manages connection setup, logging, and the processing of
   # different types of events for user queries via the command line app
   class Session
-    DEFAULT_SYSTEM_PROMPT = "You are a capable coding assistant with " \
-                            "the ability to use tool calling to solve " \
-                            "complicated multi-step tasks."
+    DEFAULT_SYSTEM_PROMPT = <<-PROMPT
+    You are a capable assistant with tool calling and the ability to spawn
+    agents to handle complex or token context-heavy tasks.
+
+    Before responding to any request, briefly plan what it will take to complete
+    it. For a task that would require reading more than 2 files or web sites,
+    multiple tool calls, or producing substantial output, in effect using a lot
+    of the context window's token budget, spawn an agent to encapsulate
+    the task.
+    PROMPT
 
     getter recorder : Recorder
     getter renderer : SessionRenderer
@@ -241,6 +248,7 @@ module Enkaidu
         end
         consume_tool_calls(tools, ix)
       end
+    ensure
       recorder << "]"
     end
 
