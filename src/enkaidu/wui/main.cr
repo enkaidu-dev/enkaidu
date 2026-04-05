@@ -12,8 +12,7 @@ require "../cli/console_renderer"
 require "./event_renderer"
 require "./work"
 
-require "../slash_commander"
-require "../session_manager"
+require "../runtime"
 
 module Enkaidu
   module WUI
@@ -48,8 +47,7 @@ module Enkaidu
 
       private getter web_server : WebServer
 
-      private getter session_manager : SessionManager
-      private getter commander : Slash::Commander
+      private getter runtime : Runtime
 
       alias SessionRequests = Symbol | ACPA::Request::PromptParams
 
@@ -76,12 +74,21 @@ module Enkaidu
 
         queue.info_with(WELCOME_MSG, WELCOME, markdown: true)
 
+        @runtime = Runtime.new(options: opts, renderer: queue)
         @session_manager = SessionManager.new(Session.new(queue, opts: opts))
         @commander = Slash::Commander.new(session_manager)
 
         session.auto_load
 
         prepare_web_server
+      end
+
+      private def session_manager
+        runtime.session_manager
+      end
+
+      private def commander
+        runtime.commander
       end
 
       private def session
@@ -175,28 +182,11 @@ module Enkaidu
         # Stuff request query into queue of queries
         # This lets us stuff macro expansions into the queue so we can
         # run through them as if they were queries from the user
-        query_queue = [req.prompt.first.text.strip]
-        echo_query = false
-        while query = query_queue.shift?
-          # Make sure user sees macro's queries
-          queue.user_query_text(query, via_macro: true) if echo_query
-
-          if query.starts_with? '!'
-            if mac_queries = session.find_and_prepare_macro(query)
-              # Expand the macro at the top of the queue, where
-              # next query awaits; essentially inserting the macro
-              query_queue.insert_all(0, mac_queries)
-              echo_query = true
-            end
-          elsif query.starts_with? '/'
-            if commander.make_it_so(query) == :done
-              queue.info_with("GOOD BYE!")
-              session_requests.send(:quit)
-            end
-          else
-            session.ask(query: query,
-              attach: commander.take_inclusions!,
-              response_json_schema: commander.take_response_schema!)
+        runtime.execute_query(req.prompt.first.text.strip) do |runtime_event|
+          case runtime_event
+          when Runtime::Event::Done
+            queue.info_with("GOOD BYE!")
+            session_requests.send(:quit)
           end
         end
       end

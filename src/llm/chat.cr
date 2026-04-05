@@ -111,5 +111,8 @@ module LLM
 
     # Append conversations to target chat's history
     abstract def append_conversations(to : Chat, which : Conversation) : Bool
+
+    # Extract conversations and return as a JSON string or nil
+    abstract def extract_conversations(which : Conversation) : String?
   end
 end

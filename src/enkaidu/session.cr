@@ -1,6 +1,7 @@
 require "json"
 require "option_parser"
 require "markterm"
+require "uuid"
 
 require "../llm"
 require "../tools"
@@ -25,9 +26,16 @@ module Enkaidu
   # The Session class manages connection setup, logging, and the processing of
   # different types of events for user queries via the command line app
   class Session
-    DEFAULT_SYSTEM_PROMPT = "You are a capable coding assistant with " \
-                            "the ability to use tool calling to solve " \
-                            "complicated multi-step tasks."
+    DEFAULT_SYSTEM_PROMPT = <<-PROMPT
+    You are a capable assistant with tool calling and the ability to spawn
+    agents to handle complex or token context-heavy tasks.
+
+    Before responding to any request, briefly plan what it will take to complete
+    it. For a task that would require reading more than 2 files or web sites,
+    multiple tool calls, or producing substantial output, in effect using a lot
+    of the context window's token budget, spawn an agent to encapsulate
+    the task.
+    PROMPT
 
     getter recorder : Recorder
     getter renderer : SessionRenderer
@@ -47,6 +55,10 @@ module Enkaidu
 
     protected getter loaded_toolsets = {} of String => Tools::ToolSet
 
+    # Queue of pending simulated user queries that CLI will
+    # insert into the user input flow
+    private getter pending_queries = [] of String
+
     include Session::Toolsets
     include Session::Lifecycle
     include Session::AutoLoad
@@ -54,6 +66,8 @@ module Enkaidu
     include Session::SystemPrompts
     include Session::McpServers
     include Session::Macros
+
+    getter id = UUID.v7.to_s
 
     delegate streaming?, usage, to: @chat
     delegate debug?, to: @opts
@@ -234,6 +248,7 @@ module Enkaidu
         end
         consume_tool_calls(tools, ix)
       end
+    ensure
       recorder << "]"
     end
 
@@ -243,6 +258,21 @@ module Enkaidu
 
     def transfer_tail_chats(to : Session, num = 1, filter_by_role : String? = nil)
       chat.send_tail(to: to.chat, num_responses: num, filter_by_role: filter_by_role)
+    end
+
+    def queue_query(query)
+      input = query.strip
+      return if input.empty?
+
+      pending_queries << input
+    end
+
+    def take_pending_queries : Array(String)?
+      return if pending_queries.empty?
+
+      hold_queries = pending_queries
+      @pending_queries = [] of String
+      hold_queries
     end
   end
 end

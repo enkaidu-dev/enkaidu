@@ -8,6 +8,8 @@ module Enkaidu::Slash
     `#{NAME} [<sub-command>]`
     - `ls`
       - List all available session named sessions
+    - `id`
+      - Show current session's unique ID.
     - `goto <NAME>`
       - Switch to an active named session.
     - `new <NAME> [model=name]`
@@ -59,7 +61,7 @@ module Enkaidu::Slash
 
     def handle(session_manager : SessionManager, cmd : CommandParser)
       case cmd
-      when .expect?(NAME, ["ls", "usage"])          then handle_bare_commands(session_manager, cmd)
+      when .expect?(NAME, ["ls", "id", "usage"])    then handle_bare_commands(session_manager, cmd)
       when .expect?(NAME, ["goto", "save"], String) then handle_one_string_commands(session_manager, cmd)
       else
         handle_compound_commands(session_manager, cmd)
@@ -72,6 +74,7 @@ module Enkaidu::Slash
     private def handle_bare_commands(session_manager, cmd)
       case cmd.arg_at(1).as(String)
       when "ls"    then handle_stack_list(session_manager)
+      when "id"    then handle_session_id(session_manager.current.session)
       when "usage" then handle_session_usage(session_manager.current.session)
       end
     end
@@ -158,6 +161,10 @@ module Enkaidu::Slash
       end
       current_session_stack.session.renderer.info_with("INFO: Active session stacks by name:",
         help: content, markdown: true)
+    end
+
+    private def handle_session_id(session)
+      session.renderer.info_with(session.id)
     end
 
     private def handle_session_usage(session)

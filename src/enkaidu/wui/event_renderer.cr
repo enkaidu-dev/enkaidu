@@ -52,8 +52,8 @@ module Enkaidu::WUI
       info_with("#{label}#{duration.total_seconds}s elapsed.")
     end
 
-    def user_query_text(query, via_macro = false)
-      post_event Render::Query.new(Render::ContentType::Text, query, via_macro)
+    def user_query_text(query, via_query_queue = false)
+      post_event Render::Query.new(Render::ContentType::Text, query, via_query_queue)
     end
 
     def user_query_image_url(url)

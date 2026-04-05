@@ -9,9 +9,9 @@ module Enkaidu::WUI::Render
   class Query < Event
     getter content_type : ContentType
     getter content : String
-    getter? via_macro : Bool
+    getter? via_query_queue : Bool
 
-    def initialize(@content_type, @content, @via_macro = false)
+    def initialize(@content_type, @content, @via_query_queue = false)
       super("query")
     end
   end

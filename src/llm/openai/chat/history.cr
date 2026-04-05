@@ -85,6 +85,35 @@ module LLM::OpenAI
       end
     end
 
+    # Extract last whole conversation, starting with most recent `user`
+    # message,
+    # - either all messages, or
+    # - user and assistant only
+    def extract_last_conversation(outer = false)
+      extract = [] of Message
+      # Find most recent "user" message
+      start_index = @messages.rindex do |msg|
+        msg.message.is_a? Message::MultiContent # role == "user"
+      end
+      unless start_index.nil?
+        if outer
+          # first user message, and last assistant message
+          if (first = @messages[start_index]?) && (last = @messages.last?)
+            first_msg = first.message
+            last_msg = last.message
+            extract << first_msg << last_msg
+          end
+        else
+          # Append rest of conversation
+          @messages.each(start: start_index, count: @messages.size - start_index) do |msgplus|
+            msg = msgplus.message
+            extract << msg
+          end
+        end
+      end
+      extract
+    end
+
     # Append last whole conversation, starting with most recent `user`
     # message,
     # - either all messages, or
@@ -112,6 +141,29 @@ module LLM::OpenAI
         end
       end
       true # always, even if empty
+    end
+
+    # Extract conversation from the branch-point of this session, starting with most recent `user`
+    # message,
+    # - either all messages, or
+    # - user and assistant only
+    def extract_session_conversation(outer = false)
+      extract = [] of Message
+      if outer
+        # first user message, and last assistant message
+        if (first = @messages[branch_index]?) && (last = @messages.last?)
+          first_msg = first.message
+          last_msg = last.message
+          extract << first_msg << last_msg
+        end
+      else
+        # Append rest of conversation
+        @messages.each(start: branch_index, count: @messages.size - branch_index) do |msgplus|
+          msg = msgplus.message
+          extract << msg
+        end
+      end
+      extract
     end
 
     # Append conversation from the branch-point of this session, starting with most recent `user`

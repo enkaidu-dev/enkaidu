@@ -54,8 +54,8 @@ module Enkaidu::CLI
       puts "#{label}#{duration.total_seconds.format(decimal_places: 3, only_significant: true)}s elapsed.".colorize(:yellow)
     end
 
-    def user_query_text(query, via_macro = false)
-      color = via_macro ? :magenta : :yellow
+    def user_query_text(query, via_query_queue = false)
+      color = via_query_queue ? :magenta : :yellow
       prefix0 = "QUERY > ".colorize(color)
       prefix1 = "      > ".colorize(color)
       query_lines = query.split('\n')

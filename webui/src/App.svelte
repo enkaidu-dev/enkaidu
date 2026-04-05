@@ -81,8 +81,8 @@
                   msg.content.startsWith("/") || msg.content.startsWith("!")
                     ? "command"
                     : "query";
-                if (msg.via_macro) {
-                  type = type + "_via_macro";
+                if (msg.via_query_queue) {
+                  type = type + "_via_query_queue";
                 }
                 session.add_event({
                   type: type,
