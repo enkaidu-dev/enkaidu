@@ -4,7 +4,7 @@ license: MPL-2.0
 description: Command line tool that can use local and remote AI models to assist with local editing and refinement tasks.
 authors:
   - nogginly <nogginly@icloud.com>
-repository: https://github.com/nogginly/enkaidu
+repository: https://github.com/enkaidu-dev/enkaidu
 
 development_dependencies:
   ameba:
