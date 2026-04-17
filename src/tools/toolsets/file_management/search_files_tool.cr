@@ -9,7 +9,8 @@ module Tools::FileManagement
   class SearchFilesTool < BuiltInFunction
     name "search_files"
 
-    description "Searches files for lines for lines containing a match to the given search pattern and returns matching lines with line numbers."
+    description "Searches files for lines containing a match to the given search pattern and " \
+                "returns matching lines with line numbers."
 
     param "files", required: true,
       description: "A single file path, or a glob pattern expression with which to find matching files."

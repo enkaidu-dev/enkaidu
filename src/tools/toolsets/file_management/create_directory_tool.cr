@@ -9,8 +9,7 @@ module Tools::FileManagement
   class CreateDirectoryTool < BuiltInFunction
     name "create_directory"
 
-    description "Creates a new directory at the specified relative path. " +
-                "The operation is restricted to remain inside the current working directory."
+    description "Creates a new directory at the specified relative path within the current directory."
 
     param "directory_path", type: Param::Type::Str,
       description: "The relative path of the directory to create.", required: true
