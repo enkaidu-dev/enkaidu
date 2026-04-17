@@ -215,7 +215,7 @@ module LLM::OpenAI
 
     private def unexpected_response(resp)
       {type: "error/unexpected", content: JSON::Any.new(Hash{
-        "headers" => JSON.parse(resp.headers.to_json),
+        "headers" => JSON.parse(resp.headers.to_h.to_json),
         "body"    => JSON::Any.new(resp.body_io.gets_to_end),
       })}
     end
