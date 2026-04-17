@@ -232,9 +232,9 @@ module MCPC
           # Unknown response for many possible reasons
           yield Hash{
             "type"             => "error",
-            "request_headers"  => JSON.parse(last_request_headers.to_json),
+            "request_headers"  => JSON.parse(last_request_headers.try(&.to_h).to_json),
             "response_status"  => "#{resp.status_code} #{resp.status}",
-            "response_headers" => JSON.parse(resp.headers.to_json),
+            "response_headers" => JSON.parse(resp.headers.to_h.to_json),
             "response_body"    => io.gets_to_end,
           }
         end

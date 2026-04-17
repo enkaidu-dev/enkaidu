@@ -150,9 +150,9 @@ module MCPC
         unless OK_STATUS.includes? resp.status_code
           yield Hash{
             "type"             => "error",
-            "request_headers"  => JSON.parse(last_request_headers.to_json),
+            "request_headers"  => JSON.parse(last_request_headers.try(&.to_h).to_json),
             "response_status"  => "#{resp.status_code} #{resp.status}",
-            "response_headers" => JSON.parse(resp.headers.to_json),
+            "response_headers" => JSON.parse(resp.headers.to_h.to_json),
             "response_body"    => resp.body_io.gets_to_end,
           }
         end
