@@ -10,10 +10,19 @@ module Enkaidu
 
     # Appends a string to the rec_io. Flushes if threshold is reached.
     def <<(s)
+      if_recording? do |io|
+        io.puts(s)
+      end
+    end
+
+    # Yield with `IO` to write to if recording
+    def if_recording?(& : IO ->)
       return unless io = rec_io
-      io.puts s
+
+      yield io
       @count_since_flush += 1
       return unless count_since_flush >= FLUSH_AFTER
+
       flush
     end
 
