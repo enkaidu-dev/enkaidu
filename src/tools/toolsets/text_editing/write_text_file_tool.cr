@@ -8,7 +8,7 @@ module Tools::TextEditing
   class WriteTextFileTool < BuiltInFunction
     name "write_text_file"
 
-    description "Write a text file with the given content, ensuring path to file is within current directory.  " \
+    description "Create a text file within the current directory and write the given content. " \
                 "Create entire path to the file if needed. DOES NOT overwrite existing file unless requested."
 
     param "file_path", type: Param::Type::Str, description: "The relative path where the text file will be created.", required: true

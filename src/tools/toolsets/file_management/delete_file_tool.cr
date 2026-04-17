@@ -10,9 +10,9 @@ module Tools::FileManagement
   class DeleteFileTool < BuiltInFunction
     name "delete_file"
 
-    description "Deletes a specified file by moving it to a '#{FileHelper::DELETED_FILES_PATH}' folder with a ms-resolution timestamp " \
-                "prepended to the filename. This allows for file recovery if deletion was accidental. The directory " \
-                "structure is preserved in the deleted_files folder."
+    description "Deletes a file within the current directory by moving it to the `#{FileHelper::DELETED_FILES_PATH}` folder " \
+                "with a ms-resolution timestamp prepended to the filename. This allows for file recovery if deletion " \
+                "was accidental. The directory structure is preserved in the `#{FileHelper::DELETED_FILES_PATH}` folder."
 
     param "file_path", type: Param::Type::Str,
       description: "The path of the file to be deleted.", required: true
@@ -29,10 +29,10 @@ module Tools::FileManagement
         resolved_file_path = resolve_path(file_path)
 
         return error_response("Access to the specified path '#{file_path}' is not allowed.") unless within_current_directory?(resolved_file_path)
-        return error_response("The specified file '#{file_path}' does not exist.") unless valid_file?(resolved_file_path)
+        return error_response("The specified file '#{file_path}' does not exist or is not a file.") unless valid_file?(resolved_file_path)
 
         # Prevent deletion of files from the DELETED_FILES_PATH folder
-        deleted_dir = resolve_path(DELETED_FILES_PATH)
+        deleted_dir = DELETED_FILES_RESOLVED_PATH
         if resolved_file_path.starts_with?(deleted_dir)
           return error_response("Cannot delete files from the `#{DELETED_FILES_PATH}` folder.")
         end

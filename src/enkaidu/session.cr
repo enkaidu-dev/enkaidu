@@ -160,19 +160,21 @@ module Enkaidu
       from_config
     end
 
-    private macro m_process_and_record_ask_event(event)
+    private macro m_process_and_record_ask_event(event, prev_event)
       unless {{event}}["type"] == "done"
-        recorder << "," if ix.positive?
-        recorder << {{event}}.to_json
+        recorder.if_recording? do |io|
+          io.puts "," if ix.positive?
+          io.puts {{event}}.to_json
+        end
         ix += 1
-        process_event({{event}}) do |tool_call|
+        process_event({{event}}, {{prev_event}}) do |tool_call|
           tools << tool_call
         end
       end
     end
 
     # Process the given event and yield tool call if any
-    private def process_event(r, &)
+    private def process_event(r, prev, &)
       case type = r["type"]
       when "tool_call"
         yield r["content"] # tool call
@@ -181,6 +183,7 @@ module Enkaidu
           args: r["content"].dig("function", "arguments"))
       when "text", "reasoning"
         if streaming?
+          renderer.llm_text("\n", reasoning: type == "reasoning") if prev.try(&.["type"]) != type
           renderer.llm_text(r["content"].as_s, reasoning: type == "reasoning")
         else
           renderer.llm_text_block(r["content"].as_s, reasoning: type == "reasoning")
@@ -204,16 +207,20 @@ module Enkaidu
         calls = tools
         tools = [] of JSON::Any
         ev_count = 0
+        prev_event = nil
         chat.call_tools_and_ask calls do |event|
           ev_count += 1
           unless event["type"] == "done"
-            recorder << "," if ix.positive?
-            recorder << event.to_json
+            recorder.if_recording? do |io|
+              io.puts "," if ix.positive?
+              io.puts event.to_json
+            end
             ix += 1
-            process_event(event) do |tool_call|
+            process_event(event, prev_event) do |tool_call|
               tools << tool_call
             end
           end
+          prev_event = event
         end
       end
     end
@@ -225,8 +232,10 @@ module Enkaidu
       tools = [] of JSON::Any
       # ask and handle the initial query and its events
       report_time_taken(prefix: "Total ") do
+        prev_event = nil
         chat.re_ask(response_schema: response_json_schema) do |event|
-          m_process_and_record_ask_event(event)
+          m_process_and_record_ask_event(event, prev_event)
+          prev_event = event
         end
         consume_tool_calls(tools, ix)
       end
@@ -243,8 +252,10 @@ module Enkaidu
       report_time_taken(prefix: "Total ") do
         # ask and handle the initial query and its events
         renderer.user_query_text(query) if render_query
+        prev_event = nil
         chat.ask(query, attach: attach, response_schema: response_json_schema) do |event|
-          m_process_and_record_ask_event(event)
+          m_process_and_record_ask_event(event, prev_event)
+          prev_event = event
         end
         consume_tool_calls(tools, ix)
       end

@@ -51,6 +51,7 @@ module Enkaidu::CLI
     end
 
     def time_elapsed(duration : Time::Span, label : String? = nil)
+      puts if streaming?
       puts "#{label}#{duration.total_seconds.format(decimal_places: 3, only_significant: true)}s elapsed.".colorize(:yellow)
     end
 
