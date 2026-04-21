@@ -119,13 +119,22 @@ module Enkaidu::CLI
       puts SWITCHED.colorize(:light_green)
     end
 
-    LLM_MAX_TOOL_CALL_ARGS_LENGTH = 72
+    LLM_MAX_TOOL_CALL_ARGS_LENGTH = 90
+    CALL_PREFIX                   = "CALL".colorize(:red)
 
     def llm_tool_call(name, args)
       puts if streaming?
-      print "  CALL".colorize(:green)
-      puts " #{name.colorize(:red)} " \
-           "with #{trim_text(args.to_s, LLM_MAX_TOOL_CALL_ARGS_LENGTH).colorize(:red)}"
+
+      args_json = JSON.parse(args.as_s)
+      trim_more = name.size + 5
+
+      if reason = args_json.dig?("reason").try(&.as_s)
+        print "→ #{reason} / ".colorize(:green)
+        trim_more += reason.size + 2
+      end
+      trim_length = (LLM_MAX_TOOL_CALL_ARGS_LENGTH - trim_more).clamp(32, LLM_MAX_TOOL_CALL_ARGS_LENGTH)
+      puts "CALL #{name} #{trim_text(args.to_s, trim_length)}".colorize(:red)
+
       puts unless streaming?
     end
 
@@ -133,19 +142,30 @@ module Enkaidu::CLI
       warning_with("ERROR:\n#{err.to_json}")
     end
 
-    def llm_text(text, reasoning : Bool)
+    def llm_text(text, reasoning : Bool, starting : Bool = false, ending : Bool = false)
       if streaming?
-        text = text.colorize(:dark_gray).italic if reasoning
+        puts if starting
+        if reasoning
+          puts REASONING_START if starting
+          text = text.colorize(:dark_gray).italic
+        end
         print text
+        if ending
+          puts
+          puts REASONING_FINISH if reasoning
+        end
       else
         llm_text_block(text, reasoning)
       end
     end
 
+    REASONING_START  = "╭╶╶╶╶╶╶╶╶╶╶<#{"reasoning".colorize(:dark_gray).italic}>╶╶╶╶╶╶╶╶╶╶╶"
+    REASONING_FINISH = "╰╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶\n"
+
     def llm_text_block(text, reasoning : Bool)
-      puts "╭╶╶╶╶╶╶╶╶╶╶<#{"reasoning".colorize(:dark_gray).italic}>╶╶╶╶╶╶╶╶╶╶╶" if reasoning
+      puts REASONING_START if reasoning
       puts Markd.to_term(text)
-      puts "╰╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶" if reasoning
+      puts REASONING_FINISH if reasoning
       puts
     end
 
