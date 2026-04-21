@@ -23,6 +23,11 @@ module Enkaidu
       set to true when the task requires awareness of the current session, e.g. summarizing the conversation, continuing a thread, or referencing prior decisions
       PDESC
 
+    # All built-in tools ask for a reason for the tool call so that Enkaidu can
+    # show a friendly reason
+    param "reason", required: true, type: Param::Type::Str,
+      description: "Provide a single sentence describing the task or reason for spawning this agent."
+
     # Accessible to the function's Runner
     protected getter session_manager : SessionManager
 
