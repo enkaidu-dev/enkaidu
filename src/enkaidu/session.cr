@@ -161,7 +161,8 @@ module Enkaidu
     end
 
     private macro m_process_and_record_ask_event(event, prev_event)
-      unless {{event}}["type"] == "done"
+    type = {{event}}["type"]
+      unless type == "done"
         recorder.if_recording? do |io|
           io.puts "," if ix.positive?
           io.puts {{event}}.to_json
@@ -171,39 +172,53 @@ module Enkaidu
           tools << tool_call
         end
       end
+      if streaming?
+        # When finishing handling all events, check if the last event is something
+        # we need to close off; in particular, textevents when streaming.
+        case pev_type = prev_event.try(&.["type"])
+        when "text"
+          renderer.llm_text("", reasoning: false, ending: pev_type != type)
+        end
+      end
     end
 
     # Process the given event and yield tool call if any
-    private def process_event(r, prev, &)
-      return unless type = r["type"]
+    private def process_event(event, prev_event, &) : Nil
+      return unless type = event["type"]
 
-      if streaming? && type != "reasoning"
-        renderer.llm_text("",
-          reasoning: true, ending: prev.try(&.["type"]) == "reasoning")
+      if streaming?
+        # When starting to handle a new event, check if the last event is something
+        # we need to close off; in particular, text and reasoning events when streaming.
+        case pev_type = prev_event.try(&.["type"])
+        when "reasoning"
+          renderer.llm_text("", reasoning: true, ending: true) if type != pev_type
+        when "text"
+          renderer.llm_text("", reasoning: false, ending: true) if type != pev_type
+        end
       end
 
       case type
       when "tool_call"
-        yield r["content"] # tool call
+        yield event["content"] # tool call
         renderer.llm_tool_call(
-          name: r["content"].dig("function", "name").as_s,
-          args: r["content"].dig("function", "arguments"))
+          name: event["content"].dig("function", "name").as_s,
+          args: event["content"].dig("function", "arguments"))
       when "reasoning"
         if streaming?
-          renderer.llm_text(r["content"].as_s,
-            reasoning: true, starting: prev.try(&.["type"]) != type)
+          renderer.llm_text(event["content"].as_s,
+            reasoning: true, starting: prev_event.try(&.["type"]) != type)
         else
-          renderer.llm_text_block(r["content"].as_s, reasoning: true)
+          renderer.llm_text_block(event["content"].as_s, reasoning: true)
         end
       when "text"
         if streaming?
-          renderer.llm_text(r["content"].as_s,
-            reasoning: false, starting: prev.try(&.["type"]) != type)
+          renderer.llm_text(event["content"].as_s,
+            reasoning: false, starting: prev_event.try(&.["type"]) != type)
         else
-          renderer.llm_text_block(r["content"].as_s, reasoning: false)
+          renderer.llm_text_block(event["content"].as_s, reasoning: false)
         end
       when .starts_with? "error"
-        renderer.llm_error(r["content"])
+        renderer.llm_error(event["content"])
       end
     end
 
