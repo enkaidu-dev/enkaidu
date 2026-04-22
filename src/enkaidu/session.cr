@@ -182,20 +182,25 @@ module Enkaidu
       end
     end
 
-    # Process the given event and yield tool call if any
-    private def process_event(event, prev_event, &) : Nil
-      return unless type = event["type"]
-
+    private def detect_text_ending(curr_event_type, prev_event)
       if streaming?
         # When starting to handle a new event, check if the last event is something
         # we need to close off; in particular, text and reasoning events when streaming.
         case pev_type = prev_event.try(&.["type"])
         when "reasoning"
-          renderer.llm_text("", reasoning: true, ending: true) if type != pev_type
+          renderer.llm_text("", reasoning: true, ending: true) if curr_event_type != pev_type
         when "text"
-          renderer.llm_text("", reasoning: false, ending: true) if type != pev_type
+          renderer.llm_text("", reasoning: false, ending: true) if curr_event_type != pev_type
         end
       end
+    end
+
+    # Process the given event and yield tool call if any
+    private def process_event(event, prev_event, &) : Nil
+      return unless type = event["type"]
+
+      # Handle text/reasoning ending detection first
+      detect_text_ending(type, prev_event)
 
       case type
       when "tool_call"
