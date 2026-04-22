@@ -142,17 +142,61 @@ module Enkaidu::CLI
       warning_with("ERROR:\n#{err.to_json}")
     end
 
+    class TextGatherer
+      @sink : IO::Memory
+
+      def initialize
+        @sink = IO::Memory.new
+      end
+
+      def take : String
+        str = @sink.to_s
+        @sink.clear
+        str
+      end
+
+      delegate :<<, :puts, :print, to: @sink
+    end
+
+    @text_sink = TextGatherer.new
+
+    private def gather_and_render_streaming_text(text, starting : Bool, ending : Bool)
+      # EXPERIMENTAL line gathering
+      puts if starting
+      defer = nil
+      # If fragment has `\n` then split by newline so we can
+      # render the line to newline, and put remainder into the
+      # gatherer to complete as part of the next line
+      if text.includes?('\n')
+        # split and keep LHS
+        parts = text.split('\n', limit: 2)
+        @text_sink << parts.first
+        defer = parts.last # defer RHS
+      else
+        @text_sink << text
+      end
+
+      if defer || ending
+        # We found a newline, or we're done; so render line
+        line = @text_sink.take
+
+        # Plain lines; need a way to gather blocks and render them to
+        # preserve formatting of tables, lists etc.
+        puts line
+
+        # Retain RHS of split for next line
+        @text_sink << defer if defer
+      end
+    end
+
     def llm_text(text, reasoning : Bool, starting : Bool = false, ending : Bool = false)
       if streaming?
-        puts if starting
         if reasoning
-          puts REASONING_START if starting
-          text = text.colorize(:dark_gray).italic
-        end
-        print text
-        if ending
-          puts
-          puts REASONING_FINISH if reasoning
+          puts "", REASONING_START if starting
+          print text.colorize(:dark_gray).italic
+          puts "", REASONING_FINISH if ending
+        else
+          gather_and_render_streaming_text(text, starting, ending)
         end
       else
         llm_text_block(text, reasoning)
@@ -160,7 +204,7 @@ module Enkaidu::CLI
     end
 
     REASONING_START  = "╭╶╶╶╶╶╶╶╶╶╶<#{"reasoning".colorize(:dark_gray).italic}>╶╶╶╶╶╶╶╶╶╶╶"
-    REASONING_FINISH = "╰╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶\n"
+    REASONING_FINISH = "╰╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶"
 
     def llm_text_block(text, reasoning : Bool)
       puts REASONING_START if reasoning
