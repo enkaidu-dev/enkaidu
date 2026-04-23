@@ -25,6 +25,24 @@ module Enkaidu
         end
       end
 
+      @macro_cache = [] of String
+
+      def macro_names : Array(String)
+        if @macro_cache.size.zero?
+          each_macro do |name, _mac, _origin|
+            @macro_cache << "!#{name}"
+          end
+          @macro_cache.sort!
+        end
+        @macro_cache
+      end
+
+      def macro_description(name) : String?
+        if mac = (find_macro_by_name?(name) || find_macro_by_name?(name = name[1..-1]))
+          "`!#{name}` - #{mac.description}"
+        end
+      end
+
       def list_all_macros
         text = String.build do |io|
           each_macro do |name, mac, origin|

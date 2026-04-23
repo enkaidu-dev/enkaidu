@@ -64,6 +64,7 @@ module Enkaidu::CLI
 
       @runtime = Runtime.new(options: opts, renderer: ui)
       @reader = CLI::QueryReader.new(
+        runtime,
         input_history_file: opts.config.session.try &.input_history_file)
 
       reader.prefix = query_prefix

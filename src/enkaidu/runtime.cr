@@ -16,7 +16,7 @@ module Enkaidu
     getter renderer : SessionRenderer
     getter options : SessionOptions
 
-    private def session
+    def session
       session_manager.current.session
     end
 

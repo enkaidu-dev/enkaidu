@@ -48,6 +48,18 @@ module Enkaidu::Slash
 
     H_C_BYE = "`#{C_BYE}` - Exit Enkaidu"
 
+    def help_for(slash_command) : String?
+      if command = commands[slash_command]? || commands["/#{slash_command}"]?
+        command.help
+      end
+    end
+
+    @command_names : Array(String)?
+
+    def command_names : Array(String)
+      @command_names ||= (commands.map { |name, _| name } << C_BYE << C_HELP).sort!
+    end
+
     def help
       @help ||= String.build do |sio|
         sio.print "- "
