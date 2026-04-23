@@ -10,6 +10,8 @@ module Enkaidu
     def initialize
       @console = CLI::ConsoleRenderer.new
       @opts = CLI::Options.new(console)
+
+      console.quiet = opts.quiet?
     end
 
     def run

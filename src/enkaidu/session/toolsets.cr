@@ -8,13 +8,13 @@ module Enkaidu
           chat.each_tool_origin do |origin|
             io << "## " << origin << '\n'
             chat.each_tool(origin: origin) do |tool|
-              io << "**" << tool.name << "** : "
+              io << "`" << tool.name << "` : "
               io << tool.description << "\n\n"
             end
           end
           io << '\n'
         end
-        renderer.info_with("List of available tools.", text, markdown: true)
+        renderer.respond_with("List of available tools.", text, markdown: true)
       end
 
       def unload_all_toolsets
@@ -23,7 +23,7 @@ module Enkaidu
         end
       end
 
-      def unload_toolset_by(name)
+      def unload_toolset_by(name, auto = false)
         toolset = Tools[name]?
         if toolset.nil?
           renderer.warning_with("WARNING: No built-in toolset found under the name: #{name}.")
@@ -31,7 +31,7 @@ module Enkaidu
           renderer.info_with("INFO: Built-in toolset not loaded: #{name}.")
         else
           message = String.build do |str|
-            str << "INFO: Unloaded built-in tools from toolset: "
+            str << "Unloaded built-in tools from toolset: "
             ix = 0
             toolset.each_tool_info do |tool_name, _|
               next unless chat.find_tool? tool_name
@@ -42,11 +42,15 @@ module Enkaidu
             end
           end
           @loaded_toolsets.delete(name)
-          renderer.info_with(message)
+          if auto
+            renderer.info_with message
+          else
+            renderer.respond_with message
+          end
         end
       end
 
-      def load_toolset_by(name, select_tools : Enumerable(String)? = nil)
+      def load_toolset_by(name, select_tools : Enumerable(String)? = nil, auto = false)
         toolset = Tools[name]?
         if toolset.nil?
           renderer.warning_with("WARNING: No built-in toolset found under the name: #{name}.")
@@ -55,26 +59,30 @@ module Enkaidu
           selection = select_tools || toolset.tool_names # select all tool names
           # Filter out tool names in selection that are alreadyloaded
           selection = selection.select { |tool_name| !chat.find_tool?(tool_name) }
-          message = if selection && selection.empty?
-                      "INFO: Built-in tools in toolset already loaded."
-                    else
-                      String.build do |str|
-                        str << "INFO: Loaded built-in tools from toolset: "
-                        ix = 0
-                        toolset.retrieve(selection: selection) do |built_in_function_class|
-                          fun_name = built_in_function_class.function_name
-                          settings = opts.config.tool_settings_by_name(fun_name)
-                          tool = built_in_function_class.new(renderer, settings)
+          if selection && selection.empty?
+            renderer.info_with "INFO: Built-in tools in toolset already loaded."
+          else
+            message = String.build do |str|
+              str << "Loaded built-in tools from toolset: "
+              ix = 0
+              toolset.retrieve(selection: selection) do |built_in_function_class|
+                fun_name = built_in_function_class.function_name
+                settings = opts.config.tool_settings_by_name(fun_name)
+                tool = built_in_function_class.new(renderer, settings)
 
-                          chat.with_tool(tool)
-                          str << ", " if ix.positive?
-                          str << tool.name
-                          ix += 1
-                        end
-                      end
-                    end
+                chat.with_tool(tool)
+                str << ", " if ix.positive?
+                str << tool.name
+                ix += 1
+              end
+            end
+            if auto
+              renderer.info_with message
+            else
+              renderer.respond_with message
+            end
+          end
           @loaded_toolsets[name] = toolset
-          renderer.info_with(message)
         end
       end
 
@@ -82,16 +90,16 @@ module Enkaidu
         text = String.build do |io|
           Tools.each_toolset do |toolset|
             loaded = @loaded_toolsets.has_key?(toolset.name)
-            io << "### " << toolset.name
+            io << "# " << toolset.name
             io << (loaded ? " _(Loaded)_\n" : '\n')
             toolset.each_tool_info do |name, description|
-              io << "* **" << name << "** : "
+              io << "* `" << name << "` : "
               io << description << "\n\n"
             end
           end
           io << '\n'
         end
-        renderer.info_with("List of available toolsets.", text, markdown: true)
+        renderer.respond_with("List of available toolsets.", text, markdown: true)
       end
 
       def list_tool_details(tool_name)
@@ -107,7 +115,7 @@ module Enkaidu
             io << JSON.parse(tool.input_json_schema).to_pretty_json
             io << "\n```\n"
           end
-          renderer.info_with("Tool details: #{tool_name} (#{tool.origin})", text, markdown: true)
+          renderer.respond_with("Tool details: #{tool_name} (#{tool.origin})", text, markdown: true)
         else
           renderer.info_with("INFO: No such tool available: #{tool_name}")
         end

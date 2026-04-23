@@ -4,8 +4,10 @@ module Enkaidu::Slash
   class PromptCommand < Command
     NAME = "/prompt"
 
+    HELP_BRIEF = "`#{NAME} [<sub-command>]` - Manage custom prompts"
+
     HELP = <<-HELP1
-    `#{NAME} [<sub-command>]`
+    #{HELP_BRIEF}
     - `ls`
       - List all available prompt
     - `info <PROMPTNAME>`
@@ -20,6 +22,10 @@ module Enkaidu::Slash
 
     def name : String
       NAME
+    end
+
+    def brief : String
+      HELP_BRIEF
     end
 
     def help : String

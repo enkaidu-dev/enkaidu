@@ -4,8 +4,9 @@ module Enkaidu::Slash
   class ToolCommand < Command
     NAME = "/tool"
 
-    HELP = <<-HELP1
-    `#{NAME} [<sub-command>]`
+    HELP_BRIEF = "`#{NAME} [<sub-command>]` - Manage available tools / functions"
+    HELP       = <<-HELP1
+    #{HELP_BRIEF}
     - `ls`
       - List all available tools
     - `info <TOOLNAME>`
@@ -14,6 +15,10 @@ module Enkaidu::Slash
 
     def name : String
       NAME
+    end
+
+    def brief : String
+      HELP_BRIEF
     end
 
     def help : String

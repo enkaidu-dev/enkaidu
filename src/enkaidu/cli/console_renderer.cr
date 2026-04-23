@@ -20,6 +20,8 @@ module Enkaidu::CLI
   # This class is responsible for rendering console outputs.
   class ConsoleRenderer < SessionRenderer
     property? streaming = false
+    property? quiet = false
+
     private getter input = InputReader.new("> ")
 
     private def prepare_text(help, markdown)
@@ -32,7 +34,14 @@ module Enkaidu::CLI
       STDERR.puts text
     end
 
+    def respond_with(message, help = nil, markdown = false)
+      puts message.colorize.bold
+      return unless help
+      puts prepare_text(help, markdown)
+    end
+
     def info_with(message, help = nil, markdown = false)
+      return if quiet?
       STDERR.puts message.colorize(:cyan)
       return unless help
       err_puts_text help, markdown
@@ -123,19 +132,26 @@ module Enkaidu::CLI
     CALL_PREFIX                   = "CALL".colorize(:red)
 
     def llm_tool_call(name, args)
-      puts if streaming?
+      puts if streaming? unless quiet?
 
       args_json = JSON.parse(args.as_s)
       trim_more = name.size + 5
 
+      print "  " if quiet?
+
       if reason = args_json.dig?("reason").try(&.as_s)
-        print "→ #{reason} / ".colorize(:green)
+        print "→ #{reason}".colorize(:green)
         trim_more += reason.size + 2
       end
-      trim_length = (LLM_MAX_TOOL_CALL_ARGS_LENGTH - trim_more).clamp(32, LLM_MAX_TOOL_CALL_ARGS_LENGTH)
-      puts "CALL #{name} #{trim_text(args.to_s, trim_length)}".colorize(:red)
 
-      puts unless streaming?
+      if quiet?
+        puts
+      else
+        trim_length = (LLM_MAX_TOOL_CALL_ARGS_LENGTH - trim_more).clamp(32, LLM_MAX_TOOL_CALL_ARGS_LENGTH)
+        puts " / ", "CALL #{name} #{trim_text(args.to_s, trim_length)}".colorize(:red)
+      end
+
+      puts unless streaming? || quiet?
     end
 
     def llm_error(err)
@@ -153,6 +169,10 @@ module Enkaidu::CLI
         str = @sink.to_s
         @sink.clear
         str
+      end
+
+      def wipe
+        @sink.clear
       end
 
       delegate :<<, :puts, :print, to: @sink
@@ -189,12 +209,41 @@ module Enkaidu::CLI
       end
     end
 
+    class Counter
+      SPINNER_CHARS = ['|', '/', '-', '\\']
+      getter count = 0
+
+      def reset
+        @count = 0
+      end
+
+      def spin
+        tmp = SPINNER_CHARS[(count // 3) % SPINNER_CHARS.size]
+        @count += 1
+        tmp
+      end
+    end
+
+    @think_counter = Counter.new
+
     def llm_text(text, reasoning : Bool, starting : Bool = false, ending : Bool = false)
       if streaming?
         if reasoning
-          puts "", REASONING_START if starting
-          print text.colorize(:dark_gray).italic
-          puts "", REASONING_FINISH if ending
+          if quiet?
+            if starting
+              print "  ... thinking  ".colorize(:dark_gray).italic
+              @think_counter.reset
+            end
+            if ending
+              print "\r                          \r"
+            else
+              print "\b", @think_counter.spin
+            end
+          else
+            puts "", REASONING_START if starting
+            print text.colorize(:dark_gray).italic
+            puts "", REASONING_FINISH if ending
+          end
         else
           gather_and_render_streaming_text(text, starting, ending)
         end
@@ -207,10 +256,11 @@ module Enkaidu::CLI
     REASONING_FINISH = "╰╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶"
 
     def llm_text_block(text, reasoning : Bool)
+      puts unless reasoning
       puts REASONING_START if reasoning
       puts Markd.to_term(text)
       puts REASONING_FINISH if reasoning
-      puts
+      puts unless reasoning
     end
 
     MAX_IMAGE_URL_LENGTH = 72

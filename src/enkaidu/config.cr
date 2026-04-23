@@ -75,6 +75,7 @@ module Enkaidu
     # Session configuration settings for Enkaidu.
     class Session < ConfigSerializable
       getter? streaming = false
+      getter? quiet = false
       getter provider_type : String?
       getter model : String?
       getter input_history_file : String?

@@ -4,6 +4,8 @@ module Enkaidu::Slash
   class SessionCommand < Command
     NAME = "/session"
 
+    HELP_BRIEF = "`#{NAME} [<sub-command>]` - Session management"
+
     HELP = <<-HELP1
     `#{NAME} [<sub-command>]`
     - `ls`
@@ -51,6 +53,10 @@ module Enkaidu::Slash
 
     def name : String
       NAME
+    end
+
+    def brief : String
+      HELP_BRIEF
     end
 
     def help : String
@@ -105,7 +111,7 @@ module Enkaidu::Slash
         response_only: YES_NO_NIL, reset_parent: YES_NO_NIL)
         handle_session_pop_take(current_session_stack, cmd)
       else
-        session.renderer.warning_with("ERROR: Unknown or incomplete sub-command: '#{cmd.input}'",
+        session.renderer.warning_with("WARNING: Unknown or incomplete sub-command: '#{cmd.input}'",
           help: HELP, markdown: true)
       end
     end
@@ -159,20 +165,20 @@ module Enkaidu::Slash
           str.puts
         end
       end
-      current_session_stack.session.renderer.info_with("INFO: Active session stacks by name:",
+      current_session_stack.session.renderer.respond_with("Active session stacks by name:",
         help: content, markdown: true)
     end
 
     private def handle_session_id(session)
-      session.renderer.info_with(session.id)
+      session.renderer.respond_with(session.id)
     end
 
     private def handle_session_usage(session)
       if usage = session.usage
-        session.renderer.info_with(
+        session.renderer.respond_with(
           "Current session usage: #{usage.total_tokens} tokens (prompt: #{usage.prompt_tokens}, completion: #{usage.completion_tokens}})")
       else
-        session.renderer.info_with("No usage data for curent session at this time.")
+        session.renderer.respond_with("No usage data for curent session at this time.")
       end
     end
 
@@ -181,13 +187,13 @@ module Enkaidu::Slash
       File.open(path, "w") do |file|
         session.save_session(file)
       end
-      session.renderer.info_with("Session saved to JSONL file: #{path}")
+      session.renderer.respond_with("Session saved to JSONL file: #{path}")
     end
 
     private def handle_session_load(session, cmd)
       path = Path.new(cmd.arg_at(2).as(String))
       tail_n = cmd.arg_named?("tail").try(&.as(String).to_i) || -1
-      session.renderer.info_with("Loading previously saved session: #{path}")
+      session.renderer.respond_with("Loading previously saved session: #{path}")
       File.open(path, "r") do |file|
         session.load_session(file, tail_num_chats: tail_n)
       end

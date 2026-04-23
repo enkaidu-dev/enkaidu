@@ -4,8 +4,10 @@ module Enkaidu::Slash
   class ToolsetCommand < Command
     NAME = "/toolset"
 
+    HELP_BRIEF = "`#{NAME} [<sub-command>]` - Manage toolsets"
+
     HELP = <<-HELP1
-    `#{NAME} [<sub-command>]`
+    #{HELP_BRIEF}
     - `ls`
       - List all built-in toolsets that can be activated
     - `load <TOOLSET_NAME>`
@@ -19,6 +21,10 @@ module Enkaidu::Slash
 
     def name : String
       NAME
+    end
+
+    def brief : String
+      HELP_BRIEF
     end
 
     def help : String

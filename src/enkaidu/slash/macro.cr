@@ -4,8 +4,10 @@ module Enkaidu::Slash
   class MacroCommand < Command
     NAME = "/macro"
 
+    HELP_BRIEF = "`#{NAME} [<sub-command>]` - Manage macros"
+
     HELP = <<-HELP1
-    `#{NAME} [<sub-command>]`
+    #{HELP_BRIEF}
     - `ls`
       - List all available macros.
       - Macros can be executed by using the `!` sigil before the name of the macro. E.g. `!test`
@@ -13,6 +15,10 @@ module Enkaidu::Slash
 
     def name : String
       NAME
+    end
+
+    def brief : String
+      HELP_BRIEF
     end
 
     def help : String

@@ -4,8 +4,10 @@ module Enkaidu::Slash
   class SystemPromptCommand < Command
     NAME = "/system_prompt"
 
+    HELP_BRIEF = "`#{NAME} [<sub-command>]` - Manage system prompts"
+
     HELP = <<-HELP1
-    `#{NAME} [<sub-command>]`
+    #{HELP_BRIEF}
     - `ls`
       - List all available system prompts.
       - System prompts can be selected when using `/session reset`.
@@ -13,6 +15,10 @@ module Enkaidu::Slash
 
     def name : String
       NAME
+    end
+
+    def brief : String
+      HELP_BRIEF
     end
 
     def help : String

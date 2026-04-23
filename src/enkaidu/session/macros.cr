@@ -28,12 +28,13 @@ module Enkaidu
       def list_all_macros
         text = String.build do |io|
           each_macro do |name, mac, origin|
-            io << "### **" << name << "** (_" << origin << "_)\n"
+            io.puts "----"
+            io << "`" << name << "` (_" << origin << "_) - "
             io << mac.description << "\n\n"
           end
           io << '\n'
         end
-        renderer.info_with("List of available macros.", text, markdown: true)
+        renderer.respond_with("List of available macros.", text, markdown: true)
       end
 
       private def substitute_macro_call_args(line : String, cmd : CommandParser)

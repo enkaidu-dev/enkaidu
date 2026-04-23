@@ -46,26 +46,18 @@ module Enkaidu::Slash
     C_BYE  = "/bye"
     C_HELP = "/help"
 
-    H_C_BYE = <<-HELP1
-    `#{C_BYE}`
-    - Exit Enkaidu
-    HELP1
-
-    H_C_HELP = <<-HELP3
-    `#{C_HELP}`
-    - Shows this information
-    HELP3
+    H_C_BYE = "`#{C_BYE}` - Exit Enkaidu"
 
     def help
       @help ||= String.build do |sio|
+        sio.print "- "
         sio.puts H_C_BYE
-        sio.puts
-        sio.puts H_C_HELP
-        sio.puts
         commands.each_value do |command|
-          sio.puts command.help
-          sio.puts
+          sio.print "- "
+          sio.puts command.brief
         end
+        sio.puts
+        sio.puts "Enter each command without arguments to get help on using the command"
       end
     end
 
@@ -78,7 +70,7 @@ module Enkaidu::Slash
       when C_BYE
         state = :done
       when C_HELP
-        renderer.info_with "The following `/` (slash) commands available:",
+        renderer.respond_with "The following `/` (slash) commands available:",
           help: help, markdown: true
       else
         if command = commands[cmd_name]?
