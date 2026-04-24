@@ -21,26 +21,22 @@ module Enkaidu::CLI
       ALT_KEY_NAME = "Alt"
     {% end %}
 
-    WELCOME_PRERELEASE = <<-TEXT
-    ┌─── CAUTION ───────────────────────────┐
-    │ This is a PRE-RELEASE in development. │
-    └───────────────────────────────────────┘
-    TEXT
+    WELCOME_FIRST_LEFT  = "│ Enkaidu #{VERSION} │ /help for commands │ Multi-line input │ Tab to auto-complete"
+    WELCOME_SECOND_LEFT = "│ Welcome to your second-in-command(-line) agentic assistant for AI that YOU control!"
+    WELCOME_THIRD_LEFT  = "│ FYI │ Markdown formatted rendering is not available when streaming. Soon."
 
-    SORRY_NO_MARKDOWN = <<-TEXT
-    ┌─── SORRY ────────────────────────────────────────────────────────────────┐
-    │ Markdown formatted rendering is not available when streaming is enabled. │
-    └──────────────────────────────────────────────────────────────────────────┘
-    TEXT
+    WELCOME_WIDTH = [WELCOME_FIRST_LEFT.size, WELCOME_SECOND_LEFT.size, WELCOME_THIRD_LEFT.size].max
 
-    WELCOME_FIRST_LEFT   = "│ Enkaidu #{VERSION} │ /help for commands │ Multi-line input, Enter on blank to proceed"
-    WELCOME_SECOND_LEFT  = "│ Welcome to your second-in-command(-line) agentic assistant for using LLMs + MCP."
-    WELCOME_WIDTH        = Math.max(WELCOME_FIRST_LEFT.size, WELCOME_SECOND_LEFT.size)
     WELCOME_FIRST_RIGHT  = (" " * ((WELCOME_WIDTH - WELCOME_FIRST_LEFT.size) + 2)) + '│'
     WELCOME_SECOND_RIGHT = (" " * ((WELCOME_WIDTH - WELCOME_SECOND_LEFT.size) + 2)) + '│'
-    WELCOME_QUIET_COLOR  = "│ #{"Enkaidu".colorize.bold} #{VERSION} │ " \
-                           "#{"/help".colorize(:yellow)} for commands │ Multi-line input, #{"Enter".colorize(:yellow)} on blank to proceed"
-    WELCOME_QUIET_BAR = "─" * (WELCOME_FIRST_LEFT.size + WELCOME_FIRST_RIGHT.size - 2)
+    WELCOME_THIRD_RIGHT  = (" " * ((WELCOME_WIDTH - WELCOME_THIRD_LEFT.size) + 2)) + '│'
+
+    WELCOME_FIRST_COLOR = "│ #{"Enkaidu".colorize.bold} #{VERSION} │ " \
+                          "#{"/help".colorize(:yellow)} for commands │ Multi-line input │ #{"Tab".colorize(:yellow)} to auto-complete"
+    WELCOME_THIRD_COLOR = "│ #{"FYI".colorize.bold} │ Markdown formatted rendering is not available when streaming. Soon."
+    WELCOME_QUIET_BAR   = "─" * (WELCOME_FIRST_LEFT.size + WELCOME_FIRST_RIGHT.size - 2)
+
+    PROMPT_PRERELEASE = "CAUTION! #{VERSION} is a PRE-RELEASE in development.".colorize(:red)
 
     def quiet?
       opts.quiet?
@@ -48,12 +44,17 @@ module Enkaidu::CLI
 
     private def print_welcome(ui)
       print '┌', WELCOME_QUIET_BAR, '┐', '\n'
-      print WELCOME_QUIET_COLOR
+      print WELCOME_FIRST_COLOR
       puts WELCOME_FIRST_RIGHT
       unless quiet?
         print '├', WELCOME_QUIET_BAR, '┤', '\n'
-        print WELCOME_SECOND_LEFT
+        print WELCOME_SECOND_LEFT.colorize.bold
         puts WELCOME_SECOND_RIGHT
+      end
+      if opts.stream? || opts.config.session.try(&.streaming?)
+        print '├', WELCOME_QUIET_BAR, '┤', '\n'
+        print WELCOME_THIRD_COLOR.colorize(:yellow).italic
+        puts WELCOME_THIRD_RIGHT
       end
       print '└', WELCOME_QUIET_BAR, '┘', '\n'
     end
@@ -68,13 +69,6 @@ module Enkaidu::CLI
         input_history_file: opts.config.session.try &.input_history_file)
 
       reader.prefix = query_prefix
-
-      if PRERELEASE
-        puts WELCOME_PRERELEASE.colorize(:red)
-      end
-
-      return unless session.streaming?
-      puts SORRY_NO_MARKDOWN.colorize(:yellow)
     end
 
     private def session_manager
@@ -107,6 +101,9 @@ module Enkaidu::CLI
 
     private def show_query_prompt
       puts
+      if PRERELEASE
+        reader.editor.output.puts PROMPT_PRERELEASE
+      end
       unless commander.query_indicators.empty?
         reader.editor.output.puts "────┤ #{commander.query_indicators.join(" | ")} ├────".colorize.yellow
       end
