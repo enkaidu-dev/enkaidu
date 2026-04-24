@@ -13,8 +13,9 @@ module Enkaidu::Slash
 
     NAME = "/include"
 
-    HELP = <<-HELP1
-    `#{NAME} [<sub-command>]`
+    HELP_BRIEF = "`#{NAME} [<sub-command>]` - Include attachments for next query"
+    HELP       = <<-HELP1
+    #{HELP_BRIEF}
     - `image_file <PATH>`
       - Prepare image data from a file to _include_ with the next query;
         make sure the LLM model supports vision/image processing.
@@ -32,6 +33,10 @@ module Enkaidu::Slash
 
     def name : String
       NAME
+    end
+
+    def brief : String
+      HELP_BRIEF
     end
 
     def help : String

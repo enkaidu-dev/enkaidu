@@ -1,10 +1,17 @@
 require "reply"
 
+require "../slash_commander"
+
 module Enkaidu::CLI
   # Command-line query reader with editing and other capabilities.
   class QueryReader < Reply::Reader
-    def initialize(@input_history_file : String? = nil)
+    private getter runtime : Runtime
+
+    DELIMETERS = {{" \n\t'\"=".chars}}
+
+    def initialize(@runtime, @input_history_file : String? = nil)
       super()
+      editor.word_delimiters = DELIMETERS
     end
 
     property prefix = "QUERY"
@@ -12,21 +19,101 @@ module Enkaidu::CLI
     def prompt(io : IO, line_number : Int32, color : Bool) : Nil
       q = "#{prefix} > "
       q = q.colorize(:yellow) if color
-
       io << q
     end
 
-    # def highlight(expression : String) : String
-    #   # Highlight the expression
-    # end
+    # Cache command and macro docs to avoid re-endering markdown
+    # over and over and over again
+    @doc_cache = {} of String => String
 
-    # def continue?(expression : String) : Bool
-    #   # Return whether the interface should continue on multiline, depending of the expression
-    # end
+    # Macro, because we don't want the doc generator to
+    # execute before we check the cache
+    macro cached_doc(name, doc_generator)
+      if doc = @doc_cache[{{name}}]?
+        doc
+      elsif help = {{doc_generator}}
+        @doc_cache[{{name}}] = Markd.to_term(help)
+      end
+    end
 
-    # def format(expression : String) : String?
-    #   # Reformat when expression is submitted
-    # end
+    PATH_DOC = "`Tab` / `Shift-Tab` select choices. `Esc` + `Tab` to restart auto-completion within a sub-folder."
+
+    # Override to set the entire documentation for an autocompletion entry.
+    #
+    # If not nil, the documentation is shown in its own alternate screen when alt-d is pressed.
+    #
+    # default: `nil`
+    def documentation(entry : String)
+      if entry.starts_with?('/')
+        cached_doc(entry, runtime.commander.help_for(entry))
+      elsif entry.starts_with?('!')
+        cached_doc(entry, runtime.session.macro_description(entry))
+      elsif entry.starts_with?("./")
+        cached_doc("./", PATH_DOC)
+      end
+    end
+
+    # Override to integrate auto-completion.
+    #
+    # *current_word* is picked following `word_delimiters`.
+    # It expects to return `Tuple` with:
+    # * a title : `String`
+    # * the auto-completion results : `Array(String)`
+    #
+    # default: `{"", [] of String}`
+    def auto_complete(current_word : String, expression_before : String)
+      if current_word.starts_with?("./")
+        # Tab completion for paths in current folder
+        if current_word.size > 2 && Path::SEPARATORS.includes?(current_word[-1])
+          current_word = current_word[0..-2]
+        end
+        path = Path.new(current_word)
+        path = path.parent unless File.directory?(path)
+        {
+          "Files and Folders",
+          Dir.new(path).children.map { |name| (path / name).to_s },
+        }
+      elsif expression_before.strip == ""
+        # Tab completion for commands and macros
+        {
+          "Commands and Macros",
+          [runtime.commander.command_names, runtime.session.macro_names].flatten,
+        }
+      else
+        # Nothing to complete
+        {"", [] of String}
+      end
+    end
+
+    # Highlight the expression
+    def highlight(expression : String) : String
+      # Paths that start with `./`
+      text = expression.gsub(/\.(\/[^\s]+)+\/?/) do |match|
+        match.colorize(:light_blue)
+      end
+      # Slash commands and macros at the start of a prompt
+      text = text.gsub(/^\s*[\/!][a-z_][a-z0-9_\.]+/) do |match|
+        match.colorize(:light_red).italic
+      end
+      # name= for macro invocations
+      text.gsub(/\s([a-z_][a-z0-9_\.]+)=/) do |match|
+        match.colorize(:light_red).italic
+      end
+    end
+
+    # Return whether the interface should continue on multiline, depending of the expression
+    def continue?(expression : String) : Bool
+      # Experiment multi-line by default until Enter on a blank line
+      # Let slash commands and macros submit on first line
+      return false if expression.starts_with?(/\s*[\/!]/)
+      # Otherwise multi-line, submit on empty line
+      !expression.ends_with?('\n')
+    end
+
+    # Remove trailing whitespace
+    def format(expression : String) : String?
+      expression.strip
+    end
 
     # def indentation_level(expression_before_cursor : String) : Int32?
     #   # Compute the indentation from the expression

@@ -36,9 +36,9 @@ module Enkaidu::Env
 
     # Create a profile using the given base directory where we will look for
     # a DOT_ENKAIDU folder
-    def initialize(base_path, @renderer)
+    def initialize(base_path, @renderer, quiet = false)
       @profile_path = locate_profile_path(base_path)
-      @config = load_profile_config
+      @config = load_profile_config(quiet)
       @prompts = load_prompts
       @system_prompts = load_system_prompts
       @macros = load_macros
@@ -65,20 +65,22 @@ module Enkaidu::Env
     end
 
     # Read and parse config file, or fail with exceptions
-    private def parse_config_file(file) : ProfileConfig
+    private def parse_config_file(file, quiet) : ProfileConfig
       text = File.read(file)
       config = ProfileConfig.from_yaml(text)
-      renderer.info_with "INFO: Reading profile config file: ./#{file.relative_to?(CURRENT_DIR)}"
+      unless quiet
+        renderer.info_with "INFO: Reading profile config file: ./#{file.relative_to?(CURRENT_DIR)}"
+      end
       @config_path = file
       config
     end
 
     # Find and load config file, starting with the specific path and then the current one and then the profile directory
-    private def load_profile_config : ProfileConfig?
+    private def load_profile_config(quiet) : ProfileConfig?
       if file = (dir = profile_path) &&
                 Config.find_config_file(dir, base_name: CONFIG_FILE_NAME)
         begin
-          parse_config_file(file)
+          parse_config_file(file, quiet)
         rescue IO::Error
           error_and_exit_with "FATAL: Failed to open profile config file: #{file.relative_to?(CURRENT_DIR)}"
         rescue ex : TooManyDefaultConfigFiles | UnknownConfigFileFormat

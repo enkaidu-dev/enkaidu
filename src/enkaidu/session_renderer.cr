@@ -6,13 +6,19 @@ module Enkaidu
   # user prompts within the Enkaidu application. These are callbacks from the app session
   # so that we can implement different rendering systems.
   abstract class SessionRenderer
+    # INFO alerting message
     abstract def info_with(message, help = nil, markdown = false)
-
+    # WARN alerting message
     abstract def warning_with(message, help = nil, markdown = false)
-
+    # ERROR alerting message
     abstract def error_with(message, help = nil, markdown = false)
 
+    # Response to user command
+    abstract def respond_with(message, help = nil, markdown = false)
+
+    # Prompt query text
     abstract def user_query_text(query, via_query_queue = false)
+    # Prompt query image
     abstract def user_query_image_url(url)
 
     abstract def user_confirm_shell_command?(command)
@@ -30,7 +36,7 @@ module Enkaidu
 
     abstract def llm_tool_call(name, args)
 
-    abstract def llm_text(text, reasoning : Bool)
+    abstract def llm_text(text, reasoning : Bool, starting : Bool = false, ending : Bool = false)
     abstract def llm_text_block(text, reasoning : Bool)
     abstract def llm_image_url(url)
 

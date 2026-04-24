@@ -36,6 +36,11 @@ module Enkaidu::WUI
       queue.shift?
     end
 
+    # delegate to `#info_with`
+    def respond_with(message, help = nil, markdown = false)
+      info_with message, help, markdown
+    end
+
     def info_with(message, help = nil, markdown = false)
       post_event Render::InfoMessage.new(message, details: help.to_s, markdown: markdown)
     end
@@ -111,7 +116,7 @@ module Enkaidu::WUI
       warning_with("ERROR:\n#{err.to_json}")
     end
 
-    def llm_text(text, reasoning : Bool)
+    def llm_text(text, reasoning : Bool, starting : Bool = false, ending : Bool = false)
       if streaming?
         post_event Render::LLMTextFragment.new(text, reasoning: reasoning)
       else

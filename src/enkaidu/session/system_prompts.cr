@@ -8,12 +8,12 @@ module Enkaidu
       def list_all_system_prompts
         text = String.build do |io|
           system_prompts.each_value do |sys_prompt|
-            io << "**" << sys_prompt.name << "** (" << sys_prompt.origin << "): "
+            io << "`" << sys_prompt.name << "` (" << sys_prompt.origin << "): "
             io << sys_prompt.description << "\n\n"
           end
           io << '\n'
         end
-        renderer.info_with("List of available system prompts.", text, markdown: true)
+        renderer.respond_with("List of available system prompts.", text, markdown: true)
       end
 
       def find_system_prompt?(prompt_name)

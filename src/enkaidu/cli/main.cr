@@ -15,46 +15,60 @@ module Enkaidu::CLI
     private getter opts : CLI::Options
     private getter runtime : Runtime
 
-    WELCOME_MSG = "Welcome to Enkaidu #{VERSION}"
-    WELCOME     = <<-TEXT
-    This is your second-in-command(-line) designed to assist you with
-    writing & maintaining code and other text-based content, by enabling LLMs
-    and connecting with MCP servers.
+    {% if flag?(:darwin) %}
+      ALT_KEY_NAME = "Option"
+    {% else %}
+      ALT_KEY_NAME = "Alt"
+    {% end %}
 
-    When entering a query,
-    - Type `/help` to see the `/` commands available.
-    - Press `Alt-Enter` or `Option-Enter` to start multi-line editing.
-    TEXT
+    WELCOME_FIRST_LEFT  = "│ Enkaidu #{VERSION} │ /help for commands │ Multi-line input │ Tab to auto-complete"
+    WELCOME_SECOND_LEFT = "│ Welcome to your second-in-command(-line) agentic assistant for AI that YOU control!"
+    WELCOME_THIRD_LEFT  = "│ FYI │ Markdown formatted rendering is not available when streaming. Soon."
 
-    WELCOME_PRERELEASE = <<-TEXT
-    ┌─── CAUTION ───────────────────────────┐
-    │ This is a PRE-RELEASE in development. │
-    └───────────────────────────────────────┘
-    TEXT
+    WELCOME_WIDTH = [WELCOME_FIRST_LEFT.size, WELCOME_SECOND_LEFT.size, WELCOME_THIRD_LEFT.size].max
 
-    SORRY_NO_MARKDOWN = <<-TEXT
-    ┌─── SORRY ────────────────────────────────────────────────────────────────┐
-    │ Markdown formatted rendering is not available when streaming is enabled. │
-    └──────────────────────────────────────────────────────────────────────────┘
-    TEXT
+    WELCOME_FIRST_RIGHT  = (" " * ((WELCOME_WIDTH - WELCOME_FIRST_LEFT.size) + 2)) + '│'
+    WELCOME_SECOND_RIGHT = (" " * ((WELCOME_WIDTH - WELCOME_SECOND_LEFT.size) + 2)) + '│'
+    WELCOME_THIRD_RIGHT  = (" " * ((WELCOME_WIDTH - WELCOME_THIRD_LEFT.size) + 2)) + '│'
+
+    WELCOME_FIRST_COLOR = "│ #{"Enkaidu".colorize.bold} #{VERSION} │ " \
+                          "#{"/help".colorize(:yellow)} for commands │ Multi-line input │ #{"Tab".colorize(:yellow)} to auto-complete"
+    WELCOME_THIRD_COLOR = "│ #{"FYI".colorize.bold} │ Markdown formatted rendering is not available when streaming. Soon."
+    WELCOME_QUIET_BAR   = "─" * (WELCOME_FIRST_LEFT.size + WELCOME_FIRST_RIGHT.size - 2)
+
+    PROMPT_PRERELEASE = "CAUTION! #{VERSION} is a PRE-RELEASE in development.".colorize(:red)
+
+    def quiet?
+      opts.quiet?
+    end
+
+    private def print_welcome(ui)
+      print '┌', WELCOME_QUIET_BAR, '┐', '\n'
+      print WELCOME_FIRST_COLOR
+      puts WELCOME_FIRST_RIGHT
+      unless quiet?
+        print '├', WELCOME_QUIET_BAR, '┤', '\n'
+        print WELCOME_SECOND_LEFT.colorize.bold
+        puts WELCOME_SECOND_RIGHT
+      end
+      if opts.stream? || opts.config.session.try(&.streaming?)
+        print '├', WELCOME_QUIET_BAR, '┤', '\n'
+        print WELCOME_THIRD_COLOR.colorize(:yellow).italic
+        puts WELCOME_THIRD_RIGHT
+      end
+      print '└', WELCOME_QUIET_BAR, '┘', '\n'
+    end
 
     def initialize(@opts)
       ui = opts.renderer
-      ui.info_with WELCOME_MSG, WELCOME, markdown: true
-      ui.info_with ""
+      print_welcome(ui)
 
       @runtime = Runtime.new(options: opts, renderer: ui)
       @reader = CLI::QueryReader.new(
+        runtime,
         input_history_file: opts.config.session.try &.input_history_file)
 
       reader.prefix = query_prefix
-
-      if PRERELEASE
-        puts WELCOME_PRERELEASE.colorize(:red)
-      end
-
-      return unless session.streaming?
-      puts SORRY_NO_MARKDOWN.colorize(:yellow)
     end
 
     private def session_manager
@@ -87,11 +101,14 @@ module Enkaidu::CLI
 
     private def show_query_prompt
       puts
+      if PRERELEASE
+        reader.editor.output.puts PROMPT_PRERELEASE
+      end
       unless commander.query_indicators.empty?
-        reader.editor.output.puts "----[ #{commander.query_indicators.join(" | ")} ]----".colorize.yellow
+        reader.editor.output.puts "────┤ #{commander.query_indicators.join(" | ")} ├────".colorize.yellow
       end
       if schema = commander.response_json_schema
-        reader.editor.output.puts "----[ JSON response schema (name: #{schema.name}, strict? #{schema.strict?}) ]----".colorize.yellow
+        reader.editor.output.puts "────┤ JSON response schema (name: #{schema.name}, strict? #{schema.strict?}) ├────".colorize.yellow
       end
     end
 

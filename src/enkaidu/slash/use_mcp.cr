@@ -4,6 +4,8 @@ module Enkaidu::Slash
   class UseMcpCommand < Command
     NAME = "/use_mcp"
 
+    HELP_BRIEF = "`#{NAME} <NAME> | <URL>...` - Connect to MCP server"
+
     HELP = <<-HELP2
     `#{NAME} <NAME>`
 
@@ -19,6 +21,10 @@ module Enkaidu::Slash
 
     def name : String
       NAME
+    end
+
+    def brief : String
+      HELP_BRIEF
     end
 
     def help : String

@@ -25,15 +25,34 @@ module Enkaidu
         end
       end
 
+      @macro_cache = [] of String
+
+      def macro_names : Array(String)
+        if @macro_cache.size.zero?
+          each_macro do |name, _mac, _origin|
+            @macro_cache << "!#{name}"
+          end
+          @macro_cache.sort!
+        end
+        @macro_cache
+      end
+
+      def macro_description(name) : String?
+        if mac = (find_macro_by_name?(name) || find_macro_by_name?(name = name[1..-1]))
+          "`!#{name}` - #{mac.description}"
+        end
+      end
+
       def list_all_macros
         text = String.build do |io|
           each_macro do |name, mac, origin|
-            io << "### **" << name << "** (_" << origin << "_)\n"
+            io.puts "----"
+            io << "`" << name << "` (_" << origin << "_) - "
             io << mac.description << "\n\n"
           end
           io << '\n'
         end
-        renderer.info_with("List of available macros.", text, markdown: true)
+        renderer.respond_with("List of available macros.", text, markdown: true)
       end
 
       private def substitute_macro_call_args(line : String, cmd : CommandParser)

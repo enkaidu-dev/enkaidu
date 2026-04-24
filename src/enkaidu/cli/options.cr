@@ -16,6 +16,7 @@ module Enkaidu
       getter model_name : String? = nil
       getter? debug = false
       getter? stream = false
+      getter? quiet = false
       getter? trace_mcp = false
       getter? trace_http = true
       getter? webui = false
@@ -44,7 +45,7 @@ module Enkaidu
         end
 
         @config = load_config || empty_config
-        @profile = Env::Profile.new(Env::CURRENT_DIR, renderer)
+        @profile = Env::Profile.new(Env::CURRENT_DIR, renderer, quiet?)
         if profile_config = profile.config
           config.merge_profile_config(profile_config, renderer)
         end
@@ -62,6 +63,10 @@ module Enkaidu
         parser.on("--streaming", "-S", "Enable streaming mode") do
           @stream = true
           add(:stream, true)
+        end
+        parser.on("--quiet", "-Q", "Enable quieter display mode") do
+          @quiet = true
+          add(:quiet, true)
         end
 
         parser.separator <<-MODEL
@@ -164,6 +169,7 @@ module Enkaidu
           @provider_type = session_opts.provider_type if provider_type.nil?
           @model_name = session_opts.model if model_name.nil?
           @stream = session_opts.streaming? unless @options.has_key?(:stream)
+          @quiet = session_opts.quiet? unless @options.has_key?(:quiet)
         end
 
         return unless model_name && provider_type.nil?
@@ -196,7 +202,7 @@ module Enkaidu
       private def parse_config_file(file) : Config
         text = File.read(file)
         config = Config.from_yaml(text)
-        renderer.info_with "INFO: Reading config file: #{file}"
+        renderer.info_with "INFO: Reading config file: #{file}" unless quiet?
         config
       end
 

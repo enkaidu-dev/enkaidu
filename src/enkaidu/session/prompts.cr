@@ -9,12 +9,12 @@ module Enkaidu
         text = String.build do |io|
           prompts_by_name.each_value do |prompt|
             # mcp_prompts.each do |prompt|
-            io << "**" << prompt.name << "** (" << prompt.origin << "): "
+            io << "- `" << prompt.name << "` (" << prompt.origin << "): "
             io << prompt.description << "\n\n"
           end
           io << '\n'
         end
-        renderer.info_with("List of available prompts.", text, markdown: true)
+        renderer.respond_with("List of available prompts.", text, markdown: true)
       end
 
       def list_prompt_details(prompt_name)
@@ -34,7 +34,7 @@ module Enkaidu
               io << '\n'
             end
           end
-          renderer.info_with("Prompt details: #{prompt_name} (#{sel_prompt.origin})", text, markdown: true)
+          renderer.respond_with("Prompt details: #{prompt_name} (#{sel_prompt.origin})", text, markdown: true)
         else
           renderer.info_with("INFO: No such prompt available: #{prompt_name}")
         end

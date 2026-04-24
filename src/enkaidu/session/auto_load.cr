@@ -91,9 +91,9 @@ module Enkaidu
       private def load_toolsets(toolsets)
         toolsets.each do |toolset|
           if toolset.is_a? String
-            load_toolset_by(toolset.strip)
+            load_toolset_by(toolset.strip, auto: true)
           elsif toolset.is_a? NamedTuple
-            load_toolset_by(toolset[:name].strip, toolset[:select])
+            load_toolset_by(toolset[:name].strip, toolset[:select], auto: true)
           end
         end
       end

@@ -20,6 +20,8 @@ module Enkaidu::CLI
   # This class is responsible for rendering console outputs.
   class ConsoleRenderer < SessionRenderer
     property? streaming = false
+    property? quiet = false
+
     private getter input = InputReader.new("> ")
 
     private def prepare_text(help, markdown)
@@ -32,7 +34,14 @@ module Enkaidu::CLI
       STDERR.puts text
     end
 
+    def respond_with(message, help = nil, markdown = false)
+      puts message.colorize.bold
+      return unless help
+      puts prepare_text(help, markdown)
+    end
+
     def info_with(message, help = nil, markdown = false)
+      return if quiet?
       STDERR.puts message.colorize(:cyan)
       return unless help
       err_puts_text help, markdown
@@ -119,34 +128,142 @@ module Enkaidu::CLI
       puts SWITCHED.colorize(:light_green)
     end
 
-    LLM_MAX_TOOL_CALL_ARGS_LENGTH = 72
+    LLM_MAX_TOOL_CALL_ARGS_LENGTH = 90
+    CALL_PREFIX                   = "CALL".colorize(:red)
 
     def llm_tool_call(name, args)
-      puts if streaming?
-      print "  CALL".colorize(:green)
-      puts " #{name.colorize(:red)} " \
-           "with #{trim_text(args.to_s, LLM_MAX_TOOL_CALL_ARGS_LENGTH).colorize(:red)}"
-      puts unless streaming?
+      puts if streaming? unless quiet?
+
+      args_json = JSON.parse(args.as_s)
+      trim_more = name.size + 5
+
+      print "  " if quiet?
+
+      if reason = args_json.dig?("reason").try(&.as_s)
+        print "→ #{reason} ".colorize(:green)
+        trim_more += reason.size + 2
+      else
+        print "→ ".colorize(:green)
+        trim_more += 2
+      end
+
+      if quiet?
+        puts "(CALL #{name})".colorize(:red).italic
+      else
+        trim_length = (LLM_MAX_TOOL_CALL_ARGS_LENGTH - trim_more).clamp(32, LLM_MAX_TOOL_CALL_ARGS_LENGTH)
+        puts " / ", "CALL #{name} #{trim_text(args.to_s, trim_length)}".colorize(:red)
+      end
+
+      puts unless streaming? || quiet?
     end
 
     def llm_error(err)
       warning_with("ERROR:\n#{err.to_json}")
     end
 
-    def llm_text(text, reasoning : Bool)
+    class TextGatherer
+      @sink : IO::Memory
+
+      def initialize
+        @sink = IO::Memory.new
+      end
+
+      def take : String
+        str = @sink.to_s
+        @sink.clear
+        str
+      end
+
+      def wipe
+        @sink.clear
+      end
+
+      delegate :<<, :puts, :print, to: @sink
+    end
+
+    @text_sink = TextGatherer.new
+
+    private def gather_and_render_streaming_text(text, starting : Bool, ending : Bool)
+      # EXPERIMENTAL line gathering
+      puts if starting
+      defer = nil
+      # If fragment has `\n` then split by newline so we can
+      # render the line to newline, and put remainder into the
+      # gatherer to complete as part of the next line
+      if text.includes?('\n')
+        # split and keep LHS
+        parts = text.split('\n', limit: 2)
+        @text_sink << parts.first
+        defer = parts.last # defer RHS
+      else
+        @text_sink << text
+      end
+
+      if defer || ending
+        # We found a newline, or we're done; so render line
+        line = @text_sink.take
+
+        # Plain lines; need a way to gather blocks and render them to
+        # preserve formatting of tables, lists etc.
+        puts line
+
+        # Retain RHS of split for next line
+        @text_sink << defer if defer
+      end
+    end
+
+    class Counter
+      SPINNER_CHARS = ['|', '/', '-', '\\']
+      getter count = 0
+
+      def reset
+        @count = 0
+      end
+
+      def spin
+        tmp = SPINNER_CHARS[(count // 3) % SPINNER_CHARS.size]
+        @count += 1
+        tmp
+      end
+    end
+
+    @think_counter = Counter.new
+
+    def llm_text(text, reasoning : Bool, starting : Bool = false, ending : Bool = false)
       if streaming?
-        text = text.colorize(:dark_gray).italic if reasoning
-        print text
+        if reasoning
+          if quiet?
+            if starting
+              print "  Thinking  ".colorize(:dark_gray).italic
+              @think_counter.reset
+            end
+            if ending
+              print "\r                          \r"
+            else
+              print "\b", @think_counter.spin
+            end
+          else
+            puts "", REASONING_START if starting
+            print text.colorize(:dark_gray).italic
+            puts "", REASONING_FINISH if ending
+          end
+        else
+          gather_and_render_streaming_text(text, starting, ending)
+        end
       else
         llm_text_block(text, reasoning)
       end
     end
 
+    REASONING_START  = "╭╶╶╶╶╶╶╶╶╶╶<#{"reasoning".colorize(:dark_gray).italic}>╶╶╶╶╶╶╶╶╶╶╶"
+    REASONING_FINISH = "╰╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶"
+
     def llm_text_block(text, reasoning : Bool)
-      puts "╭╶╶╶╶╶╶╶╶╶╶<#{"reasoning".colorize(:dark_gray).italic}>╶╶╶╶╶╶╶╶╶╶╶" if reasoning
+      puts unless reasoning
+      puts REASONING_START if reasoning
       puts Markd.to_term(text)
-      puts "╰╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶" if reasoning
-      puts
+      puts REASONING_FINISH if reasoning
+      puts unless reasoning
     end
 
     MAX_IMAGE_URL_LENGTH = 72
@@ -224,15 +341,19 @@ module Enkaidu::CLI
     MCP_MAX_TOOL_CALL_ARGS_LENGTH = 72
 
     def mcp_calling_tool(uri, name, args)
-      puts "  MCP CALLING \"#{name}\" at server #{uri}.".colorize(:yellow)
-      puts "      with: #{trim_text(args.to_s, MCP_MAX_TOOL_CALL_ARGS_LENGTH)}".colorize(:yellow)
+      unless quiet?
+        puts "  MCP CALLING \"#{name}\" at server #{uri}.".colorize(:yellow)
+        puts "      with: #{trim_text(args.to_s, MCP_MAX_TOOL_CALL_ARGS_LENGTH)}".colorize(:yellow)
+      end
     end
 
     MCP_MAX_TOOL_RESULT_LENGTH = 72
 
     def mcp_calling_tool_result(uri, name, result)
-      puts "  MCP CALL (#{name}) RESULT: #{trim_text(result.to_s, MCP_MAX_TOOL_RESULT_LENGTH)}".colorize(:green)
-      puts
+      unless quiet?
+        puts "  MCP CALL (#{name}) RESULT: #{trim_text(result.to_s, MCP_MAX_TOOL_RESULT_LENGTH)}".colorize(:green)
+        puts
+      end
     end
 
     def mcp_error(ex)
