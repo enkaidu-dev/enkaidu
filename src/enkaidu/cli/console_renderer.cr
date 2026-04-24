@@ -140,12 +140,15 @@ module Enkaidu::CLI
       print "  " if quiet?
 
       if reason = args_json.dig?("reason").try(&.as_s)
-        print "→ #{reason}".colorize(:green)
+        print "→ #{reason} ".colorize(:green)
         trim_more += reason.size + 2
+      else
+        print "→ ".colorize(:green)
+        trim_more += 2
       end
 
       if quiet?
-        puts
+        puts "(CALL #{name})".colorize(:red).italic
       else
         trim_length = (LLM_MAX_TOOL_CALL_ARGS_LENGTH - trim_more).clamp(32, LLM_MAX_TOOL_CALL_ARGS_LENGTH)
         puts " / ", "CALL #{name} #{trim_text(args.to_s, trim_length)}".colorize(:red)
@@ -231,7 +234,7 @@ module Enkaidu::CLI
         if reasoning
           if quiet?
             if starting
-              print "  ... thinking  ".colorize(:dark_gray).italic
+              print "  Thinking  ".colorize(:dark_gray).italic
               @think_counter.reset
             end
             if ending
@@ -338,15 +341,19 @@ module Enkaidu::CLI
     MCP_MAX_TOOL_CALL_ARGS_LENGTH = 72
 
     def mcp_calling_tool(uri, name, args)
-      puts "  MCP CALLING \"#{name}\" at server #{uri}.".colorize(:yellow)
-      puts "      with: #{trim_text(args.to_s, MCP_MAX_TOOL_CALL_ARGS_LENGTH)}".colorize(:yellow)
+      unless quiet?
+        puts "  MCP CALLING \"#{name}\" at server #{uri}.".colorize(:yellow)
+        puts "      with: #{trim_text(args.to_s, MCP_MAX_TOOL_CALL_ARGS_LENGTH)}".colorize(:yellow)
+      end
     end
 
     MCP_MAX_TOOL_RESULT_LENGTH = 72
 
     def mcp_calling_tool_result(uri, name, result)
-      puts "  MCP CALL (#{name}) RESULT: #{trim_text(result.to_s, MCP_MAX_TOOL_RESULT_LENGTH)}".colorize(:green)
-      puts
+      unless quiet?
+        puts "  MCP CALL (#{name}) RESULT: #{trim_text(result.to_s, MCP_MAX_TOOL_RESULT_LENGTH)}".colorize(:green)
+        puts
+      end
     end
 
     def mcp_error(ex)

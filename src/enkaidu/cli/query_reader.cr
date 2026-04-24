@@ -7,7 +7,7 @@ module Enkaidu::CLI
   class QueryReader < Reply::Reader
     private getter runtime : Runtime
 
-    DELIMETERS = {{" \n\t".chars}}
+    DELIMETERS = {{" \n\t'\"=".chars}}
 
     def initialize(@runtime, @input_history_file : String? = nil)
       super()
@@ -36,6 +36,8 @@ module Enkaidu::CLI
       end
     end
 
+    PATH_DOC = "`Tab` / `Shift-Tab` select choices. `Esc` + `Tab` to restart auto-completion within a sub-folder."
+
     # Override to set the entire documentation for an autocompletion entry.
     #
     # If not nil, the documentation is shown in its own alternate screen when alt-d is pressed.
@@ -46,6 +48,8 @@ module Enkaidu::CLI
         cached_doc(entry, runtime.commander.help_for(entry))
       elsif entry.starts_with?('!')
         cached_doc(entry, runtime.session.macro_description(entry))
+      elsif entry.starts_with?("./")
+        cached_doc("./", PATH_DOC)
       end
     end
 
@@ -67,9 +71,9 @@ module Enkaidu::CLI
         path = path.parent unless File.directory?(path)
         {
           "Files and Folders",
-          Dir.new(path).children.map { |name| "#{path}/#{name}" },
+          Dir.new(path).children.map { |name| (path / name).to_s },
         }
-      elsif expression_before == ""
+      elsif expression_before.strip == ""
         # Tab completion for commands and macros
         {
           "Commands and Macros",
@@ -81,17 +85,35 @@ module Enkaidu::CLI
       end
     end
 
-    # def highlight(expression : String) : String
-    #   # Highlight the expression
-    # end
+    # Highlight the expression
+    def highlight(expression : String) : String
+      # Paths that start with `./`
+      text = expression.gsub(/\.(\/[^\s]+)+\/?/) do |match|
+        match.colorize(:light_blue)
+      end
+      # Slash commands and macros at the start of a prompt
+      text = text.gsub(/^\s*[\/!][a-z_][a-z0-9_\.]+/) do |match|
+        match.colorize(:light_red).italic
+      end
+      # name= for macro invocations
+      text.gsub(/\s([a-z_][a-z0-9_\.]+)=/) do |match|
+        match.colorize(:light_red).italic
+      end
+    end
 
-    # def continue?(expression : String) : Bool
-    #   # Return whether the interface should continue on multiline, depending of the expression
-    # end
+    # Return whether the interface should continue on multiline, depending of the expression
+    def continue?(expression : String) : Bool
+      # Experiment multi-line by default until Enter on a blank line
+      # Let slash commands and macros submit on first line
+      return false if expression.starts_with?(/\s*[\/!]/)
+      # Otherwise multi-line, submit on empty line
+      !expression.ends_with?('\n')
+    end
 
-    # def format(expression : String) : String?
-    #   # Reformat when expression is submitted
-    # end
+    # Remove trailing whitespace
+    def format(expression : String) : String?
+      expression.strip
+    end
 
     # def indentation_level(expression_before_cursor : String) : Int32?
     #   # Compute the indentation from the expression

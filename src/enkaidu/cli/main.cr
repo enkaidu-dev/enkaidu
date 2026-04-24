@@ -33,13 +33,13 @@ module Enkaidu::CLI
     └──────────────────────────────────────────────────────────────────────────┘
     TEXT
 
-    WELCOME_FIRST_LEFT   = "│ Enkaidu #{VERSION} │ /help for commands │ #{ALT_KEY_NAME}-Enter for multi-line input"
+    WELCOME_FIRST_LEFT   = "│ Enkaidu #{VERSION} │ /help for commands │ Multi-line input, Enter on blank to proceed"
     WELCOME_SECOND_LEFT  = "│ Welcome to your second-in-command(-line) agentic assistant for using LLMs + MCP."
     WELCOME_WIDTH        = Math.max(WELCOME_FIRST_LEFT.size, WELCOME_SECOND_LEFT.size)
     WELCOME_FIRST_RIGHT  = (" " * ((WELCOME_WIDTH - WELCOME_FIRST_LEFT.size) + 2)) + '│'
     WELCOME_SECOND_RIGHT = (" " * ((WELCOME_WIDTH - WELCOME_SECOND_LEFT.size) + 2)) + '│'
-    WELCOME_QUIET_COLOR  = "│ Enkaidu #{VERSION} │ " \
-                           "#{"/help".colorize(:yellow)} for commands │ #{"#{ALT_KEY_NAME}-Enter".colorize(:yellow)} for multi-line input"
+    WELCOME_QUIET_COLOR  = "│ #{"Enkaidu".colorize.bold} #{VERSION} │ " \
+                           "#{"/help".colorize(:yellow)} for commands │ Multi-line input, #{"Enter".colorize(:yellow)} on blank to proceed"
     WELCOME_QUIET_BAR = "─" * (WELCOME_FIRST_LEFT.size + WELCOME_FIRST_RIGHT.size - 2)
 
     def quiet?
