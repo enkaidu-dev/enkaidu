@@ -1,4 +1,5 @@
 require "reply"
+require "termify"
 require "../session_renderer"
 
 require "markterm"
@@ -21,6 +22,21 @@ module Enkaidu::CLI
   class ConsoleRenderer < SessionRenderer
     property? streaming = false
     property? quiet = false
+
+    MDR_STYLESHEET = Termify::Markdown::Stylesheet.new({
+      :h1          => {bold: true, prefix: "# ".colorize(:dark_gray).to_s},
+      :h2          => {bold: true, prefix: "## ".colorize(:dark_gray).to_s},
+      :h3          => {bold: true, prefix: "### ".colorize(:dark_gray).to_s},
+      :h4          => {bold: true},
+      :h5          => {bold: true},
+      :h6          => {bold: true},
+      :code_block  => {fg: Termify::ANSI::FG_CYAN, prefix: "░ "},
+      :code_inline => {fg: Termify::ANSI::FG_CYAN},
+      :html_tag    => {dim: true},
+      :block_html  => {dim: true},
+      :table       => {fg: Termify::ANSI::FG_DEFAULT},
+      :block_quote => {prefix: "▌ "},
+    })
 
     private getter input = InputReader.new("> ")
 
@@ -161,57 +177,6 @@ module Enkaidu::CLI
       warning_with("ERROR:\n#{err.to_json}")
     end
 
-    class TextGatherer
-      @sink : IO::Memory
-
-      def initialize
-        @sink = IO::Memory.new
-      end
-
-      def take : String
-        str = @sink.to_s
-        @sink.clear
-        str
-      end
-
-      def wipe
-        @sink.clear
-      end
-
-      delegate :<<, :puts, :print, to: @sink
-    end
-
-    @text_sink = TextGatherer.new
-
-    private def gather_and_render_streaming_text(text, starting : Bool, ending : Bool)
-      # EXPERIMENTAL line gathering
-      puts if starting
-      defer = nil
-      # If fragment has `\n` then split by newline so we can
-      # render the line to newline, and put remainder into the
-      # gatherer to complete as part of the next line
-      if text.includes?('\n')
-        # split and keep LHS
-        parts = text.split('\n', limit: 2)
-        @text_sink << parts.first
-        defer = parts.last # defer RHS
-      else
-        @text_sink << text
-      end
-
-      if defer || ending
-        # We found a newline, or we're done; so render line
-        line = @text_sink.take
-
-        # Plain lines; need a way to gather blocks and render them to
-        # preserve formatting of tables, lists etc.
-        puts line
-
-        # Retain RHS of split for next line
-        @text_sink << defer if defer
-      end
-    end
-
     class Counter
       SPINNER_CHARS = ['|', '/', '-', '\\']
       getter count = 0
@@ -228,6 +193,13 @@ module Enkaidu::CLI
     end
 
     @think_counter = Counter.new
+
+    @md_renderer = Termify::Markdown::Renderer.new(STDOUT, MDR_STYLESHEET)
+
+    private def render_streaming_markdown(text, _starting : Bool, ending : Bool)
+      @md_renderer << text
+      @md_renderer.puts if ending
+    end
 
     def llm_text(text, reasoning : Bool, starting : Bool = false, ending : Bool = false)
       if streaming?
@@ -248,7 +220,8 @@ module Enkaidu::CLI
             puts "", REASONING_FINISH if ending
           end
         else
-          gather_and_render_streaming_text(text, starting, ending)
+          render_streaming_markdown(text, starting, ending)
+          # gather_and_render_streaming_text(text, starting, ending)
         end
       else
         llm_text_block(text, reasoning)
