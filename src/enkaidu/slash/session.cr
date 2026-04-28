@@ -44,11 +44,6 @@ module Enkaidu::Slash
         - Retain some of the chat history if `retain=` specified, otherwise `none` and
         - Replace parent chat history if `replace=yes`, otherwise `no`
       - Without parameters, throws away session history
-    - (DEPRECATED) `pop_and_take [response_only=yes|no] [reset_parent=yes|no]`
-      - Throws away current chat session and restore last pushed (parent) chat session (if any), with following caveats:
-        - Resets the parent's session history if `reset_parent=yes` without affecting any other session configuration.
-        - Appends the last chat from the interim session, keeping the both the query and response unless
-        `response_only=yes` is specified, in which case only the response is kept.
     HELP1
 
     def name : String
@@ -107,9 +102,6 @@ module Enkaidu::Slash
         handle_session_push(current_session_stack, cmd)
       when .expect?(NAME, "pop", retain: SESSION_POP_RETAIN_NIL, replace: YES_NO_NIL)
         handle_session_pop_with(current_session_stack, cmd)
-      when .expect?(NAME, "pop_and_take",
-        response_only: YES_NO_NIL, reset_parent: YES_NO_NIL)
-        handle_session_pop_take(current_session_stack, cmd)
       else
         session.renderer.warning_with("WARNING: Unknown or incomplete sub-command: '#{cmd.input}'",
           help: HELP, markdown: true)
@@ -217,20 +209,6 @@ module Enkaidu::Slash
       retain = cmd.arg_named?("retain", "none").try(&.to_s)
       replace_history = cmd.arg_named?("replace", "no").try(&.!=("no"))
       session_stack.pop_session(SessionStack::Retain.parse(retain), replace_history) do
-        # Render session popped
-        session_stack.session.renderer.session_popped(depth: session_stack.depth)
-      end
-    end
-
-    # Deprecate this.
-    private def handle_session_pop_take(session_stack, cmd)
-      session_stack.session.renderer.warning_with("WARN: DEPRECATED COMMAND: /session pop_and_take")
-
-      filter_role = cmd.arg_named?("response_only", "no").try(&.==("yes")) ? "assistant" : nil
-      reset_parent = cmd.arg_named?("reset_parent", "no").try(&.!=("no"))
-      session_stack.pop_session_deprecated(transfer_last_num: 1,
-        filter_by_role: filter_role,
-        reset_history: reset_parent) do
         # Render session popped
         session_stack.session.renderer.session_popped(depth: session_stack.depth)
       end

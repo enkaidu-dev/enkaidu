@@ -61,19 +61,5 @@ module Enkaidu
       end
       false
     end
-
-    def pop_session_deprecated(transfer_last_num = 0, filter_by_role : String? = nil, reset_history = false, &) : Bool
-      if @session_stack.size > 1
-        prev = @session_stack.pop
-        yield true # Notify to indicate we're back in the parent session
-        session.erase_history if reset_history
-        if transfer_last_num.positive?
-          prev.transfer_tail_chats(to: session, num: transfer_last_num,
-            filter_by_role: filter_by_role)
-        end
-        return true
-      end
-      false
-    end
   end
 end
