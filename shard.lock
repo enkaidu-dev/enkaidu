@@ -58,11 +58,7 @@ shards:
 
   tablo:
     git: https://github.com/hutou/tablo.git
-    version: 1.0.2
-
-  tallboy:
-    git: https://github.com/epoch/tallboy.git
-    version: 0.9.3
+    version: 1.1.0
 
   tartrazine:
     git: https://github.com/ralsina/tartrazine.git
@@ -70,7 +66,7 @@ shards:
 
   termify:
     git: https://github.com/nogginly/termify.cr.git
-    version: 0.2.0+git.commit.69f760faa4240400ee9f643456fd5e7f8b22c8d4
+    version: 0.2.1+git.commit.3f51e493820445b5ce7232594536e0fc5060dfa1
 
   textseg:
     git: https://github.com/naqvis/uni_text_seg.git
