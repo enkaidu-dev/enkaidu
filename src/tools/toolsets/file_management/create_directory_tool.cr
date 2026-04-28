@@ -11,8 +11,8 @@ module Tools::FileManagement
 
     description "Creates a new directory at the specified relative path within the current directory."
 
-    param "directory_path", type: Param::Type::Str,
-      description: "The relative path of the directory to create.", required: true
+    param "directory_path", type: Param::Type::Str, required: true,
+      description: "The relative path of the directory to create."
 
     runner Runner
 

@@ -12,14 +12,14 @@ module Tools::TextEditing
     description "Replaces a specified string in a text file within the current directory with a new string." \
                 "This is used for making precise edits."
 
-    param "file_path", type: Param::Type::Str,
-      description: "The relative path to the text file to modify.", required: true
-    param "old_str", type: Param::Type::Str,
-      description: "The text to replace (must match exactly, including whitespace and indentation)", required: true
-    param "new_str", type: Param::Type::Str,
-      description: "The new text to insert in place of the old text.", required: true
+    param "file_path", type: Param::Type::Str, required: true,
+      description: "The relative path to the text file to modify."
+    param "old_str", type: Param::Type::Str, required: true,
+      description: "The text to replace (must match exactly, including whitespace and indentation)"
+    param "new_str", type: Param::Type::Str, required: true,
+      description: "The new text to insert in place of the old text."
     param "multiple", type: Param::Type::Bool, required: false,
-      description: "If true, tries to replaces multiple occurrences of the old string. Default is false, replacing only the first occurence."
+      description: "Optional. If true, tries to replaces multiple occurrences of the old string. Default is false, replacing only the first occurence."
 
     runner Runner
 

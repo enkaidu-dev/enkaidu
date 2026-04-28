@@ -17,11 +17,11 @@ module Tools::TextEditing
     param "file_path", type: Param::Type::Str, required: true,
       description: "The path to the text file to read."
     param "include_line_numbers", type: Param::Type::Bool, required: false,
-      description: "If true, prepends 1-indexed line numbers like `cat -n`. Defaults to false."
+      description: "Optional. Set to true to include line numbers, like `cat -n`. Defaults to false."
     param "line_range", type: Param::Type::Arr, required: false,
-      description: "An array of two integers specifying the start and end line numbers to view." \
+      description: "Optional. An array of two integers specifying the start and end line numbers to view." \
                    "Line numbers are 1-indexed, and -1 for the end line means read to the end of the file." \
-                   "Defaults to entire file."
+                   "Defaults to [1, -1] for entire file."
 
     runner Runner
 

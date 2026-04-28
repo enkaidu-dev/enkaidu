@@ -11,9 +11,12 @@ module Tools::TextEditing
     description "Create a text file within the current directory and write the given content. " \
                 "Create entire path to the file if needed. DOES NOT overwrite existing file unless requested."
 
-    param "file_path", type: Param::Type::Str, description: "The relative path where the text file will be created.", required: true
-    param "overwrite", type: Param::Type::Bool, description: "Set to true to overwrite existing file; default is false.", required: false
-    param "content", type: Param::Type::Str, description: "The content to write into the text file.", required: true
+    param "file_path", type: Param::Type::Str, required: true,
+      description: "The relative path where the text file will be created."
+    param "content", type: Param::Type::Str, required: true,
+      description: "The content to write into the text file."
+    param "overwrite", type: Param::Type::Bool, required: false,
+      description: "Optional. Set to true to overwrite existing file; default is false."
 
     runner Runner
 

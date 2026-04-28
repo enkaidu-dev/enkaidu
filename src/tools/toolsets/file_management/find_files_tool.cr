@@ -13,16 +13,16 @@ module Tools::FileManagement
     description "Finds files and directories in a directory hierarchy by matching a glob pattern."
 
     # Define the acceptable parameter using the `param` method
-    param "path", required: false,
-      description: "The starting point from where this tool looks for " \
-                   "files and directories matching the path pattern. Defaults to \".\" if not" \
-                   "specified. Cannot be empty."
     param "expression", required: true,
       description: "The glob pattern expression with which to find matching files and directories. "
+    param "path", required: false,
+      description: "Optional. The starting point from where this tool looks for " \
+                   "files and directories matching the path pattern. Defaults to \".\" if not" \
+                   "specified or empty string."
     param "max", type: Param::Type::Num, required: false,
-      description: "Maxmimum number of matches to return (default is #{FileHelper::MAX_FIND_FILE_MATCHES})"
+      description: "Optional. Maxmimum number of matches to return (default is #{FileHelper::MAX_FIND_FILE_MATCHES})"
     param "sort", type: Param::Type::Bool, required: false,
-      description: "Set to false to disable sorting (default is true)"
+      description: "Optional. Set to false to disable sorting (default is true)"
 
     runner Runner
 
@@ -34,9 +34,7 @@ module Tools::FileManagement
         pattern = args["expression"]?.try(&.as_s?) || return error_response("The required glob `expression` was not specified")
 
         start = args["path"]?.try(&.as_s?) || "."
-        if start.empty?
-          return error_response("Empty `path` not allowed; use `.` for current directory.")
-        end
+        start = "." if start.empty?
 
         max = args["max"]?.try(&.as_i?) || MAX_FIND_FILE_MATCHES
         sort = args["sort"]?.try(&.as_bool?)
