@@ -1,7 +1,8 @@
 name: enkaidu
 version: 0.9.0-pre
 license: MPL-2.0
-description: Command line tool that can use local and remote AI models to assist with local editing and refinement tasks.
+description: Command line tool that can use local and remote AI models to assist
+  with local editing and refinement tasks.
 authors:
   - nogginly <nogginly@icloud.com>
 repository: https://github.com/enkaidu-dev/enkaidu
@@ -13,6 +14,8 @@ development_dependencies:
     gitlab: arctic-fox/spectator
 
 dependencies:
+  termify:
+    github: nogginly/termify.cr
   liquid:
     github: amberframework/liquid.cr
     version: 1.0.0
@@ -30,7 +33,7 @@ dependencies:
     version: 0.4.0
   html5:
     github: naqvis/crystal-html5
-    version: 0.5.1
+    version: 0.7.0
 
 targets:
   enkaidu:

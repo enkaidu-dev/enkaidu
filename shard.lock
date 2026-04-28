@@ -20,13 +20,9 @@ shards:
     git: https://github.com/ralsina/docopt.cr.git
     version: 0.3.1
 
-  fnv:
-    git: https://github.com/naqvis/crystal-fnv.git
-    version: 0.1.3
-
   html5:
     git: https://github.com/naqvis/crystal-html5.git
-    version: 0.5.1
+    version: 0.7.0
 
   json-schema:
     git: https://github.com/spider-gazelle/json-schema.git
@@ -58,15 +54,19 @@ shards:
 
   spectator:
     git: https://gitlab.com/arctic-fox/spectator.git
-    version: 0.12.2
+    version: 0.12.4
 
   tablo:
     git: https://github.com/hutou/tablo.git
-    version: 1.0.2
+    version: 1.1.0
 
   tartrazine:
     git: https://github.com/ralsina/tartrazine.git
     version: 0.20.1
+
+  termify:
+    git: https://github.com/nogginly/termify.cr.git
+    version: 0.2.1+git.commit.16801f10b82220e568636ba8a994bccf6d7198f0
 
   textseg:
     git: https://github.com/naqvis/uni_text_seg.git
@@ -78,5 +78,5 @@ shards:
 
   xpath2:
     git: https://github.com/naqvis/crystal-xpath2.git
-    version: 0.1.3
+    version: 0.2.0
 
