@@ -20,7 +20,7 @@ module Tools
       # All built-in tools ask for a reason for the tool call so that Enkaidu can
       # show a friendly reason
       param "reason", required: true, type: Param::Type::Str,
-        description: "Provide one sentence describing the reason for this tool call."
+        description: "Provide one sentence describing what you're trying to accomplish; use a gerund."
     end
   end
 end
