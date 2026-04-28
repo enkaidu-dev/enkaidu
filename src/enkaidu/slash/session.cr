@@ -192,7 +192,7 @@ module Enkaidu::Slash
     end
 
     private def handle_session_reset(session, cmd)
-      session.reset_session(sys_prompt: cmd.arg_named?("system_prompt_name").try(&.as(String)))
+      session.reset_session(sys_prompt_name: cmd.arg_named?("system_prompt_name").try(&.as(String)))
     end
 
     private def handle_session_pop_with(session_stack, cmd)
