@@ -101,15 +101,6 @@ module Enkaidu::CLI
       end
     end
 
-    # Return whether the interface should continue on multiline, depending of the expression
-    def continue?(expression : String) : Bool
-      # Experiment multi-line by default until Enter on a blank line
-      # Let slash commands and macros submit on first line
-      return false if expression.starts_with?(/\s*[\/!]/)
-      # Otherwise multi-line, submit on empty line
-      !expression.ends_with?('\n')
-    end
-
     # Remove trailing whitespace
     def format(expression : String) : String?
       expression.strip

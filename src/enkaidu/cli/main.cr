@@ -16,12 +16,12 @@ module Enkaidu::CLI
     private getter runtime : Runtime
 
     {% if flag?(:darwin) %}
-      ALT_KEY_NAME = "Option"
+      ALT_KEY = "Option"
     {% else %}
-      ALT_KEY_NAME = "Alt"
+      ALT_KEY = "Alt"
     {% end %}
 
-    WELCOME_FIRST_LEFT  = "│ Enkaidu #{VERSION} │ /help for commands │ Multi-line input │ Tab to auto-complete"
+    WELCOME_FIRST_LEFT  = "│ Enkaidu #{VERSION} │ /help for commands │ #{ALT_KEY}-Enter multi-line input │ Tab auto-complete"
     WELCOME_SECOND_LEFT = "│ Welcome to your second-in-command(-line) agentic assistant for AI that YOU control!"
     WELCOME_THIRD_LEFT  = "│ FYI │ Markdown rendering is experimental when streaming."
 
@@ -32,7 +32,7 @@ module Enkaidu::CLI
     WELCOME_THIRD_RIGHT  = (" " * ((WELCOME_WIDTH - WELCOME_THIRD_LEFT.size) + 2)) + '│'
 
     WELCOME_FIRST_COLOR = "│ #{"Enkaidu".colorize.bold} #{VERSION} │ " \
-                          "#{"/help".colorize(:yellow)} for commands │ Multi-line input │ #{"Tab".colorize(:yellow)} to auto-complete"
+                          "#{"/help".colorize(:yellow)} for commands │ #{"#{ALT_KEY}-Enter".colorize(:yellow)} multi-line input │ #{"Tab".colorize(:yellow)} auto-complete"
     WELCOME_THIRD_COLOR = "│ #{"FYI".colorize.bold} │ Markdown rendering is #{"experimental".colorize.bold} when streaming."
     WELCOME_QUIET_BAR   = "─" * (WELCOME_FIRST_LEFT.size + WELCOME_FIRST_RIGHT.size - 2)
 
