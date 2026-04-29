@@ -6,10 +6,11 @@ module Enkaidu::CLI
   # Command-line query reader with editing and other capabilities.
   class QueryReader < Reply::Reader
     private getter runtime : Runtime
+    private getter styler : Console::StyleApplicator
 
     DELIMETERS = {{" \n\t'\"=".chars}}
 
-    def initialize(@runtime, @input_history_file : String? = nil)
+    def initialize(@runtime, @styler, @input_history_file : String? = nil)
       super()
       editor.word_delimiters = DELIMETERS
     end
@@ -18,7 +19,7 @@ module Enkaidu::CLI
 
     def prompt(io : IO, line_number : Int32, color : Bool) : Nil
       q = "#{prefix} > "
-      q = q.colorize(:yellow) if color
+      q = styler.fmt(:query_prefix_by_user, q) if color
       io << q
     end
 
@@ -89,15 +90,17 @@ module Enkaidu::CLI
     def highlight(expression : String) : String
       # Paths that start with `./`
       text = expression.gsub(/\.(\/[^\s]+)+\/?/) do |match|
-        match.colorize(:light_blue)
+        styler.fmt(:query_syntax_path, match)
       end
       # Slash commands and macros at the start of a prompt
       text = text.gsub(/^\s*[\/!][a-z_][a-z0-9_\.]+/) do |match|
-        match.colorize(:light_red).italic
+        styler.fmt(
+          match.starts_with?('!') ? :query_syntax_macro : :query_syntax_command,
+          match)
       end
       # name= for macro invocations
       text.gsub(/\s([a-z_][a-z0-9_\.]+)=/) do |match|
-        match.colorize(:light_red).italic
+        styler.fmt(:query_syntax_macro, match)
       end
     end
 

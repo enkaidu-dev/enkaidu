@@ -7,7 +7,7 @@ require "../../acpa"
 require "../../sucre/web_server"
 
 require "../cli/options"
-require "../cli/console_renderer"
+require "../console"
 
 require "./event_renderer"
 require "./work"

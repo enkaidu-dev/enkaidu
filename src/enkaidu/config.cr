@@ -79,6 +79,18 @@ module Enkaidu
       getter input_history_file : String?
     end
 
+    class Console < ConfigSerializable
+      alias StyleSheet = Hash(String,
+                              NamedTuple(fg: String,
+                                format: Array(String)))
+      # Example:
+      # style_sheet:
+      #   response:
+      #     fg: "magenta"
+      #     format: [ "bold" ]
+      getter style_sheet : StyleSheet?
+    end
+
     # Configuration for the MCP Server.
     class MCPServer < ConfigSerializable
       getter url : String
@@ -114,6 +126,7 @@ module Enkaidu
     getter system_prompts : Hash(String, SystemPrompt)?
     getter prompts : Hash(String, Prompt)?
     getter macros : Hash(String, Macro)?
+    getter console : Console?
 
     # ---------------------- end of content definition
 

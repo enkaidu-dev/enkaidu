@@ -26,14 +26,13 @@ module Enkaidu
 
       getter config_for_llm : Config::LLM?
       getter config : Config
-
-      getter renderer : SessionRenderer
+      getter console : Console::Renderer
 
       private def add(name : Symbol, value : String | Bool)
         @options[name] = value.to_s
       end
 
-      def initialize(@renderer)
+      def initialize(@console)
         @opts = OptionParser.parse do |parser|
           parser.banner = "Usage: #{PROGRAM_NAME} [arguments]"
           define_usage_options(parser)
@@ -45,13 +44,21 @@ module Enkaidu
         end
 
         @config = load_config || empty_config
-        @profile = Env::Profile.new(Env::CURRENT_DIR, renderer, quiet?)
+        @profile = Env::Profile.new(Env::CURRENT_DIR, console, quiet?)
         if profile_config = profile.config
-          config.merge_profile_config(profile_config, renderer)
+          config.merge_profile_config(profile_config, console)
         end
 
         check_config_for_defaults
         verify_required_options
+
+        if console_styles = config.console.try(&.style_sheet)
+          @console.style_sheet = console_styles
+        end
+      end
+
+      def renderer : SessionRenderer
+        console
       end
 
       private def define_usage_options(parser)
@@ -146,7 +153,7 @@ module Enkaidu
         parser.on("--save-config-schema=FILEPATH",
           "Export a JSON schema for Enkaidu's YAML config file and exit") do |path|
           File.write(path, Config.json_schema.to_pretty_json)
-          renderer.info_with("INFO: Saved configuration JSON schema: #{path}")
+          console.info_with("INFO: Saved configuration JSON schema: #{path}")
           exit
         rescue ex
           error_and_exit_with "FATAL: Unable to create file (\"#{path}\"): #{ex.message}", parser
@@ -190,7 +197,7 @@ module Enkaidu
       end
 
       def error_and_exit_with(message, help)
-        renderer.error_with(message, help)
+        console.error_with(message, help)
         exit(1)
       end
 
@@ -202,7 +209,7 @@ module Enkaidu
       private def parse_config_file(file) : Config
         text = File.read(file)
         config = Config.from_yaml(text)
-        renderer.info_with "INFO: Reading config file: #{file}" unless quiet?
+        console.info_with "INFO: Reading config file: #{file}" unless quiet?
         config
       end
 

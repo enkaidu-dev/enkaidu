@@ -2,8 +2,8 @@ require "option_parser"
 
 require "./options"
 require "./query_reader"
-require "./console_renderer"
 
+require "../console"
 require "../runtime"
 
 module Enkaidu::CLI
@@ -11,8 +11,8 @@ module Enkaidu::CLI
   class Main
     private getter? done = false
     private getter count = 0
-    private getter reader : CLI::QueryReader
-    private getter opts : CLI::Options
+    private getter reader : QueryReader
+    private getter opts : Options
     private getter runtime : Runtime
 
     {% if flag?(:darwin) %}
@@ -60,12 +60,13 @@ module Enkaidu::CLI
     end
 
     def initialize(@opts)
-      ui = opts.renderer
+      ui = opts.console
       print_welcome(ui)
 
       @runtime = Runtime.new(options: opts, renderer: ui)
-      @reader = CLI::QueryReader.new(
+      @reader = QueryReader.new(
         runtime,
+        styler: ui,
         input_history_file: opts.config.session.try &.input_history_file)
 
       reader.prefix = query_prefix
@@ -99,16 +100,20 @@ module Enkaidu::CLI
       @count += 1
     end
 
+    private def fmt(key : Symbol, text : String) : String
+      opts.console.fmt(key, text)
+    end
+
     private def show_query_prompt
       puts
       if PRERELEASE
-        reader.editor.output.puts PROMPT_PRERELEASE
+        puts PROMPT_PRERELEASE
       end
       unless commander.query_indicators.empty?
-        reader.editor.output.puts "────┤ #{commander.query_indicators.join(" | ")} ├────".colorize.yellow
+        puts fmt(:before_query, "────┤ #{commander.query_indicators.join(" | ")} ├────")
       end
       if schema = commander.response_json_schema
-        reader.editor.output.puts "────┤ JSON response schema (name: #{schema.name}, strict? #{schema.strict?}) ├────".colorize.yellow
+        puts fmt(:before_query, "────┤ JSON response schema (name: #{schema.name}, strict? #{schema.strict?}) ├────")
       end
     end
 
