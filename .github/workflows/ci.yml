@@ -13,12 +13,11 @@ jobs:
 
       matrix:
         include:
-          - { os: ubuntu-latest, crystal: 1.18 }
           - { os: ubuntu-latest, crystal: 1.19 }
           - { os: ubuntu-latest, crystal: latest }
           - { os: macos-latest, crystal: latest }
           - { os: macos-15-intel, crystal: latest }
-          - { os: windows-latest, crystal: 1.18 } # Newer Crystal releases failing to install
+          - { os: windows-latest, crystal: 1.19.1 } # Newer Crystal releases failing to install
 
     runs-on: ${{ matrix.os }}
 

@@ -1,5 +1,7 @@
 # Enkaidu Development
 
+> REQUIRES Crystal 1.19 or later.
+
 ## Dependencies
 
 1. Make sure you have `ops` installed, in one of the following ways:
@@ -9,14 +11,14 @@
 
 ## Getting started
 
-Command | Description
------|-----
-`ops up` | Gets everything setup including `crystal` via `apt` or `brew` if applicable.
-`ops build-debug` or `ops bd` | Make a debug build, with binary in `bin/debug` folder.
-`ops build-release` or `ops br` | Make a dreleasebug build, with binary in `bin/release` folder.
-`ops lint` | Run `ameba` on the source code
-`ops clean` | Remove debug and release build files
-`ops wipe` | In addition to cleaning, remove all compiler caches
+|Command                        |Description                                                                 |
+|-------------------------------|----------------------------------------------------------------------------|
+|`ops up`                       |Gets everything setup including `crystal` via `apt` or `brew` if applicable.|
+|`ops build-debug` or `ops bd`  |Make a debug build, with binary in `bin/debug` folder.                      |
+|`ops build-release` or `ops br`|Make a dreleasebug build, with binary in `bin/release` folder.              |
+|`ops lint`                     |Run `ameba` on the source code                                              |
+|`ops clean`                    |Remove debug and release build files                                        |
+|`ops wipe`                     |In addition to cleaning, remove all compiler caches                         |
 
 ### Build and run for development
 
