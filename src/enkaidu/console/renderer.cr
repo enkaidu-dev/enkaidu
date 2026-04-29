@@ -23,11 +23,11 @@ module Enkaidu::Console
       :h4          => {bold: true},
       :h5          => {bold: true},
       :h6          => {bold: true},
-      :code_block  => {fg: Termify::ANSI::FG_CYAN, prefix: "░ "},
-      :code_inline => {fg: Termify::ANSI::FG_CYAN},
+      :code_block  => {fg: "cyan", prefix: "░ "},
+      :code_inline => {fg: "cyan"},
       :html_tag    => {dim: true},
       :block_html  => {dim: true},
-      :table       => {fg: Termify::ANSI::FG_DEFAULT},
+      :table       => {fg: "white"},
       :block_quote => {prefix: "▌ "},
     })
 
