@@ -1,28 +1,21 @@
-require "reply"
 require "termify"
-require "../session_renderer"
-
+require "colorize"
 require "markterm"
 
-module Enkaidu::CLI
-  class InputReader < Reply::Reader
-    property label : String
+require "./style_sheet"
+require "./input_reader"
 
-    def initialize(@label)
-      super()
-    end
+require "../session_renderer"
 
-    def prompt(io : IO, line_number : Int32, color : Bool) : Nil
-      q = label.colorize(:cyan) if color
-      io << q
-    end
-  end
-
+module Enkaidu::Console
   # This class is responsible for rendering console outputs.
-  class ConsoleRenderer < SessionRenderer
+  class Renderer < SessionRenderer
+    include StyleApplicator
+
     property? streaming = false
     property? quiet = false
 
+    # Markdown rendering stylesheet for use with Termify
     MDR_STYLESHEET = Termify::Markdown::Stylesheet.new({
       :h1          => {bold: true, prefix: "# ".colorize(:dark_gray).to_s},
       :h2          => {bold: true, prefix: "## ".colorize(:dark_gray).to_s},
@@ -51,39 +44,40 @@ module Enkaidu::CLI
     end
 
     def respond_with(message, help = nil, markdown = false)
-      puts message.colorize.bold
+      puts fmt(:response, message)
       return unless help
       puts prepare_text(help, markdown)
     end
 
     def info_with(message, help = nil, markdown = false)
       return if quiet?
-      STDERR.puts message.colorize(:cyan)
+      STDERR.puts fmt(:info, message)
       return unless help
       err_puts_text help, markdown
     end
 
     def warning_with(message, help = nil, markdown = false)
-      STDERR.puts message.colorize(:light_red)
+      STDERR.puts fmt(:warning, message)
       return unless help
       err_puts_text help, markdown
     end
 
     def error_with(message, help = nil, markdown = false)
-      STDERR.puts message.colorize(:red)
+      STDERR.puts fmt(:error, message)
       return unless help
       err_puts_text help, markdown
     end
 
     def time_elapsed(duration : Time::Span, label : String? = nil)
       puts if streaming?
-      puts "#{label}#{duration.total_seconds.format(decimal_places: 3, only_significant: true)}s elapsed.".colorize(:yellow)
+      elapsed = duration.total_seconds.format(decimal_places: 3, only_significant: true)
+      puts fmt(:after_reply, "#{label}#{elapsed}s elapsed.")
     end
 
     def user_query_text(query, via_query_queue = false)
-      color = via_query_queue ? :magenta : :yellow
-      prefix0 = "QUERY > ".colorize(color)
-      prefix1 = "      > ".colorize(color)
+      cat = via_query_queue ? :query_prefix_by_queue : :query_prefix_by_user
+      prefix0 = fmt(cat, "QUERY > ")
+      prefix1 = fmt(cat, "      > ")
       query_lines = query.split('\n')
       query_lines.each_with_index do |line, index|
         print index.zero? ? prefix0 : prefix1
@@ -92,16 +86,16 @@ module Enkaidu::CLI
     end
 
     def user_query_image_url(url)
-      print "QUERY > ".colorize(:yellow)
-      puts "IMAGE #{trim_text(url, MAX_IMAGE_URL_LENGTH)}".colorize(:green)
+      print fmt(:query_prefix_by_user, "QUERY > ")
+      puts fmt(:query_feedback, "IMAGE #{trim_text(url, MAX_IMAGE_URL_LENGTH)}")
     end
 
     def user_confirm_shell_command?(command)
-      puts "  CONFIRM: The assistant wants to run the following command:\n"
-      puts "  > #{command}\n\n".colorize(:red).bold
-      print "  Allow? [y/N] "
+      puts fmt(:confirm_question, "  CONFIRM: The assistant wants to run the following command:\n")
+      puts fmt(:confirm_content, "  > #{command}\n\n")
+      print fmt(:confirm_question, "  Allow? [y/N] ")
       response = STDIN.raw &.read_char
-      puts response
+      puts fmt(:confirm_input, response.to_s)
 
       ['y', 'Y'].includes?(response)
     end
@@ -123,15 +117,15 @@ module Enkaidu::CLI
     ANSI
 
     def session_reset
-      puts RESET.colorize(:light_green)
+      puts fmt(:session_banner, RESET)
     end
 
     def session_pushed(depth, keep_tools, keep_prompts, keep_history)
-      puts "┌─── SESSION PUSHED (#{depth}) ─────────────────────#{keep_history ? "─────" : "─ No history ─────"}"
+      puts fmt(:session_open, "┌─── SESSION PUSHED (#{depth}) ─────────────────────#{keep_history ? "─────" : "─ No history ─────"}")
     end
 
     def session_popped(depth)
-      puts "└───────────────────────────────────────────────────────────"
+      puts fmt(:session_close, "└───────────────────────────────────────────────────────────")
     end
 
     def session_stack_new(name)
@@ -141,33 +135,33 @@ module Enkaidu::CLI
 
     def session_stack_changed(name)
       puts
-      puts SWITCHED.colorize(:light_green)
+      puts fmt(:session_banner, SWITCHED)
     end
 
     LLM_MAX_TOOL_CALL_ARGS_LENGTH = 90
-    CALL_PREFIX                   = "CALL".colorize(:red)
 
     def llm_tool_call(name, args)
       puts if streaming? unless quiet?
 
       args_json = JSON.parse(args.as_s)
       trim_more = name.size + 5
-
       print "  " if quiet?
 
-      if reason = args_json.dig?("reason").try(&.as_s)
-        print "→ #{reason} ".colorize(:green)
+      prop_reason = args_json.dig?("reason").try(&.as_s?)
+      if reason = prop_reason
+        print fmt(:tool_call_reason, "→ #{reason} ")
         trim_more += reason.size + 2
       else
-        print "→ ".colorize(:green)
+        print fmt(:tool_call_reason, "→ ")
         trim_more += 2
       end
 
       if quiet?
-        puts "(CALL #{name})".colorize(:red).italic
+        puts fmt(:tool_call_detail, " ~ CALL #{name}")
       else
         trim_length = (LLM_MAX_TOOL_CALL_ARGS_LENGTH - trim_more).clamp(32, LLM_MAX_TOOL_CALL_ARGS_LENGTH)
-        puts " / ", "CALL #{name} #{trim_text(args.to_s, trim_length)}".colorize(:red)
+        print fmt(:tool_call_detail, "\n  └─") if prop_reason
+        puts fmt(:tool_call_detail, "CALL #{name} #{trim_text(args.to_s, trim_length)}")
       end
 
       puts unless streaming? || quiet?
@@ -206,7 +200,7 @@ module Enkaidu::CLI
         if reasoning
           if quiet?
             if starting
-              print "  Thinking  ".colorize(:dark_gray).italic
+              print fmt(:thinking_progress, "  Thinking  ")
               @think_counter.reset
             end
             if ending
@@ -215,78 +209,77 @@ module Enkaidu::CLI
               print "\b", @think_counter.spin
             end
           else
-            puts "", REASONING_START if starting
-            print text.colorize(:dark_gray).italic
-            puts "", REASONING_FINISH if ending
+            puts "", fmt(:thinking_content, REASONING_START) if starting
+            print fmt(:thinking_content, text)
+            puts "", fmt(:thinking_content, REASONING_FINISH) if ending
           end
         else
           render_streaming_markdown(text, starting, ending)
-          # gather_and_render_streaming_text(text, starting, ending)
         end
       else
         llm_text_block(text, reasoning)
       end
     end
 
-    REASONING_START  = "╭╶╶╶╶╶╶╶╶╶╶<#{"reasoning".colorize(:dark_gray).italic}>╶╶╶╶╶╶╶╶╶╶╶"
+    REASONING_START  = "╭╶╶╶╶╶╶╶╶╶╶< reasoning >╶╶╶╶╶╶╶╶╶╶╶"
     REASONING_FINISH = "╰╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶"
 
     def llm_text_block(text, reasoning : Bool)
       puts unless reasoning
-      puts REASONING_START if reasoning
+      puts fmt(:thinking_content, REASONING_START) if reasoning
       puts Markd.to_term(text)
-      puts REASONING_FINISH if reasoning
+      puts fmt(:thinking_content, REASONING_FINISH) if reasoning
       puts unless reasoning
     end
 
     MAX_IMAGE_URL_LENGTH = 72
 
     def llm_image_url(url)
-      puts "  IMAGE #{trim_text(url, MAX_IMAGE_URL_LENGTH)}".colorize(:green)
+      puts fmt(:query_feedback, "  IMAGE #{trim_text(url, MAX_IMAGE_URL_LENGTH)}")
       puts
     end
 
     def mcp_initialized(uri)
-      puts "  INIT MCP connection: #{uri}".colorize(:green)
+      puts fmt(:mcp_feedback, "  INIT MCP connection: #{uri}")
     end
 
     def mcp_tools_found(count)
-      puts "  FOUND #{count} tools".colorize(:green)
+      puts fmt(:mcp_feedback, "  FOUND #{count} tools")
     end
 
     def mcp_tool_ready(function)
-      puts "  ADDED function: #{function.name}".colorize(:green)
+      puts fmt(:mcp_feedback, "  └─ function: #{function.name}")
     end
 
     def mcp_prompts_found(count)
-      puts "  FOUND #{count} prompts".colorize(:green)
+      puts fmt(:mcp_feedback, "  FOUND #{count} prompts")
     end
 
     def mcp_prompt_ready(prompt)
-      puts "  FOUND prompt: #{prompt.name}".colorize(:green)
+      puts fmt(:mcp_feedback, "  └─ prompt: #{prompt.name}")
     end
 
-    private def ask_param_input(name, description, color)
+    private def ask_param_input(name, description)
       text = if description
                "    #{name} [#{description}] :"
              else
                "    #{name} : "
              end
-      puts text.colorize(color)
-      input.label = "    > "
+      puts fmt(:prompt_question, text)
+      input.label = fmt(:prompt_input, "    > ")
       input.read_next
     end
 
-    def mcp_prompt_ask_input(prompt : MCPPrompt) : Hash(String, String)
+    private def ask_prompt_inputs(prompt) : Hash(String, String)
       text = <<-PREFIX
           #{prompt.description}
 
       PREFIX
-      puts text.colorize(:cyan)
+      puts fmt(:prompt_content, text)
 
       arg_inputs = {} of String => String
       prompt.arguments.try &.each do |arg|
-        unless (value = ask_param_input(arg.name, arg.description, :cyan)).nil?
+        unless (value = ask_param_input(arg.name, arg.description)).nil?
           arg_inputs[arg.name] = value
         end
       end
@@ -294,29 +287,21 @@ module Enkaidu::CLI
       arg_inputs
     end
 
+    def mcp_prompt_ask_input(prompt : MCPPrompt) : Hash(String, String)
+      ask_prompt_inputs(prompt)
+    end
+
     def user_prompt_ask_input(prompt : TemplatePrompt) : Hash(String, String)
-      text = <<-PREFIX
-          #{prompt.description}
-
-      PREFIX
-      puts text.colorize(:green)
-
-      arg_inputs = {} of String => String
-      prompt.arguments.try &.each do |arg|
-        unless (value = ask_param_input(arg.name, arg.description, :green)).nil?
-          arg_inputs[arg.name] = value
-        end
-      end
-      puts
-      arg_inputs
+      ask_prompt_inputs(prompt)
     end
 
     MCP_MAX_TOOL_CALL_ARGS_LENGTH = 72
 
     def mcp_calling_tool(uri, name, args)
       unless quiet?
-        puts "  MCP CALLING \"#{name}\" at server #{uri}.".colorize(:yellow)
-        puts "      with: #{trim_text(args.to_s, MCP_MAX_TOOL_CALL_ARGS_LENGTH)}".colorize(:yellow)
+        puts if streaming?
+        puts fmt(:mcp_action, "→ MCP CALLING \"#{name}\" at server #{uri}.")
+        puts fmt(:mcp_action, "  └─ with: #{trim_text(args.to_s, MCP_MAX_TOOL_CALL_ARGS_LENGTH)}")
       end
     end
 
@@ -324,19 +309,28 @@ module Enkaidu::CLI
 
     def mcp_calling_tool_result(uri, name, result)
       unless quiet?
-        puts "  MCP CALL (#{name}) RESULT: #{trim_text(result.to_s, MCP_MAX_TOOL_RESULT_LENGTH)}".colorize(:green)
+        puts fmt(:mcp_action, "  MCP CALL (#{name}) RESULT: #{trim_text(result.to_s, MCP_MAX_TOOL_RESULT_LENGTH)}")
         puts
       end
     end
 
     def mcp_error(ex)
-      STDERR.puts "ERROR: #{ex.class}: #{ex}".colorize(:red)
-      case ex
-      when MCPC::ResponseError then STDERR.puts(JSON.build(indent: 2) { |builder| ex.details.to_json(builder) })
-      when MCPC::ResultError   then STDERR.puts(JSON.build(indent: 2) { |builder| ex.data.to_json(builder) })
-      else
-        STDERR.puts ex.inspect_with_backtrace
-      end
+      error_with "ERROR: #{ex.class}: #{ex}", markdown: true,
+        help: (String.build do |io|
+          io.print "```"
+          case ex
+          when MCPC::ResponseError
+            io.puts "json"
+            io.puts(JSON.build(indent: 2) { |builder| ex.details.to_json(builder) })
+          when MCPC::ResultError
+            io.puts "json"
+            io.puts(JSON.build(indent: 2) { |builder| ex.data.to_json(builder) })
+          else
+            io.puts
+            io.puts ex.inspect_with_backtrace
+          end
+          io.puts "```"
+        end)
     end
 
     private def trim_text(text, max_length)
@@ -346,7 +340,7 @@ module Enkaidu::CLI
         str = str[..max_length]
         suffix = "... >8"
       end
-      "#{str}#{suffix.colorize.mode(:bold)}"
+      "#{str}#{suffix}"
     end
   end
 end

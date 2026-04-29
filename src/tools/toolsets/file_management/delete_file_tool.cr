@@ -14,8 +14,8 @@ module Tools::FileManagement
                 "with a ms-resolution timestamp prepended to the filename. This allows for file recovery if deletion " \
                 "was accidental. The directory structure is preserved in the `#{FileHelper::DELETED_FILES_PATH}` folder."
 
-    param "file_path", type: Param::Type::Str,
-      description: "The path of the file to be deleted.", required: true
+    param "file_path", type: Param::Type::Str, required: true,
+      description: "The path of the file to be deleted."
 
     runner Runner
 

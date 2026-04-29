@@ -40,14 +40,14 @@ module Enkaidu
 
       # Unload everything and start a new session as if we restarted Enkaidu, including auto loading from
       # the configuration; use given system prompt name if any
-      def reset_session(sys_prompt : String?)
+      def reset_session(sys_prompt_name : String?)
         renderer.session_reset
         unload_all_toolsets
         unload_all_mcp_servers
         unload_all_prompts
 
-        override_sys_prompt = if sys_prompt
-                                render_system_prompt(sys_prompt)
+        override_sys_prompt = if sys_prompt_name
+                                render_system_prompt(sys_prompt_name)
                               end
         @chat = setup_chat(override_sys_prompt)
 

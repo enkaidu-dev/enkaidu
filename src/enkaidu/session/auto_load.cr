@@ -45,10 +45,10 @@ module Enkaidu
       private def check_and_set_system_prompt(config)
         if autoload = config.auto_load
           if name = autoload.system_prompt_name
-            if autoload.system_prompt
-              renderer.warning_with("WARN: Deprecated `system_prompt` config property has priority over `system_prompt_name`")
-            elsif sys_prompt = render_system_prompt(name)
+            if sys_prompt = render_system_prompt(name)
               @chat.with_system_message(sys_prompt)
+            else
+              renderer.warning_with("WARN: Unable to use system prompt named '#{name}")
             end
           end
         end

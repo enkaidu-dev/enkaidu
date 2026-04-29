@@ -28,13 +28,11 @@ module Enkaidu
     class AutoLoad < ConfigSerializable
       getter_with_presence mcp_servers, Array(String)?
       getter_with_presence toolsets, Array(String | NamedTuple(name: String, select: Array(String)))?
-      getter_with_presence system_prompt, String?
       getter_with_presence system_prompt_name, String?
 
       protected def merge(from : AutoLoad)
         @mcp_servers = from.mcp_servers unless mcp_servers_present?
         @toolsets = from.toolsets unless toolsets_present?
-        @system_prompt = from.system_prompt unless system_prompt_present?
         @system_prompt_name = from.system_prompt_name unless system_prompt_name_present?
       end
     end
@@ -81,6 +79,18 @@ module Enkaidu
       getter input_history_file : String?
     end
 
+    class Console < ConfigSerializable
+      alias StyleSheet = Hash(String,
+                              NamedTuple(fg: String,
+                                format: Array(String)))
+      # Example:
+      # style_sheet:
+      #   response:
+      #     fg: "magenta"
+      #     format: [ "bold" ]
+      getter style_sheet : StyleSheet?
+    end
+
     # Configuration for the MCP Server.
     class MCPServer < ConfigSerializable
       getter url : String
@@ -116,6 +126,7 @@ module Enkaidu
     getter system_prompts : Hash(String, SystemPrompt)?
     getter prompts : Hash(String, Prompt)?
     getter macros : Hash(String, Macro)?
+    getter console : Console?
 
     # ---------------------- end of content definition
 

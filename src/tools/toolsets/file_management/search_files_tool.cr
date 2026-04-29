@@ -14,12 +14,12 @@ module Tools::FileManagement
 
     param "files", required: true,
       description: "A single file path, or a glob pattern expression with which to find matching files."
-    param "pattern", type: Param::Type::Str,
-      description: "The text or pattern to search for in each file.", required: true
+    param "pattern", type: Param::Type::Str, required: true,
+      description: "The text or pattern to search for in each file."
     param "search_regex", type: Param::Type::Bool, required: false,
-      description: "Optional, set to true to indicate `search_pattern` is a regular expression (default is false.)"
+      description: "Optional. Set to true to indicate `search_pattern` is a regular expression (default is false.)"
     param "max_files", type: Param::Type::Num,
-      description: "Optional, maxmimum number of files to search within (default is #{FileHelper::MAX_FIND_FILE_MATCHES})"
+      description: "Optional. Maxmimum number of files to search within (default is #{FileHelper::MAX_FIND_FILE_MATCHES})"
 
     runner Runner
 

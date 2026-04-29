@@ -12,13 +12,12 @@ module Tools::ImageEditing
     description "Creates an image file from base64 encoded image data at the specified path. " \
                 "Ensures the file is created within the current directory and does not overwrite existing files."
 
-    param "file_path", type: Param::Type::Str,
-      description: "The relative path where the image file will be created.", required: true
-    param "image_data", type: Param::Type::Str,
+    param "file_path", type: Param::Type::Str, required: true,
+      description: "The relative path where the image file will be created."
+    param "image_data", type: Param::Type::Str, required: true,
       description: "The base64 encoded image data in the format of a data URL " \
                    "('data:<content_type>;base64,<data>'). Supported content types are: " \
-                   "#{ImageHelper::ALLOWED_IMAGE_CONTENT_TYPES.join(',')}",
-      required: true
+                   "#{ImageHelper::ALLOWED_IMAGE_CONTENT_TYPES.join(',')}"
 
     runner Runner
 

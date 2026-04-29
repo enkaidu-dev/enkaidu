@@ -14,7 +14,8 @@ module Tools::ImageEditing
                 "Ensures the file is within the current directory and is a valid image file."
 
     # Define the acceptable parameter using the `param` method
-    param "file_path", type: Param::Type::Str, description: "The relative path to the image file to read.", required: true
+    param "file_path", type: Param::Type::Str, required: true,
+      description: "The relative path to the image file to read."
 
     runner Runner
 

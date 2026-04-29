@@ -26,7 +26,7 @@ module Enkaidu
     # All built-in tools ask for a reason for the tool call so that Enkaidu can
     # show a friendly reason
     param "reason", required: true, type: Param::Type::Str,
-      description: "Provide a single sentence describing the task or reason for spawning this agent."
+      description: "Provide one sentence describing what you're trying to accomplish; use a gerund."
 
     # Accessible to the function's Runner
     protected getter session_manager : SessionManager

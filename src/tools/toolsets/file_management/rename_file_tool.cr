@@ -11,10 +11,10 @@ module Tools::FileManagement
     description "Rename a file or directory, or move it to another sub-folder, but you may not move it outside this directory." \
                 "like the `mv` command but restricted to the current folder."
 
-    param "source_path", type: Param::Type::Str,
-      description: "The current path of the file or directory to be renamed.", required: true
-    param "target_path", type: Param::Type::Str,
-      description: "The new name / path for the file or directory.", required: true
+    param "source_path", type: Param::Type::Str, required: true,
+      description: "The current path of the file or directory to be renamed."
+    param "target_path", type: Param::Type::Str, required: true,
+      description: "The new name / path for the file or directory."
 
     runner Runner
 

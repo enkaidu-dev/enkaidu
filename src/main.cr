@@ -1,14 +1,15 @@
 require "./enkaidu/cli/*"
+require "./enkaidu/console/*"
 require "./enkaidu/wui/main"
 
 module Enkaidu
   # `Main` is the entry point for executing the application, managing initialization and execution flow.
   class Main
     private getter opts : CLI::Options
-    private getter console : CLI::ConsoleRenderer
+    private getter console : Console::Renderer
 
     def initialize
-      @console = CLI::ConsoleRenderer.new
+      @console = Console::Renderer.new
       @opts = CLI::Options.new(console)
 
       console.quiet = opts.quiet?

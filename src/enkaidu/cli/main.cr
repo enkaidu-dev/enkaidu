@@ -2,8 +2,8 @@ require "option_parser"
 
 require "./options"
 require "./query_reader"
-require "./console_renderer"
 
+require "../console"
 require "../runtime"
 
 module Enkaidu::CLI
@@ -11,17 +11,17 @@ module Enkaidu::CLI
   class Main
     private getter? done = false
     private getter count = 0
-    private getter reader : CLI::QueryReader
-    private getter opts : CLI::Options
+    private getter reader : QueryReader
+    private getter opts : Options
     private getter runtime : Runtime
 
     {% if flag?(:darwin) %}
-      ALT_KEY_NAME = "Option"
+      ALT_KEY = "Option"
     {% else %}
-      ALT_KEY_NAME = "Alt"
+      ALT_KEY = "Alt"
     {% end %}
 
-    WELCOME_FIRST_LEFT  = "│ Enkaidu #{VERSION} │ /help for commands │ Multi-line input │ Tab to auto-complete"
+    WELCOME_FIRST_LEFT  = "│ Enkaidu #{VERSION} │ /help for commands │ #{ALT_KEY}-Enter multi-line input │ Tab auto-complete"
     WELCOME_SECOND_LEFT = "│ Welcome to your second-in-command(-line) agentic assistant for AI that YOU control!"
     WELCOME_THIRD_LEFT  = "│ FYI │ Markdown rendering is experimental when streaming."
 
@@ -32,7 +32,7 @@ module Enkaidu::CLI
     WELCOME_THIRD_RIGHT  = (" " * ((WELCOME_WIDTH - WELCOME_THIRD_LEFT.size) + 2)) + '│'
 
     WELCOME_FIRST_COLOR = "│ #{"Enkaidu".colorize.bold} #{VERSION} │ " \
-                          "#{"/help".colorize(:yellow)} for commands │ Multi-line input │ #{"Tab".colorize(:yellow)} to auto-complete"
+                          "#{"/help".colorize(:yellow)} for commands │ #{"#{ALT_KEY}-Enter".colorize(:yellow)} multi-line input │ #{"Tab".colorize(:yellow)} auto-complete"
     WELCOME_THIRD_COLOR = "│ #{"FYI".colorize.bold} │ Markdown rendering is #{"experimental".colorize.bold} when streaming."
     WELCOME_QUIET_BAR   = "─" * (WELCOME_FIRST_LEFT.size + WELCOME_FIRST_RIGHT.size - 2)
 
@@ -60,12 +60,13 @@ module Enkaidu::CLI
     end
 
     def initialize(@opts)
-      ui = opts.renderer
+      ui = opts.console
       print_welcome(ui)
 
       @runtime = Runtime.new(options: opts, renderer: ui)
-      @reader = CLI::QueryReader.new(
+      @reader = QueryReader.new(
         runtime,
+        styler: ui,
         input_history_file: opts.config.session.try &.input_history_file)
 
       reader.prefix = query_prefix
@@ -99,16 +100,20 @@ module Enkaidu::CLI
       @count += 1
     end
 
+    private def fmt(key : Symbol, text : String) : String
+      opts.console.fmt(key, text)
+    end
+
     private def show_query_prompt
       puts
       if PRERELEASE
-        reader.editor.output.puts PROMPT_PRERELEASE
+        puts PROMPT_PRERELEASE
       end
       unless commander.query_indicators.empty?
-        reader.editor.output.puts "────┤ #{commander.query_indicators.join(" | ")} ├────".colorize.yellow
+        puts fmt(:before_query, "────┤ #{commander.query_indicators.join(" | ")} ├────")
       end
       if schema = commander.response_json_schema
-        reader.editor.output.puts "────┤ JSON response schema (name: #{schema.name}, strict? #{schema.strict?}) ├────".colorize.yellow
+        puts fmt(:before_query, "────┤ JSON response schema (name: #{schema.name}, strict? #{schema.strict?}) ├────")
       end
     end
 

@@ -22,10 +22,10 @@ module Tools::Experimental
                         "`patch` command (version #{self.class.patch_version}). " +
                         "Ensures the file is within the current directory and is a text file."
 
-    param "file_path", type: Param::Type::Str,
-      description: "The relative path to the file to be patched.", required: true
-    param "patch_content", type: Param::Type::Str,
-      description: "The content of the patch to apply.", required: true
+    param "file_path", type: Param::Type::Str, required: true,
+      description: "The relative path to the file to be patched."
+    param "patch_content", type: Param::Type::Str, required: true,
+      description: "The content of the patch to apply."
 
     # Replace `runner` macro to create with self
     def new_runner : Runner
