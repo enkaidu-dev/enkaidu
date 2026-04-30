@@ -66,7 +66,7 @@ shards:
 
   termify:
     git: https://github.com/nogginly/termify.cr.git
-    version: 0.2.2+git.commit.1e83a29a22184181d6a4536cdc7a95e391fbf6ad
+    version: 0.2.2+git.commit.ea13be5803148e8ac6092eb8237ba1fdfd11f109
 
   textseg:
     git: https://github.com/naqvis/uni_text_seg.git
