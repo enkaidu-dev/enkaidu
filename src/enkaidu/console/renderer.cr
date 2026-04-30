@@ -15,21 +15,39 @@ module Enkaidu::Console
     property? streaming = false
     property? quiet = false
 
+    private macro mdr_heading_style(prefix = "", underline = false)
+      {
+        bold: true,
+        underline: {{underline}},
+        {% unless prefix.empty? %}
+        line_prefix: "#{{{prefix}}} ".colorize(:dark_gray).to_s,
+        {% end %}
+        newline_before: true, newline_after: true,
+      }
+    end
+
     # Markdown rendering stylesheet for use with Termify
-    MDR_STYLESHEET = Termify::Markdown::Stylesheet.new({
-      :h1          => {bold: true, prefix: "# ".colorize(:dark_gray).to_s},
-      :h2          => {bold: true, prefix: "## ".colorize(:dark_gray).to_s},
-      :h3          => {bold: true, prefix: "### ".colorize(:dark_gray).to_s},
-      :h4          => {bold: true},
-      :h5          => {bold: true},
-      :h6          => {bold: true},
-      :code_block  => {fg: Termify::ANSI::FG_CYAN, prefix: "░ "},
-      :code_inline => {fg: Termify::ANSI::FG_CYAN},
-      :html_tag    => {dim: true},
-      :block_html  => {dim: true},
-      :table       => {fg: Termify::ANSI::FG_DEFAULT},
-      :block_quote => {prefix: "▌ "},
-    })
+    MDR_STYLESHEET = Termify::Markdown::Stylesheet.new(
+      {
+        :h1          => mdr_heading_style(prefix: "#"),
+        :h2          => mdr_heading_style(prefix: "##"),
+        :h3          => mdr_heading_style(prefix: "###"),
+        :h4          => mdr_heading_style(prefix: "####"),
+        :h5          => mdr_heading_style(prefix: "----"),
+        :h6          => mdr_heading_style(underline: true),
+        :code_block  => {fg: "cyan", line_prefix: "░ "},
+        :code_inline => {fg: "cyan"},
+        :html_tag    => {dim: true},
+        :block_html  => {dim: true},
+        :table       => {fg: "white"},
+        :block_quote => {
+          line_prefix: "▌ ",
+          newline_before: true, newline_after: true,
+        },
+      },
+      # Pick up styles for those elements we don't define
+      merge: Termify::Markdown::Stylesheet.default
+    )
 
     private getter input = InputReader.new("> ")
 
