@@ -1,5 +1,4 @@
-require "./mcp_prompt"
-require "./template_prompt"
+require "./prompts/*"
 
 module Enkaidu
   # SessionRenderer defines the interface for rendering session output and

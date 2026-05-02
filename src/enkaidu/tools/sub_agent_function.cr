@@ -1,4 +1,4 @@
-require "../llm"
+require "../../llm"
 
 module Enkaidu
   # Defines a tool / function to make a single query to Enkaidu

@@ -1,7 +1,7 @@
 require "colorize"
 
-require "../llm"
-require "../mcpc"
+require "../../llm"
+require "../../mcpc"
 
 module Enkaidu
   # Defines a tool / function from an MCP server

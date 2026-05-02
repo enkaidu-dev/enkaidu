@@ -7,12 +7,10 @@ require "../llm"
 require "../tools"
 
 require "./about"
-require "./mcp_function"
-require "./mcp_prompt"
+require "./tools/*"
 require "./recorder"
 require "./session_options"
 require "./session_renderer"
-require "./template_prompt"
 
 require "./session/*"
 
