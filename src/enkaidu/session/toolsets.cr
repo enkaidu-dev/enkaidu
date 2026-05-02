@@ -50,7 +50,7 @@ module Enkaidu
         end
       end
 
-      def load_toolset_by(name, select_tools : Enumerable(String)? = nil, auto = false)
+      def load_toolset_by(name, select_tools : Enumerable(String)? = nil, auto = false) : Nil
         toolset = Tools[name]?
         if toolset.nil?
           renderer.warning_with("WARNING: No built-in toolset found under the name: #{name}.")
@@ -118,6 +118,22 @@ module Enkaidu
           renderer.respond_with("Tool details: #{tool_name} (#{tool.origin})", text, markdown: true)
         else
           renderer.info_with("INFO: No such tool available: #{tool_name}")
+        end
+      end
+
+      # Adds an array of tools to the JSON builder. Call it when ready for an array
+      # value.
+      def tools_catalog_builder(json : JSON::Builder) : Nil
+        json.array do
+          Tools.each_toolset do |toolset|
+            toolset.each_tool_info do |name, description|
+              json.object do
+                json.field "toolset", toolset.name
+                json.field "tool", name
+                json.field "description", description
+              end
+            end
+          end
         end
       end
     end

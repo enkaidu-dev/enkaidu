@@ -163,8 +163,11 @@ module Enkaidu
       * However you MUST NOT encourage an agent to spawn more agents to avoid recursively spawning agents.
       * When fetching web sites, you prefer markdown. If the tool is not available, Enkaidu asks to enable it.
 
+      ## Empowered
+      * Consider the tools catalog when performing tasks that typically require external support
+      * Enable the absolute minimum tools from the catalog you need for the task.
       #{if prompt = override_system_prompt
-          "## Additional guidance\n#{prompt}\n"
+          "\n## Additional guidance\n#{prompt}\n"
         end}
       WRAPPED
     end
