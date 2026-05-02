@@ -1,8 +1,9 @@
-require "../llm"
+require "../../llm"
+require "./session_built_in_function"
 
 module Enkaidu
   # Defines a tool / function to make a single query to Enkaidu
-  class SubAgentPromptFunction < LLM::LocalFunction
+  class SubAgentPromptFunction < SessionBuiltInFunction
     name "spawn_agent"
 
     description <<-DESC
@@ -17,31 +18,18 @@ module Enkaidu
     DESC
 
     param "prompt", type: Param::Type::Str, required: true,
-      description: "the full instruction for the sub-agent; be explicit, as it has no other context"
+      description: "The full instruction for the sub-agent; be explicit, especially when not including history."
     param "include_caller_history", type: Param::Type::Bool, required: false,
       description: <<-PDESC
-      set to true when the task requires awareness of the current session, e.g. summarizing the conversation, continuing a thread, or referencing prior decisions
+      Set to true onlywhen the task requires awareness of the current session, e.g. summarizing the conversation,
+      continuing a thread, or referencing prior decisions.
       PDESC
 
-    # All built-in tools ask for a reason for the tool call so that Enkaidu can
-    # show a friendly reason
-    param "reason", required: true, type: Param::Type::Str,
-      description: "Provide one sentence describing what you're trying to accomplish; use a gerund."
-
-    # Accessible to the function's Runner
-    protected getter session_manager : SessionManager
-
-    def initialize(@session_manager)
-      super("Session Built-ins")
-    end
+    runner Runner
 
     # This defines the runner that is instantiated to
     # execute the function.
-    class Runner < LLM::Function::Runner
-      private getter func : SubAgentPromptFunction
-
-      def initialize(@func); end
-
+    class Runner < SessionBuiltInFunction::Runner
       # Implement this method to handle the LLM function call, and return a
       # String with the JSON value.
       def execute(args : JSON::Any) : String
@@ -51,21 +39,11 @@ module Enkaidu
 
         return error_response("Required `prompt` was empty") if prompt.empty?
 
-        func.session_manager.ask_forked_session(prompt, keep_history) ||
+        func.runtime.session_manager.ask_forked_session(prompt, keep_history) ||
           error_response("Nil response")
       rescue ex
         error_response(ex.message)
       end
-
-      # Create an error response as a JSON string
-      private def error_response(message)
-        {error: message}.to_json
-      end
-    end
-
-    # Return an instance of this function's Runner
-    def new_runner : Runner
-      Runner.new(self)
     end
   end
 end

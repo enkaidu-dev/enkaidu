@@ -108,9 +108,13 @@ module Enkaidu::Console
       puts fmt(:query_feedback, "IMAGE #{trim_text(url, MAX_IMAGE_URL_LENGTH)}")
     end
 
-    def user_confirm_shell_command?(command)
-      puts fmt(:confirm_question, "  CONFIRM: The assistant wants to run the following command:\n")
-      puts fmt(:confirm_content, "  > #{command}\n\n")
+    # Prompt the user with a confirmation request for security confirmation
+    # by presenting the `description` followed by the `subject` of the question.
+    # The renderer should further emphasize the `subject` when presenting the question.
+    # @return True to confirm, false otherwise.
+    def user_confirm_security_question?(description, subject) : Bool
+      puts fmt(:confirm_question, "  CONFIRM: #{description}:\n")
+      puts fmt(:confirm_content, "  > #{subject}\n\n")
       print fmt(:confirm_question, "  Allow? [y/N] ")
       response = STDIN.raw &.read_char
       puts fmt(:confirm_input, response.to_s)

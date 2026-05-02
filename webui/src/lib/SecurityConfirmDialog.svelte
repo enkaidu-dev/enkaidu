@@ -3,11 +3,12 @@
 
   let {
     onconfirm,
-    command,
+    description,
+    subject,
     id,
     show = true,
-  }: Common.ShellConfirmDialogConfig & {
-    onconfirm: Common.ShellConfirmSubmit;
+  }: Common.SecurityConfirmDialogConfig & {
+    onconfirm: Common.SecurityConfirmSubmit;
   } = $props();
 
   function handleApprove() {
@@ -23,18 +24,19 @@
   <div class="modal modal-open">
     <div class="modal-box max-w-2xl">
       <h3 class="font-bold text-lg text-warning">
-        ⚠️ Shell Command Confirmation Required
+        ⚠️ Security-related Confirmation Required
       </h3>
       <div class="py-4">
         <p class="mb-4">
-          The assistant wants to run the following shell command:
+          {description}
         </p>
         <div class="mockup-code">
-          <pre class="text-error"><code>{command}</code></pre>
+          <pre class="text-error"><code>{subject}</code></pre>
         </div>
         <p class="mt-4 text-sm text-base-content/70">
-          This command will be executed in your project directory. Please review
-          it carefully before proceeding.
+          Please review carefully before proceeding. Security confirmations are
+          for operations that could adversely affect your system running
+          Enkaidu.
         </p>
       </div>
       <div class="modal-action">

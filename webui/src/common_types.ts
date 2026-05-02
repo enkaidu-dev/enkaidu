@@ -1,13 +1,12 @@
 
-// for ShellConfirmDialog
-
-export type ShellConfirmDialogConfig = {
-  command: string;
+export type SecurityConfirmDialogConfig = {
+  description: string;
+  subject: string;
   id: string;
   show: boolean;
 }
 
-export type ShellConfirmSubmit = (id: string, approved: boolean) => void
+export type SecurityConfirmSubmit = (id: string, approved: boolean) => void
 
 // for InputDialog
 export type InputArg = {

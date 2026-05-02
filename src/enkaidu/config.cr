@@ -1,4 +1,5 @@
 require "./config_serializable"
+require "../llm/function"
 
 module Enkaidu
   # Config parsing error
@@ -37,7 +38,7 @@ module Enkaidu
       end
     end
 
-    alias ToolSettings = Hash(String, Tools::Settings)
+    alias ToolSettings = Hash(String, LLM::Function::Settings)
 
     getter_with_presence auto_load, AutoLoad?
 
@@ -130,7 +131,7 @@ module Enkaidu
     # ---------------------- end of content definition
 
     # Return tool settings if any
-    def tool_settings_by_name(tool_name : String) : Tools::Settings?
+    def tool_settings_by_name(tool_name : String) : ::LLM::Function::Settings?
       tool_settings.try &.[tool_name]?
     end
 

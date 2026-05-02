@@ -1,7 +1,7 @@
 require "../sucre/command_parser"
 require "../tools/image_helper"
 require "./slash/*"
-require "./sub_agent_function"
+require "./tools/*"
 
 module Enkaidu::Slash
   # `Slash::Commander` provides the `/` command handling support.
