@@ -6,7 +6,7 @@
   import AsstTextCard from "./AsstTextCard.svelte";
   import AsstImageCard from "./AsstImageCard.svelte";
   import AsstThinkCard from "./AsstThinkCard.svelte";
-  import ShellConfirmDialog from "./ShellConfirmDialog.svelte";
+  import SecurityConfirmDialog from "./SecurityConfirmDialog.svelte";
   import UserTextCard from "./UserTextCard.svelte";
   import UserImageCard from "./UserImageCard.svelte";
   import ClarionCard from "./ClarionCard.svelte";
@@ -41,9 +41,10 @@
 
   let entries: SessionEntry[] = $state([]);
 
-  let shell_confirm_dialog: Common.ShellConfirmDialogConfig = $state({
+  let security_confirm_dialog: Common.SecurityConfirmDialogConfig = $state({
     show: false,
-    command: "",
+    description: "",
+    subject: "",
     id: "",
   });
 
@@ -100,10 +101,15 @@
     return "not_applicable";
   }
 
-  export function show_confirmation(command: string, id: string) {
-    shell_confirm_dialog.show = true;
-    shell_confirm_dialog.command = command;
-    shell_confirm_dialog.id = id;
+  export function show_security_confirmation(
+    description: string,
+    subject: string,
+    id: string,
+  ) {
+    security_confirm_dialog.show = true;
+    security_confirm_dialog.description = description;
+    security_confirm_dialog.subject = subject;
+    security_confirm_dialog.id = id;
   }
 
   async function send_confirmation_response(id: string, approved: boolean) {
@@ -114,8 +120,8 @@
     }
   }
 
-  function handle_shell_confirmation(id: string, approved: boolean) {
-    shell_confirm_dialog.show = false;
+  function handle_security_confirmation(id: string, approved: boolean) {
+    security_confirm_dialog.show = false;
     send_confirmation_response(id, approved);
   }
 
@@ -181,11 +187,12 @@
   </div>
 </div>
 
-<ShellConfirmDialog
-  command={shell_confirm_dialog.command}
-  id={shell_confirm_dialog.id}
-  show={shell_confirm_dialog.show}
-  onconfirm={handle_shell_confirmation}
+<SecurityConfirmDialog
+  subject={security_confirm_dialog.subject}
+  description={security_confirm_dialog.description}
+  id={security_confirm_dialog.id}
+  show={security_confirm_dialog.show}
+  onconfirm={handle_security_confirmation}
 />
 
 <InputsDialog
