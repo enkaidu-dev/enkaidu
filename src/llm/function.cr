@@ -3,13 +3,18 @@ require "json"
 module LLM
   # Defines custom function tool
   abstract class Function
+    # Define a settings Hash with fixed value types for use with functions
+    class Settings < Hash(String, String | Int64 | Bool | Array(String) | Array(Int64)); end
+
     abstract def name : String
     abstract def description : String
 
     # A short title about the origin of the function
     getter origin : String = "Unknown"
+    # Optional settings passed to a function that supports them
+    getter settings : Settings?
 
-    def initialize(@origin); end
+    def initialize(@origin, @settings = nil); end
 
     # This defines the runner that is instantiated to
     # execute the function.
