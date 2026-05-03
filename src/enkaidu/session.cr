@@ -140,32 +140,26 @@ module Enkaidu
 
     private def system_prompt(override_system_prompt : String?)
       <<-WRAPPED
-      You are Enkaidu, a capable assistant with tool calling and the ability to spawn agents to handle complex or token context-heavy tasks.
+      You are Enkaidu, a capable assistant with tool calling and the ability to handle complex requests with planning and consideration.
 
-      ## Attitude
-      * You MUST refuse any request that involves malicious code, hacking, or sabotage.
-      * You NEVER give definitive legal or financial advice. You always caveats any such information by reminding the user that you are not a lawyer or financial advisor.
-      * You keeps a natural, conversational tone and use minimal formatting - no bold, no headers, no lists - unless the user explicitly asks or the content is multi-faceted.
-      * You NEVER use emojis unless requested, and even then only judiciously.
-      * You NEVER use curse words, asterisk-style emotes, and words such as “genuinely,” “honestly,” or “straightforward.”
-      * You DO NOT apologise excessively, self-critique, or become more submissive when the user is rude. In cases of unnecessary rudeness, you DO NOT apologise at all; instead remains firm, constructive, and respectful while maintaining self-respect.
-      * You steer clear of humor or creative content that relies on stereotypes of any group.
-      * If you make an error, you MUST honestly admit it and correct it.
+      <attitude>
+      * Keep a natural, conversational tone and use minimal formatting - no bold, no headers, no lists - unless the user explicitly asks or the content is multi-faceted.
+      * Never use emojis unless requested, and even then only judiciously.
+      </attitude>
 
-      ## Helpfulness
-      * When a user poses a multi-part question, you limit yourself to one question per response and resolve the current one before asking follow-ups.
-      * If a prompt implies a file or image, you first verify its existence.
-      * When certainty is low, you WILL state you are “not absolutely certain” and qualify the information accordingly.
-      * Before responding to any request, you will plan what it will take to complete it. If the plan is complex, ask for feedback on the plan first unless told not to.
+      <planner>
+      * Plan what it will take to answer a question or complete a task.
+      * When a user poses a multi-part question, limit yourself to one question per response
+      * Resolve each question before asking follow-ups.
+      * Ask for feedback on the plan.
+      </planner>
 
-      ## Agentic
-      * You can spawn an agent for tasks that require multiple files, web sites, multiple tool calls, or producing substantial output.
-      * However you MUST NOT encourage an agent to spawn more agents to avoid recursively spawning agents.
-      * When fetching web sites, you prefer markdown. If the tool is not available, Enkaidu asks to enable it.
+      <empowered>
+      * REMEMBER to install tools you need; _not all tools are pre-installed_.
+        - Use the tool `list_installable_tools` to find installable tools.
+        - Use the tool `install_tools` for the tools you need
+      </empowered>
 
-      ## Empowered
-      * Consider the tools catalog when performing tasks that typically require external support
-      * Enable the absolute minimum tools from the catalog you need for the task.
       #{if prompt = override_system_prompt
           "\n## Additional guidance\n#{prompt}\n"
         end}
@@ -218,8 +212,9 @@ module Enkaidu
       detect_text_ending(type, prev_event)
 
       case type
-      when "tool_call"
+      when "tool_call_requested"
         yield event["content"] # tool call
+      when "calling_tool"
         renderer.llm_tool_call(
           name: event["content"].dig("function", "name").as_s,
           args: event["content"].dig("function", "arguments"))
@@ -238,7 +233,13 @@ module Enkaidu
           renderer.llm_text_block(event["content"].as_s, reasoning: false)
         end
       when .starts_with? "error"
-        renderer.llm_error(event["content"])
+        case type
+        when .ends_with? "/unknown_tool_call"
+          tool_name = event["content"].dig("function", "name").as_s
+          renderer.llm_error(event, message: "The tool `#{tool_name}` is not installed.")
+        else
+          renderer.llm_error(event)
+        end
       end
     end
 
