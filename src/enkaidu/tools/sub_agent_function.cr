@@ -13,15 +13,13 @@ module Enkaidu
     - would consume significant tokens (large codebases, long or many documents, multi-step research)
     - is self-contained and doesn't need the current session's history
     - benefits from a clean slate to avoid context pollution or confusion
-
-    Sub-agents can invoke their own sub-agents for further decomposition. Prefer sub-agents over doing heavy work inline — they keep the main session focused and prevent context window exhaustion.
     DESC
 
     param "prompt", type: Param::Type::Str, required: true,
       description: "The full instruction for the sub-agent; be explicit, especially when not including history."
     param "include_caller_history", type: Param::Type::Bool, required: false,
       description: <<-PDESC
-      Set to true onlywhen the task requires awareness of the current session, e.g. summarizing the conversation,
+      Set to true only when the task requires awareness of the current session, e.g. summarizing the conversation,
       continuing a thread, or referencing prior decisions.
       PDESC
 
@@ -39,7 +37,17 @@ module Enkaidu
 
         return error_response("Required `prompt` was empty") if prompt.empty?
 
-        func.runtime.session_manager.ask_forked_session(prompt, keep_history) ||
+        wrapped_prompt = <<-WRAPPER
+        <important>
+        * You are a spawned agent of Enkaidu.
+        * DO NOT spawn another agent UNLESS you're trying to split a task into multiple steps.
+        * REMEMBER to install tools you need; _not all tools are pre-installed_.
+        </important>
+
+        #{prompt}
+
+        WRAPPER
+        func.runtime.session_manager.ask_forked_session(wrapped_prompt, keep_history) ||
           error_response("Nil response")
       rescue ex
         error_response(ex.message)
