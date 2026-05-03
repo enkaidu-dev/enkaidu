@@ -27,9 +27,9 @@ module Enkaidu
       # Always enable tools for
       # - spawning agent
       # - tools catalog
+      session_manager.inject_function ListInstallableTools.new(self)
+      session_manager.inject_function InstallToolsFunction.new(self)
       session_manager.inject_function SubAgentPromptFunction.new(self)
-      session_manager.inject_function CatalogToolsFunction.new(self)
-      session_manager.inject_function EnableToolsFunction.new(self)
 
       # HACK ALERT
       # I don't like this; but for now I don't have a better way.
