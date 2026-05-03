@@ -114,7 +114,12 @@ module Enkaidu::Console
     # @return True to confirm, false otherwise.
     def user_confirm_security_question?(description, subject : String | Array(String)) : Bool
       puts fmt(:confirm_question, "  CONFIRM: #{description}\n")
-      ((subject.is_a? String) ? [subject] : subject).each do |str|
+      subjects = if subject.is_a? String
+                   [subject]
+                 else
+                   subject # already array
+                 end
+      subjects.each do |str|
         puts fmt(:confirm_content, "  > #{str}")
       end
       puts
