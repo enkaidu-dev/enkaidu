@@ -1,8 +1,8 @@
 require "colorize"
 
-require "../sucre/mcp_types"
-require "../llm"
-require "../mcpc"
+require "../../sucre/mcp_types"
+require "../../llm"
+require "../../mcpc"
 
 module Enkaidu
   # Defines a prompt from an MCP server

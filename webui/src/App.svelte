@@ -159,8 +159,12 @@
               content: "`" + msg.args + "`",
             });
             break;
-          case "shell_confirmation":
-            session.show_confirmation(msg.command, msg.id);
+          case "security_confirmation":
+            session.show_security_confirmation(
+              msg.description,
+              msg.subject,
+              msg.id,
+            );
             break;
           case "session_reset":
             session.reset();

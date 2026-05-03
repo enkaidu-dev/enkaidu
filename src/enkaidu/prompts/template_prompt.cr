@@ -1,8 +1,8 @@
 require "colorize"
 require "liquid"
 
-require "./config"
-require "./env"
+require "../config"
+require "../env"
 
 module Enkaidu
   # Defines a templated prompt that can be invoked with arguments as well as

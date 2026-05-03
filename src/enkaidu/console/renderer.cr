@@ -108,9 +108,22 @@ module Enkaidu::Console
       puts fmt(:query_feedback, "IMAGE #{trim_text(url, MAX_IMAGE_URL_LENGTH)}")
     end
 
-    def user_confirm_shell_command?(command)
-      puts fmt(:confirm_question, "  CONFIRM: The assistant wants to run the following command:\n")
-      puts fmt(:confirm_content, "  > #{command}\n\n")
+    # Prompt the user with a confirmation request for security confirmation
+    # by presenting the `description` followed by the `subject` of the question.
+    # The renderer should further emphasize the `subject` when presenting the question.
+    # @return True to confirm, false otherwise.
+    def user_confirm_security_question?(description, subject : String | Array(String)) : Bool
+      puts fmt(:confirm_question, "  CONFIRM: #{description}\n")
+      subjects = if subject.is_a? String
+                   [subject]
+                 else
+                   subject # already array
+                 end
+      subjects.each do |str|
+        puts fmt(:confirm_content, "  > #{str}")
+      end
+      puts
+      puts fmt(:confirm_question, "  Please review carefully for any operations that could adversely affect your system.\n")
       print fmt(:confirm_question, "  Allow? [y/N] ")
       response = STDIN.raw &.read_char
       puts fmt(:confirm_input, response.to_s)
@@ -185,8 +198,12 @@ module Enkaidu::Console
       puts unless streaming? || quiet?
     end
 
-    def llm_error(err)
-      warning_with("ERROR:\n#{err.to_json}")
+    def llm_error(err, message : String? = nil)
+      if message
+        warning_with("ERROR: #{message}")
+      else
+        warning_with("ERROR: #{err.to_json}")
+      end
     end
 
     class Counter

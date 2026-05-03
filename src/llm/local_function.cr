@@ -39,8 +39,8 @@ module LLM
     @@params = [] of Param
     @@input_schema = nil
 
-    def initialize(origin = "LEGACY / Built-in")
-      super(origin)
+    def initialize(origin = "LEGACY / Built-in", settings = nil)
+      super(origin, settings)
     end
 
     # Iterate through each parameter

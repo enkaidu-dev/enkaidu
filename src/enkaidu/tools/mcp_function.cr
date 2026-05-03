@@ -1,10 +1,12 @@
 require "colorize"
 
-require "../llm"
-require "../mcpc"
+require "../../llm"
+require "../../mcpc"
 
 module Enkaidu
   # Defines a tool / function from an MCP server
+  # Because of an MCP function's input/output schema-only definitions,
+  # this class is derived from `LLM::Function`.
   class MCPFunction < LLM::Function
     getter name : String
     getter title : String? = nil

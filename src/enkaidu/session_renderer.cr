@@ -1,5 +1,4 @@
-require "./mcp_prompt"
-require "./template_prompt"
+require "./prompts/*"
 
 module Enkaidu
   # SessionRenderer defines the interface for rendering session output and
@@ -21,7 +20,18 @@ module Enkaidu
     # Prompt query image
     abstract def user_query_image_url(url)
 
-    abstract def user_confirm_shell_command?(command)
+    def user_confirm_shell_command?(command)
+      user_confirm_security_question?(
+        description: "The agent's AI model wants to run the following system command:",
+        subject: command
+      )
+    end
+
+    # Prompt the user with a confirmation request for security confirmation
+    # by presenting the `description` followed by the `subject` of the question.
+    # The renderer should further emphasize the `subject` when presenting the question.
+    # @return True to confirm, false otherwise.
+    abstract def user_confirm_security_question?(description, subject : String | Array(String)) : Bool
 
     abstract def user_prompt_ask_input(prompt : TemplatePrompt) : Hash(String, String)
 
@@ -40,7 +50,7 @@ module Enkaidu
     abstract def llm_text_block(text, reasoning : Bool)
     abstract def llm_image_url(url)
 
-    abstract def llm_error(err)
+    abstract def llm_error(err, message : String? = nil)
 
     abstract def mcp_initialized(uri)
 
