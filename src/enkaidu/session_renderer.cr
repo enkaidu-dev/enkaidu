@@ -31,7 +31,7 @@ module Enkaidu
     # by presenting the `description` followed by the `subject` of the question.
     # The renderer should further emphasize the `subject` when presenting the question.
     # @return True to confirm, false otherwise.
-    abstract def user_confirm_security_question?(description, subject) : Bool
+    abstract def user_confirm_security_question?(description, subject : String | Array(String)) : Bool
 
     abstract def user_prompt_ask_input(prompt : TemplatePrompt) : Hash(String, String)
 
@@ -50,7 +50,7 @@ module Enkaidu
     abstract def llm_text_block(text, reasoning : Bool)
     abstract def llm_image_url(url)
 
-    abstract def llm_error(err)
+    abstract def llm_error(err, message : String? = nil)
 
     abstract def mcp_initialized(uri)
 

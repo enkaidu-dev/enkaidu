@@ -82,7 +82,7 @@ module Enkaidu::WUI
     # by presenting the `description` followed by the `subject` of the question.
     # The renderer should further emphasize the `subject` when presenting the question.
     # @return True to confirm, false otherwise.
-    def user_confirm_security_question?(description, subject) : Bool
+    def user_confirm_security_question?(description, subject : String | Array(String)) : Bool
       confirmation_id = Random::Secure.hex(16)
       confirmation_channel = Channel(Bool).new
       pending_confirmations[confirmation_id] = confirmation_channel
@@ -129,8 +129,12 @@ module Enkaidu::WUI
       post_event Render::LLMToolCall.new(name, args.to_s)
     end
 
-    def llm_error(err)
-      warning_with("ERROR:\n#{err.to_json}")
+    def llm_error(err, message : String? = nil)
+      if message
+        warning_with("ERROR: #{message}")
+      else
+        warning_with("ERROR: #{err.to_json}")
+      end
     end
 
     def llm_text(text, reasoning : Bool, starting : Bool = false, ending : Bool = false)
