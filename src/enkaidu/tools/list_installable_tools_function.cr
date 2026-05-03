@@ -2,12 +2,12 @@ require "../../llm"
 require "./session_built_in_function"
 
 module Enkaidu
-  class CatalogToolsFunction < SessionBuiltInFunction
-    name "list_tools_catalog"
+  class ListInstallableTools < SessionBuiltInFunction
+    name "list_installable_tools"
 
     description <<-DESC
-    Obtain a list of tools from the catalog of tools. Use the list to determine those that might help with
-    your task and ask the user to load those before continuing.
+    Obtain a list of available tools that you can install. Use the list to determine the tools that will help with
+    your task. IMPORTANT: YOU MUST install a tool from this list BEFORE you can call it.
     DESC
 
     runner Runner
@@ -21,9 +21,10 @@ module Enkaidu
         # List tools
         JSON.build do |json|
           json.object do
-            json.field "tools_catalog" do
+            json.field "installable_tools" do
               func.runtime.session.tools_catalog_builder(json)
             end
+            json.field "instruction", "IMPORTANT: YOU MUST install a tool from this list BEFORE you can call it."
           end
         end
       rescue ex

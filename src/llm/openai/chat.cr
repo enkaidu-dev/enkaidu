@@ -99,6 +99,13 @@ module LLM::OpenAI
       @conn.model = model
     end
 
+    private def error_calling_tool(call_id, tool_name, error, instruction = nil.as(String?))
+      Message::ToolCall.new(
+        tool_call_id: call_id,
+        name: tool_name,
+        content: (instruction ? {error: error, instruction: instruction} : {error: error}).to_json)
+    end
+
     private def call_tool(tool : LLM::Function, tool_call : JSON::Any)
       id = tool_call.dig("id").as_s
       args = if args_str = tool_call.dig("function", "arguments").as_s?
@@ -115,11 +122,17 @@ module LLM::OpenAI
       tool_calls.each do |call|
         name = call.dig("function", "name").as_s
         if tool = find_tool? name
+          yield({type: "calling_tool", content: call})
           append_message call_tool(tool, call)
-          calls += 1
         else
           yield unknown_tool_call(call)
+          error_calling_tool(
+            call.dig("id").as_s,
+            name,
+            error: "The tool #{name} is not installed. Consider installing it first.",
+            instruction: "IMPORTANT: YOU MUST install a tool BEFORE you can call it")
         end
+        calls += 1
       end
 
       return unless calls.positive?
@@ -130,7 +143,7 @@ module LLM::OpenAI
     end
 
     private def unknown_tool_call(tool_call : JSON::Any)
-      {type: "error/unknown", content: tool_call}
+      {type: "error/unknown_tool_call", content: tool_call}
     end
 
     def import(prompt : MCP::PromptResult, emit = false, & : ChatEvent ->) : Nil
@@ -337,7 +350,7 @@ module LLM::OpenAI
     private def process_tool_calls(tool_calls, &) : Nil
       tool_calls.as_a.each do |call|
         if call.dig?("function", "name") # in case function block is a dud
-          yield({type: "tool_call", content: call})
+          yield({type: "tool_call_requested", content: call})
         else
           # chunks to merge with last tool_call with name
           yield({type: "tool_call_merge", content: call})

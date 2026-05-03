@@ -23,6 +23,12 @@ module Tools
       @tool_names = nil
     end
 
+    def each_tool_class(&)
+      @tools.each do |name, tool_class|
+        yield name, tool_class
+      end
+    end
+
     def each_tool_info(&)
       @tools.each do |name, fun_class|
         yield name, fun_class.description
