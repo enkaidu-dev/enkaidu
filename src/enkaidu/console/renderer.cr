@@ -35,7 +35,9 @@ module Enkaidu::Console
         :h4          => mdr_heading_style(prefix: "####"),
         :h5          => mdr_heading_style(prefix: "----"),
         :h6          => mdr_heading_style(underline: true),
-        :code_block  => {fg: "cyan", line_prefix: "░ "},
+        "code_block" => {
+          highlight_theme: "catppuccin-macchiato",
+        },
         :code_inline => {fg: "cyan"},
         :html_tag    => {dim: true},
         :block_html  => {dim: true},
