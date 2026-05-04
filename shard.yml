@@ -16,6 +16,7 @@ development_dependencies:
 dependencies:
   termify:
     github: nogginly/termify.cr
+    version: 0.5.0
   liquid:
     github: amberframework/liquid.cr
     version: 1.0.0
