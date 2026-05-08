@@ -126,11 +126,11 @@ module LLM::OpenAI
           append_message call_tool(tool, call)
         else
           yield unknown_tool_call(call)
-          error_calling_tool(
+          append_message error_calling_tool(
             call.dig("id").as_s,
             name,
             error: "The tool #{name} is not installed. Consider installing it first.",
-            instruction: "IMPORTANT: YOU MUST install a tool BEFORE you can call it")
+          )
         end
         calls += 1
       end
