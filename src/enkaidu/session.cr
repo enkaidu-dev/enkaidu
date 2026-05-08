@@ -256,7 +256,7 @@ module Enkaidu
     private def consume_tool_calls(tools)
       until tools.empty?
         calls = tools
-        queue = queue_chat_request do |queue|
+        ev_queue = queue_chat_request do |queue|
           spawn do
             chat.call_tools_and_ask calls do |event|
               queue << event
@@ -266,7 +266,7 @@ module Enkaidu
           end
         end
         tools = [] of JSON::Any
-        gather_and_handle(queue, tools)
+        gather_and_handle(ev_queue, tools)
       end
     end
 
@@ -315,7 +315,7 @@ module Enkaidu
       tools = [] of JSON::Any
       # ask and handle the initial query and its events
       report_time_taken(prefix: "Total ") do
-        queue = queue_chat_request do |queue|
+        ev_queue = queue_chat_request do |queue|
           spawn do
             chat.re_ask(response_schema: response_json_schema) do |event|
               queue << event
@@ -325,7 +325,7 @@ module Enkaidu
           end
         end
         # Process events in queue
-        gather_and_handle(queue, tools)
+        gather_and_handle(ev_queue, tools)
         consume_tool_calls(tools)
       end
       recorder << "]"
@@ -347,7 +347,7 @@ module Enkaidu
         # ask and handle the initial query and its events
         renderer.user_query_text(query) if render_query
         # Run the chat query concurrently
-        queue = queue_chat_request do |queue|
+        ev_queue = queue_chat_request do |queue|
           spawn do
             chat.ask(query, attach: attach, response_schema: response_json_schema) do |event|
               queue << event
@@ -357,7 +357,7 @@ module Enkaidu
           end
         end
         # Process events in queue
-        gather_and_handle(queue, tools)
+        gather_and_handle(ev_queue, tools)
         consume_tool_calls(tools)
       end
     ensure

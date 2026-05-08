@@ -24,12 +24,12 @@ module TS
 
     # Return `true` if queue is empty
     def empty? : Bool
-      ex_queue.lock { |queue| queue.empty? }
+      ex_queue.lock(&.empty?)
     end
 
     # Shift item from the top of the queue, or `nil?` if empty
     def shift? : T?
-      ex_queue.lock { |queue| queue.shift? }
+      ex_queue.lock(&.shift?)
     end
   end
 end
