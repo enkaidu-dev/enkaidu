@@ -32,7 +32,7 @@ module LLM::OpenAI
       end
       tool_calls.try &.each do |call|
         yield({
-          type:    "tool_call",
+          type:    "tool_call_requested",
           content: call,
         })
       end
