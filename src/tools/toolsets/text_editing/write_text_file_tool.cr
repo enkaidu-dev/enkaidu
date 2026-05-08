@@ -25,8 +25,8 @@ module Tools::TextEditing
       include FileHelper
 
       def execute(args : JSON::Any) : String
-        file_path = args["file_path"].as_s? || return error_response("The required file_path was not specified")
-        content = args["content"].as_s? || return error_response("The required content was not specified")
+        file_path = args["file_path"]?.try(&.as_s?) || return error_response("The required file_path was not specified")
+        content = args["content"]?.try(&.as_s?) || return error_response("The required content was not specified")
         overwrite = args["overwrite"]?.try(&.as_bool?) || false
 
         resolved_path = resolve_path(file_path)

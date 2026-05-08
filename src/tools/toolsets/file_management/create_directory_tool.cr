@@ -21,7 +21,7 @@ module Tools::FileManagement
       include FileHelper
 
       def execute(args : JSON::Any) : String
-        dir_path = args["directory_path"].as_s? || return error_response("The required directory_path was not specified")
+        dir_path = args["directory_path"]?.try(&.as_s?) || return error_response("The required directory_path was not specified")
         resolved_path = resolve_path(dir_path)
 
         # Ensure the path stays within the current working directory
