@@ -121,12 +121,11 @@ module Enkaidu
         when "reasoning"
           renderer.llm_text_block(chat_ev["content"].as_s, reasoning: true)
           text_count += 1
-        when "tool_call"
+        when "tool_call_requested"
           text_count = 0
           renderer.llm_tool_call(
             name: chat_ev["content"].dig("function", "name").as_s,
             args: chat_ev["content"].dig("function", "arguments"))
-        when "tool_called"
         when "query/text"
           renderer.user_query_text(chat_ev["content"].as_s)
           text_count += 1

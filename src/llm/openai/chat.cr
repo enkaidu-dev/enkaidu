@@ -212,7 +212,7 @@ module LLM::OpenAI
             content = msg["content"].to_s
           when "reasoning"
             reasoning = msg["content"].to_s
-          when "tool_call"
+          when "tool_call_requested"
             tool_calls << msg["content"]
           when "usage"
             usage = Usage.from_json(msg["content"].to_json)
@@ -273,7 +273,7 @@ module LLM::OpenAI
       # close up recent tool call
       call = jsonify_function_call(recent_tool_call)
       tool_calls << call
-      {type: "tool_call", content: call}
+      {type: "tool_call_requested", content: call}
     end
 
     # ameba:disable Metrics/CyclomaticComplexity: It's too messy if I split this up more.
@@ -301,7 +301,7 @@ module LLM::OpenAI
                 when "reasoning"
                   think_io << msg["content"]
                   yield msg
-                when "tool_call"
+                when "tool_call_requested"
                   yield(wrap_up_tool_call(recent_tool_call, tool_calls)) if recent_tool_call
                   # and start a new one
                   recent_tool_call = extract_tool_call_from_message(msg)
