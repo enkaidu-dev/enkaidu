@@ -14,6 +14,10 @@ module LLM
     end
 
     protected def post_and_stream(body, &)
+      if TRACE
+        STDERR.puts ">>> POST #{path}" if TRACE
+        STDERR.puts ">>> #{headers}" if TRACE
+      end
       @client.post(path, headers,
         body: body) do |resp|
         yield resp
