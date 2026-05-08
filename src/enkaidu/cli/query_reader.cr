@@ -33,7 +33,7 @@ module Enkaidu::CLI
       if doc = @doc_cache[{{name}}]?
         doc
       elsif help = {{doc_generator}}
-        @doc_cache[{{name}}] = Markd.to_term(help)
+        @doc_cache[{{name}}] = styler.markdown_to_term(help)
       end
     end
 

@@ -165,5 +165,8 @@ module Enkaidu::Console
       # Return text as is if formatting fails
       text
     end
+
+    # Render Markdown to string
+    abstract def markdown_to_term(text)
   end
 end

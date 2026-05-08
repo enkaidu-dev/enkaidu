@@ -2,7 +2,6 @@ require "../session_renderer"
 require "./work"
 require "./render_events/*"
 
-require "markterm"
 require "reply"
 
 module Enkaidu::WUI

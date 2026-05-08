@@ -1,6 +1,5 @@
 require "termify"
 require "colorize"
-require "markterm"
 
 require "./style_sheet"
 require "./input_reader"
@@ -51,10 +50,19 @@ module Enkaidu::Console
       merge: Termify::Markdown::Stylesheet.default
     )
 
+    # Render Markdown to string using Termify
+    def markdown_to_term(text)
+      String.build do |str_io|
+        Termify.render_markdown(str_io, style_sheet: MDR_STYLESHEET) do |io|
+          io << text.to_s
+        end
+      end
+    end
+
     private getter input = InputReader.new("> ")
 
     private def prepare_text(help, markdown)
-      markdown ? Markd.to_term(help.to_s) : help
+      markdown ? markdown_to_term(help.to_s) : help
     end
 
     private def err_puts_text(help, markdown)
@@ -229,7 +237,10 @@ module Enkaidu::Console
 
     private def render_streaming_markdown(text, _starting : Bool, ending : Bool)
       @md_renderer << text
-      @md_renderer.puts if ending
+      if ending
+        @md_renderer.puts
+        @md_renderer.flush
+      end
     end
 
     def llm_text(text, reasoning : Bool, starting : Bool = false, ending : Bool = false)
@@ -264,7 +275,7 @@ module Enkaidu::Console
     def llm_text_block(text, reasoning : Bool)
       puts unless reasoning
       puts fmt(:thinking_content, REASONING_START) if reasoning
-      puts Markd.to_term(text)
+      puts markdown_to_term(text)
       puts fmt(:thinking_content, REASONING_FINISH) if reasoning
       puts unless reasoning
     end
