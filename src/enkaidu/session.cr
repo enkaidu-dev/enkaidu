@@ -1,10 +1,10 @@
 require "json"
 require "option_parser"
-require "markterm"
 require "uuid"
 
 require "../llm"
 require "../tools"
+require "../sucre/thread_safe"
 
 require "./about"
 require "./tools/*"
@@ -167,7 +167,7 @@ module Enkaidu
     end
 
     private macro m_process_and_record_ask_event(event, prev_event)
-    type = {{event}}["type"]
+      type = {{event}}["type"]
       unless type == "done"
         recorder.if_recording? do |io|
           io.puts "," if ix.positive?
@@ -252,25 +252,56 @@ module Enkaidu
 
     # Perform tool calls and subsequent events repeatedly until
     # no more tool calls remain
-    private def consume_tool_calls(tools, ix)
+    private def consume_tool_calls(tools)
+      # Cannot do this concurrently since tool calls can prompt user
+      # for input
       until tools.empty?
         calls = tools
         tools = [] of JSON::Any
-        ev_count = 0
+        ix = 0
         prev_event = nil
         chat.call_tools_and_ask calls do |event|
-          ev_count += 1
-          unless event["type"] == "done"
-            recorder.if_recording? do |io|
-              io.puts "," if ix.positive?
-              io.puts event.to_json
-            end
-            ix += 1
-            process_event(event, prev_event) do |tool_call|
-              tools << tool_call
-            end
-          end
+          m_process_and_record_ask_event(event, prev_event)
           prev_event = event
+        end
+      end
+    end
+
+    private def queue_chat_request(&) : TS::Queue(LLM::ChatEvent)
+      queue = TS::Queue(LLM::ChatEvent).new
+      yield queue
+      # Wait for events in a timed loop
+      spin_count = 0
+      while queue.empty?
+        STDERR.print "\r  Engaging #{spinner(spin_count)}".colorize(:dark_gray).italic
+        sleep(100.milliseconds)
+        spin_count += 1
+      end
+      STDERR.print "\r\e[K"
+      # Return with queue to caller
+      queue
+    end
+
+    private def gather_and_handle(queue, tools) : Nil
+      # Process events in queue
+      ix = 0
+      spin_count = 0
+      prev_event = nil
+      loop do
+        if event = queue.shift?
+          break if event["type"].upcase == "DONE"
+
+          STDERR.print "\r\e[K" unless streaming?
+          m_process_and_record_ask_event(event, prev_event)
+          prev_event = event
+        else
+          if streaming?
+            sleep(10.milliseconds)
+          else
+            STDERR.print "\r  Receiving #{spinner(spin_count)}".colorize(:dark_gray).italic
+            sleep(100.milliseconds)
+            spin_count += 1
+          end
         end
       end
     end
@@ -278,18 +309,29 @@ module Enkaidu
     # Re-query LLM using current session history
     private def re_ask(response_json_schema : LLM::ResponseSchema? = nil)
       recorder << "["
-      ix = 0
       tools = [] of JSON::Any
       # ask and handle the initial query and its events
       report_time_taken(prefix: "Total ") do
-        prev_event = nil
-        chat.re_ask(response_schema: response_json_schema) do |event|
-          m_process_and_record_ask_event(event, prev_event)
-          prev_event = event
+        ev_queue = queue_chat_request do |queue|
+          spawn do
+            chat.re_ask(response_schema: response_json_schema) do |event|
+              queue << event
+              Fiber.yield
+            end
+            queue << {type: "DONE", content: JSON::Any.new(nil)}
+          end
         end
-        consume_tool_calls(tools, ix)
+        # Process events in queue
+        gather_and_handle(ev_queue, tools)
+        consume_tool_calls(tools)
       end
       recorder << "]"
+    end
+
+    private SPINNER = ['|', '/', '-', '\\']
+
+    private def spinner(count)
+      SPINNER[count % SPINNER.size]
     end
 
     # Query LLM using a prompt and optional attachments
@@ -297,17 +339,23 @@ module Enkaidu
             response_json_schema : LLM::ResponseSchema? = nil,
             render_query = false)
       recorder << "["
-      ix = 0
       tools = [] of JSON::Any
       report_time_taken(prefix: "Total ") do
         # ask and handle the initial query and its events
         renderer.user_query_text(query) if render_query
-        prev_event = nil
-        chat.ask(query, attach: attach, response_schema: response_json_schema) do |event|
-          m_process_and_record_ask_event(event, prev_event)
-          prev_event = event
+        # Run the chat query concurrently
+        ev_queue = queue_chat_request do |queue|
+          spawn do
+            chat.ask(query, attach: attach, response_schema: response_json_schema) do |event|
+              queue << event
+              Fiber.yield
+            end
+            queue << {type: "DONE", content: JSON::Any.new(nil)}
+          end
         end
-        consume_tool_calls(tools, ix)
+        # Process events in queue
+        gather_and_handle(ev_queue, tools)
+        consume_tool_calls(tools)
       end
     ensure
       recorder << "]"

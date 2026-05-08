@@ -23,8 +23,8 @@ module Tools::FileManagement
       include FileHelper
 
       def execute(args : JSON::Any) : String
-        current_path = args["source_path"].as_s? || return error_response("The required `source_path` was not specified")
-        new_name = args["target_path"].as_s? || return error_response("The required `target_path` was not specified")
+        current_path = args["source_path"]?.try(&.as_s?) || return error_response("The required `source_path` was not specified")
+        new_name = args["target_path"]?.try(&.as_s?) || return error_response("The required `target_path` was not specified")
 
         resolved_current_path = resolve_path(current_path)
         resolved_new_path = resolve_path(File.join(File.dirname(resolved_current_path), new_name))

@@ -10,11 +10,11 @@ shards:
 
   base58:
     git: https://github.com/crystal-china/base58.cr.git
-    version: 0.1.0+git.commit.f7193c497efff614cf87b03f0bd07741915a592f
+    version: 0.1.0+git.commit.0e2c44d16a8098b00d8bf0b74add8bb9ea2f1c5f
 
   crimage:
     git: https://github.com/naqvis/crimage.git
-    version: 1.0.4+git.commit.b65f67df27f4cb8807a34d94a90dfd4162acf45a
+    version: 1.0.5+git.commit.2b3abbcdca426a2a13a39b986326f9a2f7f65bc6
 
   docopt:
     git: https://github.com/ralsina/docopt.cr.git
@@ -31,18 +31,6 @@ shards:
   liquid:
     git: https://github.com/amberframework/liquid.cr.git
     version: 1.0.0
-
-  markd:
-    git: https://github.com/icyleaf/markd.git
-    version: 0.5.0+git.commit.03cd4f5d6f4e56054502a6548b4c2ff92fb3dc20
-
-  markterm:
-    git: https://github.com/ralsina/markterm.git
-    version: 0.7.0
-
-  progress_bar:
-    git: https://github.com/mgomes/progress_bar.git
-    version: 1.0.1+git.commit.aa5ebab89d31167208387640db06d3964ec7922b
 
   reply:
     git: https://github.com/i3oris/reply.git

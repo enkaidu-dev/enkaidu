@@ -41,7 +41,7 @@ module Tools::Web
       USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:146.0) Gecko/20100101 Firefox/146.0"
 
       def execute(args : JSON::Any) : String
-        url = args["url"].as_s? || return error_response("The required URL was not specified")
+        url = args["url"]?.try(&.as_s?) || return error_response("The required URL was not specified")
         user_agent = args["user_agent"]?.try(&.as_s?) || USER_AGENT
         preserve_source = args["preserve_source"]? || false
         accept = args["accept"]?.try(&.as_s?) || nil
