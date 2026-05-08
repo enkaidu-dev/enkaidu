@@ -1,6 +1,5 @@
 require "json"
 require "option_parser"
-require "markterm"
 require "uuid"
 
 require "../llm"
@@ -254,19 +253,17 @@ module Enkaidu
     # Perform tool calls and subsequent events repeatedly until
     # no more tool calls remain
     private def consume_tool_calls(tools)
+      # Cannot do this concurrently since tool calls can prompt user
+      # for input
       until tools.empty?
         calls = tools
-        ev_queue = queue_chat_request do |queue|
-          spawn do
-            chat.call_tools_and_ask calls do |event|
-              queue << event
-              Fiber.yield
-            end
-            queue << {type: "DONE", content: JSON::Any.new(nil)}
-          end
-        end
         tools = [] of JSON::Any
-        gather_and_handle(ev_queue, tools)
+        ix = 0
+        prev_event = nil
+        chat.call_tools_and_ask calls do |event|
+          m_process_and_record_ask_event(event, prev_event)
+          prev_event = event
+        end
       end
     end
 
