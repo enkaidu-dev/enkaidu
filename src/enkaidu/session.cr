@@ -178,14 +178,6 @@ module Enkaidu
           tools << tool_call
         end
       end
-      if streaming?
-        # When finishing handling all events, check if the last event is something
-        # we need to close off; in particular, textevents when streaming.
-        case pev_type = prev_event.try(&.["type"])
-        when "text"
-          renderer.llm_text("", reasoning: false, ending: pev_type != type)
-        end
-      end
     end
 
     private def detect_text_ending(curr_event_type, prev_event) : Nil
@@ -264,6 +256,7 @@ module Enkaidu
           m_process_and_record_ask_event(event, prev_event)
           prev_event = event
         end
+        detect_text_ending(nil, prev_event)
       end
     end
 
@@ -304,6 +297,7 @@ module Enkaidu
           end
         end
       end
+      detect_text_ending(nil, prev_event)
     end
 
     # Re-query LLM using current session history

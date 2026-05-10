@@ -238,8 +238,7 @@ module Enkaidu::Console
     private def render_streaming_markdown(text, _starting : Bool, ending : Bool)
       @md_renderer << text
       if ending
-        @md_renderer.puts
-        @md_renderer.flush
+        @md_renderer.reset
       end
     end
 
