@@ -64,6 +64,9 @@ module Enkaidu
           yield Event::Prompt
         end
       end
+    rescue ex
+      # Report unexpected exception and return back to the prompt so we can save / recover etc.
+      renderer.error_with("ERROR: #{ex.inspect} (Report this please!)", markdown: false, help: ex.backtrace.join('\n'))
     end
   end
 end
