@@ -38,7 +38,7 @@ shards:
 
   sixteen:
     git: https://github.com/ralsina/sixteen.git
-    version: 0.7.0
+    version: 0.8.0
 
   spectator:
     git: https://gitlab.com/arctic-fox/spectator.git
@@ -54,7 +54,7 @@ shards:
 
   termify:
     git: https://github.com/nogginly/termify.cr.git
-    version: 0.5.0
+    version: 0.5.3
 
   textseg:
     git: https://github.com/naqvis/uni_text_seg.git
