@@ -312,6 +312,7 @@ module Enkaidu
               queue << event
               Fiber.yield
             end
+          ensure
             queue << {type: "DONE", content: JSON::Any.new(nil)}
           end
         end
@@ -344,6 +345,7 @@ module Enkaidu
               queue << event
               Fiber.yield
             end
+          ensure
             queue << {type: "DONE", content: JSON::Any.new(nil)}
           end
         end
