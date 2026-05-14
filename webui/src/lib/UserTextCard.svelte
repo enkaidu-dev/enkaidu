@@ -14,7 +14,7 @@
 </script>
 
 <div
-  class="card py-1 card-sm shadow-sm w-7/8 place-self-end {via_query_queue
+  class="indicator card py-1 card-sm shadow-sm w-7/8 place-self-end {via_query_queue
     ? 'bg-info'
     : 'bg-accent'}"
 >

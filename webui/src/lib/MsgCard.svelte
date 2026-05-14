@@ -10,7 +10,7 @@
 </script>
 
 <div
-  class="indicator w-7/8 p-1 card card-sm shadow-sm place-self-start bg-base-200 text-sm text-base-content dark:border-base-content dark:border-1 dark:border-dashed"
+  class="indicator w-7/8 p-1 card card-xs shadow-sm place-self-start bg-base-100 text-sm text-base-content dark:border-base-content dark:border-1 dark:border-dashed"
 >
   {#if level == "warn"}
     <span class="indicator-item badge badge-sm badge-warning">WARN</span>
@@ -29,11 +29,11 @@
     {#if msg.content}
       <div class="collapse collapse-arrow">
         <input type="checkbox" />
-        <div class="collapse-title card-title text-sm">
+        <div class="collapse-title card-title text-xs">
           {msg.subject}
         </div>
-        <div class="collapse-content text-sm">
-          <Markdown content={msg.content} />
+        <div class="collapse-content text-xs">
+          <Markdown content={msg.content} add_class="text-sm" />
         </div>
       </div>
     {:else}
