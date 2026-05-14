@@ -9,6 +9,7 @@
   // import Sidebar from "./lib/Sidebar.svelte";
 
   let session: Session;
+  let menubar: Menubar;
   let prompt: Promptbar;
 
   let started = false;
@@ -16,7 +17,7 @@
 
   async function read_line_by_line(
     response: Response,
-    handler: (line: string | null) => void,
+    handler: (line: string | null) => void
   ) {
     const reader = response.body?.getReader();
     if (!reader) return;
@@ -59,12 +60,15 @@
       if (line != null && line.length > 0) {
         let msg = JSON.parse(line);
         switch (msg.type) {
+          case "system_info":
+            menubar.update(msg.host, msg.cwd);
+            break;
           case "ask_for_inputs":
             session.ask_for_inputs(
               msg.id,
               msg.title,
               msg.arguments,
-              msg.description,
+              msg.description
             );
             break;
           case "message":
@@ -163,7 +167,7 @@
             session.show_security_confirmation(
               msg.description,
               msg.subject,
-              msg.id,
+              msg.id
             );
             break;
           case "session_reset":
@@ -201,7 +205,7 @@
       });
       let resp = await enkaidu_post_request(
         "prompt",
-        new_prompt_request(query),
+        new_prompt_request(query)
       );
       await handle_response(resp);
     } catch (error) {
@@ -223,7 +227,7 @@
     <input id="my-drawer" type="checkbox" class="drawer-toggle" />
     <div class="drawer-content">
       <div class="flex flex-col h-screen justify-between">
-        <Menubar />
+        <Menubar bind:this={menubar} host="" cwd="" />
         <Session bind:this={session} />
         <Promptbar
           bind:this={prompt}

@@ -69,7 +69,8 @@ module Enkaidu
         console.info_with WELCOME_MSG, WELCOME, markdown: true
         console.info_with ""
 
-        @web_server = WebServer.new(8765,
+        port = ENV.fetch("ENKAIDU_PORT", nil).try(&.to_i32?)
+        @web_server = WebServer.new(port,
           bind_to_all_nics: ENV.fetch("ENKAIDU_BIND_TO_ALL", nil) != nil)
 
         queue.info_with(WELCOME_MSG, WELCOME, markdown: true)
@@ -115,6 +116,7 @@ module Enkaidu
 
         web_server.get "/api/start" do |_, resp|
           list = gather_queue_events
+          list.unshift(WUI::Render::SystemInfo.new)
           list.each { |line| resp.puts line.to_json }
         end
 
