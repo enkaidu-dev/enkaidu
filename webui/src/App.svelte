@@ -151,16 +151,9 @@
             break;
           case "llm_tool_call":
             session.add_event({
-              type: `message_success`,
-              subject: `CALL "${msg.name}" with`,
-              content: "`" + msg.args + "`",
-            });
-            break;
-          case "llm_tool_call":
-            session.add_event({
-              type: `message_success`,
-              subject: `CALL "${msg.name}" with`,
-              content: "`" + msg.args + "`",
+              type: `tool_call`,
+              subject: msg.name,
+              content: msg.args,
             });
             break;
           case "security_confirmation":
