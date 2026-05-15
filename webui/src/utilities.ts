@@ -1,6 +1,8 @@
 
+const ENKAIDU_URL = window.location.href
+
 export async function enkaidu_get_request(path: string) {
-  const request = new Request(new URL(`/api/${path}`, window.location.href), {
+  const request = new Request(new URL(`/api/${path}`, ENKAIDU_URL), {
     method: "GET",
   });
 
@@ -12,7 +14,7 @@ export async function enkaidu_post_request(path: string, content: any) {
     "Content-Type": "application/json",
   });
 
-  const request = new Request(new URL(`/api/${path}`, window.location.href), {
+  const request = new Request(new URL(`/api/${path}`, ENKAIDU_URL), {
     method: "POST",
     body: JSON.stringify(content),
     headers: headers,
