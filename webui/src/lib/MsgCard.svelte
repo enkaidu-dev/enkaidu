@@ -10,34 +10,56 @@
 </script>
 
 <div
-  class="indicator w-7/8 p-1 card card-xs shadow-sm place-self-start bg-base-100 text-sm text-base-content dark:border-base-content dark:border-1 dark:border-dashed"
+  class="indicator w-7/8 py-0 card card-xs shadow-sm place-self-start bg-base-200 text-sm text-base-content dark:border-base-content dark:border-1 dark:border-dashed"
 >
   {#if level == "warn"}
-    <span class="indicator-item badge badge-sm badge-warning">WARN</span>
+    <span
+      class="indicator-item indicator-center badge badge-sm badge-soft badge-warning"
+      >WARN</span
+    >
   {:else if level == "success"}
-    <span class="indicator-item badge badge-sm badge-success">OK</span>
+    <span
+      class="indicator-item indicator-center badge badge-sm badge-soft badge-success"
+      >OK</span
+    >
   {:else if level == "error"}
-    <span class="indicator-item badge badge-sm badge-error">ERROR</span>
+    <span
+      class="indicator-item indicator-center badge badge-sm badge-soft badge-error"
+      >ERROR</span
+    >
   {:else if level == "info"}
-    <span class="indicator-item badge badge-sm badge-info">INFO</span>
+    <span
+      class="indicator-item indicator-center badge badge-sm badge-soft badge-info"
+      >INFO</span
+    >
   {:else}
-    <span class="indicator-item badge badge-sm badge-error"
+    <span
+      class="indicator-item indicator-center badge badge-sm badge-soft badge-error"
       >{`?(${level})?`}</span
     >
   {/if}
-  {#each data as msg}
-    {#if msg.content}
-      <div class="collapse collapse-arrow">
-        <input type="checkbox" />
-        <div class="collapse-title card-title text-xs">
-          {msg.subject}
-        </div>
-        <div class="collapse-content text-xs">
-          <Markdown content={msg.content} add_class="text-sm" />
-        </div>
+
+  {#if data.length > 1}
+    <div class="collapse py-0 collapse-arrow">
+      <input type="checkbox" />
+      <div class="collapse-title py-0 card-title text-xs">
+        {data[0].subject}
       </div>
-    {:else}
-      <p>{msg.subject}</p>
-    {/if}
-  {/each}
+      <div class="collapse-content py-0 text-xs">
+        {#each data as msg}
+          {#if msg.content}
+            <Markdown content={msg.content} add_class="text-sm pl-5" />
+          {:else if msg != data[0]}
+            <div class="card-title text-xs">
+              {msg.subject}
+            </div>
+          {/if}
+        {/each}
+      </div>
+    </div>
+  {:else}
+    <div class="card-title py-2 ps-4 text-xs">
+      {data[0].subject}
+    </div>
+  {/if}
 </div>

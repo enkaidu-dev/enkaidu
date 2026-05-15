@@ -18,10 +18,13 @@
   }
 </script>
 
-<div class="indicator-item">
-  <!-- <div class="absolute px-1 pe-2 flex place-content-end"> -->
+<!-- <div class="absolute "> -->
+<div class="absolute w-full px-1 flex place-content-end">
   <div class="tooltip tooltip-bottom" data-tip="Copy">
-    <button class="btn btn-solid btn-xs {copy_state}" onclick={copy}>
+    <button
+      class="btn btn-accent btn-soft btn-solid btn-xs {copy_state}"
+      onclick={copy}
+    >
       {#if copy_state == ""}
         <Copy />
       {:else}
