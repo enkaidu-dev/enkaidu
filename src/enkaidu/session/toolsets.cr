@@ -6,7 +6,7 @@ module Enkaidu
       def list_all_tools
         text = String.build do |io|
           chat.each_tool_origin do |origin|
-            io << "## " << origin << '\n'
+            io << "### " << origin << '\n'
             chat.each_tool(origin: origin) do |tool|
               io << "`" << tool.name << "` : "
               io << tool.description << "\n\n"

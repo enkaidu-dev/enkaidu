@@ -8,7 +8,6 @@ class WebServer
     EndServer
   end
 
-  getter port : Int32
   getter address : Socket::IPAddress
 
   private alias HandlerProc = Proc(HTTP::Request, HTTP::Server::Response, Nil)
@@ -18,15 +17,25 @@ class WebServer
   private getter work_finished = Channel(Bool).new
   private getter active_handlers = 0
 
-  def initialize(@port, bind_to_all_nics = false)
+  # Listen on specified `port`, or bind to an unused port which you can identify after via `#port` method.
+  def initialize(port : Int32? = nil, bind_to_all_nics = false)
     @server = HTTP::Server.new do |context|
       handle(context)
     end
-    @address = if bind_to_all_nics
+    @address = if bind_to_all_nics && port.is_a?(Int)
                  @server.bind_tcp "0.0.0.0", port
+               elsif bind_to_all_nics
+                 @server.bind_unused_port "0.0.0.0"
+               elsif port.nil?
+                 @server.bind_unused_port
                else
                  @server.bind_tcp port
                end
+  end
+
+  # Port number the server is listening on
+  def port : Int32
+    @address.port
   end
 
   private def start_tracking

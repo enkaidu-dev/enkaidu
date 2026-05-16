@@ -11,6 +11,7 @@
   import UserImageCard from "./UserImageCard.svelte";
   import ClarionCard from "./ClarionCard.svelte";
   import InputsDialog from "./InputsDialog.svelte";
+  import ToolCallCard from "./ToolCallCard.svelte";
 
   const scrollToBottom = (node: HTMLElement, _list: Event[]) => {
     const scroll = () =>
@@ -104,7 +105,7 @@
   export function show_security_confirmation(
     description: string,
     subject: string,
-    id: string,
+    id: string
   ) {
     security_confirm_dialog.show = true;
     security_confirm_dialog.description = description;
@@ -129,7 +130,7 @@
     id: string,
     title: string,
     input_args: Common.InputArg[],
-    description?: string | undefined,
+    description?: string | undefined
   ) {
     inputs_dialog.show = true;
     inputs_dialog.id = id;
@@ -177,6 +178,11 @@
         <AsstImageCard image_url={entry.data[0].content || "??"} />
       {:else if entry.type == "clarion"}
         <ClarionCard subject={entry.data[0].content || "???"} />
+      {:else if entry.type == "tool_call"}
+        <ToolCallCard
+          name={entry.data[0].subject}
+          args={entry.data[0].content}
+        />
       {:else if entry.type.startsWith("message_")}
         <MsgCard
           level={entry.type.split("_").at(-1) || "info"}

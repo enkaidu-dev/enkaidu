@@ -53,7 +53,8 @@ module Enkaidu::WUI
     end
 
     def time_elapsed(duration : Time::Span, label : String? = nil)
-      info_with("#{label}#{duration.total_seconds}s elapsed.")
+      elapsed = duration.total_seconds.format(decimal_places: 3, only_significant: true)
+      info_with("#{label}#{elapsed}s elapsed.")
     end
 
     def user_query_text(query, via_query_queue = false)
