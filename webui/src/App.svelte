@@ -17,7 +17,7 @@
 
   async function read_line_by_line(
     response: Response,
-    handler: (line: string | null) => void
+    handler: (line: string | null) => void,
   ) {
     const reader = response.body?.getReader();
     if (!reader) return;
@@ -68,7 +68,7 @@
               msg.id,
               msg.title,
               msg.arguments,
-              msg.description
+              msg.description,
             );
             break;
           case "message":
@@ -160,7 +160,7 @@
             session.show_security_confirmation(
               msg.description,
               msg.subject,
-              msg.id
+              msg.id,
             );
             break;
           case "session_reset":
@@ -177,6 +177,7 @@
     });
   }
 
+  // Send start / init request if not already sent
   async function check_if_started() {
     if (!started) {
       let resp = await enkaidu_get_request("start");
@@ -185,11 +186,25 @@
     }
   }
 
-  async function on_prompt_ask(query: string) {
-    try {
-      handling_request = true;
-      await check_if_started();
+  // Send drain events request to retrieve any pending events
+  async function drain_events_from_enkaidu() {
+    let success = true;
 
+    try {
+      // likely interrupted connection, so ask Enkaidu to drain remaining events
+      // and force a new connection
+      let resp = await enkaidu_get_request("drain");
+      await handle_response(resp);
+    } catch (error) {
+      success = false;
+    }
+    return success;
+  }
+
+  // Send query request and return false if exception occurs
+  async function ask_enkaidu(query: string) {
+    let success = true;
+    try {
       query = query.trim();
       session.add_event({
         type:
@@ -198,7 +213,7 @@
       });
       let resp = await enkaidu_post_request(
         "prompt",
-        new_prompt_request(query)
+        new_prompt_request(query),
       );
       await handle_response(resp);
     } catch (error) {
@@ -206,6 +221,37 @@
         type: "clarion",
         content: error as string,
       });
+      success = false;
+    }
+    return success;
+  }
+
+  const MAX_TRIES = 3;
+
+  // Handle the user's prompt query request, by sending a query and
+  // requesting further events in case of connection error.
+  async function on_prompt_ask(query: string) {
+    try {
+      handling_request = true;
+      await check_if_started();
+
+      if (!(await ask_enkaidu(query))) {
+        // There was an error, so try and drain events in case Enkaidu
+        // is continuing to do work. This
+        // re-establises connection with Enkaidu (if possible).
+        let tries = 0;
+        while (tries < MAX_TRIES) {
+          if (await drain_events_from_enkaidu()) break;
+          tries += 1;
+        }
+        if (tries >= MAX_TRIES) {
+          // Failed after MAX_TRIES
+          session.add_event({
+            type: "clarion",
+            content: "FAILED to re-connect with Enkaidu.",
+          });
+        }
+      }
     } finally {
       handling_request = false;
       setTimeout(() => {
