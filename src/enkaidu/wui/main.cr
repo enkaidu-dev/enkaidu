@@ -120,6 +120,11 @@ module Enkaidu
           list.each { |line| resp.puts line.to_json }
         end
 
+        web_server.get "/api/drain" do |_, resp|
+          list = gather_queue_events
+          list.each { |line| resp.puts line.to_json }
+        end
+
         web_server.post "/api/prompt" do |req, resp|
           if body_io = req.body
             prompt_req = ACPA::Request::PromptParams.from_json(body_io.gets_to_end)
