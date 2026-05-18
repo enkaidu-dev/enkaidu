@@ -28,74 +28,70 @@ module Tools::TextEditing
       def execute(args : JSON::Any) : String
         file_path = args["file_path"]?.try &.as_s? ||
                     return error_response("The required `file_path` was not specified")
-        line_range = if range = args["line_range"]?
-                       if (arr = range.as_a?) && arr.size == 2 && (line_start = arr[0]?.try(&.as_i?)) && (line_end = arr[1]?.try(&.as_i?))
-                         if line_start >= 0 && (line_end.negative? || line_start <= line_end)
-                           [line_start, line_end]
-                         else
-                           return error_response("The `line_range` is invalid: start line (#{line_start}) > end line (#{line_end})")
-                         end
-                       else
-                         return error_response("The `line_range` must be an array with two integers.")
-                       end
-                     else
-                       return error_response("The required `line_range` was not specified")
-                     end
         new_str = args["new_str"]?.try &.as_s? ||
                   return error_response("The required `new_str` was not specified")
-
         resolved_path = resolve_path(file_path)
 
         return error_response("The specified path '#{file_path}' is not allowed.") unless within_current_directory?(resolved_path)
         return error_response("The specified file '#{file_path}' does not exist or is not a file.") unless valid_file?(resolved_path)
 
         begin
-          inserted = false
-          new_content = String.build do |io|
-            line_no = 0
-            start_line = line_range.first
-            end_line = line_range.last
+          line_range = parse_line_range(args["line_range"]?)
 
-            File.each_line(resolved_path, chomp: false) do |line|
-              line_no += 1
-              if line_no < start_line
-                io << line
-              elsif line_no == start_line
-                # skip, and insert replacement
-                io.puts(new_str)
-                inserted = true
-                # Short-circuit reading loop if we're replacing to end of file
-                break if end_line.negative?
-              elsif line_no > end_line
-                io << line
-              end
-            end
-          end
-          if inserted
-            # Changes made
+          if new_content = replace_lines(resolved_path, line_range, new_str)
             File.write(resolved_path, new_content)
             success_response(file_path, "Successfully replaced lines in the range #{line_range} in the text file.")
           else
-            error_response("Insertion failed, file hass less lines that #{line_range.first}. File not modified. ")
+            error_response("Replacement failed, file hass less lines that #{line_range.first}. File not modified. ")
           end
         rescue e
-          error_response("An error occurred while modifying the file: #{e.message}")
+          error_response(e.message)
         end
+      end
+
+      private def parse_line_range(range)
+        if range
+          if (arr = range.as_a?) && arr.size == 2 && (line_start = arr[0]?.try(&.as_i?)) && (line_end = arr[1]?.try(&.as_i?))
+            if line_start >= 0 && (line_end.negative? || line_start <= line_end)
+              [line_start, line_end]
+            else
+              raise Exception.new("The `line_range` is invalid: start line (#{line_start}) > end line (#{line_end})")
+            end
+          else
+            raise Exception.new("The `line_range` must be an array with two integers.")
+          end
+        else
+          raise Exception.new("The required `line_range` was not specified")
+        end
+      end
+
+      private def replace_lines(resolved_path, line_range, new_str) : String?
+        replaced = false
+        new_content = String.build do |io|
+          line_no = 0
+          start_line = line_range.first
+          end_line = line_range.last
+
+          File.each_line(resolved_path, chomp: false) do |line|
+            line_no += 1
+            if line_no < start_line
+              io << line
+            elsif line_no == start_line
+              # skip, and insert replacement
+              io.puts(new_str)
+              replaced = true
+              # Short-circuit reading loop if we're replacing to end of file
+              break if end_line.negative?
+            elsif line_no > end_line
+              io << line
+            end
+          end
+        end
+        replaced ? new_content : nil
       end
 
       private def error_response(message)
         {"error" => message}.to_json
-      end
-
-      private def with_line_numbers(content)
-        String.build do |io|
-          line_no = 0
-          content.each_line(chomp: false) do |line|
-            line_no += 1
-            io.printf("%6d\t", line_no)
-            io << line
-          end
-        end
       end
 
       private def success_response(file_path, message)
