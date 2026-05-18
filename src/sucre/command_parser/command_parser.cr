@@ -97,6 +97,13 @@ class CommandParser
     @named_args[name.to_s]? || default
   end
 
+  # Iterate through the named arguments
+  def each_named(&)
+    @named_args.each do |name, value|
+      yield name, value
+    end
+  end
+
   # private TRACE = 1
 
   # Use this to see if the command matches expected arguments and parameters, where

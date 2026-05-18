@@ -33,7 +33,9 @@ module Enkaidu
     # @return True to confirm, false otherwise.
     abstract def user_confirm_security_question?(description, subject : String | Array(String)) : Bool
 
-    abstract def user_prompt_ask_input(prompt : TemplatePrompt) : Hash(String, String)
+    # Present prompt and ask for inputs if arguments are defined and no values are
+    # present in `params`.
+    abstract def user_prompt_ask_input(prompt : TemplatePrompt, params : Hash? = nil) : Hash(String, String)
 
     abstract def time_elapsed(duration : Time::Span, label : String? = nil)
 

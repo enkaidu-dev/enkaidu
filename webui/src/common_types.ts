@@ -25,4 +25,5 @@ export type InputDialogConfig = {
   title: string;
   description?: string | undefined;
   input_arguments: InputArg[];
+  pre_filled?: InputValues | null;
 }

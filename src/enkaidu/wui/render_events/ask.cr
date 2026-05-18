@@ -24,6 +24,7 @@ module Enkaidu::WUI::Render
     getter id : String
     getter description : String
     getter arguments : Array(InputArgument)
+    getter pre_filled : Hash(String, String)?
     getter title : String
 
     def initialize(@id, prompt : MCP::Prompt)
@@ -38,9 +39,10 @@ module Enkaidu::WUI::Render
           description: prompt_arg.description || prompt_arg.title,
           type: InputType::Text)
       end
+      @pre_filled = nil
     end
 
-    def initialize(@id, prompt : TemplatePrompt)
+    def initialize(@id, prompt : TemplatePrompt, @pre_filled = nil)
       prompt_args = prompt.arguments
 
       super("ask_for_inputs")
