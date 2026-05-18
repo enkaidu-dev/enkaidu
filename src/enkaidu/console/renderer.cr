@@ -306,7 +306,9 @@ module Enkaidu::Console
       puts fmt(:mcp_feedback, "  └─ prompt: #{prompt.name}")
     end
 
-    private def ask_param_input(name, description)
+    # Show parameter input prompt, and either present value if any or
+    # ask for value
+    private def ask_param_input(name, description, value)
       text = if description
                "    #{name} [#{description}] :"
              else
@@ -314,10 +316,16 @@ module Enkaidu::Console
              end
       puts fmt(:prompt_question, text)
       input.label = fmt(:prompt_input, "    > ")
-      input.read_next
+      if value
+        input.prompt(STDOUT, 0, true)
+        puts fmt(:prompt_auto_input, value)
+      else
+        value = input.read_next
+      end
+      value
     end
 
-    private def ask_prompt_inputs(prompt) : Hash(String, String)
+    private def ask_prompt_inputs(prompt, params : Hash? = nil) : Hash(String, String)
       text = <<-PREFIX
           #{prompt.description}
 
@@ -326,7 +334,10 @@ module Enkaidu::Console
 
       arg_inputs = {} of String => String
       prompt.arguments.try &.each do |arg|
-        unless (value = ask_param_input(arg.name, arg.description)).nil?
+        unless (value = ask_param_input(
+                 arg.name,
+                 arg.description,
+                 params.try(&.[arg.name]?).try(&.to_s))).nil?
           arg_inputs[arg.name] = value
         end
       end
@@ -338,8 +349,8 @@ module Enkaidu::Console
       ask_prompt_inputs(prompt)
     end
 
-    def user_prompt_ask_input(prompt : TemplatePrompt) : Hash(String, String)
-      ask_prompt_inputs(prompt)
+    def user_prompt_ask_input(prompt : TemplatePrompt, params : Hash? = nil) : Hash(String, String)
+      ask_prompt_inputs(prompt, params)
     end
 
     MCP_MAX_TOOL_CALL_ARGS_LENGTH = 72

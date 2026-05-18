@@ -7,15 +7,24 @@
     description,
     title,
     input_arguments,
+    pre_filled,
     show = true,
   }: Common.InputDialogConfig & { onsubmit: Common.InputSubmit } = $props();
 
-  let inputs: Common.InputValues = $state({});
+  function pre_filled_args() {
+    return pre_filled || {};
+  }
+
+  let inputs: Common.InputValues = $state(pre_filled_args());
+
+  export function open() {
+    inputs = pre_filled_args();
+    show = true;
+  }
 
   function handle_submit() {
     onsubmit(id, inputs);
     show = false;
-    inputs = {};
   }
 </script>
 

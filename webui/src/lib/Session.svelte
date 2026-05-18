@@ -42,14 +42,17 @@
 
   let entries: SessionEntry[] = $state([]);
 
-  let security_confirm_dialog: Common.SecurityConfirmDialogConfig = $state({
-    show: false,
-    description: "",
-    subject: "",
-    id: "",
-  });
+  let security_confirm_dialog_config: Common.SecurityConfirmDialogConfig =
+    $state({
+      show: false,
+      description: "",
+      subject: "",
+      id: "",
+    });
 
-  let inputs_dialog: Common.InputDialogConfig = $state({
+  let inputs_dialog: InputsDialog;
+
+  let inputs_dialog_config: Common.InputDialogConfig = $state({
     show: false,
     id: "",
     title: "",
@@ -107,10 +110,10 @@
     subject: string,
     id: string,
   ) {
-    security_confirm_dialog.show = true;
-    security_confirm_dialog.description = description;
-    security_confirm_dialog.subject = subject;
-    security_confirm_dialog.id = id;
+    security_confirm_dialog_config.show = true;
+    security_confirm_dialog_config.description = description;
+    security_confirm_dialog_config.subject = subject;
+    security_confirm_dialog_config.id = id;
   }
 
   async function send_confirmation_response(id: string, approved: boolean) {
@@ -122,7 +125,7 @@
   }
 
   function handle_security_confirmation(id: string, approved: boolean) {
-    security_confirm_dialog.show = false;
+    security_confirm_dialog_config.show = false;
     send_confirmation_response(id, approved);
   }
 
@@ -131,12 +134,14 @@
     title: string,
     input_args: Common.InputArg[],
     description?: string | undefined,
+    pre_filled?: Common.InputValues | null,
   ) {
-    inputs_dialog.show = true;
-    inputs_dialog.id = id;
-    inputs_dialog.title = title;
-    inputs_dialog.description = description;
-    inputs_dialog.input_arguments = input_args;
+    inputs_dialog_config.id = id;
+    inputs_dialog_config.title = title;
+    inputs_dialog_config.description = description;
+    inputs_dialog_config.input_arguments = input_args;
+    inputs_dialog_config.pre_filled = pre_filled;
+    inputs_dialog.open();
   }
 
   async function send_inputs_response(id: string, inputs: Common.InputValues) {
@@ -148,7 +153,7 @@
   }
 
   function handle_inputs_submission(id: string, inputs: Common.InputValues) {
-    inputs_dialog.show = false;
+    inputs_dialog_config.show = false;
     send_inputs_response(id, inputs);
   }
 </script>
@@ -194,18 +199,20 @@
 </div>
 
 <SecurityConfirmDialog
-  subject={security_confirm_dialog.subject}
-  description={security_confirm_dialog.description}
-  id={security_confirm_dialog.id}
-  show={security_confirm_dialog.show}
+  subject={security_confirm_dialog_config.subject}
+  description={security_confirm_dialog_config.description}
+  id={security_confirm_dialog_config.id}
+  show={security_confirm_dialog_config.show}
   onconfirm={handle_security_confirmation}
 />
 
 <InputsDialog
-  id={inputs_dialog.id}
-  title={inputs_dialog.title}
-  description={inputs_dialog.description}
-  input_arguments={inputs_dialog.input_arguments}
-  show={inputs_dialog.show}
+  bind:this={inputs_dialog}
+  id={inputs_dialog_config.id}
+  title={inputs_dialog_config.title}
+  description={inputs_dialog_config.description}
+  input_arguments={inputs_dialog_config.input_arguments}
+  pre_filled={inputs_dialog_config.pre_filled}
+  show={inputs_dialog_config.show}
   onsubmit={handle_inputs_submission}
 />

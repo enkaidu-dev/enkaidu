@@ -30,6 +30,7 @@ module Enkaidu::Console
     PromptQuestion
     PromptContent
     PromptInput
+    PromptAutoInput
     SessionBanner
     SessionOpen
     SessionClose
@@ -132,6 +133,7 @@ module Enkaidu::Console
         add :prompt_question, {fg: :cyan}
         add :prompt_content, {fg: :cyan, format: [:italic]}
         add :prompt_input, {fg: :white, format: [:bold]}
+        add :prompt_auto_input, {fg: :yellow}
         add :mcp_feedback, {fg: :light_blue}
         add :mcp_action, {fg: :light_blue, format: [:italic]}
       end

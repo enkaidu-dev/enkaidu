@@ -188,19 +188,32 @@ module Enkaidu::WUI
       result
     end
 
-    def user_prompt_ask_input(prompt : TemplatePrompt) : Hash(String, String)
+    def user_prompt_ask_input(prompt : TemplatePrompt, params : Hash? = nil) : Hash(String, String)
       return {} of String => String unless (args = prompt.arguments) && args.size.positive?
 
       input_id = Random::Secure.hex(16)
       input_channel = InputsChannel.new
       pending_inputs[input_id] = input_channel
 
-      post_event Render::AskForInputs.new(input_id, prompt)
+      # Extract argu values if any match
+      pre_filled = {} of String => String
+      prompt.arguments.each do |arg|
+        if value = params.try(&.[arg.name]?)
+          pre_filled[arg.name] = value.to_s
+        end
+      end
+      if pre_filled.size < prompt.arguments.size
+        # Not all arguments pre-filled
+        post_event Render::AskForInputs.new(input_id, prompt, pre_filled)
 
-      # Wait for the response
-      result = input_channel.receive
-      pending_inputs.delete(input_id)
-      result
+        # Wait for the response
+        result = input_channel.receive
+        pending_inputs.delete(input_id)
+        result
+      else
+        # Return all the pre-filled, don't prompt user
+        pre_filled
+      end
     end
 
     # Server handler calls to provide response to a pending confirmation request

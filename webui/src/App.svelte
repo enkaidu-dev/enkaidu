@@ -69,6 +69,7 @@
               msg.title,
               msg.arguments,
               msg.description,
+              msg.pre_filled,
             );
             break;
           case "message":
