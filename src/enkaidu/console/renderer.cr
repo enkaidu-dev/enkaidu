@@ -14,6 +14,11 @@ module Enkaidu::Console
     property? streaming = false
     property? quiet = false
 
+    # Internal input for prompt args
+    private def input
+      @input ||= InputReader.new("> ", styler: self)
+    end
+
     private macro mdr_heading_style(prefix = "", underline = false)
       {
         bold: true,
@@ -58,8 +63,6 @@ module Enkaidu::Console
         end
       end
     end
-
-    private getter input = InputReader.new("> ")
 
     private def prepare_text(help, markdown)
       markdown ? markdown_to_term(help.to_s) : help
