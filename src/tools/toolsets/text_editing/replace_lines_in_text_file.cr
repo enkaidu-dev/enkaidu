@@ -76,12 +76,17 @@ module Tools::TextEditing
             line_no += 1
             if line_no < start_line
               io << line
-            elsif line_no == start_line
-              # skip, and insert replacement
-              io.puts(new_str)
+            elsif line_no == start_line && end_line.negative?
+              io << new_str
               replaced = true
-              # Short-circuit reading loop if we're replacing to end of file
-              break if end_line.negative?
+              break # short-circuit reading loop
+            elsif line_no == end_line
+              # if we get here, we're at last line to range to replace
+              # and we're NOT replacing to end of file
+              io << new_str
+              # If line has newline, give it back
+              io.puts if line.chomp.size < line.size
+              replaced = true
             elsif line_no > end_line
               io << line
             end
