@@ -9,7 +9,10 @@ Spectator.describe Tools::TextEditing::ReplaceTextInTextFileTool do
   let(:file_path) { File.join(temp_dir, "sample.txt") }
 
   before { Dir.mkdir_p(temp_dir) }
-  after { File.delete?(file_path) }
+  after do
+    File.delete?(file_path)
+    Dir.delete?(temp_dir)
+  end
 
   let(:runner) { Tools::TextEditing::ReplaceTextInTextFileTool::Runner.new }
 
