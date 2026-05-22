@@ -37,7 +37,13 @@ module Tools::Experimental
         begin
           changes = 0
           content = File.read(resolved_path)
-          new_content = content.gsub(Regex.new(pattern, Regex::Options::MULTILINE)) do |_match|
+          regex = begin
+            Regex.new(pattern, Regex::Options::MULTILINE)
+          rescue ex
+            return error_response("Invalid pattern: #{ex.message}")
+          end
+
+          new_content = content.gsub(regex) do |_match|
             changes += 1 # Count changes so we can detect if nothing changed
             replacement
           end
