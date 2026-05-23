@@ -40,6 +40,7 @@ module Tools::TextEditing
 
         return error_response("The specified path '#{file_path}' is not allowed.") unless within_current_directory?(resolved_path)
         return error_response("The specified file '#{file_path}' does not exist or is not a file.") unless valid_file?(resolved_path)
+        return error_response("Cannot edit files in the `#{DELETED_FILES_PATH}` folder.") if path_in_deleted_files_folder?(resolved_path)
 
         begin
           changes = 0

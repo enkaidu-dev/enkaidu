@@ -6,16 +6,15 @@ module Tools::Experimental
   # The `RegexTextEditTool` class defines a tool for finding patterns using regex
   # in text-based files and replacing them with new text.
   class RegexTextEditTool < BuiltInFunction
-    name "regex_text_edit_tool"
+    name "str_regex_replace_in_text_file"
 
-    description "Finds patterns using a regex in a text-based file and replaces them with new text. " +
-                "Ensures the file is within the current directory and is a text file."
+    description "Replaces strings that match a regular expression with a new string in a text file within the current directory."
 
     param "file_path", type: Param::Type::Str, required: true,
       description: "The relative path to the file where you want to perform the regex replacement."
     param "pattern", type: Param::Type::Str, required: true,
-      description: "The regex pattern to search for in the file."
-    param "replacement", type: Param::Type::Str, required: true,
+      description: "The regular expression pattern to search for in the file."
+    param "new_str", type: Param::Type::Str, required: true,
       description: "The text to replace the pattern with in the file."
 
     runner Runner
@@ -25,20 +24,32 @@ module Tools::Experimental
       include FileHelper
 
       def execute(args : JSON::Any) : String
-        file_path = args["file_path"]?.try &.as_s? || return error_response("The required file_path was not specified")
-        pattern = args["pattern"]?.try &.as_s? || return error_response("The required pattern was not specified")
-        replacement = args["replacement"]?.try &.as_s? || return error_response("The required replacement was not specified")
+        file_path = args["file_path"]?.try &.as_s? || return error_response("The required `file_path` was not specified")
+        pattern = args["pattern"]?.try &.as_s? || return error_response("The required regex `pattern` was not specified")
+        replacement = args["new_str"]?.try &.as_s? || return error_response("The replacement `new_str` was not specified")
 
         resolved_path = resolve_path(file_path)
 
         return error_response("The specified path '#{file_path}' is not allowed.") unless within_current_directory?(resolved_path)
         return error_response("The specified file '#{file_path}' does not exist.") unless valid_file?(resolved_path)
+        return error_response("Cannot edit files in the `#{DELETED_FILES_PATH}` folder.") if path_in_deleted_files_folder?(resolved_path)
 
         begin
+          changes = 0
           content = File.read(resolved_path)
-          new_content = content.gsub(Regex.new(pattern, Regex::Options::MULTILINE), replacement)
+          regex = begin
+            Regex.new(pattern, Regex::Options::MULTILINE)
+          rescue ex
+            return error_response("Invalid pattern: #{ex.message}")
+          end
+
+          new_content = content.gsub(regex) do |_match|
+            changes += 1 # Count changes so we can detect if nothing changed
+            replacement
+          end
+          raise RuntimeError.new("Unable to find strings matching the regex pattern in the file. Nothing to replace.") if changes.zero?
           File.write(resolved_path, new_content)
-          success_response(file_path, new_content)
+          success_response(file_path, new_content, changes)
         rescue e
           error_response("An error occurred while modifying the file: #{e.message}")
         end
@@ -48,8 +59,8 @@ module Tools::Experimental
         {"error" => message}.to_json
       end
 
-      private def success_response(file_path, content)
-        {file_path: file_path, new_content: content}.to_json
+      private def success_response(file_path, content, changes : Int32)
+        {file_path: file_path, new_content: content, replacements: changes}.to_json
       end
     end
   end

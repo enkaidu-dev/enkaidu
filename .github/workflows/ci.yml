@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
   build-and-test:
@@ -43,9 +43,6 @@ jobs:
             bin/ameba
           key: ${{ runner.os }}-shards-${{ hashFiles('**/shard.lock') }}
 
-      - name: Install shards
-        run: shards check || shards install
-
       - name: Prepare and build webui
         run: |
           cd webui
@@ -54,6 +51,10 @@ jobs:
           cd ..
 
       # ---- Build debug release and check code quality on one platform
+
+      - name: Install shards
+        if: ${{ runner.os == 'Linux' }}
+        run: shards check || shards install
 
       - name: Setup debug environment (Linux)
         if: ${{ runner.os == 'Linux' }}
@@ -76,6 +77,10 @@ jobs:
         run: crystal spec -Dtest
 
       # ---- Build releases on all platforms
+
+      - name: Install shards
+        if: ${{ runner.os != 'Linux' }}
+        run: shards check --production || shards install --production
 
       # Non-Windows
       - name: Setup release environment

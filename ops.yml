@@ -23,7 +23,6 @@ actions:
     description: Build for development (debugging)
     aliases: [build, bd]
   install:
-    quiet: true
     description: Build a release and copy it into the '$INSTALL_DIR' folder with version appended.
     command: |
       BRANCH=$(git branch --show-current)
