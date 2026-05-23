@@ -263,20 +263,16 @@ Spectator.describe Tools::Experimental::RegexTextEditTool do
   # Missing parameter errors
   # -------------------------------------------------
   context "fails when file_path is not specified" do
-    before { File.write(abs_file_path, "hello") }
-
     it "returns an error mentioning file_path" do
-      Dir.cd(temp_dir) do
-        args = {
-          "pattern"   => "foo",
-          "new_str"   => "bar",
-        }
-        result_json = runner.execute(JSON.parse(args.to_json))
-        result = parse_run_result(result_json)
+      args = {
+        "pattern" => "foo",
+        "new_str" => "bar",
+      }
+      result_json = runner.execute(JSON.parse(args.to_json))
+      result = parse_run_result(result_json)
 
-        expect(result[:success]).to be_false
-        expect(result[:error_msg]).to contain("file_path")
-      end
+      expect(result[:success]).to be_false
+      expect(result[:error_msg]).to contain("file_path")
     end
   end
 
@@ -284,17 +280,15 @@ Spectator.describe Tools::Experimental::RegexTextEditTool do
     before { File.write(abs_file_path, "hello") }
 
     it "returns an error mentioning pattern" do
-      Dir.cd(temp_dir) do
-        args = {
-          "file_path" => "sample.txt",
-          "new_str"   => "world",
-        }
-        result_json = runner.execute(JSON.parse(args.to_json))
-        result = parse_run_result(result_json)
+      args = {
+        "file_path" => "sample.txt",
+        "new_str"   => "world",
+      }
+      result_json = runner.execute(JSON.parse(args.to_json))
+      result = parse_run_result(result_json)
 
-        expect(result[:success]).to be_false
-        expect(result[:error_msg]).to contain("pattern")
-      end
+      expect(result[:success]).to be_false
+      expect(result[:error_msg]).to contain("pattern")
     end
   end
 
@@ -302,17 +296,15 @@ Spectator.describe Tools::Experimental::RegexTextEditTool do
     before { File.write(abs_file_path, "hello") }
 
     it "returns an error mentioning new_str" do
-      Dir.cd(temp_dir) do
-        args = {
-          "file_path" => "sample.txt",
-          "pattern"   => "hello",
-        }
-        result_json = runner.execute(JSON.parse(args.to_json))
-        result = parse_run_result(result_json)
+      args = {
+        "file_path" => "sample.txt",
+        "pattern"   => "hello",
+      }
+      result_json = runner.execute(JSON.parse(args.to_json))
+      result = parse_run_result(result_json)
 
-        expect(result[:success]).to be_false
-        expect(result[:error_msg]).to contain("new_str")
-      end
+      expect(result[:success]).to be_false
+      expect(result[:error_msg]).to contain("new_str")
     end
   end
 
@@ -321,58 +313,52 @@ Spectator.describe Tools::Experimental::RegexTextEditTool do
   # -------------------------------------------------
   context "fails when the specified file does not exist" do
     it "returns an error mentioning the file does not exist" do
-      Dir.cd(temp_dir) do
-        args = {
-          "file_path" => "nonexistent.txt",
-          "pattern"   => "foo",
-          "new_str"   => "bar",
-        }
-        result_json = runner.execute(JSON.parse(args.to_json))
-        result = parse_run_result(result_json)
+      args = {
+        "file_path" => "nonexistent.txt",
+        "pattern"   => "foo",
+        "new_str"   => "bar",
+      }
+      result_json = runner.execute(JSON.parse(args.to_json))
+      result = parse_run_result(result_json)
 
-        expect(result[:success]).to be_false
-        expect(result[:error_msg]).to contain("does not exist")
-      end
+      expect(result[:success]).to be_false
+      expect(result[:error_msg]).to contain("does not exist")
     end
   end
 
   context "fails when the regex matches nothing in the file" do
     let(:content) { "nothing matches this pattern" }
-    before { File.write(file_path, content) }
+    before { File.write(abs_file_path, content) }
 
     it "returns an error about no strings being found" do
-      Dir.cd(temp_dir) do
-        args = {
-          "file_path" => file_path,
-          "pattern"   => "xyzxyzxyz",
-          "new_str"   => "replacement",
-        }
-        result_json = runner.execute(JSON.parse(args.to_json))
-        result = parse_run_result(result_json)
+      args = {
+        "file_path" => abs_file_path,
+        "pattern"   => "xyzxyzxyz",
+        "new_str"   => "replacement",
+      }
+      result_json = runner.execute(JSON.parse(args.to_json))
+      result = parse_run_result(result_json)
 
-        expect(result[:success]).to be_false
-        expect(result[:error_msg]).to contain("Unable to find")
-      end
+      expect(result[:success]).to be_false
+      expect(result[:error_msg]).to contain("Unable to find")
     end
   end
 
   context "fails when regex is invalid" do
     let(:content) { "some text" }
-    before { File.write(file_path, content) }
+    before { File.write(abs_file_path, content) }
 
     it "returns an error for malformed regex" do
-      Dir.cd(temp_dir) do
-        args = {
-          "file_path" => file_path,
-          "pattern"   => "[invalid",
-          "new_str"   => "replaced",
-        }
-        result_json = runner.execute(JSON.parse(args.to_json))
-        result = parse_run_result(result_json)
+      args = {
+        "file_path" => abs_file_path,
+        "pattern"   => "[invalid",
+        "new_str"   => "replaced",
+      }
+      result_json = runner.execute(JSON.parse(args.to_json))
+      result = parse_run_result(result_json)
 
-        expect(result[:success]).to be_false
-        expect(result[:error_msg]).to contain("error")
-      end
+      expect(result[:success]).to be_false
+      expect(result[:error_msg]).to contain("Invalid")
     end
   end
 
@@ -380,42 +366,38 @@ Spectator.describe Tools::Experimental::RegexTextEditTool do
   # Security scenarios
   # -------------------------------------------------
   context "blocks paths resolved outside the current directory" do
-    let(:outside_path) { File.expand_path("/tmp/outside_test_file") }
+    let(:outside_path) { File.tempname("_outside.txt") }
 
     after { File.delete?(outside_path) }
 
     it "returns an error indicating the path is not allowed" do
       File.write(outside_path, "some content")
 
-      Dir.cd(temp_dir) do
-        args = {
-          "file_path" => "../tmp/outside_test_file",
-          "pattern"   => "foo",
-          "new_str"   => "bar",
-        }
-        result_json = runner.execute(JSON.parse(args.to_json))
-        result = parse_run_result(result_json)
+      args = {
+        "file_path" => outside_path,
+        "pattern"   => "foo",
+        "new_str"   => "bar",
+      }
+      result_json = runner.execute(JSON.parse(args.to_json))
+      result = parse_run_result(result_json)
 
-        expect(result[:success]).to be_false
-        expect(result[:error_msg]).to contain("not allowed")
-      end
+      expect(result[:success]).to be_false
+      expect(result[:error_msg]).to contain("not allowed")
     end
   end
 
   context "blocks multiple ../ sequences in the path" do
     it "returns an error for deeply nested path traversal" do
-      Dir.cd(temp_dir) do
-        args = {
-          "file_path" => "deep/../../../etc/passwd",
-          "pattern"   => "foo",
-          "new_str"   => "bar",
-        }
-        result_json = runner.execute(JSON.parse(args.to_json))
-        result = parse_run_result(result_json)
+      args = {
+        "file_path" => "deep/../../../etc/passwd",
+        "pattern"   => "foo",
+        "new_str"   => "bar",
+      }
+      result_json = runner.execute(JSON.parse(args.to_json))
+      result = parse_run_result(result_json)
 
-        expect(result[:success]).to be_false
-        expect(result[:error_msg]).to contain("not allowed")
-      end
+      expect(result[:success]).to be_false
+      expect(result[:error_msg]).to contain("not allowed")
     end
   end
 end
