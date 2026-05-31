@@ -245,16 +245,32 @@ module Enkaidu
     # Perform tool calls and subsequent events repeatedly until
     # no more tool calls remain
     private def consume_tool_calls(tools)
-      # Cannot do this concurrently since tool calls can prompt user
-      # for input
       until tools.empty?
         calls = tools
         tools = [] of JSON::Any
         ix = 0
         prev_event = nil
-        chat.call_tools_and_ask calls do |event|
+        # Invoke the tool calls first since we
+        # cannot do this concurrently since tool calls can prompt user for input
+        calls = chat.call_tools_and_setup_ask(calls) do |event|
           m_process_and_record_ask_event(event, prev_event)
           prev_event = event
+        end
+        if calls.positive?
+          # Hand over to the LLM to process the tool call responses
+          # in fiber
+          ev_queue = queue_chat_request do |queue|
+            spawn do
+              chat.re_ask do |event|
+                queue << event
+                Fiber.yield
+              end
+            ensure
+              queue << {type: "DONE", content: JSON::Any.new(nil)}
+            end
+          end
+          # Process events in queue
+          gather_and_handle(ev_queue, tools)
         end
         detect_text_ending(nil, prev_event)
       end

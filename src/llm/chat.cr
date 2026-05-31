@@ -84,6 +84,10 @@ module LLM
 
     abstract def import(prompt : MCP::PromptResult, emit = false, & : ChatEvent ->) : Nil
 
+    # Invoke tool calls and return number of calls made; if positive call `re_ask` to
+    # hand call results to the models to process
+    abstract def call_tools_and_setup_ask(tool_calls : Array(JSON::Any), & : LLM::ChatEvent ->) : Int32
+
     # Resubmit current session as a query to get another answer
     abstract def re_ask(response_schema : ResponseSchema? = nil, & : ChatEvent ->) : Nil
 

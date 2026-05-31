@@ -117,7 +117,9 @@ module LLM::OpenAI
       Message::ToolCall.new tool_call_id: id, name: tool.name, content: reply
     end
 
-    def call_tools_and_ask(tool_calls : Array(JSON::Any), & : LLM::ChatEvent ->) : Nil
+    # Invoke tool calls and return number of calls made; if positive call `re_ask` to
+    # hand call results to the models to process
+    def call_tools_and_setup_ask(tool_calls : Array(JSON::Any), & : LLM::ChatEvent ->) : Int32
       calls = 0
       tool_calls.each do |call|
         name = call.dig("function", "name").as_s
@@ -134,12 +136,7 @@ module LLM::OpenAI
         end
         calls += 1
       end
-
-      return unless calls.positive?
-
-      ask_post do |msg|
-        yield msg
-      end
+      calls
     end
 
     private def unknown_tool_call(tool_call : JSON::Any)
