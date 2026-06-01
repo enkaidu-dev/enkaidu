@@ -17,7 +17,7 @@
       Thinking
     </div>
     <div
-      class="collapse-content text-base ms-6 ps-2 border-l-2 border-l-gray-400"
+      class="collapse-content text-base ms-6 ps-2 border-l-2 border-l-gray-400 max-h-40 overflow-y-scroll"
     >
       <Markdown content={message} add_class="text-sm" />
     </div>
