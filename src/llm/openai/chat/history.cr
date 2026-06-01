@@ -60,6 +60,19 @@ module LLM::OpenAI
       nil
     end
 
+    # Mark all historical responses to exclude reasoning from now on
+    protected def exclude_past_reasoning
+      # Walk the messages in reverse, and break when we encounter
+      # message already excluding reasoning
+      @messages.reverse_each do |msg|
+        actual = msg.message
+        if actual.is_a? Message::Response
+          break unless actual.include_reasoning?
+          actual.include_reasoning = false
+        end
+      end
+    end
+
     private def tail_chat_messages(num = 1, &)
       return if num.zero?
 

@@ -66,7 +66,8 @@ module LLM::OpenAI
               end
             end
             session.each_message do |msg|
-              msg.to_json(json)
+              # msg.to_json(json)
+              msg.to_protocol_json(json)
             end
           end
         end
