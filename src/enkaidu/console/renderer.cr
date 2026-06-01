@@ -245,18 +245,26 @@ module Enkaidu::Console
       end
     end
 
+    @term_subscroller = Termify::ANSI::SubScroller.new(Termify.terminal, 5)
+
     def llm_text(text, reasoning : Bool, starting : Bool = false, ending : Bool = false)
       if streaming?
         if reasoning
           if quiet?
+            # Use a mini-scroll region in quiet mode, and then erase it.
             if starting
-              print fmt(:thinking_progress, "  Thinking  ")
-              @think_counter.reset
+              puts fmt(:thinking_content, REASONING_START)
+              @term_subscroller.start
             end
+            print fmt(:thinking_content, text)
             if ending
-              print "\r                          \r"
-            else
-              print "\b", @think_counter.spin
+              puts "", fmt(:thinking_content, REASONING_FINISH)
+              STDOUT.flush
+              sleep 100.milliseconds
+              @term_subscroller.stop(top: true)
+              print Termify::ANSI::Cursor.up(1)
+              print Termify::ANSI::Clear.screen(Termify::ANSI::Erase::After)
+              STDOUT.flush
             end
           else
             puts "", fmt(:thinking_content, REASONING_START) if starting
@@ -271,7 +279,7 @@ module Enkaidu::Console
       end
     end
 
-    REASONING_START  = "╭╶╶╶╶╶╶╶╶╶╶< reasoning >╶╶╶╶╶╶╶╶╶╶╶"
+    REASONING_START  = "╭╶╶╶╶╶╶╶╶╶╶< thinking >╶╶╶╶╶╶╶╶╶╶╶"
     REASONING_FINISH = "╰╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶"
 
     def llm_text_block(text, reasoning : Bool)
