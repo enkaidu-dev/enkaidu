@@ -43,5 +43,16 @@ module LLM::OpenAI
         end
       end
     end
+
+    protected def protocol_fields_to_json(json : JSON::Builder)
+      super
+      json.field "content" do
+        json.array do
+          content.each do |item|
+            item.to_json(json)
+          end
+        end
+      end
+    end
   end
 end

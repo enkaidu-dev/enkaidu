@@ -87,6 +87,16 @@ module Enkaidu
       @renderer.streaming = chat.streaming?
     end
 
+    private def connection_provider_type
+      case @connection
+      when LLM::Ollama::Connection      then "ollama"
+      when LLM::AzureOpenAI::Connection then "azure_openai"
+      else
+        # Default because above subclass from the OpenAI one
+        "openai"
+      end
+    end
+
     # Create a new session "forked" from a given `Session` to create a duplicate session.
     def initialize(fork_from : Session, keep_tools = true, keep_prompts = true, keep_history = true, system_prompt_name = nil)
       @recorder = fork_from.recorder
@@ -98,7 +108,8 @@ module Enkaidu
       override_sys_prompt = if system_prompt_name
                               render_system_prompt(system_prompt_name)
                             end
-      @chat = setup_chat(override_sys_prompt, override_model_name: fork_from.chat.model)
+      @chat = setup_chat(override_system_prompt: override_sys_prompt,
+        override_model_name: fork_from.chat.model)
       chat.fork(fork_from.chat) if keep_history
 
       if keep_tools
@@ -115,6 +126,9 @@ module Enkaidu
       end
     end
 
+    # Keep track of config's LLM model so we can use settings when needed
+    private getter model_config : Config::LLM::Model?
+
     # Helper to setup the Chat's initial config
     private def setup_chat(override_system_prompt : String? = nil,
                            override_model_name : String? = nil)
@@ -122,11 +136,20 @@ module Enkaidu
         unless (m = override_model_name || opts.model_name).nil?
           with_model m
           renderer.info_with("INFO: Using model #{m}")
+
+          @model_config = opts.config.find_llm_model_by_actual?(connection_provider_type, m)
         end
         with_debug if opts.debug?
         with_streaming if opts.stream?
         with_system_message system_prompt(override_system_prompt)
       end
+    end
+
+    # Return based on session override, or model settings
+    private def exclude_past_reasoning?
+      opts.config.session.try(&.exclude_past_reasoning?) ||
+        @model_config.try(&.settings.try(&.exclude_past_reasoning?)) ||
+        false
     end
 
     # Load the selected LLM's environment variable values into
@@ -324,7 +347,8 @@ module Enkaidu
       report_time_taken(prefix: "Total ") do
         ev_queue = queue_chat_request do |queue|
           spawn do
-            chat.re_ask(response_schema: response_json_schema) do |event|
+            chat.re_ask(response_schema: response_json_schema,
+              exclude_reasoning_in_history: exclude_past_reasoning?) do |event|
               queue << event
               Fiber.yield
             end
@@ -357,7 +381,10 @@ module Enkaidu
         # Run the chat query concurrently
         ev_queue = queue_chat_request do |queue|
           spawn do
-            chat.ask(query, attach: attach, response_schema: response_json_schema) do |event|
+            chat.ask(query,
+              attach: attach,
+              response_schema: response_json_schema,
+              exclude_reasoning_in_history: exclude_past_reasoning?) do |event|
               queue << event
               Fiber.yield
             end

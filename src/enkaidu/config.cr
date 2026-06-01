@@ -55,8 +55,14 @@ module Enkaidu
     class LLM < ConfigSerializable
       # Represents a Model within an LLM.
       class Model < ConfigSerializable
+        # Represents settings for a model
+        class Settings < ConfigSerializable
+          getter? exclude_past_reasoning = false
+        end
+
         getter name : String
         getter model : String
+        getter settings : Settings?
       end
 
       getter provider : String
@@ -75,6 +81,7 @@ module Enkaidu
     class Session < ConfigSerializable
       getter? streaming = false
       getter? quiet = false
+      getter? exclude_past_reasoning = false
       getter provider_type : String?
       getter model : String?
       getter input_history_file : String?
@@ -171,6 +178,22 @@ module Enkaidu
       else
         # no override, so use from profile
         @auto_load = profile_auto_load
+      end
+    end
+
+    # Use the actual model name (not the name we give it in our config) and provider type
+    # to find the LLM::Model object
+    def find_llm_model_by_actual?(provider_type : String, actual_model_name : String) : Config::LLM::Model?
+      llms.try &.each do |_, llm|
+        if llm.provider == provider_type
+          llm.models.try &.each do |model|
+            if model.model == actual_model_name
+              return model
+            end
+          end
+          # no more
+          break
+        end
       end
     end
 

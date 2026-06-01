@@ -147,8 +147,10 @@ module LLM::OpenAI
       @history.import(prompt, emit) { |event| yield event }
     end
 
-    def re_ask(response_schema : ResponseSchema? = nil, & : ChatEvent ->) : Nil
-      ask_post(response_schema: response_schema) do |msg|
+    def re_ask(response_schema : ResponseSchema? = nil,
+               exclude_reasoning_in_history = false,
+               & : ChatEvent ->) : Nil
+      ask_post(response_schema, exclude_reasoning_in_history) do |msg|
         yield msg
       end
     end
@@ -156,15 +158,19 @@ module LLM::OpenAI
     def ask(content : String,
             attach : ChatInclusions? = nil,
             response_schema : ResponseSchema? = nil,
+            exclude_reasoning_in_history = false,
             & : ChatEvent ->) : Nil
       append_message Message::MultiContent.new(prompt: content, attach: attach)
 
-      ask_post(response_schema: response_schema) do |msg|
+      ask_post(response_schema, exclude_reasoning_in_history) do |msg|
         yield msg
       end
     end
 
-    private def ask_post(response_schema : ResponseSchema? = nil, & : LLM::ChatEvent ->) : Nil
+    private def ask_post(response_schema : ResponseSchema? = nil,
+                         exclude_reasoning_in_history = false,
+                         & : LLM::ChatEvent ->) : Nil
+      @history.exclude_past_reasoning if exclude_reasoning_in_history
       body = to_body(response_schema)
 
       yield({type: "debug/request", content: JSON.parse(body)}) if debug?

@@ -89,12 +89,13 @@ module LLM
     abstract def call_tools_and_setup_ask(tool_calls : Array(JSON::Any), & : LLM::ChatEvent ->) : Int32
 
     # Resubmit current session as a query to get another answer
-    abstract def re_ask(response_schema : ResponseSchema? = nil, & : ChatEvent ->) : Nil
+    abstract def re_ask(response_schema : ResponseSchema? = nil, exclude_reasoning_in_history = false, & : ChatEvent ->) : Nil
 
     # Submit a query, with optional attachments and request for response as a JSON object by specifying a JSON schema.
     abstract def ask(content : String,
                      attach : ChatInclusions? = nil,
                      response_schema : ResponseSchema? = nil,
+                     exclude_reasoning_in_history = false,
                      & : ChatEvent ->) : Nil
 
     # Replace current session with a "fork" of the session from the given

@@ -9,6 +9,9 @@ module LLM::OpenAI
     @[JSON::Field(ignore_serialize: ((reasoning = @reasoning).nil? || reasoning.empty?))]
     property reasoning : String?
 
+    # If `false` don't include reasoning when resending this message to the model
+    property? include_reasoning = true
+
     @[JSON::Field(ignore_serialize: ((toolcalls = @tool_calls).nil? || toolcalls.empty?))]
     property tool_calls : Array(JSON::Any)?
 
@@ -35,6 +38,19 @@ module LLM::OpenAI
           type:    "tool_call_requested",
           content: call,
         })
+      end
+    end
+
+    protected def protocol_fields_to_json(json : JSON::Builder)
+      super
+      if thoughts = @reasoning
+        if thoughts.presence && include_reasoning?
+          json.field "reasoning", thoughts
+        end
+      end
+      json.field "content", content
+      if (calls = @tool_calls) && !calls.empty?
+        json.field "tool_calls", calls
       end
     end
   end
