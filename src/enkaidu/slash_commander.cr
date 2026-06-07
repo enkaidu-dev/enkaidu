@@ -32,6 +32,7 @@ module Enkaidu::Slash
         PromptCommand.new(self),
         SessionCommand.new,
         SystemPromptCommand.new,
+        ThinkCommand.new,
         ToolCommand.new,
         ToolsetCommand.new,
         UseMcpCommand.new,
