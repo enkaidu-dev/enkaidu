@@ -37,7 +37,7 @@ module LLM::OpenAI
 
     private def chat_to_json(json : JSON::Builder, model,
                              system_message, stream, session, tools,
-                             response_schema : ResponseSchema? = nil)
+                             reasoning : Reasoning, response_schema : ResponseSchema? = nil)
       json.object do
         json.field "model", model if model
         json.field "stream", stream
@@ -48,6 +48,9 @@ module LLM::OpenAI
               json.field "include_usage", true
             end
           end
+        end
+        unless reasoning.default?
+          json.field "reasoning_effort", reasoning.to_s.downcase
         end
         if response_schema
           json.field "response_format" do

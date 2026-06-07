@@ -404,6 +404,7 @@ module LLM::OpenAI
           stream: streaming?,
           session: @history,
           tools: each_tool,
+          reasoning: reasoning,
           response_schema: response_schema)
       end
     end

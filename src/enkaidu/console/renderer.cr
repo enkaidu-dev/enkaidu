@@ -219,23 +219,6 @@ module Enkaidu::Console
       end
     end
 
-    class Counter
-      SPINNER_CHARS = ['|', '/', '-', '\\']
-      getter count = 0
-
-      def reset
-        @count = 0
-      end
-
-      def spin
-        tmp = SPINNER_CHARS[(count // 3) % SPINNER_CHARS.size]
-        @count += 1
-        tmp
-      end
-    end
-
-    @think_counter = Counter.new
-
     @md_renderer = Termify::Markdown::Renderer.new(STDOUT, MDR_STYLESHEET)
 
     private def render_streaming_markdown(text, _starting : Bool, ending : Bool)

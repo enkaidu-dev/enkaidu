@@ -13,6 +13,14 @@ module LLM
     SessionOuter
   end
 
+  enum Reasoning
+    None
+    Low
+    Medium
+    High
+    Default
+  end
+
   class UnexpectedMCPPrompt < Exception; end
 
   # `Chat` is an abstract class that serves as a base for creating various chat implementations.
@@ -21,6 +29,7 @@ module LLM
     getter system_message : String | Nil = nil
     getter? debug = false
     getter? streaming = false
+    getter reasoning = Reasoning::Default
 
     def initialize
       @tools_by_name = {} of String => Function
@@ -29,6 +38,10 @@ module LLM
 
     def with_debug
       @debug = true
+    end
+
+    def with_reasoning(effort : Reasoning)
+      @reasoning = effort
     end
 
     def with_streaming
