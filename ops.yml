@@ -34,6 +34,21 @@ actions:
       else
         echo 1>&2 "ops: The directory '$INSTALL_DIR' does not exist."
       fi
+  install-debug:
+    description: Build a debug version of Enkaidu and copy it into the '$INSTALL_DIR' folder with version appended.
+    command: |
+      BRANCH=$(git branch --show-current)
+      [ "$BRANCH" == "main" ] || echo 1>&2 "ops: WARNING: not on 'main' branch."
+
+      VERSION=$(grep -E '^version:' shard.yml | awk '{print $2}')
+      if [ -e "$INSTALL_DIR" ]; then
+        ops bwui
+        ops bd -Dbake_webui_dist
+        cp bin/debug/$APP "$INSTALL_DIR/$APP-dbg-${VERSION}"
+        cp bin/debug/$APP.dwarf "$INSTALL_DIR/$APP-dbg-${VERSION}.dwarf"
+      else
+        echo 1>&2 "ops: The directory '$INSTALL_DIR' does not exist."
+      fi
   run:
     command: ops build-webui && ops build-debug && bin/debug/$APP
     description: Build and run the debug build of Enkaidu

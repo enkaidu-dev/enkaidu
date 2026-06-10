@@ -55,6 +55,9 @@ module Enkaidu
         if console_styles = config.console.try(&.style_sheet)
           @console.style_sheet = console_styles
         end
+
+        # Disable quiet mode if webui
+        @quiet = false if webui?
       end
 
       def renderer : SessionRenderer
