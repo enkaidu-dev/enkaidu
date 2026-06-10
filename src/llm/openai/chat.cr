@@ -293,6 +293,7 @@ module LLM::OpenAI
         content = String.build do |text_io|
           recent_tool_call = nil
           stream_io.each_line do |line|
+            line = line.strip
             next if line.empty?
 
             if line.ends_with? "[DONE]"
