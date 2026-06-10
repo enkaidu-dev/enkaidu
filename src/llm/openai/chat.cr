@@ -200,32 +200,37 @@ module LLM::OpenAI
 
     private def handle_app_json(resp, &) : Nil
       # Read the entire body and parse as JSON to determine what to do
-      data = JSON.parse(resp.body_io.gets_to_end)
-      if data["error"]?
-        STDERR.puts "~~~ #{data}" if TRACE
-        yield({type: "error/server", content: data})
-      else
-        content = nil
-        reasoning = nil
-        tool_calls = [] of JSON::Any
-        usage = nil
-        process_data(data) do |msg|
-          case msg["type"]
-          when "text"
-            content = msg["content"].to_s
-          when "reasoning"
-            reasoning = msg["content"].to_s
-          when "tool_call_requested"
-            tool_calls << msg["content"]
-          when "usage"
-            usage = Usage.from_json(msg["content"].to_json)
+      body = resp.body_io.gets_to_end
+      begin
+        data = JSON.parse(body)
+        if data["error"]?
+          STDERR.puts "~~~ #{data}" if TRACE
+          yield({type: "error/server", content: data})
+        else
+          content = nil
+          reasoning = nil
+          tool_calls = [] of JSON::Any
+          usage = nil
+          process_data(data) do |msg|
+            case msg["type"]
+            when "text"
+              content = msg["content"].to_s
+            when "reasoning"
+              reasoning = msg["content"].to_s
+            when "tool_call_requested"
+              tool_calls << msg["content"]
+            when "usage"
+              usage = Usage.from_json(msg["content"].to_json)
+            end
+            yield msg
           end
-          yield msg
+          msg = Message::Response.new(
+            content: content, reasoning: reasoning, tool_calls: tool_calls)
+          msg.usage = usage if usage
+          append_message(msg)
         end
-        msg = Message::Response.new(
-          content: content, reasoning: reasoning, tool_calls: tool_calls)
-        msg.usage = usage if usage
-        append_message(msg)
+      rescue ex
+        LLM.show_error_trace(ex, data_label: "body", data: body)
       end
     end
 
@@ -322,6 +327,8 @@ module LLM::OpenAI
                 end
               end
             end
+          rescue ex
+            LLM.show_error_trace(ex, data_label: "line", data: line)
           end
         end
       end
