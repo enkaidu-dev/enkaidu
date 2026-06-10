@@ -11,7 +11,7 @@ module LLM
     msg = <<-ERROR
             ~~~{ unexpected - please report }~~~
             #{ex.inspect_with_backtrace}
-            ~~~{ data_label }~~~~~
+            ~~~{ #{data_label} }~~~~~
             #{data}
             ~~~~~~~~~~~~~~~~~~~~
             ERROR

@@ -17,7 +17,7 @@ require "../runtime"
 module Enkaidu
   module WUI
     class FileStorage
-      {% if flag?(:release) %}
+      {% if flag?(:release) || flag?(:bake_webui_dist) %}
         # Build the disttibution build of webUI into the executable
         extend BakedFileSystem
         bake_folder "../../../webui/dist"
