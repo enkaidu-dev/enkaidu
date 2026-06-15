@@ -1,5 +1,6 @@
 require "./config_serializable"
 require "../llm/function"
+require "../llm/chat"
 
 module Enkaidu
   # Config parsing error
@@ -58,6 +59,7 @@ module Enkaidu
         # Represents settings for a model
         class Settings < ConfigSerializable
           getter? exclude_past_reasoning = false
+          getter think = ::LLM::Reasoning::Default
         end
 
         getter name : String

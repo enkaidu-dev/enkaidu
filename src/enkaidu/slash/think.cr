@@ -6,9 +6,8 @@ module Enkaidu::Slash
 
     THINK_EFFORT = ["none", "low", "medium", "high", "default"]
 
-    HELP_BRIEF = "`#{NAME} [#{THINK_EFFORT.join(" or ")}]` - Include attachments for next query"
-    # HELP_BRIEF = "`#{NAME} [none|low|medium|high|default]` - Request thinking effort, or show current effort"
-    HELP = <<-HELP1
+    HELP_BRIEF = "`#{NAME} [#{THINK_EFFORT.join(" or ")}]` - Request thinking effort, or show current effort"
+    HELP       = <<-HELP1
     #{HELP_BRIEF}
     - If `none`, disables thinking / reasoning if the model supports it
     - If `low` or `medium` or `high`, enables thinking / reasoning, though granularity depends on the model

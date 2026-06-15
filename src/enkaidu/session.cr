@@ -142,6 +142,10 @@ module Enkaidu
         with_debug if opts.debug?
         with_streaming if opts.stream?
         with_system_message system_prompt(override_system_prompt)
+
+        if effort = @model_config.try(&.settings.try(&.think))
+          with_reasoning(effort)
+        end
       end
     end
 
