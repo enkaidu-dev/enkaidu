@@ -225,7 +225,8 @@ module Enkaidu
 
     # Process the given event and yield tool call if any
     private def process_event(event, prev_event, &) : Nil
-      return unless type = event["type"]
+      type = event["type"]
+      return if type.starts_with?("debug")
 
       # Handle text/reasoning ending detection first
       detect_text_ending(type, prev_event)
@@ -269,6 +270,8 @@ module Enkaidu
       renderer.time_elapsed(tm_taken, prefix)
     end
 
+    private SPAWN_DONE = {type: "<ESSFINI>", content: JSON::Any.new(nil)}
+
     # Perform tool calls and subsequent events repeatedly until
     # no more tool calls remain
     private def consume_tool_calls(tools)
@@ -281,7 +284,7 @@ module Enkaidu
         # cannot do this concurrently since tool calls can prompt user for input
         calls = chat.call_tools_and_setup_ask(calls) do |event|
           m_process_and_record_ask_event(event, prev_event)
-          prev_event = event
+          prev_event = event unless event["type"].starts_with?("debug")
         end
         if calls.positive?
           # Hand over to the LLM to process the tool call responses
@@ -293,7 +296,7 @@ module Enkaidu
                 Fiber.yield
               end
             ensure
-              queue << {type: "DONE", content: JSON::Any.new(nil)}
+              queue << SPAWN_DONE
             end
           end
           # Process events in queue
@@ -325,11 +328,11 @@ module Enkaidu
       prev_event = nil
       loop do
         if event = queue.shift?
-          break if event["type"].upcase == "DONE"
+          break if event == SPAWN_DONE
 
           STDERR.print "\r\e[K" unless streaming?
           m_process_and_record_ask_event(event, prev_event)
-          prev_event = event
+          prev_event = event unless event["type"].starts_with?("debug")
         else
           if streaming?
             sleep(10.milliseconds)
@@ -357,7 +360,7 @@ module Enkaidu
               Fiber.yield
             end
           ensure
-            queue << {type: "DONE", content: JSON::Any.new(nil)}
+            queue << SPAWN_DONE
           end
         end
         # Process events in queue
@@ -393,7 +396,7 @@ module Enkaidu
               Fiber.yield
             end
           ensure
-            queue << {type: "DONE", content: JSON::Any.new(nil)}
+            queue << SPAWN_DONE
           end
         end
         # Process events in queue
