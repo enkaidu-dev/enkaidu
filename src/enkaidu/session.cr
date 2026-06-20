@@ -198,12 +198,14 @@ module Enkaidu
     end
 
     private macro m_process_and_record_ask_event(event, prev_event)
-      type = {{event}}["type"]
-      unless type == "done"
-        recorder.if_recording? do |io|
-          io.puts "," if ix.positive?
-          io.puts {{event}}.to_json
-        end
+      recorder.if_recording? do |io|
+        io.puts "," if ix.positive?
+        io.puts {{event}}.to_json
+      end
+      case type = {{event}}["type"]
+      when "done"
+        detect_text_ending(type, prev_event)
+      else
         ix += 1
         process_event({{event}}, {{prev_event}}) do |tool_call|
           tools << tool_call
