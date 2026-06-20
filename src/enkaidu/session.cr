@@ -21,6 +21,8 @@ module Enkaidu
 
   class InvalidMacroCall < Exception; end
 
+  class UnexpectedError < Exception; end
+
   # The Session class manages connection setup, logging, and the processing of
   # different types of events for user queries via the command line app
   class Session
@@ -58,6 +60,7 @@ module Enkaidu
 
     delegate streaming?, usage, to: @chat
     delegate debug?, to: @opts
+    delegate readonly?, to: @opts
 
     def initialize(@renderer, @opts,
                    unique_model_name : String? = nil)
@@ -141,6 +144,7 @@ module Enkaidu
         end
         with_debug if opts.debug?
         with_streaming if opts.stream?
+        with_readonly if readonly?
         with_system_message system_prompt(override_system_prompt)
 
         if effort = @model_config.try(&.settings.try(&.think))
