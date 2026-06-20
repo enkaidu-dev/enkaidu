@@ -8,6 +8,7 @@ module Tools::TextEditing
   # allowed directory, avoiding access to unauthorized paths.
   class ReadTextFileTool < BuiltInFunction
     name "read_text_file"
+    side_effects SideEffects::FileRead
 
     # Provide a description for the tool
     description "Read the contents of a text file within the current directory. " \

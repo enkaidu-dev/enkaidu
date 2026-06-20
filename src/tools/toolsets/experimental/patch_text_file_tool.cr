@@ -6,6 +6,8 @@ module Tools::Experimental
   class PatchTextFileTool < BuiltInFunction
     name "apply_patch_to_text_file"
 
+    side_effects SideEffects::FileRead | SideEffects::FileWrite | SideEffects::CommandExec
+
     @@patch_version : String? = nil
 
     def self.patch_version

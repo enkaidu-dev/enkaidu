@@ -8,6 +8,7 @@ module Tools::FileManagement
   # allowed directory, avoiding access to unauthorized paths.
   class SearchFilesTool < BuiltInFunction
     name "search_files"
+    side_effects SideEffects::FileRead | SideEffects::DirRead
 
     description "Searches files for lines containing a match to the given search pattern and " \
                 "returns matching lines with line numbers."

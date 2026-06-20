@@ -8,6 +8,7 @@ module Tools::TextEditing
   # allowed directory, avoiding access to unauthorized paths.
   class ReplaceLinesInTextFileTool < BuiltInFunction
     name "str_replace_lines_in_text_file"
+    side_effects SideEffects::FileRead | SideEffects::FileWrite
 
     description "Replace a range of lines in a text file within the current directory with given text."
 

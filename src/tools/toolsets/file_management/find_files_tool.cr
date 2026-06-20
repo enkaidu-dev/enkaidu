@@ -8,6 +8,7 @@ module Tools::FileManagement
   # avoiding access to unauthorized paths.
   class FindFilesTool < BuiltInFunction
     name "find_files"
+    side_effects SideEffects::FileRead | SideEffects::DirRead
 
     # Provide a description for the tool
     description "Finds files and directories in a directory hierarchy by matching a glob pattern."

@@ -12,6 +12,9 @@ module Enkaidu
     getter title : String? = nil
     getter description : String
 
+    # Don't know what the MCP server does, it could be local, it could be remote.
+    getter side_effects : LLM::Function::SideEffects = SideEffects::All
+
     # Accessible to the function's Runner
     protected getter mcpc : MCPC::HttpConnection
     protected getter cli : Session

@@ -8,6 +8,7 @@ module Tools::ImageEditing
   # the current directory.
   class CreateImageFileTool < BuiltInFunction
     name "create_image_file"
+    side_effects SideEffects::FileWrite
 
     description "Creates an image file from base64 encoded image data at the specified path. " \
                 "Ensures the file is created within the current directory and does not overwrite existing files."

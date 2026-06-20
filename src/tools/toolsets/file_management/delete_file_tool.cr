@@ -9,6 +9,7 @@ module Tools::FileManagement
   # prepends a timestamp prepended to the filename.
   class DeleteFileTool < BuiltInFunction
     name "delete_file"
+    side_effects SideEffects::FileRead | SideEffects::FileWrite | SideEffects::FileDelete
 
     description "Deletes a file within the current directory by moving it to the `#{FileHelper::DELETED_FILES_PATH}` folder " \
                 "with a ms-resolution timestamp prepended to the filename. This allows for file recovery if deletion " \

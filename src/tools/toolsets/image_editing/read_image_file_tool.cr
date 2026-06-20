@@ -7,6 +7,7 @@ module Tools::ImageEditing
   # It ensures the operation is performed securely within the allowed directory, avoiding access to unauthorized paths.
   class ReadImageFileTool < BuiltInFunction
     name "read_image_file"
+    side_effects SideEffects::FileRead
 
     # Provide a description for the tool
     description "Reads the content of a specified image file in the current directory and returns it as a base64 encoded data URL string. " \

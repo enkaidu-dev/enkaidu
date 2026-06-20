@@ -7,6 +7,7 @@ module Tools::TextEditing
   # the current directory.
   class WriteTextFileTool < BuiltInFunction
     name "write_text_file"
+    side_effects SideEffects::FileRead | SideEffects::FileWrite
 
     description "Create a text file within the current directory and write the given content. " \
                 "Create entire path to the file if needed. DOES NOT overwrite existing file unless requested."

@@ -8,6 +8,7 @@ module Tools::TextEditing
   # allowed directory, avoiding access to unauthorized paths.
   class InsertLinesInTextFileTool < BuiltInFunction
     name "str_insert_in_text_file"
+    side_effects SideEffects::FileRead | SideEffects::FileWrite
 
     description "Insert text at a specific location in a text file within the current directory."
 

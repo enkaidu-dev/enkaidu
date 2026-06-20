@@ -6,6 +6,9 @@ module Enkaidu
   class SubAgentPromptFunction < SessionBuiltInFunction
     name "spawn_agent"
 
+    # By itself, has no sideffects
+    side_effects SideEffects::None
+
     description <<-DESC
     Run a prompt in a completely fresh, isolated context window and receive the result as `[query, response]`.
 

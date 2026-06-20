@@ -9,6 +9,7 @@ module Tools::Web
   # The `HttpGetWebPageTool` class defines a tool for making HTTP GET requests to retrieve text content.
   class HttpGetWebPageTool < BuiltInFunction
     name "http_get_web_page"
+    side_effects SideEffects::NetRead
 
     description <<-DESC
     Makes an HTTP GET request to a given URL that returns text and returns the content type and content.
