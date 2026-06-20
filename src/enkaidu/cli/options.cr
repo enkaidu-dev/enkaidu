@@ -227,6 +227,20 @@ module Enkaidu
         config
       end
 
+      private def report_enforce_system_config_override
+        if Enkaidu.enforce_system_config?
+          if @options[:config_file]?
+            console.warning_with "WARN: Ignorning specified config! System config is enforced."
+          elsif Config.find_config_file(Env::CURRENT_DIR)
+            console.warning_with "WARN: Ignorning current directory config! System config is enforced."
+          elsif Config.find_config_file(Env::HOME_DIR)
+            console.warning_with "WARN: Ignorning home directory config! System config is enforced."
+          else
+            console.info_with "INFO: System config is enforced."
+          end
+        end
+      end
+
       # Find and load config file,
       # - start by looking for an "enforced" system config file
       # - next if a config file was specified via command,
@@ -239,17 +253,7 @@ module Enkaidu
                   Config.find_config_file(Env::HOME_DIR)
           parse_config_file(file)
         end
-        if Enkaidu.enforce_system_config?
-          if @options[:config_file]?
-            console.warning_with "WARN: Ignorning specified config! System config is enforced."
-          elsif Config.find_config_file(Env::CURRENT_DIR)
-            console.warning_with "WARN: Ignorning current directory config! System config is enforced."
-          elsif Config.find_config_file(Env::HOME_DIR)
-            console.warning_with "WARN: Ignorning home directory config! System config is enforced."
-          else
-            console.info_with "INFO: System config is enforced."
-          end
-        end
+        report_enforce_system_config_override
       rescue IO::Error
         # If we fail to find default config file, it's OK.
         if @options[:config_file]?
