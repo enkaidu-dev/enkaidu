@@ -144,6 +144,7 @@ module Enkaidu
                        tool.description
                      end
               io << desc << '\n'
+              io << "### Side-effects\n" << tool.side_effects.value_string << "\n\n"
               io << "### Input Schema (Parameters)\n```json\n"
               io << JSON.parse(tool.input_json_schema).to_pretty_json
               io << "\n```\n"
