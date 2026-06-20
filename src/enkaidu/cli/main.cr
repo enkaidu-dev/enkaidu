@@ -114,6 +114,7 @@ module Enkaidu::CLI
       depth = stack.depth
 
       String.build do |str|
+        str << "(R/o) " if session.readonly?
         str << '@' << stack.name
         str << ':' << depth if depth > 1
       end
