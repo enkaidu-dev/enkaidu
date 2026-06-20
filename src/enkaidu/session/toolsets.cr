@@ -11,8 +11,6 @@ module Enkaidu
             io << "---|---|----\n"
             chat.each_tool(origin: origin) do |tool|
               io << '`' << tool.name << "` | " << tool.side_effects.value_string << " | " << tool.summary << '\n'
-              # io << "#### `" << tool.name << "`\n"
-              # io << tool.description << "\n\n"
             end
           end
           io << '\n'
@@ -122,9 +120,11 @@ module Enkaidu
             loaded = @loaded_toolsets.has_key?(toolset.name)
             io << "### " << toolset.name
             io << (loaded ? " _(Loaded)_\n" : '\n')
-            toolset.each_tool_info(readonly: readonly?) do |name, description|
-              io << "- `" << name << "` : "
-              io << description << "\n\n"
+
+            io << "Tool | Side-effects | Summary\n"
+            io << "---|---|----\n"
+            toolset.each_tool_class(readonly: readonly?) do |name, tool_class|
+              io << '`' << name << "` | " << tool_class.side_effects.value_string << " | " << tool_class.summary << '\n'
               count += 1
             end
             io.puts "* _No read-only tools available!_" if count.zero?

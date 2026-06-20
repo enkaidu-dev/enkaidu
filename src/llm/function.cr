@@ -70,6 +70,7 @@ module LLM
 
     # Internal use only
     @summary : String?
+    @@summary : String?
 
     # The summary of the description; splits by '.' and then `\n' to return first entry.
     def summary : String
