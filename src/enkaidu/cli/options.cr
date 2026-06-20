@@ -20,6 +20,7 @@ module Enkaidu
       getter? trace_mcp = false
       getter? trace_http = true
       getter? webui = false
+      getter? readonly = false
 
       getter recorder_file : IO? = nil
       getter profile : Env::Profile
@@ -70,7 +71,7 @@ module Enkaidu
           @model_name = name
           add(:model, name)
         end
-        parser.on("--streaming", "-S", "Enable streaming mode") do
+        parser.on("--streaming", "-S", "IGNORED; streaming is enabled by default; disable via config.") do
           @stream = true
           add(:stream, true)
         end
@@ -78,13 +79,17 @@ module Enkaidu
           @quiet = true
           add(:quiet, true)
         end
+        parser.on("--readonly", "Enable readonly mode; this disables all tools that can modify files / file system.") do
+          @readonly = true
+          add(:readonly, true)
+        end
 
         parser.separator <<-MODEL
 
               The model name can be one defined in the config file. Otherwise
               also specify the provider type using the '--provider' option.
 
-      MODEL
+        MODEL
 
         parser.on("--provider=TYPE", "-p TYPE",
           "If needed, one of \"azure_openai\", \"openai\", or \"ollama\".") do |type|
@@ -180,6 +185,7 @@ module Enkaidu
           @model_name = session_opts.model if model_name.nil?
           @stream = session_opts.streaming? unless @options.has_key?(:stream)
           @quiet = session_opts.quiet? unless @options.has_key?(:quiet)
+          @readonly = session_opts.readonly? unless @options.has_key?(:readonly)
         end
 
         return unless model_name && provider_type.nil?
