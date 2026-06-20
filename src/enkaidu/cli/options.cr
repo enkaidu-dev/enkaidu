@@ -5,6 +5,7 @@ require "../config"
 require "../env"
 
 require "./trace_http"
+require "./system_enforcement"
 
 module Enkaidu
   module CLI
@@ -47,7 +48,11 @@ module Enkaidu
         @config = load_config || empty_config
         @profile = Env::Profile.new(Env::CURRENT_DIR, console, quiet?)
         if profile_config = profile.config
-          config.merge_profile_config(profile_config, console)
+          if Enkaidu.enforce_system_config?
+            error_and_exit_with "FATAL: Profile config should not have loaded since system config enforced. Report it please.", @opts
+          else
+            config.merge_profile_config(profile_config, console)
+          end
         end
 
         check_config_for_defaults
@@ -223,14 +228,27 @@ module Enkaidu
       end
 
       # Find and load config file,
-      # - starting with the specific path,
+      # - start by looking for an "enforced" system config file
+      # - next if a config file was specified via command,
       # - then the current directory, and
       # - finally the $HOME directory.
       private def load_config : Config?
-        if file = @options[:config_file]? ||
+        if file = Enkaidu.enforced_system_config_file ||
+                  @options[:config_file]? ||
                   Config.find_config_file(Env::CURRENT_DIR) ||
                   Config.find_config_file(Env::HOME_DIR)
           parse_config_file(file)
+        end
+        if Enkaidu.enforce_system_config?
+          if @options[:config_file]?
+            console.warning_with "WARN: Ignorning specified config! System config is enforced."
+          elsif Config.find_config_file(Env::CURRENT_DIR)
+            console.warning_with "WARN: Ignorning current directory config! System config is enforced."
+          elsif Config.find_config_file(Env::HOME_DIR)
+            console.warning_with "WARN: Ignorning home directory config! System config is enforced."
+          else
+            console.info_with "INFO: System config is enforced."
+          end
         end
       rescue IO::Error
         # If we fail to find default config file, it's OK.
