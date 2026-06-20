@@ -8,7 +8,7 @@ module Enkaidu::Slash
     HELP       = <<-HELP1
     #{HELP_BRIEF}
     - `ls`
-      - List all available tools
+      - List all enabled / active tools
     - `info <TOOLNAME>`
       - Provide details about one tool
     HELP1
@@ -28,7 +28,7 @@ module Enkaidu::Slash
     def handle(session_manager : SessionManager, cmd : CommandParser)
       session = session_manager.current.session
       if cmd.expect?(NAME, "ls")
-        session.list_all_tools
+        session.list_active_tools
       elsif cmd.expect?(NAME, "info", String)
         session.list_tool_details((cmd.arg_at? 2).as(String))
       else
