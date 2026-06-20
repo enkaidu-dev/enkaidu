@@ -29,6 +29,7 @@ module LLM
     getter system_message : String | Nil = nil
     getter? debug = false
     getter? streaming = false
+    getter? readonly = false
     getter reasoning = Reasoning::Default
 
     def initialize
@@ -48,6 +49,22 @@ module LLM
       @streaming = true
     end
 
+    # Make chat session read-only. This will remove all tools that are not readonly.
+    def with_readonly
+      @readonly = true
+
+      # Find and remove any tools that are not read-only
+      not_readonly = [] of Function
+      each_tool do |tool|
+        unless tool.side_effects.readonly?
+          not_readonly << tool
+        end
+      end
+      not_readonly.each do |tool|
+        without_tool(tool)
+      end
+    end
+
     def with_model(model : String)
       @model = model
     end
@@ -56,7 +73,9 @@ module LLM
       @system_message = content
     end
 
-    def with_tool(function : Function)
+    # Return nil if unable to use / enable the function
+    def with_tool(function : Function) : Function?
+      return if readonly? && !function.side_effects.readonly?
       return if @tools_by_name[function.name]?
       @tools_by_name[function.name] = function
       by_origin = @tools_by_origin[function.origin]? ||
