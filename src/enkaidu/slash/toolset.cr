@@ -12,7 +12,7 @@ module Enkaidu::Slash
       - List all built-in and available toolsets that can be enabled / activated
     - `load <TOOLSET_NAME>`
       - Load all the tools from the named toolset
-    - `load <TOOLSET_NAME> select=LIST_TOOL_NAMES
+    - `load <TOOLSET_NAME> select=LIST_TOOL_NAMES`
       - Load the selected tools from the named toolset
       - E.g. `/toolset load FileManagement select=[list_files rename_file]`
     - `unload <TOOLSET_NAME>`
