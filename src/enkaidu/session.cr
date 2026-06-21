@@ -78,13 +78,11 @@ module Enkaidu
       end
 
       setup_envs_from_config
-      @connection = case provider_type || opts.provider_type
-                    when "openai"       then LLM::OpenAI::Connection.new
-                    when "azure_openai" then LLM::AzureOpenAI::Connection.new
-                    when "ollama"       then LLM::Ollama::Connection.new
-                    else
-                      opts.error_and_exit_with "FATAL: Unknown provider type: #{opts.provider_type}", opts.help
-                    end
+      llm_conn = if provider_name = provider_type || opts.provider_type
+                   LLM.connection_by(provider: provider_name)
+                 end
+      @connection = llm_conn ||
+                    opts.error_and_exit_with "FATAL: Unknown provider type: #{opts.provider_type}", opts.help
 
       @chat = setup_chat(override_model_name: model_name)
       @renderer.streaming = chat.streaming?

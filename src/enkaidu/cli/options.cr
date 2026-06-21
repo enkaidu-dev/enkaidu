@@ -97,7 +97,7 @@ module Enkaidu
         MODEL
 
         parser.on("--provider=TYPE", "-p TYPE",
-          "If needed, one of \"azure_openai\", \"openai\", or \"ollama\".") do |type|
+          "If needed, one of provide types listed below.") do |type|
           @provider_type = type
           add(:provider_type, type)
         end
@@ -107,11 +107,15 @@ module Enkaidu
               If using a provider, different types depend on different environment
               variables.
 
-              ollama        OLLAMA_ENDPOINT (defaults to http://localhost:11434)
-              openai        OPENAI_MODEL, OPENAI_API_KEY,
+              ollama          OLLAMA_ENDPOINT (defaults to http://localhost:11434)
+              openai          OPENAI_MODEL, OPENAI_API_KEY,
                                     OPENAI_ENDPOINT (defaults to https://api.openai.com)
-              azure_openai  AZURE_OPENAI_MODEL, AZURE_OPENAI_ENDPOINT,
+              azure_openai    AZURE_OPENAI_MODEL, AZURE_OPENAI_ENDPOINT,
                                     AZURE_OPENAI_API_KEY, AZURE_OPENAI_API_VER
+
+              (Early access)
+              gemini_openai   GEMINI_API_KEY (required), GEMINI_OPENAI_ENDPOINT,
+                                    GEMINI_OPENAI_CHAT_PATH
       PROVIDER
       end
 
