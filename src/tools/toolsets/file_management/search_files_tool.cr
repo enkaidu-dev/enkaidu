@@ -17,8 +17,8 @@ module Tools::FileManagement
       description: "A single file path, or a glob pattern expression with which to find matching files."
     param "pattern", type: Param::Type::Str, required: true,
       description: "The text or pattern to search for in each file."
-    param "search_regex", type: Param::Type::Bool, required: false,
-      description: "Optional. Set to true to indicate `search_pattern` is a regular expression (default is false.)"
+    param "pattern_is_regex", type: Param::Type::Bool, required: false,
+      description: "Optional. If true then `pattern` is used as a regular expression. Default is false."
     param "max_files", type: Param::Type::Num,
       description: "Optional. Maxmimum number of files to search within (default is #{FileHelper::MAX_FIND_FILE_MATCHES})"
 
