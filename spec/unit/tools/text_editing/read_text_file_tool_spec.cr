@@ -119,7 +119,7 @@ Spectator.describe Tools::TextEditing::ReadTextFileTool do
       result = JSON.parse(result_json).as_h
 
       expect(result["error"]).not_to be_nil
-      expect(result["error"]).to match(/The specified file 'nonexistent.txt' does not exist/)
+      expect(result["error"]).to match(/The path 'nonexistent.txt' does not exist/)
     end
   end
 
