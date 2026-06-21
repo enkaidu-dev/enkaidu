@@ -11,15 +11,14 @@ module Tools::FileManagement
     side_effects SideEffects::FileRead | SideEffects::DirRead
 
     # Provide a description for the tool
-    description "Finds files and directories in a directory hierarchy by matching a glob pattern."
+    description "Finds files and directories in a directory hierarchy at `path` by matching a glob pattern in `expression`."
 
     # Define the acceptable parameter using the `param` method
     param "expression", required: true,
       description: "The glob pattern expression with which to find matching files and directories. "
-    param "path", required: false,
-      description: "Optional. The starting point from where this tool looks for " \
-                   "files and directories matching the path pattern. Defaults to \".\" if not" \
-                   "specified or empty string."
+    param "path", required: true,
+      description: "The directory inside which this tool looks for " \
+                   "files and directories matching the `expression` pattern."
     param "max", type: Param::Type::Num, required: false,
       description: "Optional. Maxmimum number of matches to return (default is #{FileHelper::MAX_FIND_FILE_MATCHES})"
     param "sort", type: Param::Type::Bool, required: false,
@@ -33,15 +32,13 @@ module Tools::FileManagement
 
       def execute(args : JSON::Any) : String
         pattern = args["expression"]?.try(&.as_s?) || return error_response("The required glob `expression` was not specified")
-
-        start = args["path"]?.try(&.as_s?) || "."
-        start = "." if start.empty?
+        path = args["path"]?.try(&.as_s?) || return error_response("The required starting directory `path` was not specified")
 
         max = args["max"]?.try(&.as_i?) || MAX_FIND_FILE_MATCHES
         sort = args["sort"]?.try(&.as_bool?)
         sort = true if sort.nil?
 
-        find_pattern = "#{start}/#{pattern}"
+        find_pattern = "#{path}/#{pattern}"
 
         unless within_current_directory?(resolve_path(find_pattern))
           return error_response("Looking outside current directory not allowed.")

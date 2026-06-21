@@ -46,8 +46,9 @@ module Tools::TextEditing
         resolved_path = resolve_path(file_path)
 
         return error_response("Access to the specified path '#{file_path}' is not allowed.") unless within_current_directory?(resolved_path)
-        return error_response("The specified file '#{file_path}' does not exist.") unless valid_file?(resolved_path)
-        return error_response("The specified file '#{file_path}' is not a text-based file.") unless text_file?(resolved_path)
+        return error_response("The path '#{file_path}' does not exist.") unless valid_path?(resolved_path)
+        return error_response("The path '#{file_path}' is not a file.") unless valid_file?(resolved_path)
+        return error_response("The file '#{file_path}' is not a text file.") unless text_file?(resolved_path)
 
         begin
           content = read_text_file(resolved_path, line_numbers, line_range)
