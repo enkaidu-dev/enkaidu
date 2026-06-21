@@ -251,9 +251,9 @@ module Enkaidu
                   @options[:config_file]? ||
                   Config.find_config_file(Env::CURRENT_DIR) ||
                   Config.find_config_file(Env::HOME_DIR)
+          report_enforce_system_config_override
           parse_config_file(file)
         end
-        report_enforce_system_config_override
       rescue IO::Error
         # If we fail to find default config file, it's OK.
         if @options[:config_file]?
