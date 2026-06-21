@@ -31,7 +31,9 @@ module Tools::TextEditing
       include FileHelper
 
       def execute(args : JSON::Any) : String
-        file_path = args["file_path"]?.try(&.as_s?) || return error_response("The required `file_path` was not specified")
+        file_path = args["file_path"]?.try(&.as_s?).try(&.strip) ||
+                    return error_response("The required `file_path` was not specified")
+
         line_numbers = args["include_line_numbers"]?.try &.as_bool? || false
         line_range = if range = args["line_range"]?
                        if (arr = range.as_a?) && arr.size == 2 && (line_start = arr[0]?.try(&.as_i?)) && (line_end = arr[1]?.try(&.as_i?))
@@ -42,6 +44,8 @@ module Tools::TextEditing
                      else
                        [1, -1] # entire file
                      end
+
+        return error_response("The required `file_path` must not be empty") if file_path.empty?
 
         resolved_path = resolve_path(file_path)
 

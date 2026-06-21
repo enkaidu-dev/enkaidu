@@ -32,7 +32,9 @@ module Tools::FileManagement
 
       def execute(args : JSON::Any) : String
         pattern = args["expression"]?.try(&.as_s?) || return error_response("The required glob `expression` was not specified")
-        path = args["path"]?.try(&.as_s?) || return error_response("The required starting directory `path` was not specified")
+        path = args["path"]?.try(&.as_s?).try(&.strip) || return error_response("The required starting directory `path` was not specified")
+
+        return error_response("The required `path` must not be empty") if path.empty?
 
         max = args["max"]?.try(&.as_i?) || MAX_FIND_FILE_MATCHES
         sort = args["sort"]?.try(&.as_bool?)
