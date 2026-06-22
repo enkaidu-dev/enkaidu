@@ -107,15 +107,15 @@ module Enkaidu
               If using a provider, different types depend on different environment
               variables.
 
-              ollama          OLLAMA_ENDPOINT (defaults to http://localhost:11434)
-              openai          OPENAI_MODEL, OPENAI_API_KEY,
+              ollama            OLLAMA_ENDPOINT (defaults to http://localhost:11434)
+              openai            OPENAI_MODEL, OPENAI_API_KEY,
                                     OPENAI_ENDPOINT (defaults to https://api.openai.com)
-              azure_openai    AZURE_OPENAI_MODEL, AZURE_OPENAI_ENDPOINT,
+              azure_openai      AZURE_OPENAI_MODEL, AZURE_OPENAI_ENDPOINT,
                                     AZURE_OPENAI_API_KEY, AZURE_OPENAI_API_VER
 
               (Early access)
-              gemini_openai   GEMINI_API_KEY (required), GEMINI_OPENAI_ENDPOINT,
-                                    GEMINI_OPENAI_CHAT_PATH
+              google_ai_studio   GOOGLE_AI_API_KEY (required), GOOGLE_AI_ENDPOINT,
+                                    GOOGLE_AI_OPENAI_CHAT_PATH
       PROVIDER
       end
 
