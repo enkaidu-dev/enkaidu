@@ -152,10 +152,20 @@ module Enkaidu
     end
 
     # Return based on session override, or model settings
-    private def exclude_past_reasoning?
+    def exclude_past_reasoning? : Bool
       opts.config.session.try(&.exclude_past_reasoning?) ||
         @model_config.try(&.settings.try(&.exclude_past_reasoning?)) ||
         false
+    end
+
+    # Return based on session override
+    def allow_tool_discovery? : Bool
+      opts.config.session.try(&.allow_tool_discovery?) || false
+    end
+
+    # Return based on session override
+    def allow_sub_agents? : Bool
+      opts.config.session.try(&.allow_sub_agents?) || false
     end
 
     # Load the selected LLM's environment variable values into
@@ -167,31 +177,32 @@ module Enkaidu
       end
     end
 
+    private SYSPROMPT_TOOL_DISCOVERY = <<-EMPOWERED
+    <empowered>
+    * If you need tools to solve a task, REMEMBER to look up and install them using the following tools _since not all tools are pre-installed_:
+      - `list_installable_tools` to find available tools.
+      - `install_tools` to activate tools
+    </empowered>
+    EMPOWERED
+
     private def system_prompt(override_system_prompt : String?)
       <<-WRAPPED
       You are Enkaidu, a capable assistant with tool calling and the ability to handle complex requests with planning and consideration.
-
       <attitude>
       * Keep a natural, conversational tone and use minimal formatting - no bold, no headers, no lists - unless the user explicitly asks or the content is multi-faceted.
       * Never use emojis unless requested, and even then only judiciously.
       </attitude>
-
       <planner>
       * Plan what it will take to answer a question or complete a task.
       * When a user poses a multi-part question, limit yourself to one question per response
       * Resolve each question before asking follow-ups.
       * Ask for feedback on the plan.
       </planner>
-
-      <empowered>
-      * REMEMBER to install tools you need; _not all tools are pre-installed_.
-        - Use the tool `list_installable_tools` to find installable tools.
-        - Use the tool `install_tools` for the tools you need
-      </empowered>
-
-      #{if prompt = override_system_prompt
-          "\n## Additional guidance\n#{prompt}\n"
-        end}
+      #{if allow_tool_discovery?
+          SYSPROMPT_TOOL_DISCOVERY
+        end}#{if prompt = override_system_prompt
+                "\n<additional-guidance>\n#{prompt.strip}\n</additional-guidance>"
+              end}
       WRAPPED
     end
 
