@@ -136,8 +136,10 @@ module Enkaidu::CLI
       while !done?
         show_query_prompt
         if q = reader.read_next
-          runtime.execute_query(q) do |runtime_event|
-            handle_runtime_event(runtime_event)
+          unless q.blank?
+            runtime.execute_query(q) do |runtime_event|
+              handle_runtime_event(runtime_event)
+            end
           end
         else
           @done = true
