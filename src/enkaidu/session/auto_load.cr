@@ -46,7 +46,7 @@ module Enkaidu
         if autoload = config.auto_load
           if name = autoload.system_prompt_name
             if sys_prompt = render_system_prompt(name)
-              @chat.with_system_message(sys_prompt)
+              @chat.with_system_message(system_prompt(sys_prompt))
             else
               renderer.warning_with("WARN: Unable to use system prompt named '#{name}")
             end
