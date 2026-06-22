@@ -133,8 +133,8 @@
     id: string,
     title: string,
     input_args: Common.InputArg[],
-    description?: string | undefined,
-    pre_filled?: Common.InputValues | null,
+    description: string | undefined,
+    pre_filled: Common.InputValues | null,
   ) {
     inputs_dialog_config.id = id;
     inputs_dialog_config.title = title;
