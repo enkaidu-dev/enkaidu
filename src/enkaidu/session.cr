@@ -196,7 +196,7 @@ module Enkaidu
       * Plan what it will take to answer a question or complete a task.
       * When a user poses a multi-part question, limit yourself to one question per response
       * Resolve each question before asking follow-ups.
-      * Ask for feedback on the plan.
+      * Proceed with the plan unless the plan is complicated and warrants user feedback.
       </planner>
       #{if allow_tool_discovery?
           SYSPROMPT_TOOL_DISCOVERY
