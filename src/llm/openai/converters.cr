@@ -16,6 +16,9 @@ module LLM::OpenAI
             json.field "name", f.name
           end
         end
+        if extra = f.extra_content
+          json.field "extra_content", extra
+        end
       end
     end
 
