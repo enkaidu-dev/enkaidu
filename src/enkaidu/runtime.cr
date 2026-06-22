@@ -25,20 +25,14 @@ module Enkaidu
       @commander = Slash::Commander.new(session_manager)
 
       # Inject system tools based on session configuration
-      # Default is true, and session config may be absent, so
-      # start with assumption and import from config if any
-      allow_tool_discovery = true
-      allow_sub_agents = true
       if session_config = options.config.session
-        allow_tool_discovery = session_config.allow_tool_discovery?
-        allow_sub_agents = session_config.allow_sub_agents?
-      end
-      if allow_tool_discovery
-        session_manager.inject_function ListInstallableTools.new(self)
-        session_manager.inject_function InstallToolsFunction.new(self)
-      end
-      if allow_sub_agents
-        session_manager.inject_function SubAgentPromptFunction.new(self)
+        if session_config.allow_tool_discovery?
+          session_manager.inject_function ListInstallableTools.new(self)
+          session_manager.inject_function InstallToolsFunction.new(self)
+        end
+        if session_config.allow_sub_agents?
+          session_manager.inject_function SubAgentPromptFunction.new(self)
+        end
       end
 
       # HACK ALERT

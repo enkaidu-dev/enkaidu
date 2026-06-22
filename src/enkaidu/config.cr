@@ -93,9 +93,9 @@ module Enkaidu
       # Excluding reasoning in "past turn" chat responses to LLM disabled by default
       getter? exclude_past_reasoning = false
 
-      # Allowed by default, set to false to disallow
-      getter? allow_tool_discovery = true
-      getter? allow_sub_agents = true
+      # Disallowed by default, set to `true` to disallow
+      getter? allow_tool_discovery = false
+      getter? allow_sub_agents = false
 
       getter provider_type : String?
       getter model : String?
