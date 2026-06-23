@@ -7,6 +7,7 @@ module Tools::Experimental
   # in text-based files and replacing them with new text.
   class RegexTextEditTool < BuiltInFunction
     name "str_regex_replace_in_text_file"
+    side_effects SideEffects::FileRead | SideEffects::FileWrite
 
     description "Replaces strings that match a regular expression with a new string in a text file within the current directory."
 

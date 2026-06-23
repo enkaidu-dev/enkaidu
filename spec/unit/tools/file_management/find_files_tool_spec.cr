@@ -29,15 +29,15 @@ Spectator.describe Tools::FileManagement::FindFilesTool do
     if hash_val
       err = hash_val["error"]?
       if err
-        return { success: false, data: parsed, error_msg: err.as_s }
+        return {success: false, data: parsed, error_msg: err.as_s}
       end
     end
-     { success: true, data: parsed, error_msg: nil }
+    {success: true, data: parsed, error_msg: nil}
   end
 
-   # -------------------------------------------------
-    # Successful glob matching scenarios
-    # -------------------------------------------------
+  # -------------------------------------------------
+  # Successful glob matching scenarios
+  # -------------------------------------------------
 
   context "finds files matching a simple glob pattern" do
     let(:file_a) { File.join(temp_dir, "file_a.txt") }
@@ -52,9 +52,9 @@ Spectator.describe Tools::FileManagement::FindFilesTool do
 
     it "returns matching file paths as a JSON array" do
       args = {
-          "expression" => "*.txt",
-          "path"          => temp_dir,
-        }
+        "expression" => "*.txt",
+        "path"       => temp_dir,
+      }
 
       result_json = runner.execute(JSON.parse(args.to_json))
       result = parse_run_result(result_json)
@@ -75,9 +75,9 @@ Spectator.describe Tools::FileManagement::FindFilesTool do
 
     it "returns matching files when using recursive glob" do
       args = {
-          "expression" => "**/*",
-          "path"          => temp_dir,
-        }
+        "expression" => "**/*",
+        "path"       => temp_dir,
+      }
 
       result_json = runner.execute(JSON.parse(args.to_json))
       result = parse_run_result(result_json)
@@ -90,9 +90,9 @@ Spectator.describe Tools::FileManagement::FindFilesTool do
     end
   end
 
-   # -------------------------------------------------
-    # Sorting scenarios
-    # -------------------------------------------------
+  # -------------------------------------------------
+  # Sorting scenarios
+  # -------------------------------------------------
 
   context "applies sorting by default" do
     let(:file_c) { File.join(temp_dir, "c.txt") }
@@ -107,9 +107,9 @@ Spectator.describe Tools::FileManagement::FindFilesTool do
 
     it "returns files in sorted order by default" do
       args = {
-          "expression" => "*.txt",
-          "path"          => temp_dir,
-        }
+        "expression" => "*.txt",
+        "path"       => temp_dir,
+      }
 
       result_json = runner.execute(JSON.parse(args.to_json))
       result = parse_run_result(result_json)
@@ -131,10 +131,10 @@ Spectator.describe Tools::FileManagement::FindFilesTool do
 
     it "returns files in whatever order the glob provides" do
       args = {
-          "expression" => "*.txt",
-          "path"          => temp_dir,
-          "sort"          => false,
-        }
+        "expression" => "*.txt",
+        "path"       => temp_dir,
+        "sort"       => false,
+      }
 
       result_json = runner.execute(JSON.parse(args.to_json))
       result = parse_run_result(result_json)
@@ -144,13 +144,13 @@ Spectator.describe Tools::FileManagement::FindFilesTool do
     end
   end
 
-   # -------------------------------------------------
-    # Max limit scenarios
-    # -------------------------------------------------
+  # -------------------------------------------------
+  # Max limit scenarios
+  # -------------------------------------------------
 
   context "respects the max parameter" do
     let(:files) do
-       (1..10).map { |i| File.join(temp_dir, "file_#{i}.txt") }
+      (1..10).map { |i| File.join(temp_dir, "file_#{i}.txt") }
     end
 
     before do
@@ -159,10 +159,10 @@ Spectator.describe Tools::FileManagement::FindFilesTool do
 
     it "limits results to the specified max count" do
       args = {
-          "expression" => "*.txt",
-          "path"          => temp_dir,
-          "max"           => 3,
-        }
+        "expression" => "*.txt",
+        "path"       => temp_dir,
+        "max"        => 3,
+      }
 
       result_json = runner.execute(JSON.parse(args.to_json))
       result = parse_run_result(result_json)
@@ -173,10 +173,10 @@ Spectator.describe Tools::FileManagement::FindFilesTool do
 
     it "returns all matches when max exceeds the number of matches" do
       args = {
-          "expression" => "*.txt",
-          "path"          => temp_dir,
-          "max"           => 999,
-        }
+        "expression" => "*.txt",
+        "path"       => temp_dir,
+        "max"        => 999,
+      }
 
       result_json = runner.execute(JSON.parse(args.to_json))
       result = parse_run_result(result_json)
@@ -186,57 +186,55 @@ Spectator.describe Tools::FileManagement::FindFilesTool do
     end
   end
 
-   # -------------------------------------------------
-    # Default path scenarios
-    # -------------------------------------------------
+  # -------------------------------------------------
+  # Default path scenarios
+  # -------------------------------------------------
 
-  context "uses '.' as the default path" do
+  context "requires path in all requests" do
     before do
       File.write(File.join(temp_dir, "found.txt"), "yes")
     end
 
-    it "works when path is not provided" do
+    it "fails when path is not provided" do
       Dir.cd(temp_dir) do
         args = {
-            "expression" => "*.txt",
-          }
+          "expression" => "*.txt",
+        }
 
         result_json = runner.execute(JSON.parse(args.to_json))
         result = parse_run_result(result_json)
 
-        expect(result[:success]).to be_true
-        expect(result[:data].as_a.size.to_i).to eq(1)
+        expect(result[:success]).to be_false
       end
     end
 
-    it "treats empty string path as '.'" do
+    it "fails on empty string path" do
       Dir.cd(temp_dir) do
         args = {
-            "expression" => "*.txt",
-            "path"          => "",
-          }
+          "expression" => "*.txt",
+          "path"       => "",
+        }
 
         result_json = runner.execute(JSON.parse(args.to_json))
         result = parse_run_result(result_json)
 
-        expect(result[:success]).to be_true
-        expect(result[:data].as_a.size.to_i).to eq(1)
+        expect(result[:success]).to be_false
       end
     end
   end
 
-   # -------------------------------------------------
-    # Security scenarios
-    # -------------------------------------------------
+  # -------------------------------------------------
+  # Security scenarios
+  # -------------------------------------------------
 
   context "blocks paths resolved outside the current directory" do
     let(:outside_path) { File.tempname("_outside.txt") }
 
     it "returns an error when the glob resolves outside" do
       args = {
-          "expression" => "*",
-          "path"          => outside_path,
-        }
+        "expression" => "*",
+        "path"       => outside_path,
+      }
 
       result_json = runner.execute(JSON.parse(args.to_json))
       result = parse_run_result(result_json)
@@ -254,9 +252,9 @@ Spectator.describe Tools::FileManagement::FindFilesTool do
 
     it "returns an error when pattern contains ../" do
       args = {
-          "expression" => "../../../etc/*.txt",
-          "path"          => safe_dir,
-        }
+        "expression" => "../../../etc/*.txt",
+        "path"       => safe_dir,
+      }
 
       result_json = runner.execute(JSON.parse(args.to_json))
       result = parse_run_result(result_json)
@@ -268,9 +266,9 @@ Spectator.describe Tools::FileManagement::FindFilesTool do
 
     it "returns an error when pattern contains /.." do
       args = {
-          "expression" => "../..",
-          "path"          => safe_dir,
-        }
+        "expression" => "../..",
+        "path"       => safe_dir,
+      }
 
       result_json = runner.execute(JSON.parse(args.to_json))
       result = parse_run_result(result_json)
@@ -281,9 +279,9 @@ Spectator.describe Tools::FileManagement::FindFilesTool do
     end
   end
 
-   # -------------------------------------------------
-    # Error handling scenarios
-    # -------------------------------------------------
+  # -------------------------------------------------
+  # Error handling scenarios
+  # -------------------------------------------------
 
   context "fails when expression is not provided" do
     it "returns an error" do
@@ -301,9 +299,9 @@ Spectator.describe Tools::FileManagement::FindFilesTool do
   context "handles invalid glob patterns gracefully" do
     it "returns an error when the glob contains invalid syntax" do
       args = {
-          "expression" => "[invalid",
-          "path"          => temp_dir,
-        }
+        "expression" => "[invalid",
+        "path"       => temp_dir,
+      }
 
       result_json = runner.execute(JSON.parse(args.to_json))
       result = parse_run_result(result_json)
@@ -317,9 +315,9 @@ Spectator.describe Tools::FileManagement::FindFilesTool do
   context "returns empty results when no files match" do
     it "succeeds with an empty JSON array" do
       args = {
-          "expression" => "*.xyz_nonexistent",
-          "path"          => temp_dir,
-        }
+        "expression" => "*.xyz_nonexistent",
+        "path"       => temp_dir,
+      }
 
       result_json = runner.execute(JSON.parse(args.to_json))
       result = parse_run_result(result_json)

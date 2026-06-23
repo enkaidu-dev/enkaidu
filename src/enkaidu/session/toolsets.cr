@@ -3,18 +3,19 @@ require "../../tools"
 module Enkaidu
   class Session
     module Toolsets
-      def list_all_tools
+      def list_active_tools
         text = String.build do |io|
           chat.each_tool_origin do |origin|
             io << "### " << origin << '\n'
+            io << "Tool | Side-effects | Summary\n"
+            io << "---|---|----\n"
             chat.each_tool(origin: origin) do |tool|
-              io << "`" << tool.name << "` : "
-              io << tool.description << "\n\n"
+              io << '`' << tool.name << "` | " << tool.side_effects.value_string << " | " << tool.summary << '\n'
             end
           end
           io << '\n'
         end
-        renderer.respond_with("List of available tools.", text, markdown: true)
+        renderer.respond_with("List of enabled / active tools.", text, markdown: true)
       end
 
       def unload_all_toolsets
@@ -55,6 +56,7 @@ module Enkaidu
       end
 
       private def load_tool_by_class(tool_class) : LLM::Function
+        raise UnexpectedError.new("Tool (#{tool_class.name}) is not read-only; report this please.") if readonly? && !tool_class.side_effects.readonly?
         fun_name = tool_class.function_name
         settings = opts.config.tool_settings_by_name(fun_name)
         tool = tool_class.new(renderer, settings)
@@ -77,12 +79,13 @@ module Enkaidu
             message = String.build do |str|
               str << "Loaded built-in tools from toolset: "
               ix = 0
-              toolset.retrieve(selection: selection) do |built_in_function_class|
+              toolset.retrieve(readonly: readonly?, selection: selection) do |built_in_function_class|
                 tool = load_tool_by_class(built_in_function_class)
                 str << ", " if ix.positive?
                 str << tool.name
                 ix += 1
               end
+              str << "None" if ix.zero?
             end
             if auto
               renderer.info_with message
@@ -99,7 +102,7 @@ module Enkaidu
       def load_tools_across_toolsets(tool_names : Enumerable(String))
         loaded = [] of NamedTuple(toolset: String, tool: String)
         Tools.each_toolset do |toolset|
-          toolset.each_tool_class do |name, tool_class|
+          toolset.each_tool_class(readonly: readonly?) do |name, tool_class|
             next unless tool_names.includes?(name)
             unless tool_loaded?(name)
               load_tool_by_class(tool_class)
@@ -110,16 +113,21 @@ module Enkaidu
         loaded # return list of tools loaded.
       end
 
-      def list_all_toolsets
+      def list_available_toolsets
         text = String.build do |io|
           Tools.each_toolset do |toolset|
+            count = 0
             loaded = @loaded_toolsets.has_key?(toolset.name)
-            io << "# " << toolset.name
+            io << "### " << toolset.name
             io << (loaded ? " _(Loaded)_\n" : '\n')
-            toolset.each_tool_info do |name, description|
-              io << "* `" << name << "` : "
-              io << description << "\n\n"
+
+            io << "Tool | Side-effects | Summary\n"
+            io << "---|---|----\n"
+            toolset.each_tool_class(readonly: readonly?) do |name, tool_class|
+              io << '`' << name << "` | " << tool_class.side_effects.value_string << " | " << tool_class.summary << '\n'
+              count += 1
             end
+            io.puts "* _No read-only tools available!_" if count.zero?
           end
           io << '\n'
         end
@@ -128,18 +136,24 @@ module Enkaidu
 
       def list_tool_details(tool_name)
         if tool = chat.find_tool?(tool_name)
-          text = String.build do |io|
-            desc = if tool.description == tool_name
-                     "_No description provided. Using tool name instead._"
-                   else
-                     tool.description
-                   end
-            io << desc << '\n'
-            io << "### Input Schema (Parameters)\n```json\n"
-            io << JSON.parse(tool.input_json_schema).to_pretty_json
-            io << "\n```\n"
+          if !readonly? || tool.side_effects.readonly?
+            text = String.build do |io|
+              desc = if tool.description == tool_name
+                       "_No description provided. Using tool name instead._"
+                     else
+                       tool.description
+                     end
+              io << desc << '\n'
+              io << "### Side-effects\n" << tool.side_effects.value_string << "\n\n"
+              io << "### Input Schema (Parameters)\n```json\n"
+              io << JSON.parse(tool.input_json_schema).to_pretty_json
+              io << "\n```\n"
+            end
+            renderer.respond_with("Tool details: #{tool_name} (#{tool.origin})", text, markdown: true)
+          else
+            # TBH, if #readonly? this should never happen.
+            renderer.warning_with("Only read-only tools allowed. Tool not available: #{tool_name}")
           end
-          renderer.respond_with("Tool details: #{tool_name} (#{tool.origin})", text, markdown: true)
         else
           renderer.info_with("INFO: No such tool available: #{tool_name}")
         end
@@ -150,7 +164,7 @@ module Enkaidu
       def tools_catalog_builder(json : JSON::Builder) : Nil
         json.array do
           Tools.each_toolset do |toolset|
-            toolset.each_tool_info do |name, description|
+            toolset.each_tool_info(readonly: readonly?) do |name, description|
               json.object do
                 json.field "tool", name
                 json.field "toolset", toolset.name

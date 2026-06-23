@@ -4,6 +4,7 @@ require "./session_built_in_function"
 module Enkaidu
   class ListInstallableTools < SessionBuiltInFunction
     name "list_installable_tools"
+    side_effects SideEffects::None
 
     description <<-DESC
     Obtain a list of available tools that you can install. Use the list to determine the tools that will help with

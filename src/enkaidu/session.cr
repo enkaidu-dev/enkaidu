@@ -21,6 +21,8 @@ module Enkaidu
 
   class InvalidMacroCall < Exception; end
 
+  class UnexpectedError < Exception; end
+
   # The Session class manages connection setup, logging, and the processing of
   # different types of events for user queries via the command line app
   class Session
@@ -58,6 +60,7 @@ module Enkaidu
 
     delegate streaming?, usage, to: @chat
     delegate debug?, to: @opts
+    delegate readonly?, to: @opts
 
     def initialize(@renderer, @opts,
                    unique_model_name : String? = nil)
@@ -75,13 +78,11 @@ module Enkaidu
       end
 
       setup_envs_from_config
-      @connection = case provider_type || opts.provider_type
-                    when "openai"       then LLM::OpenAI::Connection.new
-                    when "azure_openai" then LLM::AzureOpenAI::Connection.new
-                    when "ollama"       then LLM::Ollama::Connection.new
-                    else
-                      opts.error_and_exit_with "FATAL: Unknown provider type: #{opts.provider_type}", opts.help
-                    end
+      llm_conn = if provider_name = provider_type || opts.provider_type
+                   LLM.connection_by(provider: provider_name)
+                 end
+      @connection = llm_conn ||
+                    opts.error_and_exit_with "FATAL: Unknown provider type: #{opts.provider_type}", opts.help
 
       @chat = setup_chat(override_model_name: model_name)
       @renderer.streaming = chat.streaming?
@@ -141,6 +142,7 @@ module Enkaidu
         end
         with_debug if opts.debug?
         with_streaming if opts.stream?
+        with_readonly if readonly?
         with_system_message system_prompt(override_system_prompt)
 
         if effort = @model_config.try(&.settings.try(&.think))
@@ -150,10 +152,20 @@ module Enkaidu
     end
 
     # Return based on session override, or model settings
-    private def exclude_past_reasoning?
+    def exclude_past_reasoning? : Bool
       opts.config.session.try(&.exclude_past_reasoning?) ||
         @model_config.try(&.settings.try(&.exclude_past_reasoning?)) ||
         false
+    end
+
+    # Return based on session override
+    def allow_tool_discovery? : Bool
+      opts.config.session.try(&.allow_tool_discovery?) || false
+    end
+
+    # Return based on session override
+    def allow_sub_agents? : Bool
+      opts.config.session.try(&.allow_sub_agents?) || false
     end
 
     # Load the selected LLM's environment variable values into
@@ -165,41 +177,44 @@ module Enkaidu
       end
     end
 
+    private SYSPROMPT_TOOL_DISCOVERY = <<-EMPOWERED
+    <empowered>
+    * If you need tools to solve a task, REMEMBER to look up and install them using the following tools _since not all tools are pre-installed_:
+      - `list_installable_tools` to find available tools.
+      - `install_tools` to activate tools
+    </empowered>
+    EMPOWERED
+
     private def system_prompt(override_system_prompt : String?)
       <<-WRAPPED
       You are Enkaidu, a capable assistant with tool calling and the ability to handle complex requests with planning and consideration.
-
       <attitude>
       * Keep a natural, conversational tone and use minimal formatting - no bold, no headers, no lists - unless the user explicitly asks or the content is multi-faceted.
       * Never use emojis unless requested, and even then only judiciously.
       </attitude>
-
       <planner>
       * Plan what it will take to answer a question or complete a task.
       * When a user poses a multi-part question, limit yourself to one question per response
       * Resolve each question before asking follow-ups.
-      * Ask for feedback on the plan.
+      * Proceed with the plan unless the plan is complicated and warrants user feedback.
       </planner>
-
-      <empowered>
-      * REMEMBER to install tools you need; _not all tools are pre-installed_.
-        - Use the tool `list_installable_tools` to find installable tools.
-        - Use the tool `install_tools` for the tools you need
-      </empowered>
-
-      #{if prompt = override_system_prompt
-          "\n## Additional guidance\n#{prompt}\n"
-        end}
+      #{if allow_tool_discovery?
+          SYSPROMPT_TOOL_DISCOVERY
+        end}#{if prompt = override_system_prompt
+                "\n<additional-guidance>\n#{prompt.strip}\n</additional-guidance>"
+              end}
       WRAPPED
     end
 
     private macro m_process_and_record_ask_event(event, prev_event)
-      type = {{event}}["type"]
-      unless type == "done"
-        recorder.if_recording? do |io|
-          io.puts "," if ix.positive?
-          io.puts {{event}}.to_json
-        end
+      recorder.if_recording? do |io|
+        io.puts "," if ix.positive?
+        io.puts {{event}}.to_json
+      end
+      case type = {{event}}["type"]
+      when "done"
+        detect_text_ending(type, prev_event)
+      else
         ix += 1
         process_event({{event}}, {{prev_event}}) do |tool_call|
           tools << tool_call

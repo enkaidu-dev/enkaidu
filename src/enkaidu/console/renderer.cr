@@ -11,7 +11,7 @@ module Enkaidu::Console
   class Renderer < SessionRenderer
     include StyleApplicator
 
-    property? streaming = false
+    property? streaming = true
     property? quiet = false
 
     # Internal input for prompt args

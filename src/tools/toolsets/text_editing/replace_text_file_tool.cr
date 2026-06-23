@@ -8,6 +8,7 @@ module Tools::TextEditing
   # allowed directory, avoiding access to unauthorized paths.
   class ReplaceTextInTextFileTool < BuiltInFunction
     name "str_replace_in_text_file"
+    side_effects SideEffects::FileRead | SideEffects::FileWrite
 
     description "Replaces a specified string in a text file within the current directory with a new string." \
                 "This is used for making precise edits."

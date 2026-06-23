@@ -4,6 +4,7 @@ require "./session_built_in_function"
 module Enkaidu
   class InstallToolsFunction < SessionBuiltInFunction
     name "install_tools"
+    side_effects SideEffects::None
 
     description <<-DESC
     Install one or more tools from the list of installable tools. Tool names are unique across toolsets.

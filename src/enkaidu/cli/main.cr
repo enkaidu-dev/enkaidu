@@ -114,6 +114,7 @@ module Enkaidu::CLI
       depth = stack.depth
 
       String.build do |str|
+        str << "(R/o) " if session.readonly?
         str << '@' << stack.name
         str << ':' << depth if depth > 1
       end
@@ -135,8 +136,10 @@ module Enkaidu::CLI
       while !done?
         show_query_prompt
         if q = reader.read_next
-          runtime.execute_query(q) do |runtime_event|
-            handle_runtime_event(runtime_event)
+          unless q.blank?
+            runtime.execute_query(q) do |runtime_event|
+              handle_runtime_event(runtime_event)
+            end
           end
         else
           @done = true

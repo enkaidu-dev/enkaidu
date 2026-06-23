@@ -8,6 +8,7 @@ module Tools::FileManagement
   # directory and does not allow creation of paths that escape the root.
   class CreateDirectoryTool < BuiltInFunction
     name "create_directory"
+    side_effects SideEffects::DirRead | SideEffects::DirWrite
 
     description "Creates a new directory at the specified relative path within the current directory."
 

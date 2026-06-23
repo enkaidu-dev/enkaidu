@@ -9,10 +9,10 @@ module Enkaidu::Slash
     HELP = <<-HELP1
     #{HELP_BRIEF}
     - `ls`
-      - List all built-in toolsets that can be activated
+      - List all built-in and available toolsets that can be enabled / activated
     - `load <TOOLSET_NAME>`
       - Load all the tools from the named toolset
-    - `load <TOOLSET_NAME> select=LIST_TOOL_NAMES
+    - `load <TOOLSET_NAME> select=LIST_TOOL_NAMES`
       - Load the selected tools from the named toolset
       - E.g. `/toolset load FileManagement select=[list_files rename_file]`
     - `unload <TOOLSET_NAME>`
@@ -34,7 +34,7 @@ module Enkaidu::Slash
     def handle(session_manager : SessionManager, cmd : CommandParser)
       session = session_manager.current.session
       if cmd.expect?(NAME, "ls")
-        session.list_all_toolsets
+        session.list_available_toolsets
       elsif cmd.expect?(NAME, "load", String, select: Array(String)?)
         if name = cmd.arg_at?(2)
           selection = cmd.arg_named?("select").try(&.as(Array(String)))

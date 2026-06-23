@@ -72,6 +72,9 @@ module Tools::ShellAccess
 
     name "shell_command"
 
+    # Don't know what the chell command does, so assume anything is possible
+    side_effects SideEffects::All
+
     COMMON_DESCRIPTION = "Executes one of the allowed shell commands from within the " \
                          "current project's directory and returns the shell command's output." \
                          "Commands with restricted terms always require approval."

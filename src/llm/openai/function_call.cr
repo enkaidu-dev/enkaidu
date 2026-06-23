@@ -7,8 +7,9 @@ module LLM::OpenAI
     getter id : String
     getter args_json : String
     getter? ready
+    getter extra_content : JSON::Any?
 
-    def initialize(@name, @id, @args_json = "", @ready = false); end
+    def initialize(@name, @id, @args_json = "", @ready = false, @extra_content = nil); end
 
     def append_args_json(args_part : String?, complete = false)
       return if ready?

@@ -131,7 +131,10 @@ module LLM::OpenAI
           append_message error_calling_tool(
             call.dig("id").as_s,
             name,
-            error: "The tool #{name} is not installed. Consider installing it first.",
+            error: case name
+            when .blank? then "The tool name cannot be empty string."
+            else              "The tool #{name} is not installed. Consider installing it first."
+            end
           )
         end
         calls += 1
@@ -267,7 +270,8 @@ module LLM::OpenAI
       FunctionCall.new(
         name: tool_call.dig("function", "name").as_s,
         id: tool_call["id"].as_s,
-        args_json: tool_call.dig("function", "arguments").as_s
+        args_json: tool_call.dig("function", "arguments").as_s,
+        extra_content: tool_call.dig?("extra_content")
       )
     end
 

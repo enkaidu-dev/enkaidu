@@ -81,9 +81,22 @@ module Enkaidu
 
     # Session configuration settings for Enkaidu.
     class Session < ConfigSerializable
-      getter? streaming = false
+      # Streaming chat enabled by default
+      getter? streaming = true
+
+      # Quiet mode disabled by default
       getter? quiet = false
+
+      # Readonly mode disallows built-in tools when enabled; disabled by default
+      getter? readonly = false
+
+      # Excluding reasoning in "past turn" chat responses to LLM disabled by default
       getter? exclude_past_reasoning = false
+
+      # Disallowed by default, set to `true` to disallow
+      getter? allow_tool_discovery = false
+      getter? allow_sub_agents = false
+
       getter provider_type : String?
       getter model : String?
       getter input_history_file : String?

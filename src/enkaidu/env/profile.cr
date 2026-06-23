@@ -79,15 +79,20 @@ module Enkaidu::Env
     private def load_profile_config(quiet) : ProfileConfig?
       if file = (dir = profile_path) &&
                 Config.find_config_file(dir, base_name: CONFIG_FILE_NAME)
-        begin
-          parse_config_file(file, quiet)
-        rescue IO::Error
-          error_and_exit_with "FATAL: Failed to open profile config file: #{file.relative_to?(CURRENT_DIR)}"
-        rescue ex : TooManyDefaultConfigFiles | UnknownConfigFileFormat
-          error_and_exit_with "FATAL: #{ex}"
-        rescue ex : ConfigParseError
-          # Config parsing errors are always bad
-          error_and_exit_with "FATAL: Error parsing profile config file: #{file.relative_to?(CURRENT_DIR)}\n#{ex}"
+        if Enkaidu.enforce_system_config?
+          renderer.warning_with "WARN: Ignorning profile config! System config is enforced."
+          nil
+        else
+          begin
+            parse_config_file(file, quiet)
+          rescue IO::Error
+            error_and_exit_with "FATAL: Failed to open profile config file: #{file.relative_to?(CURRENT_DIR)}"
+          rescue ex : TooManyDefaultConfigFiles | UnknownConfigFileFormat
+            error_and_exit_with "FATAL: #{ex}"
+          rescue ex : ConfigParseError
+            # Config parsing errors are always bad
+            error_and_exit_with "FATAL: Error parsing profile config file: #{file.relative_to?(CURRENT_DIR)}\n#{ex}"
+          end
         end
       else
         nil

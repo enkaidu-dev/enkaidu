@@ -6,6 +6,8 @@ module Tools::DateAndTime
   class GetCurrentDatetimeTool < BuiltInFunction
     name "get_current_datetime"
 
+    side_effects SideEffects::None
+
     description "Returns the current date and time as a string in ISO 8601 format."
 
     runner Runner

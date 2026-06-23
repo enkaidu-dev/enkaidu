@@ -23,15 +23,19 @@ module Tools
       @tool_names = nil
     end
 
-    def each_tool_class(&)
-      @tools.each do |name, tool_class|
-        yield name, tool_class
+    def each_tool_class(readonly = false, &)
+      @tools.each do |name, fun_class|
+        if !readonly || fun_class.side_effects.readonly?
+          yield name, fun_class
+        end
       end
     end
 
-    def each_tool_info(&)
+    def each_tool_info(readonly = false, &)
       @tools.each do |name, fun_class|
-        yield name, fun_class.description
+        if !readonly || fun_class.side_effects.readonly?
+          yield name, fun_class.description
+        end
       end
     end
 
@@ -41,9 +45,10 @@ module Tools
 
     # Call this method to retrieve built-in tool/function classes
     # from this `ToolSet`, optionally using a `selection` of tool names to filter the tools
-    def retrieve(selection : Enumerable(String)? = nil,
+    def retrieve(readonly = false, selection : Enumerable(String)? = nil,
                  & : BuiltInFunction.class ->)
       @tools.each_value do |fun_class|
+        next if readonly && !fun_class.side_effects.readonly?
         next if selection && !selection.includes?(fun_class.function_name)
 
         yield fun_class

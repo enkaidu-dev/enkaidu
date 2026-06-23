@@ -5,6 +5,7 @@ require "../config"
 require "../env"
 
 require "./trace_http"
+require "./system_enforcement"
 
 module Enkaidu
   module CLI
@@ -20,6 +21,7 @@ module Enkaidu
       getter? trace_mcp = false
       getter? trace_http = true
       getter? webui = false
+      getter? readonly = false
 
       getter recorder_file : IO? = nil
       getter profile : Env::Profile
@@ -46,7 +48,11 @@ module Enkaidu
         @config = load_config || empty_config
         @profile = Env::Profile.new(Env::CURRENT_DIR, console, quiet?)
         if profile_config = profile.config
-          config.merge_profile_config(profile_config, console)
+          if Enkaidu.enforce_system_config?
+            error_and_exit_with "FATAL: Profile config should not have loaded since system config enforced. Report it please.", @opts
+          else
+            config.merge_profile_config(profile_config, console)
+          end
         end
 
         check_config_for_defaults
@@ -70,7 +76,7 @@ module Enkaidu
           @model_name = name
           add(:model, name)
         end
-        parser.on("--streaming", "-S", "Enable streaming mode") do
+        parser.on("--streaming", "-S", "IGNORED; streaming is enabled by default; disable via config.") do
           @stream = true
           add(:stream, true)
         end
@@ -78,16 +84,20 @@ module Enkaidu
           @quiet = true
           add(:quiet, true)
         end
+        parser.on("--readonly", "Enable readonly mode; this disables all tools that can modify files / file system.") do
+          @readonly = true
+          add(:readonly, true)
+        end
 
         parser.separator <<-MODEL
 
               The model name can be one defined in the config file. Otherwise
               also specify the provider type using the '--provider' option.
 
-      MODEL
+        MODEL
 
         parser.on("--provider=TYPE", "-p TYPE",
-          "If needed, one of \"azure_openai\", \"openai\", or \"ollama\".") do |type|
+          "If needed, one of provide types listed below.") do |type|
           @provider_type = type
           add(:provider_type, type)
         end
@@ -97,11 +107,15 @@ module Enkaidu
               If using a provider, different types depend on different environment
               variables.
 
-              ollama        OLLAMA_ENDPOINT (defaults to http://localhost:11434)
-              openai        OPENAI_MODEL, OPENAI_API_KEY,
+              ollama            OLLAMA_ENDPOINT (defaults to http://localhost:11434)
+              openai            OPENAI_MODEL, OPENAI_API_KEY,
                                     OPENAI_ENDPOINT (defaults to https://api.openai.com)
-              azure_openai  AZURE_OPENAI_MODEL, AZURE_OPENAI_ENDPOINT,
+              azure_openai      AZURE_OPENAI_MODEL, AZURE_OPENAI_ENDPOINT,
                                     AZURE_OPENAI_API_KEY, AZURE_OPENAI_API_VER
+
+              (Early access)
+              google_ai_studio   GOOGLE_AI_API_KEY (required), GOOGLE_AI_ENDPOINT,
+                                    GOOGLE_AI_OPENAI_CHAT_PATH
       PROVIDER
       end
 
@@ -180,6 +194,7 @@ module Enkaidu
           @model_name = session_opts.model if model_name.nil?
           @stream = session_opts.streaming? unless @options.has_key?(:stream)
           @quiet = session_opts.quiet? unless @options.has_key?(:quiet)
+          @readonly = session_opts.readonly? unless @options.has_key?(:readonly)
         end
 
         return unless model_name && provider_type.nil?
@@ -216,14 +231,31 @@ module Enkaidu
         config
       end
 
+      private def report_enforce_system_config_override
+        if Enkaidu.enforce_system_config?
+          if @options[:config_file]?
+            console.warning_with "WARN: Ignorning specified config! System config is enforced."
+          elsif Config.find_config_file(Env::CURRENT_DIR)
+            console.warning_with "WARN: Ignorning current directory config! System config is enforced."
+          elsif Config.find_config_file(Env::HOME_DIR)
+            console.warning_with "WARN: Ignorning home directory config! System config is enforced."
+          else
+            console.info_with "INFO: System config is enforced."
+          end
+        end
+      end
+
       # Find and load config file,
-      # - starting with the specific path,
+      # - start by looking for an "enforced" system config file
+      # - next if a config file was specified via command,
       # - then the current directory, and
       # - finally the $HOME directory.
       private def load_config : Config?
-        if file = @options[:config_file]? ||
+        if file = Enkaidu.enforced_system_config_file ||
+                  @options[:config_file]? ||
                   Config.find_config_file(Env::CURRENT_DIR) ||
                   Config.find_config_file(Env::HOME_DIR)
+          report_enforce_system_config_override
           parse_config_file(file)
         end
       rescue IO::Error

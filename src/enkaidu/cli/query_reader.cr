@@ -109,10 +109,6 @@ module Enkaidu::CLI
       expression.strip
     end
 
-    # def indentation_level(expression_before_cursor : String) : Int32?
-    #   # Compute the indentation from the expression
-    # end
-
     def save_in_history?(expression : String) : Bool
       true
     end
@@ -120,9 +116,5 @@ module Enkaidu::CLI
     def history_file
       @input_history_file ||= ENV.fetch("ENKAIDU_HISTORY_FILE", ".enkaidu_history")
     end
-
-    # def auto_complete(name_filter : String, expression : String) : {String, Array(String)}
-    #   # Return the auto-completion result from expression
-    # end
   end
 end

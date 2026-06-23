@@ -81,6 +81,11 @@ module LLM
     end
 
     # Set the name for the function.
+    macro side_effects(effects)
+      class_getter side_effects : SideEffects = {{ effects }}
+    end
+
+    # Set the name for the function.
     macro name(str)
       # The name of the function
       def self.function_name : String

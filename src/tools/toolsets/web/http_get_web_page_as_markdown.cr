@@ -10,6 +10,7 @@ module Tools::Web
   # The `HttpGetWebAsMarkdownTool` class defines a tool for making HTTP GET requests to retrieve web pages as Markdown.
   class HttpGetWebAsMarkdownTool < BuiltInFunction
     name "http_get_web_page_as_markdown"
+    side_effects SideEffects::NetRead
 
     description <<-DESC
     Makes an HTTP GET request to a given web site URL that returns the content

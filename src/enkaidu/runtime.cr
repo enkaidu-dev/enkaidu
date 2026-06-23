@@ -24,12 +24,16 @@ module Enkaidu
       @session_manager = SessionManager.new(Session.new(renderer, opts: options))
       @commander = Slash::Commander.new(session_manager)
 
-      # Always enable tools for
-      # - spawning agent
-      # - tools catalog
-      session_manager.inject_function ListInstallableTools.new(self)
-      session_manager.inject_function InstallToolsFunction.new(self)
-      session_manager.inject_function SubAgentPromptFunction.new(self)
+      # Inject system tools based on session configuration
+      if session_config = options.config.session
+        if session_config.allow_tool_discovery?
+          session_manager.inject_function ListInstallableTools.new(self)
+          session_manager.inject_function InstallToolsFunction.new(self)
+        end
+        if session_config.allow_sub_agents?
+          session_manager.inject_function SubAgentPromptFunction.new(self)
+        end
+      end
 
       # HACK ALERT
       # I don't like this; but for now I don't have a better way.
