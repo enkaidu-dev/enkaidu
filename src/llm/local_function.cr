@@ -36,7 +36,7 @@ module LLM
     end
 
     # one list per class; do not edit
-    @@params = [] of Param
+    @@params = {} of String => Param
     @@input_schema = nil
 
     def initialize(origin = "LEGACY / Built-in", settings = nil)
@@ -45,7 +45,7 @@ module LLM
 
     # Iterate through each parameter
     private def each_param(& : Param ->)
-      @@params.each do |param|
+      @@params.each do |_, param|
         yield param
       end
     end
@@ -123,7 +123,7 @@ module LLM
 
     # Define a parameter for this LLM Function.
     macro param(name, description, type = Param::Type::Str, required = false)
-      @@params << Param.new({{name}}, {{type}}, {{description}}, {{required}})
+      @@params[{{name}}] ||= Param.new({{name}}, {{type}}, {{description}}, {{required}})
     end
 
     # Define the method that is used to create the Runner

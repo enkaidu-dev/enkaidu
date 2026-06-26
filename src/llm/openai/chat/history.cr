@@ -33,9 +33,23 @@ module LLM::OpenAI
       @messages = [] of MessageWrap
     end
 
-    def branch(from : History)
+    #
+    # Copy the messages from another session's history, optionally excluding the last "turn".
+    def branch(from : History, exclude_last_turn = false)
       @messages = from.@messages.dup
-      # Remember the pointer f
+      if exclude_last_turn
+        # Find the most recent "user" message and drop all messages associated with that
+        # prompt: i.e. delete it and subsequent messages.
+        ex_user_index = @messages.rindex do |msg|
+          msg.message.is_a? Message::MultiContent
+        end
+        unless ex_user_index.nil?
+          # Position of last user message is the count of messages we
+          # want to retain
+          @messages = @messages[0, ex_user_index]
+        end
+      end
+      # Remember where we branched so we can detect what is new to this session history
       @branch_index = @messages.size
     end
 

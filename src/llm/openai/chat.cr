@@ -81,8 +81,9 @@ module LLM::OpenAI
 
     # Replace current session with a "fork" of the session from the given
     # `Chat` instance; may fail if `self` is not compatible.
-    def fork(from : Chat) : Nil
-      @history.branch(from.@history)
+    # Optionally, exclude the last "turn" (last user prompt and subsequent responses).
+    def fork(from : Chat, exclude_last_turn = false) : Nil
+      @history.branch(from.@history, exclude_last_turn)
       @usage = @history.last_usage
     end
 

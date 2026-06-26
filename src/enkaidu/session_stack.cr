@@ -28,12 +28,13 @@ module Enkaidu
     end
 
     def push_session(keep_tools = true, keep_prompts = true, keep_history = true,
-                     system_prompt_name : String? = nil) : Nil
+                     system_prompt_name : String? = nil, exclude_last_turn = false) : Nil
       @session_stack.push Session.new(fork_from: session,
         keep_tools: keep_tools,
         keep_prompts: keep_prompts,
         keep_history: keep_history,
-        system_prompt_name: system_prompt_name)
+        system_prompt_name: system_prompt_name,
+        exclude_last_turn: exclude_last_turn)
     end
 
     def pop_session(retain : Retain, replace : Bool = false, &)

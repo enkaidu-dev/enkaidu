@@ -52,10 +52,11 @@ module Enkaidu
     # Push a session in current stack, make a query, and then extract the session outline
     # before popping the session. Return the extracted session as a JSON string,
     # or `nil` on error.
-    def ask_forked_session(query : String, keep_history = false) : String?
+    def ask_forked_session(query : String, keep_history = false, exclude_last_turn = false) : String?
       stack = current
       stack.push_session(keep_history: keep_history,
-        keep_tools: true, keep_prompts: true)
+        keep_tools: true, keep_prompts: true,
+        exclude_last_turn: exclude_last_turn)
       session = stack.session
       session.renderer.session_pushed(depth: stack.depth, keep_history: keep_history,
         keep_tools: true, keep_prompts: true)
