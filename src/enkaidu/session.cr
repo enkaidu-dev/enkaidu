@@ -89,13 +89,7 @@ module Enkaidu
     end
 
     private def connection_provider_type
-      case @connection
-      when LLM::Ollama::Connection      then "ollama"
-      when LLM::AzureOpenAI::Connection then "azure_openai"
-      else
-        # Default because above subclass from the OpenAI one
-        "openai"
-      end
+      LLM.connection_provider_label(@connection)
     end
 
     # Create a new session "forked" from a given `Session` to create a duplicate session.

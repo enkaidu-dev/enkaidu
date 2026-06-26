@@ -5,6 +5,8 @@ require "./llm/google_ai_studio"
 require "./llm/ollama"
 
 module LLM
+  class Error < Exception; end
+
   # Development use; set to `true` to trace HTTP
   TRACE = false
 
@@ -27,6 +29,18 @@ module LLM
     when "ollama"           then Ollama::Connection.new
     when "azure_openai"     then AzureOpenAI::Connection.new
     when "google_ai_studio" then GoogleAIStudio::Connection.new
+    end
+  end
+
+  # Returns the provider label for the given connection instance
+  def self.connection_provider_label(connection : Connection) : String
+    case connection
+    when LLM::Ollama::Connection      then "ollama"
+    when LLM::AzureOpenAI::Connection then "azure_openai"
+    when GoogleAIStudio::Connection   then "google_ai_studio"
+    when LLM::OpenAI::Connection      then "openai"
+    else
+      raise Error.new("Unknown connection implementation: #{connection.class}")
     end
   end
 end
