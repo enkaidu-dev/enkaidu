@@ -4,6 +4,8 @@ require "../usage"
 module LLM::OpenAI
   # Represents a response message from the LLM
   class Message::Response < Message
+    ROLE = "assistant"
+
     property content : String?
 
     @[JSON::Field(ignore_serialize: ((reasoning = @reasoning).nil? || reasoning.empty?))]

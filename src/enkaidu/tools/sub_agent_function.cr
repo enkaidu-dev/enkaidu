@@ -10,7 +10,8 @@ module Enkaidu
     side_effects SideEffects::None
 
     description <<-DESC
-    Run a prompt in a completely fresh, isolated context window and receive the result as `[query, response]`.
+    Submit a prompt to the LLM to process in a separate context window, and receive the result as `[query, response]`.
+    Call the tool with a clean context (default), or include current session context so the sub-agent can use that information to process the prompt.
 
     **Use this tool whenever the task:**
     - would consume significant tokens (large codebases, long or many documents, multi-step research)
@@ -19,11 +20,10 @@ module Enkaidu
     DESC
 
     param "prompt", type: Param::Type::Str, required: true,
-      description: "The full instruction for the sub-agent; be explicit, especially when not including history."
-    param "include_caller_history", type: Param::Type::Bool, required: false,
+      description: "The full instruction for the sub-agent."
+    param "include_session_context", type: Param::Type::Bool, required: false,
       description: <<-PDESC
-      Set to true only when the task requires awareness of the current session, e.g. summarizing the conversation,
-      continuing a thread, or referencing prior decisions.
+      Set to true only when the sub-agent can benefit from awareness of the current session.
       PDESC
 
     runner Runner
@@ -40,18 +40,15 @@ module Enkaidu
 
         return error_response("Required `prompt` was empty") if prompt.empty?
 
-        wrapped_prompt = <<-WRAPPER
-        <important>
-        * You are a spawned agent of Enkaidu.
-        * DO NOT spawn another agent UNLESS you're trying to split a task into multiple steps.
-        * REMEMBER to install tools you need; _not all tools are pre-installed_.
-        </important>
+        # Fork the session to process the prompt.
+        # Since this is a tool call, exclude the last turn if keeping history
+        # to (a) avoid an incomplete request in history, and (b) to avoid repeating the same
+        # prompt that initiated this tool call.
+        reply = func.runtime.session_manager.ask_forked_session(prompt,
+          keep_history,
+          exclude_last_turn: true)
 
-        #{prompt}
-
-        WRAPPER
-        func.runtime.session_manager.ask_forked_session(wrapped_prompt, keep_history) ||
-          error_response("Nil response")
+        reply || error_response("Nil response")
       rescue ex
         error_response(ex.message)
       end

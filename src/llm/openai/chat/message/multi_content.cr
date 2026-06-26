@@ -3,6 +3,8 @@ require "../message"
 module LLM::OpenAI
   # Represents a multi-content message in a request to the LLM
   class Message::MultiContent < Message
+    ROLE = "user"
+
     property content = [] of Content
 
     def initialize(prompt : String, attach : ChatInclusions? = nil)

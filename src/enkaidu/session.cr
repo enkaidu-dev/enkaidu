@@ -99,7 +99,10 @@ module Enkaidu
     end
 
     # Create a new session "forked" from a given `Session` to create a duplicate session.
-    def initialize(fork_from : Session, keep_tools = true, keep_prompts = true, keep_history = true, system_prompt_name = nil)
+    def initialize(fork_from : Session,
+                   keep_tools = true, keep_prompts = true, keep_history = true,
+                   system_prompt_name = nil,
+                   exclude_last_turn = false)
       @recorder = fork_from.recorder
       @opts = fork_from.opts
       @renderer = fork_from.renderer
@@ -111,7 +114,7 @@ module Enkaidu
                             end
       @chat = setup_chat(override_system_prompt: override_sys_prompt,
         override_model_name: fork_from.chat.model)
-      chat.fork(fork_from.chat) if keep_history
+      chat.fork(fork_from.chat, exclude_last_turn) if keep_history
 
       if keep_tools
         @mcp_functions = fork_from.mcp_functions.dup

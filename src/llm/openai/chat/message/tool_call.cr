@@ -3,6 +3,8 @@ require "../message"
 module LLM::OpenAI
   # Represents a tool-call result message in a request to the LLM
   class Message::ToolCall < Message
+    ROLE = "tool"
+
     property tool_call_id : String
     property name : String
     property content : String
