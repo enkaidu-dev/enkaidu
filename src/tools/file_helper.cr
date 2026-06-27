@@ -68,14 +68,20 @@ module Tools
 
     MAX_FILESIZE = 32*1024
 
+    # Returns the base64-encoded content (not a data URL) of the file regardless of type; assumes path is allowed; raises
+    # errors if unable to open file.
+    def load_file_as_base64_data(resolved_path, max_file_size = MAX_FILESIZE) : String
+      if File.size(resolved_path) > max_file_size
+        raise FileLoadingError.new("The file '#{resolved_path}' is too big; max allowed is #{max_file_size.format}B")
+      end
+      content = File.read(resolved_path)
+      Base64.strict_encode(content)
+    end
+
     # Returns the base64-encoded content of the file regardless of type; assumes path is allowed; raises
     # errors if unable to open file.
     def load_file_as_data_url(resolved_path) : String
-      if File.size(resolved_path) > MAX_FILESIZE
-        raise FileLoadingError.new("The file '#{resolved_path}' is too big; max allowed is #{MAX_FILESIZE}B")
-      end
-      content = File.read(resolved_path)
-      encoded = Base64.strict_encode(content)
+      encoded = load_file_as_base64_data(resolved_path)
       content_type = MIME.from_filename(resolved_path)
       "data:#{content_type};base64,#{encoded}"
     end
