@@ -107,7 +107,9 @@ module LLM::OpenAI
         content: (instruction ? {error: error, instruction: instruction} : {error: error}).to_json)
     end
 
-    private def call_tool(tool : LLM::Function, tool_call : JSON::Any)
+    private def call_tool(tool : LLM::Function,
+                          tool_call : JSON::Any,
+                          attachments : Message::MultiContent?)
       id = tool_call.dig("id").as_s
       args = if args_str = tool_call.dig("function", "arguments").as_s?
                JSON.parse(args_str)
@@ -115,18 +117,39 @@ module LLM::OpenAI
                JSON::Any.new(nil)
              end
       reply = tool.run(args)
-      Message::ToolCall.new tool_call_id: id, name: tool.name, content: reply
+      # Detect attachments and start gathering up to send after the tool call
+      # responses. We need to do this to make sure we conform to the message ordering
+      # enforced by many model servers.
+      if reply.has_attachments?
+        if attachments.nil?
+          attachments = Message::MultiContent.new("Additional content related to prior tool calls.")
+        end
+        reply.each_attachment do |att|
+          case att
+          when Function::Reply::Text  then attachments.text(att.data)
+          when Function::Reply::File  then attachments.file_data(att.base64_data, att.file_name)
+          when Function::Reply::Image then attachments.image_url(att.image_url.to_s)
+          end
+        end
+      end
+      {
+        tool_call_response: Message::ToolCall.new(tool_call_id: id, name: tool.name, content: reply.content),
+        attachments:        attachments,
+      }
     end
 
     # Invoke tool calls and return number of calls made; if positive call `re_ask` to
     # hand call results to the models to process
     def call_tools_and_setup_ask(tool_calls : Array(JSON::Any), & : LLM::ChatEvent ->) : Int32
+      attachments = nil.as(Message::MultiContent?)
       calls = 0
       tool_calls.each do |call|
         name = call.dig("function", "name").as_s
         if tool = find_tool? name
           yield({type: "calling_tool", content: call})
-          append_message call_tool(tool, call)
+          result = call_tool(tool, call, attachments)
+          append_message(result[:tool_call_response])
+          attachments = result[:attachments]
         else
           yield unknown_tool_call(call)
           append_message error_calling_tool(
@@ -139,6 +162,10 @@ module LLM::OpenAI
           )
         end
         calls += 1
+      end
+      unless attachments.nil?
+        # Append the attachments after all the tool call responses
+        append_message(attachments)
       end
       calls
     end
