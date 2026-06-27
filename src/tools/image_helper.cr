@@ -21,7 +21,8 @@ module Tools
       "/9j/",        # JPEG
     ]
 
-    UNKNOWN_IMAGE_TYPE = "unknown"
+    UNKNOWN_IMAGE_TYPE  = "unknown"
+    MAX_IMAGE_FILE_SIZE = 2*1024*1024
 
     # Determines the content type based on the magic bytes of the image
     def determine_image_content_type(base64_encoded_string : String) : String
@@ -38,9 +39,8 @@ module Tools
 
     # Returns a data URL for the image in the file; assumes path is allowed; raises
     # errors if unable to open file or if content is not an allowed image
-    def load_image_file_as_data_url(resolved_path) : String
-      content = File.read(resolved_path)
-      encoded = Base64.strict_encode(content)
+    def load_image_file_as_data_url(resolved_path, max_image_file_size = MAX_IMAGE_FILE_SIZE) : String
+      encoded = load_file_as_base64_data(resolved_path, max_image_file_size)
       determined_type = determine_image_content_type(encoded)
 
       if determined_type == UNKNOWN_IMAGE_TYPE

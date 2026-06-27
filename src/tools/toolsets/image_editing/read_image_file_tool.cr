@@ -11,8 +11,7 @@ module Tools::ImageEditing
 
     # Provide a description for the tool
     description "Reads the content of a specified image file in the current directory and returns it as a base64 encoded data URL string. " \
-                "Supports the following image formats: #{ImageHelper::ALLOWED_IMAGE_FORMATS.join(',')}. " \
-                "Ensures the file is within the current directory and is a valid image file."
+                "Supports the following image formats: #{ImageHelper::ALLOWED_IMAGE_FORMATS.join(',')}. "
 
     # Define the acceptable parameter using the `param` method
     param "file_path", type: Param::Type::Str, required: true,
@@ -24,7 +23,7 @@ module Tools::ImageEditing
     class Runner < LLM::Function::Runner
       include ImageHelper
 
-      def execute(args : JSON::Any) : String
+      def execute(args : JSON::Any) : LLM::Function::Reply | String
         file_path = args["file_path"].as_s? || return error_response("The required file_path was not specified")
 
         resolved_path = resolve_path(file_path)
@@ -49,10 +48,9 @@ module Tools::ImageEditing
 
       # Create a success response as a JSON string
       def success_response(file_path, data_url)
-        {
-          file_path:  file_path,
-          image_data: data_url,
-        }.to_json
+        reply = LLM::Function::Reply.new("Image read from '#{file_path}' will be sent separately.")
+        reply.attach_image(URI.parse(data_url))
+        reply
       end
 
       # Create an error response as a JSON string
