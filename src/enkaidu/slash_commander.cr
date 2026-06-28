@@ -47,7 +47,8 @@ module Enkaidu::Slash
     C_BYE  = "/bye"
     C_HELP = "/help"
 
-    H_C_BYE = "`#{C_BYE}` - Exit Enkaidu"
+    H_C_BYE  = "`#{C_BYE}` - Exit Enkaidu"
+    H_C_HELP = "`#{C_HELP} [/command]` - Help for all commands in brief, or for a command in detail"
 
     def help_for(slash_command) : String?
       if command = commands[slash_command]? || commands["/#{slash_command}"]?
@@ -65,6 +66,8 @@ module Enkaidu::Slash
       @help ||= String.build do |sio|
         sio.print "- "
         sio.puts H_C_BYE
+        sio.print "- "
+        sio.puts H_C_HELP
         commands.each_value do |command|
           sio.print "- "
           sio.puts command.brief
@@ -83,8 +86,11 @@ module Enkaidu::Slash
       when C_BYE
         state = :done
       when C_HELP
-        renderer.respond_with "The following `/` (slash) commands available:",
-          help: help, markdown: true
+        if (cmd_name = cmd.arg_at?(1)) && (command = commands[cmd_name]?)
+          renderer.respond_with "", help: command.help, markdown: true
+        else
+          renderer.respond_with "", help: help, markdown: true
+        end
       else
         if command = commands[cmd_name]?
           command.handle(session_manager, cmd)

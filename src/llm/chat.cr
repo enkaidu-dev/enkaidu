@@ -18,6 +18,7 @@ module LLM
     Low
     Medium
     High
+    Max
     Default
   end
 

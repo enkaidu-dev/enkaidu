@@ -10,7 +10,7 @@ module Tools::AudioEditing
     side_effects SideEffects::FileRead
 
     # Provide a description for the tool
-    description "Reads the content of a specified audio file in the current directory and returns it as base64 encoded text. " \
+    description "Reads the content of a specified audio file in the current directory and returns it as _input audio_ attachment. " \
                 "Supports the following audio formats: #{AudioHelper::ALLOWED_AUDIO_FORMATS.join(',')}. "
 
     # Define the acceptable parameter using the `param` method
