@@ -1,27 +1,27 @@
 require "json"
 require "../../built_in_function"
-require "../../image_helper"
+require "../../audio_helper"
 
-module Tools::ImageEditing
-  # The `ReadImageFileTool` class defines a tool for reading an image file and returning it as a data URL.
+module Tools::AudioEditing
+  # The `ReadAudioFileTool` class defines a tool for reading an audio file and returning it as a base64 audio attachment.
   # It ensures the operation is performed securely within the allowed directory, avoiding access to unauthorized paths.
-  class ReadImageFileTool < BuiltInFunction
-    name "read_image_file"
+  class ReadAudioFileTool < BuiltInFunction
+    name "read_audio_file"
     side_effects SideEffects::FileRead
 
     # Provide a description for the tool
-    description "Reads the content of a specified image file in the current directory and returns it as a base64 encoded data URL string. " \
-                "Supports the following image formats: #{ImageHelper::ALLOWED_IMAGE_FORMATS.join(',')}. "
+    description "Reads the content of a specified audio file in the current directory and returns it as base64 encoded text. " \
+                "Supports the following audio formats: #{AudioHelper::ALLOWED_AUDIO_FORMATS.join(',')}. "
 
     # Define the acceptable parameter using the `param` method
     param "file_path", type: Param::Type::Str, required: true,
-      description: "The relative path to the image file to read."
+      description: "The relative path to the audio file to read."
 
     runner Runner
 
     # The Runner class executes the function
     class Runner < LLM::Function::Runner
-      include ImageHelper
+      include AudioHelper
 
       def execute(args : JSON::Any) : LLM::Function::Reply | String
         file_path = args["file_path"].as_s? || return error_response("The required file_path was not specified")
@@ -32,24 +32,23 @@ module Tools::ImageEditing
         return error_response("The specified file '#{file_path}' does not exist.") unless valid_file?(resolved_path)
 
         begin
-          content = File.read(resolved_path)
-          encoded = Base64.strict_encode(content)
-          determined_type = determine_image_content_type(encoded)
+          encoded = load_audio_file_as_data(resolved_path)
+          determined_format = determine_audio_format(encoded)
 
-          unless ALLOWED_IMAGE_CONTENT_TYPES.includes?(determined_type)
-            return error_response("The specified file '#{file_path}' is not an image file.")
+          unless allowed_audio?(encoded)
+            return error_response("The specified file '#{file_path}' is not allowed audio file.")
           end
 
-          success_response(file_path, "data:#{determined_type};base64,#{encoded}")
+          success_response(file_path, encoded, determined_format)
         rescue e
           error_response("An error occurred while reading the file: #{e.message}")
         end
       end
 
       # Create a success response as a JSON string
-      def success_response(file_path, data_url)
-        reply = LLM::Function::Reply.new("Image read from '#{file_path}' will be sent separately.")
-        reply.attach_image(URI.parse(data_url))
+      def success_response(file_path, data, format)
+        reply = LLM::Function::Reply.new("Audio read from '#{file_path}' will be sent separately.")
+        reply.attach_audio(data, format)
         reply
       end
 

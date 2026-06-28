@@ -11,11 +11,12 @@ module LLM::OpenAI
       @role = "user"
       text(prompt)
       if more = attach
-        more.each do |content|
-          case content[:type]
-          when .text?       then text(content[:data])
-          when .image_data? then image_url(content[:data])
-          when .file_data?  then file_data(content[:data], content[:name])
+        more.each do |inclusion|
+          case inclusion[:type]
+          when .text?       then text(inclusion[:data])
+          when .image_data? then image_url(inclusion[:data])
+          when .file_data?  then file_data(inclusion[:data], inclusion[:name])
+          when .audio_data? then input_audio(inclusion[:data], inclusion[:format] || "unknown")
           end
         end
       end
@@ -35,6 +36,10 @@ module LLM::OpenAI
 
     protected def file_data(base64_data : String, file_name : String)
       content << Content::FileData.new(base64_data: base64_data, file_name: file_name)
+    end
+
+    protected def input_audio(base64_data : String, format : String)
+      content << Content::InputAudio.new(base64_data: base64_data, format: format)
     end
 
     # Emit this message as one or more `ChatEvent` objects

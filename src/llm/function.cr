@@ -41,6 +41,47 @@ module LLM
       end
     end
 
+    class Reply
+      record File, base64_data : String, file_name : String
+      record Text, data : String
+      record Image, image_url : URI
+      record Audio, base64_data : String, format : String
+
+      alias Attachment = File | Text | Image | Audio
+      getter content : String
+      @attachments : Array(Attachment)?
+
+      def initialize(@content); end
+
+      private def attach(attachment : Attachment) : Nil
+        (@attachments ||= [] of Attachment) << attachment
+      end
+
+      def attach_text(text : String)
+        attach Text.new(text)
+      end
+
+      def attach_image(image_url : URI)
+        attach Image.new(image_url)
+      end
+
+      def attach_file(base64_data : String, file_name : String)
+        attach File.new(base64_data, file_name)
+      end
+
+      def attach_audio(base64_data : String, format : String)
+        attach Audio.new(base64_data, format.downcase)
+      end
+
+      def has_attachments?
+        @attachments.try(&.size.positive?) || false
+      end
+
+      def each_attachment(&) : Nil
+        @attachments.try(&.each { |item| yield item })
+      end
+    end
+
     # Define a settings Hash with fixed value types for use with functions
     class Settings < Hash(String, String | Int64 | Bool | Array(String) | Array(Int64)); end
 
@@ -85,17 +126,23 @@ module LLM
     # This defines the runner that is instantiated to
     # execute the function.
     abstract class Runner
-      # Implement this method to handle the LLM function call, and return a
-      # String with the JSON value.
-      abstract def execute(args : JSON::Any) : String
+      # Implement this method to handle the LLM function call, and return
+      # - EITHER a String with the JSON value,
+      # - OR a `Reply` if you need to return attachments.
+      abstract def execute(args : JSON::Any) : String | Reply
     end
 
     # Return an instance of this function's Runner
     abstract def new_runner : Runner
 
     # Call this method to clone and execute this function
-    def run(args : JSON::Any) : String
-      self.new_runner.execute(args)
+    def run(args : JSON::Any) : Reply
+      result = self.new_runner.execute(args)
+      if result.is_a? String
+        Reply.new(content: result)
+      else
+        result
+      end
     end
 
     # The input schema for the parameters to this function, as a String.

@@ -3,6 +3,7 @@ require "../../tools/image_helper"
 
 module Enkaidu::Slash
   class IncludeCommand < Command
+    include Tools::AudioHelper
     include Tools::ImageHelper
 
     # Track any query indicators
@@ -21,6 +22,9 @@ module Enkaidu::Slash
         make sure the LLM model supports vision/image processing.
     - `text_file <PATH>`
       - Prepare text from a file to _include_ with the next query.
+    - `audio_file <PATH>`
+      - Prepare audio data from a file to _include_ with the next query;
+        make sure the LLM model supports audio processing.
     - `any_file <PATH>`
       - Prepare a file (with it's base name) to _include_ with the next query;
         make sure the LLM model supports file data along.
@@ -77,6 +81,11 @@ module Enkaidu::Slash
           elsif cmd.expect? NAME, "text_file", String
             inclusions.text File.read(filepath), basename
             ok = query_indicators << "T:#{basename}"
+          elsif cmd.expect? NAME, "audio_file", String
+            base64_data = load_audio_file_as_data(filepath)
+            format = determine_audio_format(base64_data)
+            inclusions.audio_data load_audio_file_as_data(filepath), format, basename
+            ok = query_indicators << "F:#{basename}"
           elsif cmd.expect? NAME, "any_file", String
             inclusions.file_data load_file_as_data_url(filepath), basename
             ok = query_indicators << "F:#{basename}"
