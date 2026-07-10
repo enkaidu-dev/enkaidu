@@ -48,6 +48,10 @@ module Enkaidu
         if session_config.allow_sub_agents?
           session_manager.inject_function SubAgentPromptFunction.new(self)
         end
+        if session_config.allow_global_state?
+          session_manager.inject_function GlobalStateGetFunction.new(self)
+          session_manager.inject_function GlobalStateSetFunction.new(self)
+        end
       end
 
       # HACK ALERT
@@ -65,7 +69,7 @@ module Enkaidu
 
     # Handling code for `?...` commands
     private macro _execute_conditional_command_
-      result = conditional_helper.handle_conditional_command(q)
+      result = conditional_helper.handle_conditional_command(session_manager, q)
       case result[:continue]
       when .break?
         query_queue = [] of String # Empty the current queue

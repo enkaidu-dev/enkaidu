@@ -31,6 +31,7 @@ module Enkaidu::Slash
         MacroCommand.new,
         PromptCommand.new(self),
         SessionCommand.new,
+        StateCommand.new,
         SystemPromptCommand.new,
         ThinkCommand.new,
         ToolCommand.new,

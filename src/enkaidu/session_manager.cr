@@ -1,5 +1,7 @@
 require "./session_stack"
 
+require "../sucre/key_value_store"
+
 module Enkaidu
   # Manager a stack of sessions
   class SessionManager
@@ -7,11 +9,15 @@ module Enkaidu
 
     getter current : SessionStack
 
+    # Maintain a global key/value state in memory
+    getter global_state : KeyValueStore::InMemory
+
     # The app / runtime can inject tools that are available to all sessions
     protected getter injected_tools = [] of LLM::LocalFunction
 
     def initialize(session : Session)
       @current = SessionStack.new("prime", session)
+      @global_state = KeyValueStore::InMemory.new
       @stacks[current.name] = current
     end
 

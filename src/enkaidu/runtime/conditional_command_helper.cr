@@ -1,4 +1,5 @@
 require "../../sucre/command_parser"
+require "../../sucre/key_value_store"
 require "../../tools"
 
 module Enkaidu
@@ -14,10 +15,14 @@ module Enkaidu
       - Exit macro if given file exists
     - `if file=<PATH> contains=<STR>`
       - Exit macro if given file exists and contains given string
+    - `if global ns=<NAMESPACE> key=<STR> equals=<STR>`
+      - Exit macro if global state key has matching value
     - `unless file_exists=<PATH>`
       - Exit macro unless given file exists
     - `unless file=<PATH> contains=<STR>`
       - Exit macro unless given file exists and contains given string
+    - `unless global ns=<NAMESPACE> key=<STR> equals=<STR>`
+      - Exit macro unless global state key has matching value
     HELP1
 
     # Detailed help, in Markdown
@@ -110,7 +115,7 @@ module Enkaidu
       end
     end
 
-    # Return a continuation if given `file` exists AND `contains` the given string.
+    # Return a continuation unless given `file` exists AND `contains` the given string.
     private def break_unless_file_contains(file : String, contains : String) : Continuation
       case result = resolve_and_validate(file)
       when Continuation then result
@@ -126,9 +131,38 @@ module Enkaidu
       end
     end
 
+    # Return a continuation if given `key` in `namespace` of global state has a matching `value`.
+    private def break_if_global_state_equals(global_state : KeyValueStore::InMemory,
+                                             ns : String,
+                                             key : String,
+                                             equals : String) : Continuation
+      continue = Continue::Yes
+      message = nil
+      if (value = global_state.get?(ns, key)) && value == equals
+        continue = Continue::Break
+        message = "INFO: Break: Global state key's value equals: #{equals}"
+      end
+      {continue: continue, message: message}
+    end
+
+    # Return a continuation unless given `key` in `namespace` of global state has a matching `value`.
+    private def break_unless_global_state_equals(global_state : KeyValueStore::InMemory,
+                                                 ns : String,
+                                                 key : String,
+                                                 equals : String) : Continuation
+      continue = Continue::Break
+      message = nil
+      if (value = global_state.get?(ns, key)) && value == equals
+        continue = Continue::Yes
+      else
+        message = "INFO: Break: Global state key doesn't exist, or value doesn't equal: #{equals}"
+      end
+      {continue: continue, message: message}
+    end
+
     # Return true to continue with next query, or
     # false to abort current query queue
-    def handle_conditional_command(q : String) : Continuation
+    def handle_conditional_command(session_manager : SessionManager, q : String) : Continuation
       case cmd = CommandParser.new(q)
       when .expect?("?break", "if", file_exists: String)
         break_if_file_exists(
@@ -137,6 +171,12 @@ module Enkaidu
         break_if_file_contains(
           file: cmd.arg_named("file").as(String),
           contains: cmd.arg_named("contains").as(String))
+      when .expect?("?break", "if", "global", ns: String, key: String, equals: String)
+        break_if_global_state_equals(
+          session_manager.global_state,
+          ns: cmd.arg_named("ns").as(String),
+          key: cmd.arg_named("key").as(String),
+          equals: cmd.arg_named("equals").as(String))
       when .expect?("?break", "unless", file_exists: String)
         break_unless_file_exists(
           file: cmd.arg_named("file_exists").as(String))
@@ -144,6 +184,12 @@ module Enkaidu
         break_unless_file_contains(
           file: cmd.arg_named("file").as(String),
           contains: cmd.arg_named("contains").as(String))
+      when .expect?("?break", "unless", "global", ns: String, key: String, equals: String)
+        break_unless_global_state_equals(
+          session_manager.global_state,
+          ns: cmd.arg_named("ns").as(String),
+          key: cmd.arg_named("key").as(String),
+          equals: cmd.arg_named("equals").as(String))
       else
         {
           continue: Continue::Abort,
