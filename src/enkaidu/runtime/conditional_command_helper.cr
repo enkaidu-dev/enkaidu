@@ -51,6 +51,12 @@ module Enkaidu
       Abort
     end
 
+    # Define the subordinating conjunctions supported by `?break`.
+    enum SubConjunction
+      If
+      Unless
+    end
+
     # Conditional command handling returns a continuation response
     # with a `Continue` value and an optional message.
     alias Continuation = NamedTuple(continue: Continue, message: String?)
@@ -68,124 +74,96 @@ module Enkaidu
       resolved
     end
 
-    # Return a continuation after checking if  given file exists.
-    private def break_if_file_exists(file : String) : Continuation
+    # Return a continuation after checking if/unless  given file exists.
+    private def break_x_file_exists(subcon : SubConjunction, file : String) : Continuation
       case result = resolve_and_validate(file)
       when Continuation then result
       else
         resolved_file = result
         continue = Continue::Yes
         message = nil.as(String?)
-        if file_exists?(resolved_file)
-          continue = Continue::Break
-          message = "INFO: Break: File exists: #{file}"
+        file_exists = file_exists?(resolved_file)
+        case subcon
+        when .if?
+          if file_exists
+            continue = Continue::Break
+            message = "INFO: Break: File exists: #{file}"
+          end
+        when .unless?
+          unless file_exists
+            continue = Continue::Break
+            message = "INFO: Break: File does not exist: #{file}"
+          end
         end
         {continue: continue, message: message}
       end
     end
 
-    # Return a continuation after checking if given file does not exists.
-    private def break_unless_file_exists(file : String) : Continuation
+    # Return a continuation if/unless given `file` exists AND `contains` the given string.
+    private def break_x_file_contains(subcon : SubConjunction, file : String, contains : String) : Continuation
       case result = resolve_and_validate(file)
       when Continuation then result
       else
         resolved_file = result
         continue = Continue::Yes
         message = nil.as(String?)
-        unless File.exists?(resolved_file)
-          continue = Continue::Break
-          message = "INFO: Break: File does not exist: #{file}"
+        file_contains = file_exists?(resolved_file) && File.read(resolved_file).includes?(contains)
+        case subcon
+        when .if?
+          if file_contains
+            continue = Continue::Break
+            message = "INFO: Break: File contains \"#{contains}\""
+          end
+        when .unless?
+          unless file_contains
+            continue = Continue::Break
+            message = "INFO: Break: File doesn't exist, or doesn't contain \"#{contains}\""
+          end
         end
         {continue: continue, message: message}
       end
     end
 
-    # Return a continuation if given `file` exists AND `contains` the given string.
-    private def break_if_file_contains(file : String, contains : String) : Continuation
-      case result = resolve_and_validate(file)
-      when Continuation then result
-      else
-        resolved_file = result
-        continue = Continue::Yes
-        if File.exists?(resolved_file) && File.read(resolved_file).includes?(contains)
-          continue = Continue::Break
-          message = "INFO: Break: File contains \"#{contains}\""
-        end
-        {continue: continue, message: message}
-      end
-    end
-
-    # Return a continuation unless given `file` exists AND `contains` the given string.
-    private def break_unless_file_contains(file : String, contains : String) : Continuation
-      case result = resolve_and_validate(file)
-      when Continuation then result
-      else
-        resolved_file = result
-        continue = Continue::Break
-        if File.exists?(resolved_file) && File.read(resolved_file).includes?(contains)
-          continue = Continue::Yes
-        else
-          message = "INFO: Break: File doesn't exist, or doesn't contain \"#{contains}\""
-        end
-        {continue: continue, message: message}
-      end
-    end
-
-    # Return a continuation if given `key` in `namespace` of global state has a matching `value`.
-    private def break_if_global_state_equals(global_state : KeyValueStore::InMemory,
-                                             ns : String,
-                                             key : String,
-                                             equals : String) : Continuation
+    # Return a continuation if/unless given `key` in `namespace` of global state has a matching `value`.
+    private def break_x_global_state_equals(subcon : SubConjunction, global_state : KeyValueStore::InMemory,
+                                            ns : String, key : String,
+                                            equals : String) : Continuation
       continue = Continue::Yes
       message = nil
-      if (value = global_state.get?(ns, key)) && value == equals
-        continue = Continue::Break
-        message = "INFO: Break: Global state key's value equals: #{equals}"
+      key_value_matched = (value = global_state.get?(ns, key)) && value == equals
+      case subcon
+      when .if?
+        if key_value_matched
+          continue = Continue::Break
+          message = "INFO: Break: Global state key's value equals: #{equals}"
+        end
+      when .unless?
+        unless key_value_matched
+          continue = Continue::Break
+          message = "INFO: Break: Global state key doesn't exist/equal: #{equals}"
+        end
       end
       {continue: continue, message: message}
     end
 
-    # Return a continuation unless given `key` in `namespace` of global state has a matching `value`.
-    private def break_unless_global_state_equals(global_state : KeyValueStore::InMemory,
-                                                 ns : String,
-                                                 key : String,
-                                                 equals : String) : Continuation
-      continue = Continue::Break
-      message = nil
-      if (value = global_state.get?(ns, key)) && value == equals
-        continue = Continue::Yes
-      else
-        message = "INFO: Break: Global state key doesn't exist, or value doesn't equal: #{equals}"
-      end
-      {continue: continue, message: message}
-    end
+    private SUBCONS = SubConjunction.names.map(&.downcase)
 
     # Return true to continue with next query, or
     # false to abort current query queue
     def handle_conditional_command(session_manager : SessionManager, q : String) : Continuation
       case cmd = CommandParser.new(q)
-      when .expect?("?break", "if", file_exists: String)
-        break_if_file_exists(
+      when .expect?(NAME, SUBCONS, file_exists: String)
+        subcon = SubConjunction.parse(cmd.arg_at(1).as(String))
+        break_x_file_exists(subcon,
           file: cmd.arg_named("file_exists").as(String))
-      when .expect?("?break", "if", file: String, contains: String)
-        break_if_file_contains(
+      when .expect?(NAME, SUBCONS, file: String, contains: String)
+        subcon = SubConjunction.parse(cmd.arg_at(1).as(String))
+        break_x_file_contains(subcon,
           file: cmd.arg_named("file").as(String),
           contains: cmd.arg_named("contains").as(String))
-      when .expect?("?break", "if", "global", ns: String, key: String, equals: String)
-        break_if_global_state_equals(
-          session_manager.global_state,
-          ns: cmd.arg_named("ns").as(String),
-          key: cmd.arg_named("key").as(String),
-          equals: cmd.arg_named("equals").as(String))
-      when .expect?("?break", "unless", file_exists: String)
-        break_unless_file_exists(
-          file: cmd.arg_named("file_exists").as(String))
-      when .expect?("?break", "unless", file: String, contains: String)
-        break_unless_file_contains(
-          file: cmd.arg_named("file").as(String),
-          contains: cmd.arg_named("contains").as(String))
-      when .expect?("?break", "unless", "global", ns: String, key: String, equals: String)
-        break_unless_global_state_equals(
+      when .expect?(NAME, SUBCONS, "global", ns: String, key: String, equals: String)
+        subcon = SubConjunction.parse(cmd.arg_at(1).as(String))
+        break_x_global_state_equals(subcon,
           session_manager.global_state,
           ns: cmd.arg_named("ns").as(String),
           key: cmd.arg_named("key").as(String),
