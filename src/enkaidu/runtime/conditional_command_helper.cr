@@ -5,6 +5,35 @@ module Enkaidu
   class ConditionalCommandHelper
     include Tools::FileHelper
 
+    NAME = "?break"
+
+    HELP_BRIEF = "`#{NAME} <sub-command> ...` - Conditionally exit from current macro"
+    HELP       = <<-HELP1
+    #{HELP_BRIEF}
+    - `if file_exists=<PATH>`
+      - Exit macro if given file exists
+    - `if file=<PATH> contains=<STR>`
+      - Exit macro if given file exists and contains given string
+    - `unless file_exists=<PATH>`
+      - Exit macro unless given file exists
+    - `unless file=<PATH> contains=<STR>`
+      - Exit macro unless given file exists and contains given string
+    HELP1
+
+    # Detailed help, in Markdown
+    def help : String
+      HELP
+    end
+
+    # One line help, in Markdown
+    def brief : String
+      HELP_BRIEF
+    end
+
+    def name : String
+      NAME
+    end
+
     # Defines the next step following a conditional command
     enum Continue
       # Yes means continue with next command in queue
@@ -101,17 +130,17 @@ module Enkaidu
     # false to abort current query queue
     def handle_conditional_command(q : String) : Continuation
       case cmd = CommandParser.new(q)
-      when .expect?("?break_if", file_exists: String)
+      when .expect?("?break", "if", file_exists: String)
         break_if_file_exists(
           file: cmd.arg_named("file_exists").as(String))
-      when .expect?("?break_if", file: String, contains: String)
+      when .expect?("?break", "if", file: String, contains: String)
         break_if_file_contains(
           file: cmd.arg_named("file").as(String),
           contains: cmd.arg_named("contains").as(String))
-      when .expect?("?break_unless", file_exists: String)
+      when .expect?("?break", "unless", file_exists: String)
         break_unless_file_exists(
           file: cmd.arg_named("file_exists").as(String))
-      when .expect?("?break_unless", file: String, contains: String)
+      when .expect?("?break", "unless", file: String, contains: String)
         break_unless_file_contains(
           file: cmd.arg_named("file").as(String),
           contains: cmd.arg_named("contains").as(String))
