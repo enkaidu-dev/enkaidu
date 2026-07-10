@@ -96,6 +96,7 @@ module Enkaidu
       # Disallowed by default, set to `true` to disallow
       getter? allow_tool_discovery = false
       getter? allow_sub_agents = false
+      getter? allow_global_state = false
 
       getter provider_type : String?
       getter model : String?

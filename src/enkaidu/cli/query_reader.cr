@@ -47,6 +47,8 @@ module Enkaidu::CLI
     def documentation(entry : String)
       if entry.starts_with?('/')
         cached_doc(entry, runtime.commander.help_for(entry))
+      elsif entry.starts_with?('?')
+        cached_doc(entry, runtime.help_for_conditional(entry))
       elsif entry.starts_with?('!')
         cached_doc(entry, runtime.session.macro_description(entry))
       elsif entry.starts_with?("./")
@@ -78,7 +80,9 @@ module Enkaidu::CLI
         # Tab completion for commands and macros
         {
           "Commands and Macros",
-          [runtime.commander.command_names, runtime.session.macro_names].flatten,
+          [runtime.commander.command_names,
+           runtime.session.macro_names,
+           runtime.conditional_command_names].flatten,
         }
       else
         # Nothing to complete
@@ -92,8 +96,8 @@ module Enkaidu::CLI
       text = expression.gsub(/\.(\/[^\s]+)+\/?/) do |match|
         styler.fmt(:query_syntax_path, match)
       end
-      # Slash commands and macros at the start of a prompt
-      text = text.gsub(/^\s*[\/!][a-z_][a-z0-9_\.]+/) do |match|
+      # Slash commands, conditional commands and macros at the start of a prompt
+      text = text.gsub(/^\s*[\/!\?][a-z_][a-z0-9_\.]+/) do |match|
         styler.fmt(
           match.starts_with?('!') ? :query_syntax_macro : :query_syntax_command,
           match)

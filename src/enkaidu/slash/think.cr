@@ -4,15 +4,17 @@ module Enkaidu::Slash
   class ThinkCommand < Command
     NAME = "/think"
 
-    THINK_EFFORT = ["none", "low", "medium", "high", "default"]
+    THINK_EFFORT = LLM::Reasoning.names.map(&.downcase)
+    THINK_LEVELS = (LLM::Reasoning.values.reject { |eff| eff.default? || eff.none? }).map(&.to_s.downcase)
 
     HELP_BRIEF = "`#{NAME} [#{THINK_EFFORT.join(" or ")}]` - Request thinking effort, or show current effort"
     HELP       = <<-HELP1
     #{HELP_BRIEF}
-    - If `none`, disables thinking / reasoning if the model supports it
-    - If `low` or `medium` or `high`, enables thinking / reasoning, though granularity depends on the model
-    - If `default`, uses the default model reasoning behaviour
-    - Else shows the requested thinking effort
+    - Without parameters, `/think` shows the currently configured (or default) thinking effort
+    - With an effort parameter
+      - `none` disables thinking / reasoning if the model supports it
+      - `default` resets to use the model's default thinking level
+      - #{(THINK_LEVELS.map { |eff| "`#{eff}`" }).join(", ")} enable thinking / reasoning as supported by model
     HELP1
 
     def name : String

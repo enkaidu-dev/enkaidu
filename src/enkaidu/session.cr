@@ -165,6 +165,11 @@ module Enkaidu
       opts.config.session.try(&.allow_sub_agents?) || false
     end
 
+    # Return based on session override
+    def allow_global_state? : Bool
+      opts.config.session.try(&.allow_global_state?) || false
+    end
+
     # Load the selected LLM's environment variable values into
     # `ENV`; call this method before initializing an LLM connection
     private def setup_envs_from_config
@@ -182,6 +187,29 @@ module Enkaidu
     </empowered>
     EMPOWERED
 
+    private SYSPROMPT_SUB_AGENT = <<-AGENTIC
+    <agentic>
+    * Spawn sub-agents to handle tasks that would otherwise fill your context window, keeping your current session lean and focused.
+      * When to spawn:
+        - The task is self-contained and can produce a concise final answer
+        - The task involves extensive file reading, analysis, or operations that would generate large intermediate outputs
+        - The task is well-scoped and can be completed independently
+      * When to keep work local:
+        - The task is simple or straightforward
+        - The task is tightly coupled to your current work
+        - The task would be difficult to delegate effectively
+    </agentic>
+    AGENTIC
+
+    private SYSPROMPT_GLOBAL_STATE = <<-STATEFUL
+    <stateful>
+    * Set and get global state using key/value pairs that can be grouped under namespaces using the `set_global_state` and `get_global_state` tools.
+    * Use the global state for
+      - tracking progress with iterative tasks, or
+      - communicating between agents, turns, and/or sessions
+    </stateful>
+    STATEFUL
+
     private def system_prompt(override_system_prompt : String?)
       <<-WRAPPED
       You are Enkaidu, a capable assistant with tool calling and the ability to handle complex requests with planning and consideration.
@@ -195,11 +223,15 @@ module Enkaidu
       * Resolve each question before asking follow-ups.
       * Proceed with the plan unless the plan is complicated and warrants user feedback.
       </planner>
-      #{if allow_tool_discovery?
-          SYSPROMPT_TOOL_DISCOVERY
-        end}#{if prompt = override_system_prompt
-                "\n<additional-guidance>\n#{prompt.strip}\n</additional-guidance>"
-              end}
+      #{if allow_sub_agents?
+          SYSPROMPT_SUB_AGENT
+        end}#{if allow_global_state?
+                SYSPROMPT_GLOBAL_STATE
+              end}#{if allow_tool_discovery?
+                      SYSPROMPT_TOOL_DISCOVERY
+                    end}#{if prompt = override_system_prompt
+                            "\n<additional-guidance>\n#{prompt.strip}\n</additional-guidance>"
+                          end}
       WRAPPED
     end
 

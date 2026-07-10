@@ -129,6 +129,7 @@ module LLM::OpenAI
           when Function::Reply::Text  then attachments.text(att.data)
           when Function::Reply::File  then attachments.file_data(att.base64_data, att.file_name)
           when Function::Reply::Image then attachments.image_url(att.image_url.to_s)
+          when Function::Reply::Audio then attachments.input_audio(att.base64_data, att.format)
           end
         end
       end
