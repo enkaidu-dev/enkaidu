@@ -19,6 +19,18 @@ module Enkaidu
 
     private getter conditional_helper = ConditionalCommandHelper.new
 
+    def help_for_conditional(slash_command) : String?
+      if slash_command == conditional_helper.name
+        conditional_helper.help
+      end
+    end
+
+    @conditional_command_names : Array(String)?
+
+    def conditional_command_names : Array(String)
+      @conditional_command_names ||= [conditional_helper.name]
+    end
+
     def session
       session_manager.current.session
     end
