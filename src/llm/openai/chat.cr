@@ -62,6 +62,19 @@ module LLM::OpenAI
       true
     end
 
+    # Extract last response from `assistant` and yield it to caller to
+    # process and return a named tuple with a `prompt` and `response` to return
+    # as a message array that caller can inject into a session. Returns `nil` if
+    # no response in the current history.
+    def append_last_response_as_prompt(to : Chat, prompt_prefix : String, new_response : String) : Bool
+      @history.append_transformed_last_response?(to: to.@history) do |content|
+        {
+          response: new_response,
+          prompt:   String.build { |str| str << prompt_prefix << content },
+        }
+      end
+    end
+
     # Extract conversations and return as a JSON string
     def extract_conversations(which : Conversation) : String?
       extract = case which

@@ -44,6 +44,15 @@ module Enkaidu::Slash
         - Retain some of the chat history if `retain=` specified, otherwise `none` and
         - Replace parent chat history if `replace=yes`, otherwise `no`
       - Without parameters, throws away session history
+
+    **Experimental**
+
+    - `pop_xr prefix=PROMPTPREFIX response=NEWRESPONSE [replace=yes/no]`
+      - Transforms the last response into a prompt (with `prefix` pre-pended) followed
+        by a synthetic `response` to create a conversation
+      - Return to last pushed (parent) chat session and
+        - Replace parent chat history if `replace=yes`, otherwise `no`, and
+        - Append the transformed synthetic conversation
     HELP1
 
     def name : String
@@ -102,9 +111,22 @@ module Enkaidu::Slash
         handle_session_push(current_session_stack, cmd)
       when .expect?(NAME, "pop", retain: SESSION_POP_RETAIN_NIL, replace: YES_NO_NIL)
         handle_session_pop_with(current_session_stack, cmd)
+      when .expect?(NAME, "pop_xr", replace: YES_NO_NIL, prefix: String, response: String)
+        handle_session_pop_xr(current_session_stack, cmd)
       else
         session.renderer.warning_with("WARNING: Unknown or incomplete sub-command: '#{cmd.input}'",
           help: HELP, markdown: true)
+      end
+    end
+
+    private def handle_session_pop_xr(session_stack, cmd)
+      replace_history = cmd.arg_named?("replace", "no").try(&.!=("no"))
+      prefix = cmd.arg_named("prefix").as(String)
+      response = cmd.arg_named("response").as(String)
+      session_stack.pop_session_with_transformed_response(prompt_prefix: prefix, new_response: response,
+        replace: replace_history) do
+        # Render session popped
+        session_stack.session.renderer.session_popped(depth: session_stack.depth)
       end
     end
 

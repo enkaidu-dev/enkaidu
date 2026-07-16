@@ -451,6 +451,10 @@ module Enkaidu
       recorder << "]"
     end
 
+    def append_last_response_as_prompt(to : Session, prompt_prefix : String, new_response : String) : Bool
+      chat.append_last_response_as_prompt(to: to.chat, prompt_prefix: prompt_prefix, new_response: new_response)
+    end
+
     def append_conversations(to : Session, which : LLM::Conversation)
       chat.append_conversations(to: to.chat, which: which)
     end
