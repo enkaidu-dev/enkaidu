@@ -9,20 +9,28 @@ module Enkaidu
   class Main
     private getter opts : CLI::Options
     private getter console : Console::Renderer
-
-    private def setup_console
-      # Setup terminal and put it in VT mode (for platforms that need it)
-      term = Termify.terminal
-      term.setup_console
-      at_exit { term.restore_console }
-    end
+    private getter terminal : Termify::TerminalCommon
 
     def initialize
-      setup_console
+      @terminal = Termify.terminal
+      terminal.setup_console
+
       @console = Console::Renderer.new
       @opts = CLI::Options.new(console)
 
       console.quiet = opts.quiet?
+      setup_exit_cleanup
+    end
+
+    private def setup_exit_cleanup
+      at_exit {
+        console.reset
+        terminal.restore_console
+      }
+
+      Signal::INT.trap do
+        exit
+      end
     end
 
     def run

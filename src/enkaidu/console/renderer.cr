@@ -14,6 +14,14 @@ module Enkaidu::Console
     property? streaming = true
     property? quiet = false
 
+    @term_subscroller = Termify::ANSI::SubScroller.new(Termify.terminal, 5)
+
+    # Call when exiting Enkaidu, especially on interrupts, to clean
+    # up interim terminal state
+    def reset
+      @term_subscroller.stop if @term_subscroller.active?
+    end
+
     # Internal input for prompt args
     private def input
       @input ||= InputReader.new("> ", styler: self)
@@ -227,8 +235,6 @@ module Enkaidu::Console
         @md_renderer.reset
       end
     end
-
-    @term_subscroller = Termify::ANSI::SubScroller.new(Termify.terminal, 5)
 
     def llm_text(text, reasoning : Bool, starting : Bool = false, ending : Bool = false)
       if streaming?
