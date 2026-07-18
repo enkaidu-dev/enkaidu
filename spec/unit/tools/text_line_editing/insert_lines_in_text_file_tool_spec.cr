@@ -1,11 +1,11 @@
 require "../../../spec_helper"
 require "json"
 
-Spectator.describe Tools::TextEditing::InsertLinesInTextFileTool do
+Spectator.describe Tools::TextLineEditing::InsertLinesInTextFileTool do
   # fixtures
   let(:temp_dir) { "spec/tmp_test" }
   let(:file_path) { File.join(temp_dir, "sample.txt") }
-  let(:runner) { Tools::TextEditing::InsertLinesInTextFileTool::Runner.new }
+  let(:runner) { Tools::TextLineEditing::InsertLinesInTextFileTool::Runner.new }
 
   before { Dir.mkdir_p(temp_dir) }
   after do

@@ -1,7 +1,7 @@
 require "../../../spec_helper"
 require "json"
 
-Spectator.describe Tools::TextEditing::ReplaceLinesInTextFileTool do
+Spectator.describe Tools::TextLineEditing::ReplaceLinesInTextFileTool do
   # -----------------------------------------------------------------
   # Shared test fixtures
   # -----------------------------------------------------------------
@@ -14,7 +14,7 @@ Spectator.describe Tools::TextEditing::ReplaceLinesInTextFileTool do
     Dir.delete?(temp_dir)
   end
 
-  let(:runner) { Tools::TextEditing::ReplaceLinesInTextFileTool::Runner.new }
+  let(:runner) { Tools::TextLineEditing::ReplaceLinesInTextFileTool::Runner.new }
 
   # -----------------------------------------------------------------
   # Successful replacement scenarios
