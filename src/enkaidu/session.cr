@@ -198,6 +198,10 @@ module Enkaidu
         - The task is simple or straightforward
         - The task is tightly coupled to your current work
         - The task would be difficult to delegate effectively
+      * When processing files
+        - Do not read file and pass in contents
+        - Do not ask sub-agent to return content for you to write
+        - Ask the sub-agent to do the file reading and writing by passing them the file locations or URLs
     </agentic>
     AGENTIC
 
