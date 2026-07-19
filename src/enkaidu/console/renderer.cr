@@ -197,23 +197,23 @@ module Enkaidu::Console
 
       args_json = JSON.parse(args.as_s)
       trim_more = name.size + 5
-      print "  " if quiet?
+      # print "  " if quiet?
 
       prop_reason = args_json.dig?("reason").try(&.as_s?)
       if reason = prop_reason
-        print fmt(:tool_call_reason, "→ #{reason} ")
+        print fmt(:tool_call_reason, "• #{reason}")
         trim_more += reason.size + 2
       else
-        print fmt(:tool_call_reason, "→ ")
+        print fmt(:tool_call_reason, "• Calling")
         trim_more += 2
       end
 
       if quiet?
-        puts fmt(:tool_call_detail, " ~ CALL #{name}")
+        puts fmt(:tool_call_detail, " → #{name}")
       else
         trim_length = (LLM_MAX_TOOL_CALL_ARGS_LENGTH - trim_more).clamp(32, LLM_MAX_TOOL_CALL_ARGS_LENGTH)
         print fmt(:tool_call_detail, "\n  └─") if prop_reason
-        puts fmt(:tool_call_detail, "CALL #{name} #{trim_text(args.to_s, trim_length)}")
+        puts fmt(:tool_call_detail, "→ #{name} #{trim_text(args.to_s, trim_length)}")
       end
 
       puts unless streaming? || quiet?

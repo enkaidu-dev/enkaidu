@@ -14,7 +14,7 @@ module Enkaidu
       # All built-in tools ask for a reason for the tool call so that Enkaidu can
       # show a friendly reason
       param "reason", required: true, type: Param::Type::Str,
-        description: "In gerund form, describe briefly what you're working on that led you to call this tool."
+        description: Tools::BuiltInFunction::REASON_DESCRIPTION
     end
 
     # Define the method that is used to create the SessionBuiltInFunction::Runner

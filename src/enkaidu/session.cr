@@ -227,6 +227,9 @@ module Enkaidu
       * Resolve each question before asking follow-ups.
       * Proceed with the plan unless the plan is complicated and warrants user feedback.
       </planner>
+      <cooperative>
+      * After thinking through a problem present your conclusion briefly so the user stays connected.
+      </cooperative>
       #{if allow_sub_agents?
           SYSPROMPT_SUB_AGENT
         end}#{if allow_global_state?
