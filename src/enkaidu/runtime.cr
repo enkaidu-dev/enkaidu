@@ -60,8 +60,28 @@ module Enkaidu
       session_manager.deploy_injected_functions(session)
     end
 
-    alias QueryQueue = Array(String)
-    alias QueryQueueStack = Array(QueryQueue)
+    # Represents queued queries, and a string representation of the source of queries.
+    # - For a macro, the source is the macro call
+    # - For a user prompt, the source is USER_PROMPT.
+    class QueuedQueries
+      USER_PROMPT = "<user>"
+
+      getter source : String
+      getter queries : Array(String)
+
+      # Create one with user prompt
+      def initialize(prompt : String)
+        @source = USER_PROMPT
+        @queries = [prompt]
+      end
+
+      # Create one with a macro
+      def initialize(macro_call : String, @queries)
+        @source = macro_call
+      end
+    end
+
+    alias QueryQueueStack = Array(QueuedQueries)
 
     #
     # Macros used by the execution loop
@@ -72,14 +92,15 @@ module Enkaidu
       result = conditional_helper.handle_conditional_command(session_manager, q)
       case result[:continue]
       when .break?
-        query_queue = [] of String # Empty the current queue
+        query_queue.queries.clear # Empty the current queue
         if msg = result[:message]
           renderer.respond_with(msg)
         end
       when .abort?
-        query_queue = [] of String
-        query_queue_stack = [] of Array(String)
-        renderer.error_with(result[:message] || "ERROR: Aborting: Unknown reason.")
+        trace = query_queue_stack_trace(query_queue, query_queue_stack)
+        query_queue.queries.clear # Empty the current queue
+        query_queue_stack.clear
+        renderer.error_with(result[:message] || "ERROR: Aborting: Unknown reason.", trace)
       end # else `Yes` so continue
     end
 
@@ -88,9 +109,9 @@ module Enkaidu
       if mac_queries = session.find_and_prepare_macro(q)
         # Push the current query queue on to the stack of queues
         # iff it's not already empty
-        query_queue_stack << query_queue unless query_queue.empty?
+        query_queue_stack << query_queue # unless query_queue.queries.empty?
         # make the macro's queries the current queue
-        query_queue = mac_queries
+        query_queue = QueuedQueries.new(q, mac_queries)
         in_macro = true
         yield Event::Macro
       else
@@ -107,7 +128,23 @@ module Enkaidu
       yield Event::SlashCommand
     end
 
-    def execute_query(query : String, &)
+    private def query_queue_stack_trace(qcurrent : QueuedQueries, qqs : QueryQueueStack, io : IO) : Void
+      io.puts qcurrent.source
+      count = qqs.size
+      qqs.reverse_each do |queued|
+        count -= 1
+        io << (count.zero? ? "  └─" : "  ├─")
+        io.puts queued.source
+      end
+    end
+
+    private def query_queue_stack_trace(qcurrent : QueuedQueries, qqs : QueryQueueStack) : String
+      String.build do |str_io|
+        query_queue_stack_trace(qcurrent, qqs, str_io)
+      end
+    end
+
+    def execute_query(prompt : String, &)
       # Maintain a stack of query queues; when marcos are invoked,
       # push current query queue onto stack and use the macro's queries as
       # current quuery queue.
@@ -117,42 +154,50 @@ module Enkaidu
       # called it.
       query_queue_stack = QueryQueueStack.new
       # Current command or commands (if macro invoked)
-      query_queue = [query]
+      query_queue = QueuedQueries.new(prompt)
       # Track when macro is invoked
       in_macro = false
+      begin
+        while q = query_queue.queries.shift?
+          renderer.user_query_text(q, via_query_queue: true) if in_macro
 
-      while q = query_queue.shift?
-        renderer.user_query_text(q, via_query_queue: true) if in_macro
-
-        case q = q.strip
-        when .starts_with?("?")
-          _execute_conditional_command_
-        when .starts_with?("!")
-          _execute_macro_command_
-        when .starts_with?("/")
-          _execute_slash_command_
-        else
-          session.ask(query: q,
-            attach: commander.take_inclusions!,
-            response_json_schema: commander.take_response_schema!)
-          yield Event::Prompt
-        end
-        # Check if query queue is empty, and pop from the query queue stack
-        # to continue with next query in outer frame
-        if query_queue.empty?
-          # It's possible prior queues in stack are empty, so we need to unwind until
-          # - either nothing is left
-          # - or we get to a queue with items
-          while !query_queue_stack.empty?
-            # Replace current query queue with one we pushed last onto stack of queues
-            query_queue = query_queue_stack.pop
-            break unless query_queue.empty?
+          case q = q.strip
+          when .starts_with?("?")
+            _execute_conditional_command_
+          when .starts_with?("!")
+            _execute_macro_command_
+          when .starts_with?("/")
+            _execute_slash_command_
+          else
+            session.ask(query: q,
+              attach: commander.take_inclusions!,
+              response_json_schema: commander.take_response_schema!)
+            yield Event::Prompt
+          end
+          # Check if query queue is empty, and pop from the query queue stack
+          # to continue with next query in outer frame
+          if query_queue.queries.empty?
+            # It's possible prior queues in stack are empty, so we need to unwind until
+            # - either nothing is left
+            # - or we get to a queue with items
+            while !query_queue_stack.empty?
+              # Replace current query queue with one we pushed last onto stack of queues
+              query_queue = query_queue_stack.pop
+              break unless query_queue.queries.empty?
+            end
           end
         end
+      rescue ex
+        # Report unexpected exception and return back to the prompt so we can save / recover etc.
+        detail = String.build do |io|
+          query_queue_stack_trace(query_queue, query_queue_stack, io)
+          io.puts "---"
+          ex.backtrace.each do |line|
+            io.puts line
+          end
+        end
+        renderer.error_with("ERROR: #{ex.inspect} (Report this please!)", markdown: false, help: detail)
       end
-    rescue ex
-      # Report unexpected exception and return back to the prompt so we can save / recover etc.
-      renderer.error_with("ERROR: #{ex.inspect} (Report this please!)", markdown: false, help: ex.backtrace.join('\n'))
     end
   end
 end
