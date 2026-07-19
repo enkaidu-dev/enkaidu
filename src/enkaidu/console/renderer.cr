@@ -197,7 +197,6 @@ module Enkaidu::Console
 
       args_json = JSON.parse(args.as_s)
       trim_more = name.size + 5
-      # print "  " if quiet?
 
       prop_reason = args_json.dig?("reason").try(&.as_s?)
       if reason = prop_reason
@@ -212,7 +211,7 @@ module Enkaidu::Console
         puts fmt(:tool_call_detail, " → #{name}")
       else
         trim_length = (LLM_MAX_TOOL_CALL_ARGS_LENGTH - trim_more).clamp(32, LLM_MAX_TOOL_CALL_ARGS_LENGTH)
-        print fmt(:tool_call_detail, "\n  └─") if prop_reason
+        print fmt(:tool_call_detail, "\n  └") if prop_reason
         puts fmt(:tool_call_detail, "→ #{name} #{trim_text(args.to_s, trim_length)}")
       end
 
