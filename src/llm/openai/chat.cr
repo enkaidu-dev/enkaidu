@@ -312,7 +312,8 @@ module LLM::OpenAI
       FunctionCall.new(
         name: tool_call.dig("function", "name").as_s,
         id: tool_call["id"].as_s,
-        args_json: tool_call.dig("function", "arguments").as_s,
+        # vLLM doesn't include empty `arguments:`, so if not present fill with empty string to append to.
+        args_json: tool_call.dig?("function", "arguments").try(&.as_s) || "",
         extra_content: tool_call.dig?("extra_content")
       )
     end
