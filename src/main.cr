@@ -7,7 +7,6 @@ require "./enkaidu/wui/main"
 module Enkaidu
   # `Main` is the entry point for executing the application, managing initialization and execution flow.
   class Main
-    private getter opts : CLI::Options
     private getter console : Console::Renderer
     private getter terminal : Termify::TerminalCommon
 
@@ -16,9 +15,6 @@ module Enkaidu
       terminal.setup_console
 
       @console = Console::Renderer.new
-      @opts = CLI::Options.new(console)
-
-      console.quiet = opts.quiet?
       setup_exit_cleanup
     end
 
@@ -34,11 +30,26 @@ module Enkaidu
     end
 
     def run
+      opts = CLI::Options.new(console)
+      console.quiet = opts.quiet?
+
       if opts.webui?
         WUI::Main.new(opts).run
       else
         CLI::Main.new(opts).run
       end
+    rescue ex
+      cause = ex.cause
+      indent = 1
+      details = String.build do |io|
+        while cause
+          indent.times { io << "  " }
+          io << "+--"
+          io.puts cause.message
+          cause = cause.cause
+        end
+      end
+      console.error_with("ERROR: #{ex}", details.empty? ? nil : details)
     end
   end
 end
