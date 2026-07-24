@@ -25,15 +25,34 @@ module Enkaidu::Slash
       HELP
     end
 
+    getter macro_helper : MacroProcessingHelper
+
+    def initialize(@macro_helper)
+    end
+
     def handle(session_manager : SessionManager, cmd : CommandParser)
       session = session_manager.current.session
       if cmd.expect?(NAME, "ls")
-        session.list_all_macros
+        list_all_macros(session.renderer)
       else
         session.renderer.warning_with(
           "ERROR: Unknown or incomplete sub-command: #{cmd.arg_at? 0}",
           help: HELP, markdown: true)
       end
+    end
+
+    # ----------
+
+    private def list_all_macros(renderer)
+      text = String.build do |io|
+        macro_helper.each_macro do |name, mac, origin|
+          io.puts "----"
+          io << "`" << name << "` (_" << origin << "_) - "
+          io << mac.description << "\n\n"
+        end
+        io << '\n'
+      end
+      renderer.respond_with("List of available macros.", text, markdown: true)
     end
   end
 end

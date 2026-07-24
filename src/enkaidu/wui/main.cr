@@ -77,7 +77,6 @@ module Enkaidu
 
         @runtime = Runtime.new(options: opts, renderer: queue)
         @session_manager = SessionManager.new(Session.new(queue, opts: opts))
-        @commander = Slash::Commander.new(session_manager)
 
         session.auto_load
 

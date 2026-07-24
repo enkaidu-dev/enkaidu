@@ -50,7 +50,7 @@ module Enkaidu::CLI
       elsif entry.starts_with?('?')
         cached_doc(entry, runtime.help_for_conditional(entry))
       elsif entry.starts_with?('!')
-        cached_doc(entry, runtime.session.macro_description(entry))
+        cached_doc(entry, runtime.macro_description(entry))
       elsif entry.starts_with?("./")
         cached_doc("./", PATH_DOC)
       end
@@ -81,7 +81,7 @@ module Enkaidu::CLI
         {
           "Commands and Macros",
           [runtime.commander.command_names,
-           runtime.session.macro_names,
+           runtime.macro_names,
            runtime.conditional_command_names].flatten,
         }
       else

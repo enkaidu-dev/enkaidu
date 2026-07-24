@@ -19,8 +19,6 @@ module Enkaidu
 
   class InvalidSessionQuery < Exception; end
 
-  class InvalidMacroCall < Exception; end
-
   class UnexpectedError < Exception; end
 
   # The Session class manages connection setup, logging, and the processing of
@@ -54,7 +52,6 @@ module Enkaidu
     include Session::Prompts
     include Session::SystemPrompts
     include Session::McpServers
-    include Session::Macros
 
     getter id = UUID.v7.to_s
 

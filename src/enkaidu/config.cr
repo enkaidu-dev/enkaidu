@@ -6,6 +6,8 @@ module Enkaidu
   # Config parsing error
   alias ConfigParseError = YAML::ParseException
 
+  class MacroSyntaxError < Exception; end
+
   CONFIG_EXTENSIONS = [".yaml", ".yml"]
   CONFIG_FORMATS    = ["YAML"]
 
@@ -126,10 +128,12 @@ module Enkaidu
       getter description : String?
     end
 
-    class Macro < ConfigSerializable
-      getter description : String
-      getter queries : Array(String)
-    end
+    alias Macro = RawMacro
+
+    # class Macro < ConfigSerializable
+    #   getter description : String
+    #   getter queries : Array(String)
+    # end
 
     class Prompt < ConfigSerializable
       class Arg < ConfigSerializable
@@ -152,6 +156,23 @@ module Enkaidu
     getter console : Console?
 
     # ---------------------- end of content definition
+
+    # Validate sections that need runtime validation
+    def validate
+      # Macros require runtime validation
+      if macs = macros
+        Config.validate_macros(macs)
+      end
+    end
+
+    # Helper to validate macros, raises `MacroSyntaxError`
+    def self.validate_macros(macs : Hash(String, Macro))
+      macs.each do |name, mac|
+        unless mac.valid?
+          raise MacroSyntaxError.new("Macro '#{name}' has unknown block command")
+        end
+      end
+    end
 
     # Return tool settings if any
     def tool_settings_by_name(tool_name : String) : ::LLM::Function::Settings?
