@@ -110,11 +110,11 @@ module Enkaidu::Console
       @@default_style_sheet ||= Console::StyleSheet.create do
         add :response, {fg: :white, format: [:bold]}
         add :info, {fg: :cyan}
-        add :warning, {fg: :light_red}
-        add :error, {fg: :red}
+        add :warning, {fg: :light_yellow}
+        add :error, {fg: :red, format: [:bold]}
         add :before_query, {fg: :yellow}
-        add :query_syntax_command, {fg: :light_red, format: [:italic]}
-        add :query_syntax_macro, {fg: :light_red, format: [:italic]}
+        add :query_syntax_command, {fg: :light_cyan, format: [:italic]}
+        add :query_syntax_macro, {fg: :light_magenta, format: [:italic]}
         add :query_syntax_path, {fg: :light_blue}
         add :after_reply, {fg: :yellow}
         add :query_prefix_by_user, {fg: :yellow}
