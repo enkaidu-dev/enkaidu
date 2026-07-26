@@ -152,6 +152,7 @@ module Enkaidu
 
     private def prepare_nested_macro(cmd, invocation, mac_queries)
       prepared_queries = [] of String | PreparedMacro
+      prepared_invocation = substitute_macro_call_args(invocation, cmd)
       # substitute args
       mac_queries.each do |query|
         case query
@@ -163,7 +164,7 @@ module Enkaidu
           end
         end
       end
-      PreparedMacro.new(invocation, prepared_queries)
+      PreparedMacro.new(prepared_invocation, prepared_queries)
     end
 
     # Invoking a macro supports positional and named parameter substitution. For a found macro,
