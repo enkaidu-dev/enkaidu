@@ -141,9 +141,11 @@ module Enkaidu
 
     alias QueryQueueStack = Array(QueuedQueries)
 
-    private def query_queue_stack_trace(qcurrent : QueuedQueries, qqs : QueryQueueStack, io : IO) : Void
-      io.puts qcurrent.source
+    private def query_queue_stack_trace(q : String?, qcurrent : QueuedQueries, qqs : QueryQueueStack, io : IO) : Void
+      io.puts q if q
       count = qqs.size
+      io << (count.zero? ? "  └─" : "  ├─") if q
+      io.puts qcurrent.source
       qqs.reverse_each do |queued|
         count -= 1
         io << (count.zero? ? "  └─" : "  ├─")
@@ -151,9 +153,9 @@ module Enkaidu
       end
     end
 
-    private def query_queue_stack_trace(qcurrent : QueuedQueries, qqs : QueryQueueStack) : String
+    private def query_queue_stack_trace(q : String?, qcurrent : QueuedQueries, qqs : QueryQueueStack) : String
       String.build do |str_io|
-        query_queue_stack_trace(qcurrent, qqs, str_io)
+        query_queue_stack_trace(q, qcurrent, qqs, str_io)
       end
     end
 
@@ -170,6 +172,7 @@ module Enkaidu
       query_queue = QueuedQueries.new(prompt)
       # Track when macro is invoked
       in_macro = false
+      q = nil
       begin
         while q = query_queue.next_query?
           if q.is_a? PreparedMacro
@@ -193,7 +196,8 @@ module Enkaidu
       rescue ex
         # Report unexpected exception and return back to the prompt so we can save / recover etc.
         detail = String.build do |io|
-          query_queue_stack_trace(query_queue, query_queue_stack, io)
+          q = q.is_a?(PreparedMacro) ? "Prepared macro: #{q.invocation}" : q
+          query_queue_stack_trace(q, query_queue, query_queue_stack, io)
           io.puts "---"
           ex.backtrace.each do |line|
             io.puts line
@@ -245,7 +249,7 @@ module Enkaidu
           renderer.respond_with(msg)
         end
       when .abort?
-        trace = query_queue_stack_trace(query_queue, query_queue_stack)
+        trace = query_queue_stack_trace(q, query_queue, query_queue_stack)
         query_queue.finish! # skip remaining queries
         query_queue_stack.clear
         renderer.error_with(result[:message] || "ERROR: Aborting: Unknown reason.", trace)
