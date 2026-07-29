@@ -8,8 +8,9 @@ module Enkaidu
     protected getter runtime : Runtime
 
     # Create an Enkaidu runtime-specific built-in function type.
-    def initialize(@runtime, @settings = nil)
-      super("Session Built-ins")
+    def initialize(@runtime)
+      super("Session Built-ins",
+        settings: runtime.options.config.tool_settings_by_name(self.name))
 
       # All built-in tools ask for a reason for the tool call so that Enkaidu can
       # show a friendly reason

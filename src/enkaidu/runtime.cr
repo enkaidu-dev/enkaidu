@@ -1,3 +1,5 @@
+require "cordon"
+
 require "./slash_commander"
 require "./runtime/*"
 
@@ -77,12 +79,51 @@ module Enkaidu
           session_manager.inject_function GlobalStateGetFunction.new(self)
           session_manager.inject_function GlobalStateSetFunction.new(self)
         end
+        if session_config.allow_shell_commands?
+          session_manager.inject_function ShellCommandFunction.new(self)
+        end
       end
 
       # HACK ALERT
       # I don't like this; but for now I don't have a better way.
       # Revisit one day.
       session_manager.deploy_injected_functions(session)
+    end
+
+    def cordon_policy : Cordon::Policy
+      cordon_config = options.config.cordon
+
+      # Setup initial policy defaults
+      policy = Cordon::Policy.new
+      cordon_config.policy.read_only_paths.each do |path|
+        policy.read_only(path)
+      end
+      cordon_config.policy.read_write_paths.each do |path|
+        policy.read_write(path)
+      end
+
+      # Pull in additional presets based on environment options
+      if ws = cordon_config.workspace
+        using_brew = false
+        if (using_brew = ws.using_brew?) && (brew_policy = preset_brew)
+          policy = policy.merge(brew_policy)
+        end
+
+        if using_ruby = ws.using_ruby
+          ruby_policy = case using_ruby
+                        when true
+                          preset_ruby(using_brew, nil)
+                        when Config::Cordon::Workspace::UsingRuby
+                          preset_ruby(using_brew, using_ruby)
+                        end
+          if ruby_policy
+            policy = policy.merge(ruby_policy)
+          end
+        end
+      end
+
+      # Done
+      policy
     end
 
     # Represents queued queries, and a string representation of the source of queries.
@@ -278,6 +319,47 @@ module Enkaidu
         yield Event::Done
       end
       yield Event::SlashCommand
+    end
+
+    # ------ Cordon helpers
+
+    private def preset_brew : Cordon::Policy?
+      {% if flag?(:darwin) && flag?(:aarch64) %}
+        Cordon::Preset::Brew::MACOS_ARM
+      {% elsif flag?(:darwin) %}
+        Cordon::Preset::Brew::MACOS_INTEL
+      {% elsif flag?(:linux) %}
+        Cordon::Preset::Brew::LINUX
+      {% else %}
+        nil
+      {% end %}
+    end
+
+    private def preset_ruby(using_brew : Bool, using_ruby_env : Config::Cordon::Workspace::UsingRuby?) : Cordon::Policy?
+      preset = if using_brew
+                 {% if flag?(:darwin) && flag?(:aarch64) %}
+                   Cordon::Preset::Ruby::MACOS_ARM_BREW
+                 {% elsif flag?(:darwin) %}
+                   Cordon::Preset::Ruby::MACOS_INTEL_BREW
+                 {% elsif flag?(:linux) %}
+                   Cordon::Preset::Ruby::LINUX_BREW
+                 {% else %}
+                   nil
+                 {% end %}
+               else
+                 {% if flag?(:linux) %}
+                   Cordon::Preset::Ruby::LINUX_SYSTEM
+                 {% else %}
+                   nil
+                 {% end %}
+               end
+      ruby_preset = if using_ruby_env && (path = using_ruby_env.ruby_path)
+                      Cordon::Preset::Ruby.for_executable(path)
+                    end
+      if preset && ruby_preset
+        preset = preset.merge(ruby_preset)
+      end
+      preset
     end
   end
 end

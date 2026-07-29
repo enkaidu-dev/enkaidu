@@ -99,10 +99,62 @@ module Enkaidu
       getter? allow_tool_discovery = false
       getter? allow_sub_agents = false
       getter? allow_global_state = false
+      getter? allow_shell_commands = false
 
       getter provider_type : String?
       getter model : String?
       getter input_history_file : String?
+    end
+
+    class Cordon < ConfigSerializable
+      class Policy < ConfigSerializable
+        # Add read-only access to specific paths
+        getter read_only_paths = [] of String
+        # Add read-write access to specific paths
+        getter read_write_paths = [] of String
+
+        def initialize; end
+      end
+
+      class Workspace < ConfigSerializable
+        class UsingRuby < ConfigSerializable
+          getter ruby_path : String? = nil
+        end
+
+        class UsingPython < ConfigSerializable
+          getter venv_path : String? = nil
+        end
+
+        # If using brew, enable this so we can enable access to commands
+        # within brew's environment
+        getter? using_brew = false
+
+        # If using ruby, set to true unless using a toolchain manager; in latter
+        # case use a map with `path` property to point to your ruby executable
+        # so we can work out paths to allow access from inside the cordon
+        getter using_ruby : (Bool | UsingRuby)? = nil
+
+        # If using python, set to true unless using a virtual env; in latter
+        # case use a map with `venv_path` propert to point to your venv path
+        # so we can work out paths to allow access from inside the cordon
+        getter using_python : (Bool | UsingPython)? = nil
+      end
+
+      enum Mode
+        # This runs shell commands in a cordon, Enkaidu runs normally
+        COMMANDS
+        # This disables cordon
+        UNSAFE
+      end
+
+      # Enable cordoning agent by default
+      getter mode = Mode::COMMANDS
+      # Default policy doesn't add anything to defaults
+      getter policy = Policy.new
+      # Configure workspace to indicate if using brew, python, ruby etc.
+      getter workspace : Workspace?
+
+      def initialize; end
     end
 
     class Console < ConfigSerializable
@@ -130,11 +182,6 @@ module Enkaidu
 
     alias Macro = RawMacro
 
-    # class Macro < ConfigSerializable
-    #   getter description : String
-    #   getter queries : Array(String)
-    # end
-
     class Prompt < ConfigSerializable
       class Arg < ConfigSerializable
         getter description : String
@@ -144,6 +191,9 @@ module Enkaidu
       getter arguments : Hash(String, Arg)?
       getter template : String
     end
+
+    # Default cordon configuration
+    getter cordon = Cordon.new
 
     getter debug : Debug?
     getter session : Session?
