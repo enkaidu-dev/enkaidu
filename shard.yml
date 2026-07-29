@@ -14,6 +14,9 @@ development_dependencies:
     gitlab: arctic-fox/spectator
 
 dependencies:
+  cordon:
+    github: modelarmy/cordon.cr
+    version: 0.4.0
   termify:
     github: nogginly/termify.cr
     version: 0.6.0
