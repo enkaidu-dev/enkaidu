@@ -8,7 +8,6 @@ KNOWN_TOOLSETS = [
   "DateAndTime",
   "ImageEditing",
   "AudioEditing",
-  "ShellAccess",
   "Experimental",
 ]
 
