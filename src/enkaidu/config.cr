@@ -118,11 +118,11 @@ module Enkaidu
 
       class Workspace < ConfigSerializable
         class UsingRuby < ConfigSerializable
-          getter ruby_path : String? = nil
+          getter ruby_path : String
         end
 
         class UsingPython < ConfigSerializable
-          getter venv_path : String? = nil
+          getter venv_path : String
         end
 
         # If using brew, enable this so we can enable access to commands
