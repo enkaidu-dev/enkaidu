@@ -133,7 +133,19 @@ module Enkaidu::Console
     # by presenting the `description` followed by the `subject` of the question.
     # The renderer should further emphasize the `subject` when presenting the question.
     # @return True to confirm, false otherwise.
-    def user_confirm_security_question?(description, subject : String | Array(String)) : Bool
+    def user_confirm_security_question?(description, subject : String | Array(String),
+                                        banner : NamedTuple(safe: Bool, message: String)? = nil) : Bool
+      if banner
+        style = banner[:safe] ? :confirm_banner_safe : :confirm_banner_unsafe
+        msg = banner[:message]
+        bar = "─" * msg.size
+        puts fmt(style, <<-BANNER)
+         ┌#{bar}┐
+         │#{banner[:message]}│
+         └#{bar}┘
+        BANNER
+      end
+
       puts fmt(:confirm_question, "  CONFIRM: #{description}\n")
       subjects = if subject.is_a? String
                    [subject]

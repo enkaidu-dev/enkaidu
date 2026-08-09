@@ -82,12 +82,13 @@ module Enkaidu::WUI
     # by presenting the `description` followed by the `subject` of the question.
     # The renderer should further emphasize the `subject` when presenting the question.
     # @return True to confirm, false otherwise.
-    def user_confirm_security_question?(description, subject : String | Array(String)) : Bool
+    def user_confirm_security_question?(description, subject : String | Array(String),
+                                        banner : NamedTuple(safe: Bool, message: String)? = nil) : Bool
       confirmation_id = Random::Secure.hex(16)
       confirmation_channel = Channel(Bool).new
       pending_confirmations[confirmation_id] = confirmation_channel
 
-      post_event Render::SecurityConfirmation.new(description, subject, confirmation_id)
+      post_event Render::SecurityConfirmation.new(description, subject, confirmation_id, banner)
 
       # Wait for the response
       result = confirmation_channel.receive

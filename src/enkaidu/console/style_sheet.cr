@@ -24,6 +24,8 @@ module Enkaidu::Console
     QueryPrefixByQueue
     QueryFeedback
     AfterReply
+    ConfirmBannerSafe
+    ConfirmBannerUnsafe
     ConfirmQuestion
     ConfirmContent
     ConfirmInput
@@ -120,14 +122,16 @@ module Enkaidu::Console
         add :query_prefix_by_user, {fg: :yellow}
         add :query_prefix_by_queue, {fg: :magenta}
         add :query_feedback, {fg: :green}
+        add :confirm_banner_safe, {fg: :light_green}
+        add :confirm_banner_unsafe, {fg: :light_red}
         add :confirm_question, {fg: :white}
         add :confirm_content, {fg: :red, format: [:bold]}
         add :confirm_input, {fg: :white, format: [:bold]}
         add :session_banner, {fg: :light_green}
         add :session_open, {fg: :white}
         add :session_close, {fg: :white}
-        add :tool_call_reason, {fg: :green}
-        add :tool_call_detail, {fg: :light_green, format: [:italic]}
+        add :tool_call_reason, {fg: :cyan}
+        add :tool_call_detail, {fg: :light_cyan, format: [:italic]}
         add :thinking_progress, {fg: :dark_gray, format: [:italic]}
         add :thinking_content, {fg: :dark_gray, format: [:italic]}
         add :prompt_question, {fg: :cyan}
