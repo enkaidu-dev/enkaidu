@@ -226,9 +226,22 @@ module Enkaidu
 
       def user_confirms?(command, found_restricted)
         has_restricted = " AND contains restricted terms: #{found_restricted.join(", ")}" unless found_restricted.empty?
+        banner = if func.run_with_cordon.none?
+                   {
+                     safe:    false,
+                     message: "UNSAFE command execution, cordon not enabled!",
+                   }
+                 else
+                   {
+                     safe:    true,
+                     message: "SAFE command execution, cordon enabled.",
+                   }
+                 end
+
         func.runtime.renderer.user_confirm_security_question?(
           description: "The agent's AI model wants to run the following system command#{has_restricted || ""}",
-          subject: command
+          subject: command,
+          banner: banner
         )
       end
 
