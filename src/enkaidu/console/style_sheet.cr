@@ -111,7 +111,7 @@ module Enkaidu::Console
     def self.default
       @@default_style_sheet ||= Console::StyleSheet.create do
         add :response, {fg: :white, format: [:bold]}
-        add :info, {fg: :cyan}
+        add :info, {fg: :light_blue}
         add :warning, {fg: :light_yellow}
         add :error, {fg: :red, format: [:bold]}
         add :before_query, {fg: :yellow}
