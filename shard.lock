@@ -37,8 +37,8 @@ shards:
     version: 1.0.0
 
   reply:
-    git: https://github.com/i3oris/reply.git
-    version: 0.4.0
+    git: https://github.com/nogginly/reply.cr.fork.git
+    version: 0.4.0+git.commit.e77259827ab3cf598c2e220bca7f08e5ab8da30c
 
   sixteen:
     git: https://github.com/ralsina/sixteen.git

@@ -224,7 +224,8 @@ module Enkaidu::Console
       else
         trim_length = (LLM_MAX_TOOL_CALL_ARGS_LENGTH - trim_more).clamp(32, LLM_MAX_TOOL_CALL_ARGS_LENGTH)
         print fmt(:tool_call_detail, "\n  └") if prop_reason
-        puts fmt(:tool_call_detail, "→ #{name} #{trim_text(args.to_s, trim_length)}")
+        args_minus = args_json.as_h.select { |k, v| k != "reason" }
+        puts fmt(:tool_call_detail, "─ #{name} #{trim_text(args_minus.to_json, trim_length)}")
       end
 
       puts unless streaming? || quiet?

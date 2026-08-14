@@ -27,8 +27,12 @@ dependencies:
     github: spider-gazelle/json-schema
     version: 1.3.3
   reply:
-    github: I3oris/reply
-    version: 0.4.0
+    github: nogginly/reply.cr.fork
+    branch: support-kitty-prototocol-input
+    # ---- use fork with Kitty protocol support until PR is merged upstream
+    # github: I3oris/reply
+    # version: 0.4.0
+    # ----
   html5:
     github: naqvis/crystal-html5
     version: 0.7.0
