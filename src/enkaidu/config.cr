@@ -154,7 +154,7 @@ module Enkaidu
       # Configure workspace to indicate if using brew, python, ruby etc.
       getter workspace : Workspace?
       # Confirm cordon is working by running and reporting on some tests; default to true.
-      getter confirm = true
+      getter confirm : Bool? = true
 
       def initialize; end
     end
