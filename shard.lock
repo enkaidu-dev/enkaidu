@@ -14,7 +14,7 @@ shards:
 
   cordon:
     git: https://github.com/modelarmy/cordon.cr.git
-    version: 0.6.0
+    version: 0.6.2
 
   crimage:
     git: https://github.com/naqvis/crimage.git
@@ -38,7 +38,7 @@ shards:
 
   reply:
     git: https://github.com/nogginly/reply.cr.fork.git
-    version: 0.4.0+git.commit.e77259827ab3cf598c2e220bca7f08e5ab8da30c
+    version: 0.4.0+git.commit.f314535853df876af35ec1986ecf85fdff38e809
 
   sixteen:
     git: https://github.com/ralsina/sixteen.git

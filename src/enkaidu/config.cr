@@ -153,6 +153,8 @@ module Enkaidu
       getter policy = Policy.new
       # Configure workspace to indicate if using brew, python, ruby etc.
       getter workspace : Workspace?
+      # Confirm cordon is working by running and reporting on some tests; default to true.
+      getter confirm = true
 
       def initialize; end
     end

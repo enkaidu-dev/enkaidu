@@ -4,11 +4,15 @@ require "./config"
 module Enkaidu
   # Defines configurable options for an Enkaidu session
   abstract class SessionOptions
+    alias TernaryBool = Bool?
+
     abstract def provider_type : String?
     abstract def model_name : String?
     abstract def debug?
     abstract def stream?
     abstract def quiet?
+    abstract def cordon_confirmed? : TernaryBool
+
     abstract def recorder_file : IO?
     abstract def renderer : SessionRenderer
 

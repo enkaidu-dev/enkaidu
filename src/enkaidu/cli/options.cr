@@ -30,6 +30,13 @@ module Enkaidu
       getter config : Config
       getter console : Console::Renderer
 
+      @cordon_confirmed : TernaryBool = nil
+
+      # Returns `nil` if un-checked, and if checked `true` means cordon is enabled.
+      def cordon_confirmed? : TernaryBool
+        @cordon_confirmed
+      end
+
       private def add(name : Symbol, value : String | Bool)
         @options[name] = value.to_s
       end
@@ -57,6 +64,7 @@ module Enkaidu
 
         check_config_for_defaults
         verify_required_options
+        confirm_cordon if config.cordon.confirm
 
         if console_styles = config.console.try(&.style_sheet)
           @console.style_sheet = console_styles
@@ -211,6 +219,14 @@ module Enkaidu
           error_and_exit_with "FATAL: Provider required.", help
         elsif provider_type == "ollama" && model_name.nil?
           error_and_exit_with "FATAL: Model required by Ollama provider.", help
+        end
+      end
+
+      private def confirm_cordon
+        report = Cordon.confirm
+        case @cordon_confirmed = report.ok?
+        when true then console.respond_with("Cordon confirmed", report)
+        else           console.error_with("ERROR: Could not confirm cordon", report)
         end
       end
 
