@@ -59,11 +59,15 @@ module Enkaidu::Console
       @styles[key] = style
     end
 
+    private alias ColorIndex = UInt8 | Int32 | Int64 | UInt32 | UInt64
+
     private def parse_color(value)
       case value
-      when Symbol, String             then Colorize::ColorANSI.parse(value.to_s)
-      when UInt8                      then Colorize::Color256.new(value)
-      when Tuple(UInt8, UInt8, UInt8) then Colorize::ColorRGB.new(*value)
+      when Symbol, String
+        name = value.to_s
+        Colorize::ColorANSI.parse?(name) || Colorize::Color256.new(Termify::ANSI::Color256.parse(name).to_u8)
+      when ColorIndex                                then Colorize::Color256.new(value)
+      when Tuple(ColorIndex, ColorIndex, ColorIndex) then Colorize::ColorRGB.new(*value)
       end
     end
 

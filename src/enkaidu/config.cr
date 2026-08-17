@@ -160,8 +160,10 @@ module Enkaidu
     end
 
     class Console < ConfigSerializable
-      alias StyleSheet = Hash(String, NamedTuple(fg: String,
+      alias StyleSheet = Hash(String, NamedTuple(
+        fg: String | UInt8 | Tuple(UInt8, UInt8, UInt8),
         format: Array(String)))
+
       # Example:
       # style_sheet:
       #   response:
