@@ -113,20 +113,40 @@ module Enkaidu
         end
 
         if using_ruby = ws.using_ruby
-          ruby_policy = case using_ruby
-                        when true
-                          Cordon::Preset::Ruby.for_current_platform(with_brew: using_brew)
-                        when Config::Cordon::Workspace::UsingRuby
-                          Cordon::Preset::Ruby.for_executable(using_ruby.ruby_path)
-                        end
+          ruby_policy = cordon_ruby_policy(using_ruby, using_brew)
           if ruby_policy
             policy = policy.merge(ruby_policy)
+          end
+        end
+
+        if using_python = ws.using_python
+          py_policy = cordon_python_policy(using_python, using_brew)
+          if py_policy
+            policy = policy.merge(py_policy)
           end
         end
       end
 
       # Done
       policy
+    end
+
+    private def cordon_ruby_policy(using_ruby, using_brew)
+      case using_ruby
+      when true
+        Cordon::Preset::Ruby.for_current_platform(with_brew: using_brew)
+      when Config::Cordon::Workspace::UsingRuby
+        Cordon::Preset::Ruby.for_executable(using_ruby.ruby_path)
+      end
+    end
+
+    private def cordon_python_policy(using_python, using_brew)
+      case using_python
+      when true
+        Cordon::Preset::Python.for_current_platform(with_brew: using_brew)
+      when Config::Cordon::Workspace::UsingPython
+        Cordon::Preset::Python.for_venv(using_python.venv_path)
+      end
     end
 
     # Represents queued queries, and a string representation of the source of queries.
