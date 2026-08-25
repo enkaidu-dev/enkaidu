@@ -94,6 +94,11 @@ module Enkaidu
       end
     end
 
+    # Returns true if "skip_confirm_with_cordon" is true.
+    def skip_confirm_with_cordon? : Bool
+      settings.try(&.["skip_confirm_with_cordon"]?) == true
+    end
+
     name "shell_command"
 
     # Don't know what the chell command does, so assume anything is possible
@@ -144,14 +149,35 @@ module Enkaidu
           multi_commands = command.split(MULTI_CMD_SPLIT_RX).map(&.strip)
           # Make sure each command if safe
           multi_commands.each { |cmd| check_safety(cmd) }
-          # gather up any restricted terms
+          # Determine if we run with or without cordon
+          run_without_cordon = func.run_with_cordon.none?
+
+          # gather up any restricted terms and unapproved commands needing confirmation
           found_restricted = restricted_terms_in(command)
-          # do any of the commands require confirmation?
-          if !found_restricted.empty? || multi_commands.any? { |cmd| requires_confirmation?(cmd) }
-            raise PermissionError.new("User denied execution.") unless user_confirms?(command, found_restricted)
+          found_unconfirmed = multi_commands.select { |cmd| requires_confirmation?(cmd) }
+
+          # Confirm for restricted / not approved commands IF
+          #   - running without cordon, OR
+          #   - running with cordon AND not asked to skip confirm with cordon
+          if run_without_cordon || !func.skip_confirm_with_cordon?
+            # do any of the commands require confirmation?
+            unless found_restricted.empty? && found_unconfirmed.empty?
+              unless user_confirms?(command, found_restricted)
+                raise PermissionError.new(<<-DENIED)
+                User denied execution of command because:
+                #{"- restricted terms found: #{found_restricted}" unless found_restricted.empty?}
+                #{"- not pre-approved commands found: #{found_unconfirmed}" unless found_unconfirmed.empty?}
+                DENIED
+              end
+            end
+          else
+            unless found_restricted.empty? && found_unconfirmed.empty?
+              func.runtime.renderer.warning_with("WARNING: Skipping necessary shell command user confirmation by your request")
+            end
           end
+
           # Now we can execute the command
-          result = if func.run_with_cordon.none?
+          result = if run_without_cordon
                      run_command(command)
                    else
                      run_cordoned_command(command)

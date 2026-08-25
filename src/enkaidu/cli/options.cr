@@ -224,9 +224,10 @@ module Enkaidu
 
       private def confirm_cordon
         report = Cordon.confirm
-        case @cordon_confirmed = report.ok?
-        when true then console.respond_with("Cordon confirmed", report)
-        else           console.error_with("ERROR: Could not confirm cordon", report)
+        if @cordon_confirmed = report.ok?
+          console.respond_with("OK: Cordon available on this system.")
+        else
+          console.error_with("ERROR: Could not confirm cordon", report)
         end
       end
 
