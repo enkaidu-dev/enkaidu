@@ -17,12 +17,12 @@ module Enkaidu
     {% if flag?(:windows) %}
       # In Windows commands, & is unconditional separate, like ';' in Linux. Don't forbid.
       FORBIDDEN_STRINGS  = ["..", "<", ">"]
-      MULTI_CMD_SPLIT_RX = /(\|\|)|(&&)|[;|&]/
+      MULTI_CMD_SPLIT_RX = /(?:\|\|)|(?:&&)|[;|&]/
       ALWAYS_RESTRICTED  = ["rm", "del", "eval", "for", "--expression", "-e ", "-e=", "|", ";"].map(&.upcase)
     {% else %}
       # In *nix commands, & is for background execution, so we forbid it.
-      FORBIDDEN_STRINGS  = ["..", "<", ">", "&"]
-      MULTI_CMD_SPLIT_RX = /(\|\|)|(&&)|[;|]/
+      FORBIDDEN_STRINGS  = ["..", "&"]
+      MULTI_CMD_SPLIT_RX = /(?:\|\|)|(?:&&)|[;|]/
       ALWAYS_RESTRICTED  = ["rm", "eval", "$(", "--expression", "-e ", "-e=", "|", ";"].map(&.upcase)
     {% end %}
 
@@ -99,6 +99,11 @@ module Enkaidu
       settings.try(&.["skip_confirm_with_cordon"]?) == true
     end
 
+    # Returns true if "execute_through_shell" is true.
+    def execute_through_shell? : Bool
+      settings.try(&.["execute_through_shell"]?) == true
+    end
+
     name "shell_command"
 
     # Don't know what the chell command does, so assume anything is possible
@@ -117,9 +122,11 @@ module Enkaidu
 
     CONSTRAINTS:
     - Allowed commands: #{allowed_commands.join(", ")}
-    - Forbidden sub-strings: #{(FORBIDDEN_STRINGS.map { |str| "\"#{str}\"" }).join(", ")}
     #{unless run_with_cordon.none?
-        "- Cordoned (sandbox) mode: #{run_with_cordon}"
+        "- Cordon (sandbox) mode: #{run_with_cordon}"
+      end}
+    #{if execute_through_shell?
+        "- Execute commands through shell: Enabled"
       end}
     DESC
 
@@ -191,13 +198,21 @@ module Enkaidu
       def run_command(cmd)
         stdout = IO::Memory.new
         stderr = IO::Memory.new
-        argv = Process.parse_arguments(cmd)
-        status = Process.run(
-          argv[0],
-          argv[1..],
-          output: stdout,
-          error: stderr
-        )
+        status = if func.execute_through_shell?
+                   Process.run(cmd,
+                     shell: true,
+                     output: stdout,
+                     error: stderr
+                   )
+                 else
+                   argv = Process.parse_arguments(cmd)
+                   Process.run(
+                     argv[0],
+                     argv[1..],
+                     output: stdout,
+                     error: stderr
+                   )
+                 end
         {exit_code: status.exit_code, stdout: stdout.to_s, stderr: stderr.to_s}
       end
 
@@ -215,8 +230,12 @@ module Enkaidu
         if runtime_policy = func.runtime.cordon_policy
           cmd_policy = cmd_policy.merge(runtime_policy)
         end
-        argv = Process.parse_arguments(cmd)
-        result = Cordon.run(argv, cmd_policy)
+        result = if func.execute_through_shell?
+                   Cordon.run([cmd], cmd_policy, shell: true)
+                 else
+                   argv = Process.parse_arguments(cmd)
+                   Cordon.run(argv, cmd_policy)
+                 end
         {exit_code: result.exit_code, stdout: result.stdout, stderr: result.stderr}
       end
 

@@ -16,7 +16,7 @@ development_dependencies:
 dependencies:
   cordon:
     github: modelarmy/cordon.cr
-    version: 0.6.2
+    version: 0.6.3
   termify:
     github: nogginly/termify.cr
     version: 0.6.0
