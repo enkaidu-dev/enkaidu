@@ -46,5 +46,3 @@ dependencies:
 targets:
   enkaidu:
     main: src/main.cr
-  ameba:
-    main: bin/ameba.cr

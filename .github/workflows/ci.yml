@@ -40,7 +40,7 @@ jobs:
         with:
           path: |
             lib
-            bin/ameba
+            bin/ameba*
           key: ${{ runner.os }}-shards-${{ hashFiles('**/shard.lock') }}
 
       - name: Prepare and build webui
@@ -52,9 +52,13 @@ jobs:
 
       # ---- Build debug release and check code quality on one platform
 
-      - name: Install shards
+      - name: Install shards (Linux)
         if: ${{ runner.os == 'Linux' }}
-        run: shards check || ( shards install && shards build ameba )
+        run: shards check || shards install
+
+      - name: Build ameba  (Linux)
+        if: ${{ runner.os == 'Linux' }}
+        run: crystal build -Dpreview_mt -o bin/ameba bin/ameba.cr
 
       - name: Setup debug environment (Linux)
         if: ${{ runner.os == 'Linux' }}
