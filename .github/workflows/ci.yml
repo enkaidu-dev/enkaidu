@@ -54,7 +54,7 @@ jobs:
 
       - name: Install shards
         if: ${{ runner.os == 'Linux' }}
-        run: shards check || shards install
+        run: shards check || ( shards install && shards build ameba )
 
       - name: Setup debug environment (Linux)
         if: ${{ runner.os == 'Linux' }}
