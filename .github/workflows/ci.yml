@@ -13,11 +13,11 @@ jobs:
 
       matrix:
         include:
-          - { os: ubuntu-latest, crystal: 1.19 }
+          - { os: ubuntu-latest, crystal: "1.19" }
+          - { os: ubuntu-latest, crystal: "1.20" }
           - { os: ubuntu-latest, crystal: latest }
           - { os: macos-latest, crystal: latest }
-          - { os: macos-15-intel, crystal: latest }
-          - { os: windows-latest, crystal: 1.19.1 } # Newer Crystal releases failing to install
+          - { os: windows-latest, crystal: "1.19.1" } # Newer Crystal releases failing to install
 
     runs-on: ${{ matrix.os }}
 
@@ -40,7 +40,7 @@ jobs:
         with:
           path: |
             lib
-            bin/ameba
+            bin/ameba*
           key: ${{ runner.os }}-shards-${{ hashFiles('**/shard.lock') }}
 
       - name: Prepare and build webui
@@ -52,13 +52,17 @@ jobs:
 
       # ---- Build debug release and check code quality on one platform
 
-      - name: Install shards
+      - name: Install shards (Linux)
         if: ${{ runner.os == 'Linux' }}
         run: shards check || shards install
 
       - name: Setup debug environment (Linux)
         if: ${{ runner.os == 'Linux' }}
         run: mkdir -p bin/debug
+
+      - name: Build ameba  (Linux)
+        if: ${{ runner.os == 'Linux' }}
+        run: cp lib/ameba/bin/ameba.cr bin && crystal build -Dpreview_mt -o bin/ameba bin/ameba.cr
 
       - name: Build Debug (Linux)
         if: ${{ runner.os == 'Linux' }}

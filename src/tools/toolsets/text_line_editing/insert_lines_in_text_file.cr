@@ -2,7 +2,7 @@ require "json"
 require "../../built_in_function"
 require "../../file_helper"
 
-module Tools::TextEditing
+module Tools::TextLineEditing
   # The `InsertLinesInTextFileTool` class defines a tool for inserting text at
   # a specific line in a text file. It ensures the operation is performed securely within the
   # allowed directory, avoiding access to unauthorized paths.

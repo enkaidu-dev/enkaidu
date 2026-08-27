@@ -7,8 +7,6 @@ module Tools
       hold ReadTextFileTool
       hold WriteTextFileTool
       hold ReplaceTextInTextFileTool
-      hold InsertLinesInTextFileTool
-      hold ReplaceLinesInTextFileTool
     end
     Tools.register(toolset)
   end

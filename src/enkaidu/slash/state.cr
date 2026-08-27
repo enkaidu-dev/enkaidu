@@ -7,14 +7,14 @@ module Enkaidu::Slash
     HELP_BRIEF = "`#{NAME} <sub-command>` - State management"
 
     HELP = <<-HELP1
-    #{HELP_BRIEF}
-    - `global (or g) namespaces (or ns)`
-      - List namespaces in the global state
-    - `global (or g) set ns=NAMESPACE key=KEY value=STR`
-      - Set a global state key/value within the given namespace
-    - `global (or g) get ns=NAMESPACE key=KEY`
-      - Get a global state value for a key within the given namespace
-    HELP1
+      #{HELP_BRIEF}
+      - `global (or g) namespaces (or ns)`
+        - List namespaces in the global state
+      - `global (or g) set ns=NAMESPACE key=KEY value=STR`
+        - Set a global state key/value within the given namespace
+      - `global (or g) get ns=NAMESPACE key=KEY`
+        - Get a global state value for a key within the given namespace
+      HELP1
 
     def name : String
       NAME

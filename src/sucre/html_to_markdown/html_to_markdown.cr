@@ -274,7 +274,6 @@ class HtmlToMarkdown
   end
 
   # Processes a single HTML token and converts it to Markdown.
-  # ameba:disable Metrics/CyclomaticComplexity: Not worth splitting this up.
   private def process_token(markdown : IO, token : HTML5::Token)
     case token.type
     when .error?

@@ -89,12 +89,12 @@ module LLM
     macro name(str)
       # The name of the function
       def self.function_name : String
-        {{str}}
+        {{ str }}
       end
 
       # The name of the function
       def name : String
-        {{str}}
+        {{ str }}
       end
     end
 
@@ -102,7 +102,7 @@ module LLM
     macro static_description(str)
       # The pre-loaded static description of the function.
       def self.description : String
-        {{str}}
+        {{ str }}
       end
     end
 
@@ -110,27 +110,27 @@ module LLM
     macro runtime_description(str)
       # The runtime description of the function.
       def description : String
-        {{str}}
+        {{ str }}
       end
     end
 
     # Define the description for the function, same for both static and runtime.
     macro description(str)
-      static_description {{str}}
+      static_description {{ str }}
 
-      runtime_description {{str}}
+      runtime_description {{ str }}
     end
 
     # Define a parameter for this LLM Function.
     macro param(name, description, type = Param::Type::Str, required = false)
-      @@params[{{name}}] ||= Param.new({{name}}, {{type}}, {{description}}, {{required}})
+      @@params[{{ name }}] ||= Param.new({{ name }}, {{ type }}, {{ description }}, {{ required }})
     end
 
     # Define the method that is used to create the Runner
     macro runner(runner_type)
       # Return an instance of this function's Runner
       def new_runner : Runner
-        {{runner_type}}.new
+        {{ runner_type }}.new
       end
     end
   end

@@ -9,10 +9,11 @@ module Enkaidu::Slash
     private getter commands
     private getter include_command = IncludeCommand.new
     private getter session_manager : SessionManager
+    private getter macro_helper : MacroProcessingHelper
 
     delegate query_indicators, take_inclusions!, take_response_schema!, response_json_schema, to: @include_command
 
-    def initialize(@session_manager)
+    def initialize(@session_manager, @macro_helper)
       @commands = {} of String => Command
       register_commands
     end
@@ -28,7 +29,7 @@ module Enkaidu::Slash
     private def register_commands
       [
         include_command, # tracked locally to access inclusions
-        MacroCommand.new,
+        MacroCommand.new(macro_helper),
         PromptCommand.new(self),
         SessionCommand.new,
         StateCommand.new,

@@ -14,15 +14,20 @@ module Tools::DateAndTime
 
     class Runner < LLM::Function::Runner
       def execute(args : JSON::Any) : String
-        current_datetime = Time.utc.to_s("%FT%T%:z")
+        local = Time.local
 
-        success_response(current_datetime)
+        success_response(local)
       end
 
       # Create a success response as a JSON string
-      def success_response(current_datetime)
+      def success_response(local : Time)
         {
-          current_datetime: current_datetime,
+          local: {
+            date: local.to_s("%Y-%m-%d"),
+            time: local.to_s("%H:%M:%S %:z"),
+            tz:   local.to_s("%Z"),
+          },
+          iso_8601: local.to_rfc3339,
         }.to_json
       end
     end

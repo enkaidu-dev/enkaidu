@@ -19,8 +19,6 @@ module Enkaidu
 
   class InvalidSessionQuery < Exception; end
 
-  class InvalidMacroCall < Exception; end
-
   class UnexpectedError < Exception; end
 
   # The Session class manages connection setup, logging, and the processing of
@@ -54,7 +52,6 @@ module Enkaidu
     include Session::Prompts
     include Session::SystemPrompts
     include Session::McpServers
-    include Session::Macros
 
     getter id = UUID.v7.to_s
 
@@ -180,72 +177,79 @@ module Enkaidu
     end
 
     private SYSPROMPT_TOOL_DISCOVERY = <<-EMPOWERED
-    <empowered>
-    * If you need tools to solve a task, REMEMBER to look up and install them using the following tools _since not all tools are pre-installed_:
-      - `list_installable_tools` to find available tools.
-      - `install_tools` to activate tools
-    </empowered>
-    EMPOWERED
+      <empowered>
+      * If you need tools to solve a task, REMEMBER to look up and install them using the following tools _since not all tools are pre-installed_:
+        - `list_installable_tools` to find available tools.
+        - `install_tools` to activate tools
+      </empowered>
+      EMPOWERED
 
     private SYSPROMPT_SUB_AGENT = <<-AGENTIC
-    <agentic>
-    * Spawn sub-agents to handle tasks that would otherwise fill your context window, keeping your current session lean and focused.
-      * When to spawn:
-        - The task is self-contained and can produce a concise final answer
-        - The task involves extensive file reading, analysis, or operations that would generate large intermediate outputs
-        - The task is well-scoped and can be completed independently
-      * When to keep work local:
-        - The task is simple or straightforward
-        - The task is tightly coupled to your current work
-        - The task would be difficult to delegate effectively
-    </agentic>
-    AGENTIC
+      <agentic>
+      * Spawn sub-agents to handle tasks that would otherwise fill your context window, keeping your current session lean and focused.
+        * When to spawn:
+          - The task is self-contained and can produce a concise final answer
+          - The task involves extensive file reading, analysis, or operations that would generate large intermediate outputs
+          - The task is well-scoped and can be completed independently
+        * When to keep work local:
+          - The task is simple or straightforward
+          - The task is tightly coupled to your current work
+          - The task would be difficult to delegate effectively
+        * When processing files
+          - Do not read file and pass in contents
+          - Do not ask sub-agent to return content for you to write
+          - Ask the sub-agent to do the file reading and writing by passing them the file locations or URLs
+      </agentic>
+      AGENTIC
 
     private SYSPROMPT_GLOBAL_STATE = <<-STATEFUL
-    <stateful>
-    * Set and get global state using key/value pairs that can be grouped under namespaces using the `set_global_state` and `get_global_state` tools.
-    * Use the global state for
-      - tracking progress with iterative tasks, or
-      - communicating between agents, turns, and/or sessions
-    </stateful>
-    STATEFUL
+      <stateful>
+      * Set and get global state using key/value pairs that can be grouped under namespaces using the `set_global_state` and `get_global_state` tools.
+      * Use the global state for
+        - tracking progress with iterative tasks, or
+        - communicating between agents, turns, and/or sessions
+      </stateful>
+      STATEFUL
 
     private def system_prompt(override_system_prompt : String?)
       <<-WRAPPED
-      You are Enkaidu, a capable assistant with tool calling and the ability to handle complex requests with planning and consideration.
-      <attitude>
-      * Keep a natural, conversational tone and use minimal formatting - no bold, no headers, no lists - unless the user explicitly asks or the content is multi-faceted.
-      * Never use emojis unless requested, and even then only judiciously.
-      </attitude>
-      <planner>
-      * Plan what it will take to answer a question or complete a task.
-      * When a user poses a multi-part question, limit yourself to one question per response
-      * Resolve each question before asking follow-ups.
-      * Proceed with the plan unless the plan is complicated and warrants user feedback.
-      </planner>
-      #{if allow_sub_agents?
-          SYSPROMPT_SUB_AGENT
-        end}#{if allow_global_state?
-                SYSPROMPT_GLOBAL_STATE
-              end}#{if allow_tool_discovery?
-                      SYSPROMPT_TOOL_DISCOVERY
-                    end}#{if prompt = override_system_prompt
-                            "\n<additional-guidance>\n#{prompt.strip}\n</additional-guidance>"
-                          end}
-      WRAPPED
+        You are Enkaidu, a capable assistant with tool calling and the ability to handle complex requests with planning and consideration.
+        <attitude>
+        * Keep a natural, conversational tone and use minimal formatting - no bold, no headers, no lists - unless the user explicitly asks or the content is multi-faceted.
+        * Never use emojis unless requested, and even then only judiciously.
+        </attitude>
+        <planner>
+        * Plan what it will take to answer a question or complete a task.
+        * When a user poses a multi-part question, limit yourself to one question per response
+        * Resolve each question before asking follow-ups.
+        * Proceed with the plan unless the plan is complicated and warrants user feedback.
+        </planner>
+        <cooperative>
+        * After thinking through a problem present your conclusion briefly so the user stays connected.
+        </cooperative>
+        #{if allow_sub_agents?
+            SYSPROMPT_SUB_AGENT
+          end}#{if allow_global_state?
+                  SYSPROMPT_GLOBAL_STATE
+                end}#{if allow_tool_discovery?
+                        SYSPROMPT_TOOL_DISCOVERY
+                      end}#{if prompt = override_system_prompt
+                              "\n<additional-guidance>\n#{prompt.strip}\n</additional-guidance>"
+                            end}
+        WRAPPED
     end
 
     private macro m_process_and_record_ask_event(event, prev_event)
       recorder.if_recording? do |io|
         io.puts "," if ix.positive?
-        io.puts {{event}}.to_json
+        io.puts {{ event }}.to_json
       end
-      case type = {{event}}["type"]
+      case type = {{ event }}["type"]
       when "done"
         detect_text_ending(type, prev_event)
       else
         ix += 1
-        process_event({{event}}, {{prev_event}}) do |tool_call|
+        process_event({{ event }}, {{ prev_event }}) do |tool_call|
           tools << tool_call
         end
       end
@@ -449,6 +453,10 @@ module Enkaidu
       end
     ensure
       recorder << "]"
+    end
+
+    def append_last_response_as_prompt(to : Session, prompt_prefix : String, new_response : String) : Bool
+      chat.append_last_response_as_prompt(to: to.chat, prompt_prefix: prompt_prefix, new_response: new_response)
     end
 
     def append_conversations(to : Session, which : LLM::Conversation)

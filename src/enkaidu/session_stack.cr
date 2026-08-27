@@ -37,6 +37,18 @@ module Enkaidu
         exclude_last_turn: exclude_last_turn)
     end
 
+    def pop_session_with_transformed_response(prompt_prefix : String, new_response : String, replace : Bool = false, &)
+      if @session_stack.size > 1
+        prev = @session_stack.pop
+        yield true # We're back in the parent session
+
+        # Should we replace parent's chat history?
+        session.erase_history if replace
+        prev.append_last_response_as_prompt(to: session, prompt_prefix: prompt_prefix, new_response: new_response)
+      end
+      false
+    end
+
     def pop_session(retain : Retain, replace : Bool = false, &)
       if @session_stack.size > 1
         prev = @session_stack.pop

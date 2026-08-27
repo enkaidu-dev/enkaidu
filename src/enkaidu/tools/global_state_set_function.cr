@@ -10,9 +10,9 @@ module Enkaidu
     side_effects SideEffects::None
 
     description <<-DESC
-    Set (or update) the value for one or more keys within a namespace in the global state available across sessions and turns.
-    A monotonically increasing revision counter per namespace is updated for every change to a key in that namespace.
-    DESC
+      Set (or update) the value for one or more keys within a namespace in the global state available across sessions and turns.
+      A monotonically increasing revision counter per namespace is updated for every change to a key in that namespace.
+      DESC
 
     param "namespace", type: Param::Type::Str, required: true,
       description: "A namespace is a container of key/value pairs"

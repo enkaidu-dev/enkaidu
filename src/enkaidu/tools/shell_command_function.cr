@@ -1,10 +1,10 @@
 require "json"
-require "../../built_in_function"
+require "cordon"
+require "./session_built_in_function"
 
-module Tools::ShellAccess
-  # The `ShellCommandTool` class defines a tool for executing shell commands within the
-  # current project directory. Note: This implementation assumes a protected environment (e.g., chroot).
-  class ShellCommandTool < BuiltInFunction
+module Enkaidu
+  # This is the Enkaidu shell command function with session-levelc configuration.
+  class ShellCommandFunction < SessionBuiltInFunction
     # The `PermissionError` class is raised when user permission is required and denied for executing a command.
     class PermissionError < Exception; end
 
@@ -17,14 +17,20 @@ module Tools::ShellAccess
     {% if flag?(:windows) %}
       # In Windows commands, & is unconditional separate, like ';' in Linux. Don't forbid.
       FORBIDDEN_STRINGS  = ["..", "<", ">"]
-      MULTI_CMD_SPLIT_RX = /(\|\|)|(&&)|[;|&]/
+      MULTI_CMD_SPLIT_RX = /(?:\|\|)|(?:&&)|[;|&]/
       ALWAYS_RESTRICTED  = ["rm", "del", "eval", "for", "--expression", "-e ", "-e=", "|", ";"].map(&.upcase)
     {% else %}
       # In *nix commands, & is for background execution, so we forbid it.
-      FORBIDDEN_STRINGS  = ["..", "<", ">", "&"]
-      MULTI_CMD_SPLIT_RX = /(\|\|)|(&&)|[;|]/
+      FORBIDDEN_STRINGS  = ["..", "&"]
+      MULTI_CMD_SPLIT_RX = /(?:\|\|)|(?:&&)|[;|]/
       ALWAYS_RESTRICTED  = ["rm", "eval", "$(", "--expression", "-e ", "-e=", "|", ";"].map(&.upcase)
     {% end %}
+
+    enum CordonHow
+      None
+      ReadOnly
+      ReadWrite
+    end
 
     @allowed_cmds : Array(String)? = nil
     @approved_cmds : Array(String)? = nil
@@ -60,6 +66,24 @@ module Tools::ShellAccess
                             extract_setting("restricted_terms", "ENKAIDU_RESTRICTED_TERMS")
     end
 
+    # Returns CordonHow for how commands should run cordoned off
+    def run_with_cordon : CordonHow
+      config = runtime.options.config
+      case config.cordon.mode
+      when .commands?
+        # In Command mode, though, use readonly? flag to decide
+        # how to use the cordon
+        if config.session.try(&.readonly?)
+          CordonHow::ReadOnly
+        else
+          CordonHow::ReadWrite
+        end
+      else
+        # Do not run commands within a cordon in Unsafe and Agent modes
+        CordonHow::None
+      end
+    end
+
     # Retrieve a setting if present, or env variable if present, or default if specified
     private def extract_setting(name, env_fallback, default : String? = nil)
       case value = (settings.try &.[name]?)
@@ -70,24 +94,41 @@ module Tools::ShellAccess
       end
     end
 
+    # Returns true if "skip_confirm_with_cordon" is true.
+    def skip_confirm_with_cordon? : Bool
+      settings.try(&.["skip_confirm_with_cordon"]?) == true
+    end
+
+    # Returns true if "execute_through_shell" is true.
+    def execute_through_shell? : Bool
+      settings.try(&.["execute_through_shell"]?) == true
+    end
+
     name "shell_command"
 
     # Don't know what the chell command does, so assume anything is possible
-    side_effects SideEffects::All
+    side_effects SideEffects::CommandExec
 
     COMMON_DESCRIPTION = "Executes one of the allowed shell commands from within the " \
                          "current project's directory and returns the shell command's output." \
                          "Commands with restricted terms always require approval."
     # Provide a description for the tool
     static_description <<-DESC
-    #{COMMON_DESCRIPTION}
-    DESC
+      #{COMMON_DESCRIPTION}
+      DESC
 
     runtime_description <<-DESC
-    #{COMMON_DESCRIPTION}
+      #{COMMON_DESCRIPTION}
 
-    Allowed commands: #{allowed_commands.join(", ")}
-    DESC
+      CONSTRAINTS:
+      - Allowed commands: #{allowed_commands.join(", ")}
+      #{unless run_with_cordon.none?
+          "- Cordon (sandbox) mode: #{run_with_cordon}"
+        end}
+      #{if execute_through_shell?
+          "- Execute commands through shell: Enabled"
+        end}
+      DESC
 
     # Define the acceptable parameter using the `param` method
     param "command", type: Param::Type::Str, required: true,
@@ -100,10 +141,11 @@ module Tools::ShellAccess
 
     # The Runner class executes the function
     class Runner < LLM::Function::Runner
-      private getter func : ShellCommandTool
+      private getter func : ShellCommandFunction
 
       def initialize(@func); end
 
+      # ameba:disable Metrics/CyclomaticComplexity: Clear without splitting up
       def execute(args : JSON::Any) : String
         command = args["command"]?.try(&.as_s?) || return error_response("The required 'command' was not specified.")
         command = command.strip
@@ -115,18 +157,87 @@ module Tools::ShellAccess
           multi_commands = command.split(MULTI_CMD_SPLIT_RX).map(&.strip)
           # Make sure each command if safe
           multi_commands.each { |cmd| check_safety(cmd) }
-          # gather up any restricted terms
+          # Determine if we run with or without cordon
+          run_without_cordon = func.run_with_cordon.none?
+
+          # gather up any restricted terms and unapproved commands needing confirmation
           found_restricted = restricted_terms_in(command)
-          # do any of the commands require confirmation?
-          if !found_restricted.empty? || multi_commands.any? { |cmd| requires_confirmation?(cmd) }
-            raise PermissionError.new("User denied execution.") unless user_confirms?(command, found_restricted)
+          found_unconfirmed = multi_commands.select { |cmd| requires_confirmation?(cmd) }
+
+          # Confirm for restricted / not approved commands IF
+          #   - running without cordon, OR
+          #   - running with cordon AND not asked to skip confirm with cordon
+          if run_without_cordon || !func.skip_confirm_with_cordon?
+            # do any of the commands require confirmation?
+            unless found_restricted.empty? && found_unconfirmed.empty?
+              unless user_confirms?(command, found_restricted)
+                raise PermissionError.new(<<-DENIED)
+                  User denied execution of command because:
+                  #{"- restricted terms found: #{found_restricted}" unless found_restricted.empty?}
+                  #{"- not pre-approved commands found: #{found_unconfirmed}" unless found_unconfirmed.empty?}
+                  DENIED
+              end
+            end
+          else
+            unless found_restricted.empty? && found_unconfirmed.empty?
+              func.runtime.renderer.warning_with("WARNING: Skipping necessary shell command user confirmation by your request")
+            end
           end
+
           # Now we can execute the command
-          output = `#{command} 2>&1`
-          success_response(command, output)
+          result = if run_without_cordon
+                     run_command(command)
+                   else
+                     run_cordoned_command(command)
+                   end
+          success_response(command, result) # output)
         rescue e
           error_response("An error occurred while executing the command: #{e.message}")
         end
+      end
+
+      def run_command(cmd)
+        stdout = IO::Memory.new
+        stderr = IO::Memory.new
+        status = if func.execute_through_shell?
+                   Process.run(cmd,
+                     shell: true,
+                     output: stdout,
+                     error: stderr
+                   )
+                 else
+                   argv = Process.parse_arguments(cmd)
+                   Process.run(
+                     argv[0],
+                     argv[1..],
+                     output: stdout,
+                     error: stderr
+                   )
+                 end
+        {exit_code: status.exit_code, stdout: stdout.to_s, stderr: stderr.to_s}
+      end
+
+      def run_cordoned_command(cmd)
+        cmd_policy = Cordon::Policy.build do |policy|
+          case func.run_with_cordon
+          when .read_only?
+            policy.read_only Dir.current
+          when .read_write?
+            policy.read_write Dir.current
+          end
+          policy.allow_network = false # deny all network access
+          policy.working_dir = Dir.current
+        end
+        if runtime_policy = func.runtime.cordon_policy
+          cmd_policy = cmd_policy.merge(runtime_policy)
+        end
+        result = if func.execute_through_shell?
+                   Cordon.run([cmd], cmd_policy, shell: true)
+                 else
+                   argv = Process.parse_arguments(cmd)
+                   Cordon.run(argv, cmd_policy)
+                 end
+        {exit_code: result.exit_code, stdout: result.stdout, stderr: result.stderr}
       end
 
       def check_safety(command)
@@ -161,9 +272,22 @@ module Tools::ShellAccess
 
       def user_confirms?(command, found_restricted)
         has_restricted = " AND contains restricted terms: #{found_restricted.join(", ")}" unless found_restricted.empty?
-        func.renderer.user_confirm_security_question?(
+        banner = if func.run_with_cordon.none?
+                   {
+                     safe:    false,
+                     message: "UNSAFE command execution, cordon not enabled!",
+                   }
+                 else
+                   {
+                     safe:    true,
+                     message: "SAFE command execution, cordon enabled.",
+                   }
+                 end
+
+        func.runtime.renderer.user_confirm_security_question?(
           description: "The agent's AI model wants to run the following system command#{has_restricted || ""}",
-          subject: command
+          subject: command,
+          banner: banner
         )
       end
 

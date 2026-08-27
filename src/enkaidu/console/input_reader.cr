@@ -6,7 +6,7 @@ module Enkaidu::Console
     property label : String
     private getter styler : Console::StyleApplicator
 
-    DELIMETERS = {{" \n\t'\"=".chars}}
+    DELIMETERS = {{ " \n\t'\"=".chars }}
 
     def initialize(@label, @styler)
       super()

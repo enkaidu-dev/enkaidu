@@ -7,44 +7,54 @@ module Enkaidu::Slash
     HELP_BRIEF = "`#{NAME} [<sub-command>]` - Session management"
 
     HELP = <<-HELP1
-    `#{NAME} [<sub-command>]`
-    - `ls`
-      - List all available session named sessions
-    - `id`
-      - Show current session's unique ID.
-    - `goto <NAME>`
-      - Switch to an active named session.
-    - `new <NAME> [model=name]`
-      - Create a new named session and switch to it immediately
-      - Optionally specify a model name from the config to use for the new session
-    - `usage`
-      - Show the token usage / size for the current chat session based on
-        most recent response from LLM
-    - `save <FILEPATH>`
-      - Save the current chat session to a JSONL file
-      - Records current toolsets and tools
-      - Records MCP connections _iff_ they match MCP servers defined in the config file
-      - NOTE: The file should not be edited.
-    - `load <FILEPATH> [tail=<N>]`
-      - Load a saved chat session from its JSONL file.
-      - Clears all active tools and MCP connections
-      - Restores toolsets and re-establishes MCP server connections
-      - Optionally specify how many `N` recent chats to display after loading the session.
-    - `reset [system_prompt_name=name]`
-      - Clear all active tools and MCP connections from the current chat session
-      - Throws away the current session / context
-      - Auto loads tools and MCP connections in the configuration
-      - Replaces the system prompt referenced by name if specified
-    - `push [keep_tools=yes|no] [keep_prompts=yes|no] [keep_history=yes|no] [system_prompt_name=NAME]`
-      - Push current chat session onto session stack and fork a new chat session, keeping tools, prompts, and history as specified
-      - Switches the system prompt if the name of a system prompt template is provided
-      - By default the new session keeps all state
-    - `pop [retain=none|last_full|last_outline|session|session_outline] [replace=yes|no]`
-      - Return to last pushed (parent) chat session and
-        - Retain some of the chat history if `retain=` specified, otherwise `none` and
-        - Replace parent chat history if `replace=yes`, otherwise `no`
-      - Without parameters, throws away session history
-    HELP1
+      `#{NAME} [<sub-command>]`
+      - `ls`
+        - List all available session named sessions
+      - `id`
+        - Show current session's unique ID.
+      - `goto <NAME>`
+        - Switch to an active named session.
+      - `new <NAME> [model=name]`
+        - Create a new named session and switch to it immediately
+        - Optionally specify a model name from the config to use for the new session
+      - `usage`
+        - Show the token usage / size for the current chat session based on
+          most recent response from LLM
+      - `save <FILEPATH>`
+        - Save the current chat session to a JSONL file
+        - Records current toolsets and tools
+        - Records MCP connections _iff_ they match MCP servers defined in the config file
+        - NOTE: The file should not be edited.
+      - `load <FILEPATH> [tail=<N>]`
+        - Load a saved chat session from its JSONL file.
+        - Clears all active tools and MCP connections
+        - Restores toolsets and re-establishes MCP server connections
+        - Optionally specify how many `N` recent chats to display after loading the session.
+      - `reset [system_prompt_name=name]`
+        - Clear all active tools and MCP connections from the current chat session
+        - Throws away the current session / context
+        - Auto loads tools and MCP connections in the configuration
+        - Replaces the system prompt referenced by name if specified
+      - `push [keep_tools=yes|no] [keep_prompts=yes|no] [keep_history=yes|no] [system_prompt_name=NAME]`
+        - Push current chat session onto session stack and fork a new chat session, keeping tools, prompts, and history as specified
+        - Switches the system prompt if the name of a system prompt template is provided
+        - By default the new session keeps all state
+      - `pop [retain=none|last_full|last_outline|session|session_outline] [replace=yes|no]`
+        - Return to last pushed (parent) chat session and
+          - Retain some of the chat history if `retain=` specified, otherwise `none` and
+          - Replace parent chat history if `replace=yes`, otherwise `no`
+        - Without parameters, throws away session history
+
+      **Experimental**
+
+      - `pop_and_transform prefix=PROMPTPREFIX response=NEWRESPONSE [replace=yes/no]`
+        - Transforms the last response into a prompt (with `prefix` pre-pended) message by the user,
+          followed by a `response` message by the LLM,  creating a synthetic conversation
+          and appending it to parent session history.
+        - Return to last pushed (parent) chat session and
+          - Replace parent chat history if `replace=yes`, otherwise `no`, and
+          - Append the transformed synthetic conversation
+      HELP1
 
     def name : String
       NAME
@@ -102,9 +112,22 @@ module Enkaidu::Slash
         handle_session_push(current_session_stack, cmd)
       when .expect?(NAME, "pop", retain: SESSION_POP_RETAIN_NIL, replace: YES_NO_NIL)
         handle_session_pop_with(current_session_stack, cmd)
+      when .expect?(NAME, "pop_and_transform", replace: YES_NO_NIL, prefix: String, response: String)
+        handle_session_pop_and_transform(current_session_stack, cmd)
       else
         session.renderer.warning_with("WARNING: Unknown or incomplete sub-command: '#{cmd.input}'",
           help: HELP, markdown: true)
+      end
+    end
+
+    private def handle_session_pop_and_transform(session_stack, cmd)
+      replace_history = cmd.arg_named?("replace", "no").try(&.!=("no"))
+      prefix = cmd.arg_named("prefix").as(String)
+      response = cmd.arg_named("response").as(String)
+      session_stack.pop_session_with_transformed_response(prompt_prefix: prefix, new_response: response,
+        replace: replace_history) do
+        # Render session popped
+        session_stack.session.renderer.session_popped(depth: session_stack.depth)
       end
     end
 

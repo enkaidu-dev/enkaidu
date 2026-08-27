@@ -62,6 +62,19 @@ module LLM::OpenAI
       true
     end
 
+    # Extract last response from `assistant` and yield it to caller to
+    # process and return a named tuple with a `prompt` and `response` to return
+    # as a message array that caller can inject into a session. Returns `nil` if
+    # no response in the current history.
+    def append_last_response_as_prompt(to : Chat, prompt_prefix : String, new_response : String) : Bool
+      @history.append_transformed_last_response?(to: to.@history) do |content|
+        {
+          response: new_response,
+          prompt:   String.build { |str| str << prompt_prefix << content },
+        }
+      end
+    end
+
     # Extract conversations and return as a JSON string
     def extract_conversations(which : Conversation) : String?
       extract = case which
@@ -73,8 +86,6 @@ module LLM::OpenAI
                   @history.extract_session_conversation
                 when .session_outer?
                   @history.extract_session_conversation(outer: true)
-                else
-                  nil
                 end
       extract.try(&.to_json)
     end
@@ -299,7 +310,8 @@ module LLM::OpenAI
       FunctionCall.new(
         name: tool_call.dig("function", "name").as_s,
         id: tool_call["id"].as_s,
-        args_json: tool_call.dig("function", "arguments").as_s,
+        # vLLM doesn't include empty `arguments:`, so if not present fill with empty string to append to.
+        args_json: tool_call.dig?("function", "arguments").try(&.as_s) || "",
         extra_content: tool_call.dig?("extra_content")
       )
     end
@@ -402,7 +414,6 @@ module LLM::OpenAI
       end
     end
 
-    # ameba:disable Metrics/CyclomaticComplexity: It's too messy if I split this up more.
     private def process_data(data : JSON::Any, from_stream = false, &) : Nil
       yield({type: "debug/data", content: data}) if debug?
 

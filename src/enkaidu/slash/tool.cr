@@ -6,12 +6,12 @@ module Enkaidu::Slash
 
     HELP_BRIEF = "`#{NAME} [<sub-command>]` - Manage available tools / functions"
     HELP       = <<-HELP1
-    #{HELP_BRIEF}
-    - `ls`
-      - List all enabled / active tools
-    - `info <TOOLNAME>`
-      - Provide details about one tool
-    HELP1
+      #{HELP_BRIEF}
+      - `ls`
+        - List all enabled / active tools
+      - `info <TOOLNAME>`
+        - Provide details about one tool
+      HELP1
 
     def name : String
       NAME

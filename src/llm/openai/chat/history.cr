@@ -141,6 +141,45 @@ module LLM::OpenAI
       extract
     end
 
+    # Extract last response from `assistant` and yield it to caller to
+    # transform into a named tuple with a `prompt` and `response`, which in turn
+    # is converted into two messages that are appended `to` the given history.
+    # Returns `true` on success, `false` if unable to extract.
+    def append_transformed_last_response?(to : History, & : String -> NamedTuple(prompt: String, response: String)) : Bool
+      extract = transform_last_response? do |content|
+        yield content
+      end
+      return false unless extract
+      extract.each do |msg|
+        to.append_message(msg)
+      end
+      true
+    end
+
+    # Extract last response from `assistant` and yield it to caller to
+    # transform into a named tuple with a `prompt` and `response`, which in turn
+    # is used to create a message array that caller can inject into a session.
+    # Returns `nil` if
+    # no response in the current history.
+    def transform_last_response?(& : String -> NamedTuple(prompt: String, response: String)) : Array(Message)?
+      response = nil.as(Message::Response?)
+
+      @messages.reverse_each do |msgplus|
+        msg = msgplus.message
+        if msg.is_a? Message::Response
+          response = msg
+          break
+        end
+      end
+
+      if response && (content = response.content)
+        transformed = yield content
+        extract = [] of Message
+        extract << Message::MultiContent.new(transformed[:prompt])
+        extract << Message::Response.new(transformed[:response], reasoning: nil)
+      end
+    end
+
     # Append last whole conversation, starting with most recent `user`
     # message,
     # - either all messages, or

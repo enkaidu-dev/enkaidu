@@ -14,6 +14,14 @@ module Enkaidu::Console
     property? streaming = true
     property? quiet = false
 
+    @term_subscroller = Termify::ANSI::SubScroller.new(Termify.terminal, 5)
+
+    # Call when exiting Enkaidu, especially on interrupts, to clean
+    # up interim terminal state
+    def reset
+      @term_subscroller.stop if @term_subscroller.active?
+    end
+
     # Internal input for prompt args
     private def input
       @input ||= InputReader.new("> ", styler: self)
@@ -22,9 +30,9 @@ module Enkaidu::Console
     private macro mdr_heading_style(prefix = "", underline = false)
       {
         bold: true,
-        underline: {{underline}},
+        underline: {{ underline }},
         {% unless prefix.empty? %}
-        line_prefix: "#{{{prefix}}} ".colorize(:dark_gray).to_s,
+        line_prefix: "#{{{ prefix }}} ".colorize(:dark_gray).to_s,
         {% end %}
         newline_before: true, newline_after: true,
       }
@@ -125,7 +133,19 @@ module Enkaidu::Console
     # by presenting the `description` followed by the `subject` of the question.
     # The renderer should further emphasize the `subject` when presenting the question.
     # @return True to confirm, false otherwise.
-    def user_confirm_security_question?(description, subject : String | Array(String)) : Bool
+    def user_confirm_security_question?(description, subject : String | Array(String),
+                                        banner : NamedTuple(safe: Bool, message: String)? = nil) : Bool
+      if banner
+        style = banner[:safe] ? :confirm_banner_safe : :confirm_banner_unsafe
+        msg = banner[:message]
+        bar = "─" * msg.size
+        puts fmt(style, <<-BANNER)
+          ┌#{bar}┐
+          │#{banner[:message]}│
+          └#{bar}┘
+          BANNER
+      end
+
       puts fmt(:confirm_question, "  CONFIRM: #{description}\n")
       subjects = if subject.is_a? String
                    [subject]
@@ -145,20 +165,20 @@ module Enkaidu::Console
     end
 
     private RESET = <<-ANSI
-    ░░░░░░  ░░░░░░░ ░░░░░░░ ░░░░░░░ ░░░░░░░░
-    ▒▒   ▒▒ ▒▒      ▒▒      ▒▒         ▒▒
-    ▒▒▒▒▒▒  ▒▒▒▒▒   ▒▒▒▒▒▒▒ ▒▒▒▒▒      ▒▒
-    ▓▓   ▓▓ ▓▓           ▓▓ ▓▓         ▓▓
-    ██   ██ ███████ ███████ ███████    ██
-    ANSI
+      ░░░░░░  ░░░░░░░ ░░░░░░░ ░░░░░░░ ░░░░░░░░
+      ▒▒   ▒▒ ▒▒      ▒▒      ▒▒         ▒▒
+      ▒▒▒▒▒▒  ▒▒▒▒▒   ▒▒▒▒▒▒▒ ▒▒▒▒▒      ▒▒
+      ▓▓   ▓▓ ▓▓           ▓▓ ▓▓         ▓▓
+      ██   ██ ███████ ███████ ███████    ██
+      ANSI
 
     private SWITCHED = <<-ANSI
-    ░░░░░░░ ░░     ░░ ░░ ░░░░░░░░  ░░░░░░ ░░   ░░ ░░░░░░░ ░░░░░░
-    ▒▒      ▒▒     ▒▒ ▒▒    ▒▒    ▒▒      ▒▒   ▒▒ ▒▒      ▒▒   ▒▒
-    ▒▒▒▒▒▒▒ ▒▒  ▒  ▒▒ ▒▒    ▒▒    ▒▒      ▒▒▒▒▒▒▒ ▒▒▒▒▒   ▒▒   ▒▒
-         ▓▓ ▓▓ ▓▓▓ ▓▓ ▓▓    ▓▓    ▓▓      ▓▓   ▓▓ ▓▓      ▓▓   ▓▓
-    ███████  ███ ███  ██    ██     ██████ ██   ██ ███████ ██████
-    ANSI
+      ░░░░░░░ ░░     ░░ ░░ ░░░░░░░░  ░░░░░░ ░░   ░░ ░░░░░░░ ░░░░░░
+      ▒▒      ▒▒     ▒▒ ▒▒    ▒▒    ▒▒      ▒▒   ▒▒ ▒▒      ▒▒   ▒▒
+      ▒▒▒▒▒▒▒ ▒▒  ▒  ▒▒ ▒▒    ▒▒    ▒▒      ▒▒▒▒▒▒▒ ▒▒▒▒▒   ▒▒   ▒▒
+           ▓▓ ▓▓ ▓▓▓ ▓▓ ▓▓    ▓▓    ▓▓      ▓▓   ▓▓ ▓▓      ▓▓   ▓▓
+      ███████  ███ ███  ██    ██     ██████ ██   ██ ███████ ██████
+      ANSI
 
     def session_reset
       puts fmt(:session_banner, RESET)
@@ -189,23 +209,23 @@ module Enkaidu::Console
 
       args_json = JSON.parse(args.as_s)
       trim_more = name.size + 5
-      print "  " if quiet?
 
       prop_reason = args_json.dig?("reason").try(&.as_s?)
       if reason = prop_reason
-        print fmt(:tool_call_reason, "→ #{reason} ")
+        print fmt(:tool_call_reason, "• #{reason}")
         trim_more += reason.size + 2
       else
-        print fmt(:tool_call_reason, "→ ")
+        print fmt(:tool_call_reason, "• Calling")
         trim_more += 2
       end
 
       if quiet?
-        puts fmt(:tool_call_detail, " ~ CALL #{name}")
+        puts fmt(:tool_call_detail, " → #{name}")
       else
         trim_length = (LLM_MAX_TOOL_CALL_ARGS_LENGTH - trim_more).clamp(32, LLM_MAX_TOOL_CALL_ARGS_LENGTH)
-        print fmt(:tool_call_detail, "\n  └─") if prop_reason
-        puts fmt(:tool_call_detail, "CALL #{name} #{trim_text(args.to_s, trim_length)}")
+        print fmt(:tool_call_detail, "\n  └") if prop_reason
+        args_minus = args_json.as_h.select { |k, _| k != "reason" }
+        puts fmt(:tool_call_detail, "─ #{name} #{trim_text(args_minus.to_json, trim_length)}")
       end
 
       puts unless streaming? || quiet?
@@ -227,8 +247,6 @@ module Enkaidu::Console
         @md_renderer.reset
       end
     end
-
-    @term_subscroller = Termify::ANSI::SubScroller.new(Termify.terminal, 5)
 
     def llm_text(text, reasoning : Bool, starting : Bool = false, ending : Bool = false)
       if streaming?
@@ -321,9 +339,9 @@ module Enkaidu::Console
 
     private def ask_prompt_inputs(prompt, params : Hash? = nil) : Hash(String, String)
       text = <<-PREFIX
-          #{prompt.description}
+        #{prompt.description}
 
-      PREFIX
+        PREFIX
       puts fmt(:prompt_content, text)
 
       arg_inputs = {} of String => String

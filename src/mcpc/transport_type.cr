@@ -21,8 +21,6 @@ module MCPC
       when "auto"   then AutoDetect
       when "legacy" then LegacySSE
       when "http"   then ModernHTTP
-      else
-        nil
       end
     end
 

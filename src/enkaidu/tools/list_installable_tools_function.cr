@@ -7,9 +7,9 @@ module Enkaidu
     side_effects SideEffects::None
 
     description <<-DESC
-    Obtain a list of available tools that you can install. Use the list to determine the tools that will help with
-    your task. IMPORTANT: YOU MUST install a tool from this list BEFORE you can call it.
-    DESC
+      Obtain a list of available tools that you can install. Use the list to determine the tools that will help with
+      your task. IMPORTANT: YOU MUST install a tool from this list BEFORE you can call it.
+      DESC
 
     runner Runner
 

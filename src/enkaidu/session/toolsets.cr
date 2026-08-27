@@ -136,24 +136,19 @@ module Enkaidu
 
       def list_tool_details(tool_name)
         if tool = chat.find_tool?(tool_name)
-          if !readonly? || tool.side_effects.readonly?
-            text = String.build do |io|
-              desc = if tool.description == tool_name
-                       "_No description provided. Using tool name instead._"
-                     else
-                       tool.description
-                     end
-              io << desc << '\n'
-              io << "### Side-effects\n" << tool.side_effects.value_string << "\n\n"
-              io << "### Input Schema (Parameters)\n```json\n"
-              io << JSON.parse(tool.input_json_schema).to_pretty_json
-              io << "\n```\n"
-            end
-            renderer.respond_with("Tool details: #{tool_name} (#{tool.origin})", text, markdown: true)
-          else
-            # TBH, if #readonly? this should never happen.
-            renderer.warning_with("Only read-only tools allowed. Tool not available: #{tool_name}")
+          text = String.build do |io|
+            desc = if tool.description == tool_name
+                     "_No description provided. Using tool name instead._"
+                   else
+                     tool.description
+                   end
+            io << desc << '\n'
+            io << "### Side-effects\n" << tool.side_effects.value_string << "\n\n"
+            io << "### Input Schema (Parameters)\n```json\n"
+            io << JSON.parse(tool.input_json_schema).to_pretty_json
+            io << "\n```\n"
           end
+          renderer.respond_with("Tool details: #{tool_name} (#{tool.origin})", text, markdown: true)
         else
           renderer.info_with("INFO: No such tool available: #{tool_name}")
         end

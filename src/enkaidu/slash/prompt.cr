@@ -7,16 +7,16 @@ module Enkaidu::Slash
     HELP_BRIEF = "`#{NAME} [<sub-command>]` - Manage custom prompts"
 
     HELP = <<-HELP1
-    #{HELP_BRIEF}
-    - `ls`
-      - List all available prompt
-    - `info <PROMPTNAME>`
-      - Provide details about one prompt
-    - `use <PROMPTNAME> [NAME=VALUE ...]`
-      - Use (invoke) a prompt by name.
-      - If the prompt requirements arguments, you will be prompted for input per argument.
-      - If you provide values for any arguments by name, those values will be used without prompting
-    HELP1
+      #{HELP_BRIEF}
+      - `ls`
+        - List all available prompt
+      - `info <PROMPTNAME>`
+        - Provide details about one prompt
+      - `use <PROMPTNAME> [NAME=VALUE ...]`
+        - Use (invoke) a prompt by name.
+        - If the prompt requirements arguments, you will be prompted for input per argument.
+        - If you provide values for any arguments by name, those values will be used without prompting
+      HELP1
 
     private getter commander : Commander
 

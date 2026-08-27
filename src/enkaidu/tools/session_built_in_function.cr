@@ -8,20 +8,21 @@ module Enkaidu
     protected getter runtime : Runtime
 
     # Create an Enkaidu runtime-specific built-in function type.
-    def initialize(@runtime, @settings = nil)
-      super("Session Built-ins")
+    def initialize(@runtime)
+      super("Session Built-ins",
+        settings: runtime.options.config.tool_settings_by_name(self.name))
 
       # All built-in tools ask for a reason for the tool call so that Enkaidu can
       # show a friendly reason
       param "reason", required: true, type: Param::Type::Str,
-        description: "In gerund form, describe briefly what you're working on that led you to call this tool."
+        description: Tools::BuiltInFunction::REASON_DESCRIPTION
     end
 
     # Define the method that is used to create the SessionBuiltInFunction::Runner
     macro runner(runner_type)
       # Return an instance of this function's Runner
       def new_runner : Runner
-        {{runner_type}}.new(self)
+        {{ runner_type }}.new(self)
       end
     end
 

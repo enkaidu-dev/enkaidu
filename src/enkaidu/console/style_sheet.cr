@@ -24,6 +24,8 @@ module Enkaidu::Console
     QueryPrefixByQueue
     QueryFeedback
     AfterReply
+    ConfirmBannerSafe
+    ConfirmBannerUnsafe
     ConfirmQuestion
     ConfirmContent
     ConfirmInput
@@ -57,16 +59,20 @@ module Enkaidu::Console
       @styles[key] = style
     end
 
+    private alias ColorIndex = UInt8 | Int32 | Int64 | UInt32 | UInt64
+
     private def parse_color(value)
       case value
-      when Symbol, String             then Colorize::ColorANSI.parse(value.to_s)
-      when UInt8                      then Colorize::Color256.new(value)
-      when Tuple(UInt8, UInt8, UInt8) then Colorize::ColorRGB.new(*value)
+      when Symbol, String
+        name = value.to_s
+        Colorize::ColorANSI.parse?(name) || Colorize::Color256.new(Termify::ANSI::Color256.parse(name).to_u8)
+      when ColorIndex                                then Colorize::Color256.new(value)
+      when Tuple(ColorIndex, ColorIndex, ColorIndex) then Colorize::ColorRGB.new(*value)
       end
     end
 
     private def parse_mode(values)
-      return nil unless values
+      return unless values
       values.map do |value|
         Colorize::Mode.parse(value.to_s)
       end
@@ -109,25 +115,27 @@ module Enkaidu::Console
     def self.default
       @@default_style_sheet ||= Console::StyleSheet.create do
         add :response, {fg: :white, format: [:bold]}
-        add :info, {fg: :cyan}
-        add :warning, {fg: :light_red}
-        add :error, {fg: :red}
+        add :info, {fg: :light_blue}
+        add :warning, {fg: :light_yellow}
+        add :error, {fg: :red, format: [:bold]}
         add :before_query, {fg: :yellow}
-        add :query_syntax_command, {fg: :light_red, format: [:italic]}
-        add :query_syntax_macro, {fg: :light_red, format: [:italic]}
+        add :query_syntax_command, {fg: :light_cyan, format: [:italic]}
+        add :query_syntax_macro, {fg: :light_magenta, format: [:italic]}
         add :query_syntax_path, {fg: :light_blue}
         add :after_reply, {fg: :yellow}
         add :query_prefix_by_user, {fg: :yellow}
         add :query_prefix_by_queue, {fg: :magenta}
         add :query_feedback, {fg: :green}
+        add :confirm_banner_safe, {fg: :light_green}
+        add :confirm_banner_unsafe, {fg: :light_red}
         add :confirm_question, {fg: :white}
         add :confirm_content, {fg: :red, format: [:bold]}
         add :confirm_input, {fg: :white, format: [:bold]}
         add :session_banner, {fg: :light_green}
         add :session_open, {fg: :white}
         add :session_close, {fg: :white}
-        add :tool_call_reason, {fg: :green}
-        add :tool_call_detail, {fg: :light_green, format: [:italic]}
+        add :tool_call_reason, {fg: :cyan}
+        add :tool_call_detail, {fg: :light_cyan, format: [:italic]}
         add :thinking_progress, {fg: :dark_gray, format: [:italic]}
         add :thinking_content, {fg: :dark_gray, format: [:italic]}
         add :prompt_question, {fg: :cyan}

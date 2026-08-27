@@ -16,13 +16,13 @@ module LLM::OpenAI
     # Emit this message as one or more `ChatEvent` objects
     def emit(& : ChatEvent ->) : Nil
       body = <<-EMIT
-          {
-            "function" : {
-              "name" : #{name.to_json},
-              "content" : #{content.to_json}
-            }
+        {
+          "function" : {
+            "name" : #{name.to_json},
+            "content" : #{content.to_json}
           }
-          EMIT
+        }
+        EMIT
       yield({
         type:    "tool_call/done",
         content: JSON.parse(body),

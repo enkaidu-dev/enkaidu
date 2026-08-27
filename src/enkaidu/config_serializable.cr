@@ -56,17 +56,17 @@ module Enkaidu
             @{{ var.name }} = gsub_with_env(tmp)
           end
         {% elsif typ == Hash(String, String) %}
-          tmp_{{var}} = {{typ}}.new
-          {{var}}.each do |name, value|
-            tmp_{{var}}[name] = gsub_with_env(value)
+          tmp_{{ var }} = {{ typ }}.new
+          {{ var }}.each do |name, value|
+            tmp_{{ var }}[name] = gsub_with_env(value)
           end
-          @{{var}} = tmp_{{var}}
+          @{{ var }} = tmp_{{ var }}
         {% elsif typ == Array(String) %}
-          tmp_{{var}} = [] of String
-          {{var}}.each do |value|
-            tmp_{{var}} << gsub_with_env(value)
+          tmp_{{ var }} = [] of String
+          {{ var }}.each do |value|
+            tmp_{{ var }} << gsub_with_env(value)
           end
-          @{{var}} = tmp_{{var}}
+          @{{ var }} = tmp_{{ var }}
         {% end %}
       {% end %}
       {% end %}
@@ -78,7 +78,7 @@ module Enkaidu
       {% presence_name = "#{name}_present".id %}
       {% if @top_level.has_constant?("JSON") %}  @[JSON::Field(ignore: true)]   {% end %}
       {% if @top_level.has_constant?("YAML") %}  @[YAML::Field(ignore: true)]   {% end %}
-      getter? {{presence_name}} : Bool
+      getter? {{ presence_name }} : Bool
 
       # Now declare the getter for which we want to detect presence
       {% if @top_level.has_constant?("YAML") %}  @[YAML::Field(presence: true)]  {% end %}

@@ -21,7 +21,7 @@ module Enkaidu::CLI
       ALT_KEY = "Alt"
     {% end %}
 
-    WELCOME_FIRST_LEFT  = "│ Enkaidu #{VERSION} │ /help for commands │ #{ALT_KEY}-Enter multi-line input │ Tab auto-complete"
+    WELCOME_FIRST_LEFT  = "│ Enkaidu #{VERSION} │ /help for commands │ Shift-Enter multi-line input │ Tab auto-complete"
     WELCOME_SECOND_LEFT = "│ Welcome to your second-in-command(-line) agentic assistant for AI that YOU control!"
 
     WELCOME_WIDTH = [WELCOME_FIRST_LEFT.size, WELCOME_SECOND_LEFT.size].max
@@ -30,7 +30,7 @@ module Enkaidu::CLI
     WELCOME_SECOND_RIGHT = (" " * ((WELCOME_WIDTH - WELCOME_SECOND_LEFT.size) + 2)) + '│'
 
     WELCOME_FIRST_COLOR = "│ #{"Enkaidu".colorize.bold} #{VERSION} │ " \
-                          "#{"/help".colorize(:yellow)} for commands │ #{"#{ALT_KEY}-Enter".colorize(:yellow)} multi-line input │ #{"Tab".colorize(:yellow)} auto-complete"
+                          "#{"/help".colorize(:light_yellow)} for commands │ #{"Shift-Enter".colorize(:light_yellow)} multi-line input │ #{"Tab".colorize(:light_yellow)} auto-complete"
     WELCOME_QUIET_BAR = "─" * (WELCOME_FIRST_LEFT.size + WELCOME_FIRST_RIGHT.size - 2)
 
     PROMPT_PRERELEASE = "CAUTION! #{VERSION} is a PRE-RELEASE in development.".colorize(:red)
@@ -129,13 +129,26 @@ module Enkaidu::CLI
       end
     end
 
+    private def read_input : String?
+      # Enable Kitty (CSI u) mode for disambiguated key modifier input
+      # Forked REPLy shard supports `CSI u` key sequences
+      STDOUT << "\e[>1u" # disambiguate
+      begin
+        str = reader.read_next
+      ensure
+        # Undo CSI u mode when exiting
+        STDOUT << "\e[<u" # undo
+      end
+      str
+    end
+
     def run
       session.auto_load
       recorder << "["
 
       while !done?
         show_query_prompt
-        if q = reader.read_next
+        if q = read_input
           unless q.blank?
             runtime.execute_query(q) do |runtime_event|
               handle_runtime_event(runtime_event)

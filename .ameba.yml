@@ -1,2 +1,3 @@
-rules:
-  Documentation/Documentation: disable
+Style/RedundantSelf:
+  # Disable this; I like being able to say self. sometimes.
+  Enabled: false

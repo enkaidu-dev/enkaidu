@@ -100,7 +100,7 @@ module MCPC
       when 200
         if content_type.starts_with?("text/event-stream")
           message = find_sse_event_after_skipping_spuriosa(response.body_io, wait_time_ms: 500)
-          return {resp: response, path: message["data"]} if message["event"]? == "endpoint"
+          {resp: response, path: message["data"]} if message["event"]? == "endpoint"
         end
       end
     end

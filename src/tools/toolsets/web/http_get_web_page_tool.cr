@@ -12,11 +12,11 @@ module Tools::Web
     side_effects SideEffects::NetRead
 
     description <<-DESC
-    Makes an HTTP GET request to a given URL that returns text and returns the content type and content.
-    It strips line indents and coalesces line breaks for HTML, JSON and XML. Unless asked not to,
-    it removes the `head`, `script`, and `style` elements as well as all `class` attributes
-    from HTML content. Content size of response must be less than #{MAX_CONTENT_SIZE//1024}K.
-    DESC
+      Makes an HTTP GET request to a given URL that returns text and returns the content type and content.
+      It strips line indents and coalesces line breaks for HTML, JSON and XML. Unless asked not to,
+      it removes the `head`, `script`, and `style` elements as well as all `class` attributes
+      from HTML content. Content size of response must be less than #{MAX_CONTENT_SIZE//1024}K.
+      DESC
 
     param "url", type: Param::Type::Str,
       description: "The URL to GET the web page from.",
@@ -28,9 +28,9 @@ module Tools::Web
 
     param "accept", type: Param::Type::Str,
       description: <<-DESCR
-      Optionally specify an acceptable content type (e.g. `text/markdown`) to ask the
-      server for specific format. Default is none.
-      DESCR
+        Optionally specify an acceptable content type (e.g. `text/markdown`) to ask the
+        server for specific format. Default is none.
+        DESCR
 
     param "preserve_source", type: Param::Type::Bool,
       description: "Optional flag to ask to preserve the content from the server without any attempts to condense the text; default is false."

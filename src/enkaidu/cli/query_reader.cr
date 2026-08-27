@@ -8,7 +8,7 @@ module Enkaidu::CLI
     private getter runtime : Runtime
     private getter styler : Console::StyleApplicator
 
-    DELIMETERS = {{" \n\t'\"=".chars}}
+    DELIMETERS = {{ " \n\t'\"=".chars }}
 
     def initialize(@runtime, @styler, @input_history_file : String? = nil)
       super()
@@ -30,10 +30,10 @@ module Enkaidu::CLI
     # Macro, because we don't want the doc generator to
     # execute before we check the cache
     macro cached_doc(name, doc_generator)
-      if doc = @doc_cache[{{name}}]?
+      if doc = @doc_cache[{{ name }}]?
         doc
-      elsif help = {{doc_generator}}
-        @doc_cache[{{name}}] = styler.markdown_to_term(help)
+      elsif help = {{ doc_generator }}
+        @doc_cache[{{ name }}] = styler.markdown_to_term(help)
       end
     end
 
@@ -50,7 +50,7 @@ module Enkaidu::CLI
       elsif entry.starts_with?('?')
         cached_doc(entry, runtime.help_for_conditional(entry))
       elsif entry.starts_with?('!')
-        cached_doc(entry, runtime.session.macro_description(entry))
+        cached_doc(entry, runtime.macro_description(entry))
       elsif entry.starts_with?("./")
         cached_doc("./", PATH_DOC)
       end
@@ -81,7 +81,7 @@ module Enkaidu::CLI
         {
           "Commands and Macros",
           [runtime.commander.command_names,
-           runtime.session.macro_names,
+           runtime.macro_names,
            runtime.conditional_command_names].flatten,
         }
       else

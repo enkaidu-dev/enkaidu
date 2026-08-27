@@ -95,8 +95,8 @@ class WebServer
     context.response.content_type = "application/json"
     context.response.status_code = 500
     context.response.print <<-ERROR
-        { "type" : "error", "message" : "#{ex}" }
-        ERROR
+      { "type" : "error", "message" : "#{ex}" }
+      ERROR
   ensure
     work_tracker.send(Tracker::EndHandler)
   end

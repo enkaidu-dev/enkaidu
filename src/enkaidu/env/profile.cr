@@ -48,7 +48,7 @@ module Enkaidu::Env
     # Find the `DOT_ENKAIDU` directory in the base folder, if any
     private def locate_profile_path(base_path) : Path?
       path = Path.new(base_path, DOT_ENKAIDU)
-      return path if Dir.exists?(path)
+      path if Dir.exists?(path)
     end
 
     private def load_variables
@@ -94,8 +94,6 @@ module Enkaidu::Env
             error_and_exit_with "FATAL: Error parsing profile config file: #{file.relative_to?(CURRENT_DIR)}\n#{ex}"
           end
         end
-      else
-        nil
       end
     end
 
@@ -124,7 +122,12 @@ module Enkaidu::Env
       macros = {} of String => Config::Macro
       each_yaml_file_for("macros") do |file|
         macro_map = Hash(String, Config::Macro).from_yaml(File.read(file))
+        Config.validate_macros(macro_map)
         macros.merge!(macro_map)
+      rescue ex
+        # If error, log where we are for context when the error message gets shown
+        renderer.warning_with "FYI: Reading profile macro file: ./#{file.relative_to?(CURRENT_DIR)}"
+        raise ex
       end
       macros
     end

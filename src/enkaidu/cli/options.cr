@@ -30,6 +30,13 @@ module Enkaidu
       getter config : Config
       getter console : Console::Renderer
 
+      @cordon_confirmed : TernaryBool = nil
+
+      # Returns `nil` if un-checked, and if checked `true` means cordon is enabled.
+      def cordon_confirmed? : TernaryBool
+        @cordon_confirmed
+      end
+
       private def add(name : Symbol, value : String | Bool)
         @options[name] = value.to_s
       end
@@ -57,6 +64,7 @@ module Enkaidu
 
         check_config_for_defaults
         verify_required_options
+        confirm_cordon if config.cordon.confirm
 
         if console_styles = config.console.try(&.style_sheet)
           @console.style_sheet = console_styles
@@ -91,10 +99,10 @@ module Enkaidu
 
         parser.separator <<-MODEL
 
-              The model name can be one defined in the config file. Otherwise
-              also specify the provider type using the '--provider' option.
+          The model name can be one defined in the config file. Otherwise
+          also specify the provider type using the '--provider' option.
 
-        MODEL
+          MODEL
 
         parser.on("--provider=TYPE", "-p TYPE",
           "If needed, one of provide types listed below.") do |type|
@@ -104,19 +112,19 @@ module Enkaidu
 
         parser.separator <<-PROVIDER
 
-              If using a provider, different types depend on different environment
-              variables.
+          If using a provider, different types depend on different environment
+          variables.
 
-              ollama            OLLAMA_ENDPOINT (defaults to http://localhost:11434)
-              openai            OPENAI_MODEL, OPENAI_API_KEY,
-                                    OPENAI_ENDPOINT (defaults to https://api.openai.com)
-              azure_openai      AZURE_OPENAI_MODEL, AZURE_OPENAI_ENDPOINT,
-                                    AZURE_OPENAI_API_KEY, AZURE_OPENAI_API_VER
+          ollama            OLLAMA_ENDPOINT (defaults to http://localhost:11434)
+          openai            OPENAI_MODEL, OPENAI_API_KEY,
+                                OPENAI_ENDPOINT (defaults to https://api.openai.com)
+          azure_openai      AZURE_OPENAI_MODEL, AZURE_OPENAI_ENDPOINT,
+                                AZURE_OPENAI_API_KEY, AZURE_OPENAI_API_VER
 
-              (Early access)
-              google_ai_studio   GOOGLE_AI_API_KEY (required), GOOGLE_AI_ENDPOINT,
-                                    GOOGLE_AI_OPENAI_CHAT_PATH
-      PROVIDER
+          (Early access)
+          google_ai_studio   GOOGLE_AI_API_KEY (required), GOOGLE_AI_ENDPOINT,
+                                GOOGLE_AI_OPENAI_CHAT_PATH
+          PROVIDER
       end
 
       private def define_config_options(parser)
@@ -211,6 +219,15 @@ module Enkaidu
           error_and_exit_with "FATAL: Provider required.", help
         elsif provider_type == "ollama" && model_name.nil?
           error_and_exit_with "FATAL: Model required by Ollama provider.", help
+        end
+      end
+
+      private def confirm_cordon
+        report = Cordon.confirm
+        if @cordon_confirmed = report.ok?
+          console.respond_with("OK: Cordon available on this system.")
+        else
+          console.error_with("ERROR: Could not confirm cordon", report)
         end
       end
 

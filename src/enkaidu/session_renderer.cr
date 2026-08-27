@@ -31,7 +31,8 @@ module Enkaidu
     # by presenting the `description` followed by the `subject` of the question.
     # The renderer should further emphasize the `subject` when presenting the question.
     # @return True to confirm, false otherwise.
-    abstract def user_confirm_security_question?(description, subject : String | Array(String)) : Bool
+    abstract def user_confirm_security_question?(description, subject : String | Array(String),
+                                                 banner : NamedTuple(safe: Bool, message: String)? = nil) : Bool
 
     # Present prompt and ask for inputs if arguments are defined and no values are
     # present in `params`.
