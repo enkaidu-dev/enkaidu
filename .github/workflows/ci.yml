@@ -58,7 +58,7 @@ jobs:
 
       - name: Build ameba  (Linux)
         if: ${{ runner.os == 'Linux' }}
-        run: crystal build -Dpreview_mt -o bin/ameba bin/ameba.cr
+        run: cp lib/ameba/bin/ameba.cr bin && crystal build -Dpreview_mt -o bin/ameba bin/ameba.cr
 
       - name: Setup debug environment (Linux)
         if: ${{ runner.os == 'Linux' }}
