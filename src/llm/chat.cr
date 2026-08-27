@@ -26,8 +26,8 @@ module LLM
 
   # `Chat` is an abstract class that serves as a base for creating various chat implementations.
   abstract class Chat
-    getter model : String | Nil = nil
-    getter system_message : String | Nil = nil
+    getter model : String? = nil
+    getter system_message : String? = nil
     getter? debug = false
     getter? streaming = false
     getter? readonly = false

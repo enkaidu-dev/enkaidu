@@ -7,8 +7,8 @@ module Enkaidu
     side_effects SideEffects::None
 
     description <<-DESC
-    Install one or more tools from the list of installable tools. Tool names are unique across toolsets.
-    DESC
+      Install one or more tools from the list of installable tools. Tool names are unique across toolsets.
+      DESC
 
     param "tools", type: Param::Type::Arr, required: true,
       description: "List of one or more tools to install so they are available to call afterwards"

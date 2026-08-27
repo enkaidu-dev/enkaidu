@@ -7,11 +7,11 @@ module Enkaidu::Slash
     HELP_BRIEF = "`#{NAME} [<sub-command>]` - Manage macros"
 
     HELP = <<-HELP1
-    #{HELP_BRIEF}
-    - `ls`
-      - List all available macros.
-      - Macros can be executed by using the `!` sigil before the name of the macro. E.g. `!test`
-    HELP1
+      #{HELP_BRIEF}
+      - `ls`
+        - List all available macros.
+        - Macros can be executed by using the `!` sigil before the name of the macro. E.g. `!test`
+      HELP1
 
     def name : String
       NAME

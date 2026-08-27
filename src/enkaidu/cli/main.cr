@@ -133,7 +133,6 @@ module Enkaidu::CLI
       # Enable Kitty (CSI u) mode for disambiguated key modifier input
       # Forked REPLy shard supports `CSI u` key sequences
       STDOUT << "\e[>1u" # disambiguate
-      str = ""
       begin
         str = reader.read_next
       ensure

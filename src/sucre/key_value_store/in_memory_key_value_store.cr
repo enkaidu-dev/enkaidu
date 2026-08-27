@@ -17,7 +17,7 @@ module KeyValueStore
       @revision = 0
     end
 
-    def set(key : Key, value : Value) : Void
+    def set(key : Key, value : Value) : Nil
       @store[key] = value
       @revision += 1
     end
@@ -32,7 +32,7 @@ module KeyValueStore
   class InMemory
     private getter state_hash = {} of String => NamedState
 
-    def set(name : Namespace, key : Key, value : Value) : Void
+    def set(name : Namespace, key : Key, value : Value) : Nil
       named_state = if state_hash.has_key?(name)
                       state_hash[name]
                     else

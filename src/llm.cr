@@ -12,12 +12,12 @@ module LLM
 
   protected def self.show_error_trace(ex : Exception, data_label : String, data)
     msg = <<-ERROR
-            ~~~{ unexpected - please report }~~~
-            #{ex.inspect_with_backtrace}
-            ~~~{ #{data_label} }~~~~~
-            #{data}
-            ~~~~~~~~~~~~~~~~~~~~
-            ERROR
+      ~~~{ unexpected - please report }~~~
+      #{ex.inspect_with_backtrace}
+      ~~~{ #{data_label} }~~~~~
+      #{data}
+      ~~~~~~~~~~~~~~~~~~~~
+      ERROR
     STDERR.puts msg.colorize(:magenta)
   end
 

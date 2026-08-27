@@ -30,6 +30,7 @@ module Tools::TextEditing
     class Runner < LLM::Function::Runner
       include FileHelper
 
+      # ameba:disable Metrics/CyclomaticComplexity: Clear without splitting up
       def execute(args : JSON::Any) : String
         file_path = args["file_path"]?.try(&.as_s?).try(&.strip) ||
                     return error_response("The required `file_path` was not specified")

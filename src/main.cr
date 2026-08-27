@@ -19,13 +19,17 @@ module Enkaidu
     end
 
     private def setup_exit_cleanup
-      at_exit {
+      at_exit do
         console.reset
         terminal.restore_console
-      }
+      end
 
-      Signal::INT.trap do
-        exit
+      Process.on_terminate do |reason|
+        case reason
+        when .interrupted?, .session_ended?
+          # Runs at_exit handlers.
+          ::exit
+        end
       end
     end
 

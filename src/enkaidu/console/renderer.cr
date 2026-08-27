@@ -30,9 +30,9 @@ module Enkaidu::Console
     private macro mdr_heading_style(prefix = "", underline = false)
       {
         bold: true,
-        underline: {{underline}},
+        underline: {{ underline }},
         {% unless prefix.empty? %}
-        line_prefix: "#{{{prefix}}} ".colorize(:dark_gray).to_s,
+        line_prefix: "#{{{ prefix }}} ".colorize(:dark_gray).to_s,
         {% end %}
         newline_before: true, newline_after: true,
       }
@@ -140,10 +140,10 @@ module Enkaidu::Console
         msg = banner[:message]
         bar = "─" * msg.size
         puts fmt(style, <<-BANNER)
-         ┌#{bar}┐
-         │#{banner[:message]}│
-         └#{bar}┘
-        BANNER
+          ┌#{bar}┐
+          │#{banner[:message]}│
+          └#{bar}┘
+          BANNER
       end
 
       puts fmt(:confirm_question, "  CONFIRM: #{description}\n")
@@ -165,20 +165,20 @@ module Enkaidu::Console
     end
 
     private RESET = <<-ANSI
-    ░░░░░░  ░░░░░░░ ░░░░░░░ ░░░░░░░ ░░░░░░░░
-    ▒▒   ▒▒ ▒▒      ▒▒      ▒▒         ▒▒
-    ▒▒▒▒▒▒  ▒▒▒▒▒   ▒▒▒▒▒▒▒ ▒▒▒▒▒      ▒▒
-    ▓▓   ▓▓ ▓▓           ▓▓ ▓▓         ▓▓
-    ██   ██ ███████ ███████ ███████    ██
-    ANSI
+      ░░░░░░  ░░░░░░░ ░░░░░░░ ░░░░░░░ ░░░░░░░░
+      ▒▒   ▒▒ ▒▒      ▒▒      ▒▒         ▒▒
+      ▒▒▒▒▒▒  ▒▒▒▒▒   ▒▒▒▒▒▒▒ ▒▒▒▒▒      ▒▒
+      ▓▓   ▓▓ ▓▓           ▓▓ ▓▓         ▓▓
+      ██   ██ ███████ ███████ ███████    ██
+      ANSI
 
     private SWITCHED = <<-ANSI
-    ░░░░░░░ ░░     ░░ ░░ ░░░░░░░░  ░░░░░░ ░░   ░░ ░░░░░░░ ░░░░░░
-    ▒▒      ▒▒     ▒▒ ▒▒    ▒▒    ▒▒      ▒▒   ▒▒ ▒▒      ▒▒   ▒▒
-    ▒▒▒▒▒▒▒ ▒▒  ▒  ▒▒ ▒▒    ▒▒    ▒▒      ▒▒▒▒▒▒▒ ▒▒▒▒▒   ▒▒   ▒▒
-         ▓▓ ▓▓ ▓▓▓ ▓▓ ▓▓    ▓▓    ▓▓      ▓▓   ▓▓ ▓▓      ▓▓   ▓▓
-    ███████  ███ ███  ██    ██     ██████ ██   ██ ███████ ██████
-    ANSI
+      ░░░░░░░ ░░     ░░ ░░ ░░░░░░░░  ░░░░░░ ░░   ░░ ░░░░░░░ ░░░░░░
+      ▒▒      ▒▒     ▒▒ ▒▒    ▒▒    ▒▒      ▒▒   ▒▒ ▒▒      ▒▒   ▒▒
+      ▒▒▒▒▒▒▒ ▒▒  ▒  ▒▒ ▒▒    ▒▒    ▒▒      ▒▒▒▒▒▒▒ ▒▒▒▒▒   ▒▒   ▒▒
+           ▓▓ ▓▓ ▓▓▓ ▓▓ ▓▓    ▓▓    ▓▓      ▓▓   ▓▓ ▓▓      ▓▓   ▓▓
+      ███████  ███ ███  ██    ██     ██████ ██   ██ ███████ ██████
+      ANSI
 
     def session_reset
       puts fmt(:session_banner, RESET)
@@ -339,9 +339,9 @@ module Enkaidu::Console
 
     private def ask_prompt_inputs(prompt, params : Hash? = nil) : Hash(String, String)
       text = <<-PREFIX
-          #{prompt.description}
+        #{prompt.description}
 
-      PREFIX
+        PREFIX
       puts fmt(:prompt_content, text)
 
       arg_inputs = {} of String => String

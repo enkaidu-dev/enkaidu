@@ -56,10 +56,10 @@ module Enkaidu
 
       WELCOME_MSG = "Welcome to Enkaidu (WebUI Server Mode) #{VERSION}"
       WELCOME     = <<-TEXT
-    This is your second-in-command(-line) designed to assist you with
-    writing & maintaining code and other text-based content, by enabling LLMs
-    and connecting with MCP servers.
-    TEXT
+        This is your second-in-command(-line) designed to assist you with
+        writing & maintaining code and other text-based content, by enabling LLMs
+        and connecting with MCP servers.
+        TEXT
 
       def initialize(@opts)
         @console = opts.renderer

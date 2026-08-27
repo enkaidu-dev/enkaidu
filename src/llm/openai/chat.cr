@@ -86,8 +86,6 @@ module LLM::OpenAI
                   @history.extract_session_conversation
                 when .session_outer?
                   @history.extract_session_conversation(outer: true)
-                else
-                  nil
                 end
       extract.try(&.to_json)
     end
@@ -416,7 +414,6 @@ module LLM::OpenAI
       end
     end
 
-    # ameba:disable Metrics/CyclomaticComplexity: It's too messy if I split this up more.
     private def process_data(data : JSON::Any, from_stream = false, &) : Nil
       yield({type: "debug/data", content: data}) if debug?
 

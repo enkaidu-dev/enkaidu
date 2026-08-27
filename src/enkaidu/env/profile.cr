@@ -48,7 +48,7 @@ module Enkaidu::Env
     # Find the `DOT_ENKAIDU` directory in the base folder, if any
     private def locate_profile_path(base_path) : Path?
       path = Path.new(base_path, DOT_ENKAIDU)
-      return path if Dir.exists?(path)
+      path if Dir.exists?(path)
     end
 
     private def load_variables
@@ -94,8 +94,6 @@ module Enkaidu::Env
             error_and_exit_with "FATAL: Error parsing profile config file: #{file.relative_to?(CURRENT_DIR)}\n#{ex}"
           end
         end
-      else
-        nil
       end
     end
 

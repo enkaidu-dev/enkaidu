@@ -15,7 +15,7 @@ module LLM::OpenAI
       ENV.fetch("OPENAI_ENDPOINT", "https://api.openai.com")
     end
 
-    def api_key : String | Nil
+    def api_key : String?
       ENV.fetch("OPENAI_API_KEY", nil)
     end
 

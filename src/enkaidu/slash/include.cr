@@ -16,24 +16,24 @@ module Enkaidu::Slash
 
     HELP_BRIEF = "`#{NAME} [<sub-command>]` - Include attachments for next query"
     HELP       = <<-HELP1
-    #{HELP_BRIEF}
-    - `image_file <PATH>`
-      - Prepare image data from a file to _include_ with the next query;
-        make sure the LLM model supports vision/image processing.
-    - `text_file <PATH>`
-      - Prepare text from a file to _include_ with the next query.
-    - `audio_file <PATH>`
-      - Prepare audio data from a file to _include_ with the next query;
-        make sure the LLM model supports audio processing.
-    - `any_file <PATH>`
-      - Prepare a file (with it's base name) to _include_ with the next query;
-        make sure the LLM model supports file data along.
-    - `response_json_schema <PATH>`
-      - Use the given file as the JSON schema description to tell the model that the
-        next request's response should be a JSON object matching the schema.
-      - The input should be a file with a JSON object defined as follows:
-        `{ "name" : <string>, "description": <string>, "strict": <bool>, "schema": <object> }`
-    HELP1
+      #{HELP_BRIEF}
+      - `image_file <PATH>`
+        - Prepare image data from a file to _include_ with the next query;
+          make sure the LLM model supports vision/image processing.
+      - `text_file <PATH>`
+        - Prepare text from a file to _include_ with the next query.
+      - `audio_file <PATH>`
+        - Prepare audio data from a file to _include_ with the next query;
+          make sure the LLM model supports audio processing.
+      - `any_file <PATH>`
+        - Prepare a file (with it's base name) to _include_ with the next query;
+          make sure the LLM model supports file data along.
+      - `response_json_schema <PATH>`
+        - Use the given file as the JSON schema description to tell the model that the
+          next request's response should be a JSON object matching the schema.
+        - The input should be a file with a JSON object defined as follows:
+          `{ "name" : <string>, "description": <string>, "strict": <bool>, "schema": <object> }`
+      HELP1
 
     def name : String
       NAME

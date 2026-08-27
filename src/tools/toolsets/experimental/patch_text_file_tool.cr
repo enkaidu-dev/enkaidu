@@ -63,20 +63,20 @@ module Tools::Experimental
               message: "ERROR: Failed to apply patch.",
               markdown: true,
               help: <<-DEETS
-              Exit code #{status.exit_code} (`#{status}`)
-              #### Patch input
+                Exit code #{status.exit_code} (`#{status}`)
+                #### Patch input
 
-              ```
-              #{patch_content}
-              ```
+                ```
+                #{patch_content}
+                ```
 
-              #### Command output
+                #### Command output
 
-              ```
-              #{result.gsub(FileUtils.pwd, ".")}
-              ```
+                ```
+                #{result.gsub(FileUtils.pwd, ".")}
+                ```
 
-              DEETS
+                DEETS
             )
             return error_response("Failure: #{result}")
           end

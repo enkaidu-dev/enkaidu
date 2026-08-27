@@ -99,10 +99,10 @@ module Enkaidu
 
         parser.separator <<-MODEL
 
-              The model name can be one defined in the config file. Otherwise
-              also specify the provider type using the '--provider' option.
+          The model name can be one defined in the config file. Otherwise
+          also specify the provider type using the '--provider' option.
 
-        MODEL
+          MODEL
 
         parser.on("--provider=TYPE", "-p TYPE",
           "If needed, one of provide types listed below.") do |type|
@@ -112,19 +112,19 @@ module Enkaidu
 
         parser.separator <<-PROVIDER
 
-              If using a provider, different types depend on different environment
-              variables.
+          If using a provider, different types depend on different environment
+          variables.
 
-              ollama            OLLAMA_ENDPOINT (defaults to http://localhost:11434)
-              openai            OPENAI_MODEL, OPENAI_API_KEY,
-                                    OPENAI_ENDPOINT (defaults to https://api.openai.com)
-              azure_openai      AZURE_OPENAI_MODEL, AZURE_OPENAI_ENDPOINT,
-                                    AZURE_OPENAI_API_KEY, AZURE_OPENAI_API_VER
+          ollama            OLLAMA_ENDPOINT (defaults to http://localhost:11434)
+          openai            OPENAI_MODEL, OPENAI_API_KEY,
+                                OPENAI_ENDPOINT (defaults to https://api.openai.com)
+          azure_openai      AZURE_OPENAI_MODEL, AZURE_OPENAI_ENDPOINT,
+                                AZURE_OPENAI_API_KEY, AZURE_OPENAI_API_VER
 
-              (Early access)
-              google_ai_studio   GOOGLE_AI_API_KEY (required), GOOGLE_AI_ENDPOINT,
-                                    GOOGLE_AI_OPENAI_CHAT_PATH
-      PROVIDER
+          (Early access)
+          google_ai_studio   GOOGLE_AI_API_KEY (required), GOOGLE_AI_ENDPOINT,
+                                GOOGLE_AI_OPENAI_CHAT_PATH
+          PROVIDER
       end
 
       private def define_config_options(parser)

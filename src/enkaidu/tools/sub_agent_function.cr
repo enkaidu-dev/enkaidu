@@ -10,21 +10,21 @@ module Enkaidu
     side_effects SideEffects::None
 
     description <<-DESC
-    Submit a prompt to the LLM to process in a separate context window, and receive the result as `[query, response]`.
-    Call the tool with a clean context (default), or include current session context so the sub-agent can use that information to process the prompt.
+      Submit a prompt to the LLM to process in a separate context window, and receive the result as `[query, response]`.
+      Call the tool with a clean context (default), or include current session context so the sub-agent can use that information to process the prompt.
 
-    **Use this tool whenever the task:**
-    - would consume significant tokens (large codebases, long or many documents, multi-step research)
-    - is self-contained and doesn't need the current session's history
-    - benefits from a clean slate to avoid context pollution or confusion
-    DESC
+      **Use this tool whenever the task:**
+      - would consume significant tokens (large codebases, long or many documents, multi-step research)
+      - is self-contained and doesn't need the current session's history
+      - benefits from a clean slate to avoid context pollution or confusion
+      DESC
 
     param "prompt", type: Param::Type::Str, required: true,
       description: "The full instruction for the sub-agent."
     param "include_session_context", type: Param::Type::Bool, required: false,
       description: <<-PDESC
-      Set to true only when the sub-agent can benefit from awareness of the current session.
-      PDESC
+        Set to true only when the sub-agent can benefit from awareness of the current session.
+        PDESC
 
     runner Runner
 

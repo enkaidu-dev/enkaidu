@@ -38,6 +38,7 @@ module Enkaidu
     @macro_cache = [] of String
 
     def macro_description(name) : String?
+      # ameba:disable Lint/AssignmentInCallArgument: Cleanest form.
       if mac = (macro_helper.find_macro_by_name?(name) || macro_helper.find_macro_by_name?(name = name[1..-1]))
         "`!#{name}` - #{mac.description}"
       end
@@ -107,7 +108,6 @@ module Enkaidu
 
       # Pull in additional presets based on environment options
       if ws = cordon_config.workspace
-        using_brew = false
         if using_brew = ws.using_brew?
           policy = policy.merge(Cordon::Preset::Brew.for_current_platform)
         end
@@ -193,7 +193,7 @@ module Enkaidu
       def next_query? : String | PreparedMacro?
         if q = queries[@next_query]?
           @next_query += 1
-          return q
+          q
         end
       end
 
@@ -205,7 +205,7 @@ module Enkaidu
 
     alias QueryQueueStack = Array(QueuedQueries)
 
-    private def query_queue_stack_trace(q : String?, qcurrent : QueuedQueries, qqs : QueryQueueStack, io : IO) : Void
+    private def query_queue_stack_trace(q : String?, qcurrent : QueuedQueries, qqs : QueryQueueStack, io : IO) : Nil
       io.puts q if q
       count = qqs.size
       io << (count.zero? ? "  └─" : "  ├─") if q

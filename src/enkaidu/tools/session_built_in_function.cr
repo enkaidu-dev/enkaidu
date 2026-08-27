@@ -22,7 +22,7 @@ module Enkaidu
     macro runner(runner_type)
       # Return an instance of this function's Runner
       def new_runner : Runner
-        {{runner_type}}.new(self)
+        {{ runner_type }}.new(self)
       end
     end
 

@@ -13,11 +13,11 @@ module Tools::Web
     side_effects SideEffects::NetRead
 
     description <<-DESC
-    Makes an HTTP GET request to a given web site URL that returns the content
-    as markdown, either because the website supports returning markdown or by converting
-    the HTML to markdown. If the text content from the web site is not HTML or markdown,
-    the tool returns a markdown document with the web page content within a code block.
-    DESC
+      Makes an HTTP GET request to a given web site URL that returns the content
+      as markdown, either because the website supports returning markdown or by converting
+      the HTML to markdown. If the text content from the web site is not HTML or markdown,
+      the tool returns a markdown document with the web page content within a code block.
+      DESC
 
     param "url", type: Param::Type::Str,
       description: "The URL to GET the web page from.",

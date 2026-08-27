@@ -9,13 +9,13 @@ module Enkaidu::Slash
 
     HELP_BRIEF = "`#{NAME} [#{THINK_EFFORT.join(" or ")}]` - Request thinking effort, or show current effort"
     HELP       = <<-HELP1
-    #{HELP_BRIEF}
-    - Without parameters, `/think` shows the currently configured (or default) thinking effort
-    - With an effort parameter
-      - `none` disables thinking / reasoning if the model supports it
-      - `default` resets to use the model's default thinking level
-      - #{(THINK_LEVELS.map { |eff| "`#{eff}`" }).join(", ")} enable thinking / reasoning as supported by model
-    HELP1
+      #{HELP_BRIEF}
+      - Without parameters, `/think` shows the currently configured (or default) thinking effort
+      - With an effort parameter
+        - `none` disables thinking / reasoning if the model supports it
+        - `default` resets to use the model's default thinking level
+        - #{(THINK_LEVELS.map { |eff| "`#{eff}`" }).join(", ")} enable thinking / reasoning as supported by model
+      HELP1
 
     def name : String
       NAME

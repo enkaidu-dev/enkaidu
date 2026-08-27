@@ -7,11 +7,11 @@ module Enkaidu::Slash
     HELP_BRIEF = "`#{NAME} [<sub-command>]` - Manage system prompts"
 
     HELP = <<-HELP1
-    #{HELP_BRIEF}
-    - `ls`
-      - List all available system prompts.
-      - System prompts can be selected when using `/session reset`.
-    HELP1
+      #{HELP_BRIEF}
+      - `ls`
+        - List all available system prompts.
+        - System prompts can be selected when using `/session reset`.
+      HELP1
 
     def name : String
       NAME

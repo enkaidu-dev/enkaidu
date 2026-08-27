@@ -72,7 +72,7 @@ module Enkaidu::Console
     end
 
     private def parse_mode(values)
-      return nil unless values
+      return unless values
       values.map do |value|
         Colorize::Mode.parse(value.to_s)
       end

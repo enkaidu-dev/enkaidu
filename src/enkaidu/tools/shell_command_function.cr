@@ -114,21 +114,21 @@ module Enkaidu
                          "Commands with restricted terms always require approval."
     # Provide a description for the tool
     static_description <<-DESC
-    #{COMMON_DESCRIPTION}
-    DESC
+      #{COMMON_DESCRIPTION}
+      DESC
 
     runtime_description <<-DESC
-    #{COMMON_DESCRIPTION}
+      #{COMMON_DESCRIPTION}
 
-    CONSTRAINTS:
-    - Allowed commands: #{allowed_commands.join(", ")}
-    #{unless run_with_cordon.none?
-        "- Cordon (sandbox) mode: #{run_with_cordon}"
-      end}
-    #{if execute_through_shell?
-        "- Execute commands through shell: Enabled"
-      end}
-    DESC
+      CONSTRAINTS:
+      - Allowed commands: #{allowed_commands.join(", ")}
+      #{unless run_with_cordon.none?
+          "- Cordon (sandbox) mode: #{run_with_cordon}"
+        end}
+      #{if execute_through_shell?
+          "- Execute commands through shell: Enabled"
+        end}
+      DESC
 
     # Define the acceptable parameter using the `param` method
     param "command", type: Param::Type::Str, required: true,
@@ -145,6 +145,7 @@ module Enkaidu
 
       def initialize(@func); end
 
+      # ameba:disable Metrics/CyclomaticComplexity: Clear without splitting up
       def execute(args : JSON::Any) : String
         command = args["command"]?.try(&.as_s?) || return error_response("The required 'command' was not specified.")
         command = command.strip
@@ -171,10 +172,10 @@ module Enkaidu
             unless found_restricted.empty? && found_unconfirmed.empty?
               unless user_confirms?(command, found_restricted)
                 raise PermissionError.new(<<-DENIED)
-                User denied execution of command because:
-                #{"- restricted terms found: #{found_restricted}" unless found_restricted.empty?}
-                #{"- not pre-approved commands found: #{found_unconfirmed}" unless found_unconfirmed.empty?}
-                DENIED
+                  User denied execution of command because:
+                  #{"- restricted terms found: #{found_restricted}" unless found_restricted.empty?}
+                  #{"- not pre-approved commands found: #{found_unconfirmed}" unless found_unconfirmed.empty?}
+                  DENIED
               end
             end
           else

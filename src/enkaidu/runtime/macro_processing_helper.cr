@@ -42,7 +42,7 @@ module Enkaidu
       {% end %}
 
         # :nodoc:
-      alias {{new_type_name}} = {{ (sub_type_prefix.stringify + depth.stringify).id }}
+      alias {{ new_type_name }} = {{ (sub_type_prefix.stringify + depth.stringify).id }}
     end
 
     define_recursive_stmt_type(Stmt, 3)

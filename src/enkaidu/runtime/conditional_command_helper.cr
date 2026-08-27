@@ -10,20 +10,20 @@ module Enkaidu
 
     HELP_BRIEF = "`#{NAME} <sub-command> ...` - Conditionally exit from current macro"
     HELP       = <<-HELP1
-    #{HELP_BRIEF}
-    - `if file_exists=<PATH>`
-      - Exit macro if given file exists
-    - `if file=<PATH> contains=<STR>`
-      - Exit macro if given file exists and contains given string
-    - `if global ns=<NAMESPACE> key=<STR> equals=<STR>`
-      - Exit macro if global state key has matching value
-    - `unless file_exists=<PATH>`
-      - Exit macro unless given file exists
-    - `unless file=<PATH> contains=<STR>`
-      - Exit macro unless given file exists and contains given string
-    - `unless global ns=<NAMESPACE> key=<STR> equals=<STR>`
-      - Exit macro unless global state key has matching value
-    HELP1
+      #{HELP_BRIEF}
+      - `if file_exists=<PATH>`
+        - Exit macro if given file exists
+      - `if file=<PATH> contains=<STR>`
+        - Exit macro if given file exists and contains given string
+      - `if global ns=<NAMESPACE> key=<STR> equals=<STR>`
+        - Exit macro if global state key has matching value
+      - `unless file_exists=<PATH>`
+        - Exit macro unless given file exists
+      - `unless file=<PATH> contains=<STR>`
+        - Exit macro unless given file exists and contains given string
+      - `unless global ns=<NAMESPACE> key=<STR> equals=<STR>`
+        - Exit macro unless global state key has matching value
+      HELP1
 
     # Detailed help, in Markdown
     def help : String

@@ -7,17 +7,17 @@ module Enkaidu::Slash
     HELP_BRIEF = "`#{NAME} <NAME> | <URL>...` - Connect to MCP server"
 
     HELP = <<-HELP2
-    `#{NAME} <NAME>`
+      `#{NAME} <NAME>`
 
-    `#{NAME} <URL> [auth_env=<ENVARNAME>] [transport=auto|legacy|http]`
-    - Connect with the specified MCP server and register any available tools
-      for use with subsequent queries
-    - MCP server can be specified with URL or name from the config file
-    - When loading with a URL
-      - Optionally specify the transport type; defaults to `auto`
-      - Optionally specify name of environment variable that contains the
-        authentication token if needed.
-    HELP2
+      `#{NAME} <URL> [auth_env=<ENVARNAME>] [transport=auto|legacy|http]`
+      - Connect with the specified MCP server and register any available tools
+        for use with subsequent queries
+      - MCP server can be specified with URL or name from the config file
+      - When loading with a URL
+        - Optionally specify the transport type; defaults to `auto`
+        - Optionally specify name of environment variable that contains the
+          authentication token if needed.
+      HELP2
 
     def name : String
       NAME
