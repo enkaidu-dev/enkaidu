@@ -56,13 +56,13 @@ jobs:
         if: ${{ runner.os == 'Linux' }}
         run: shards check || shards install
 
-      - name: Build ameba  (Linux)
-        if: ${{ runner.os == 'Linux' }}
-        run: cp lib/ameba/bin/ameba.cr bin && crystal build -Dpreview_mt -o bin/ameba bin/ameba.cr
-
       - name: Setup debug environment (Linux)
         if: ${{ runner.os == 'Linux' }}
         run: mkdir -p bin/debug
+
+      - name: Build ameba  (Linux)
+        if: ${{ runner.os == 'Linux' }}
+        run: cp lib/ameba/bin/ameba.cr bin && crystal build -Dpreview_mt -o bin/ameba bin/ameba.cr
 
       - name: Build Debug (Linux)
         if: ${{ runner.os == 'Linux' }}
