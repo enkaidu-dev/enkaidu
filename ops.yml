@@ -4,7 +4,7 @@ dependencies:
     - node
   custom:
     - shards check || shards install
-    - mkdir bin && cp lib/ameba/bin/ameba.cr bin
+    - mkdir -p bin && cp lib/ameba/bin/ameba.cr bin
     - crystal build -Dpreview_mt -o bin/ameba bin/ameba.cr
     - cd webui && npm i && cd ..
 hooks:
