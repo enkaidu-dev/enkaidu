@@ -14,7 +14,7 @@
   class="navbar bg-secondary text-secondary-content min-h-auto py-2 shadow-md justify-between"
 >
   <span
-    ><kbd class="kbd kbd-xl text-secondary">Enkaidu</kbd>
+    ><kbd class="kbd kbd-xl">Enkaidu</kbd>
     <b>:{window.location.port}</b></span
   >
   <div class="badge badge-lg badge-secondary">

@@ -1,87 +1,104 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
 
-@plugin 'daisyui/index.js' {
+/* daisyUI v5 (Tailwind v4, CSS-first). `light --default, dark --prefersdark`
+   is the active, working config; the custom warm palette below restyles it by
+   overriding the same --color-* custom properties daisyUI v5 reads at runtime.
+   These overrides come AFTER the plugin, so by source order they win. */
+@plugin "daisyui" {
   themes: light --default, dark --prefersdark;
-  /* themes: corporate --default, business --prefersdark; */
 }
 
-/* :root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
+/* ---------------------------------------------------------------------------
+   Warm, low-contrast "Claude-feel" palette.
+   Light mode lives on :root; dark mode under prefers-color-scheme: dark.
+   Roles (what each token is used for, per the current components):
+     base-100/200/300  surfaces / backgrounds
+     base-content      primary text color
+     primary           calm, near-neutral button (Promptbar "Send")
+     secondary         menubar background (Menubar: navbar bg-secondary)
+     accent            muted terracotta — user message highlight (UserTextCard border-accent)
+     info, success, warning, error, neutral, plus -content variants -> semantic chips/alerts
+   --------------------------------------------------------------------------- */
+:root {
+  color-scheme: light;
 
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
+  /* surfaces */
+  --color-base-100: #faf7f2;   /* warm near-white (page background) */
+  --color-base-200: #f1ebdf;   /* light warm sand */
+  --color-base-300: #e4dccc;   /* slightly deeper warm gray */
+  --color-base-content: #36312b; /* warm charcoal (primary text) */
 
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
+  /* accents */
+  --color-primary: #3f3931;        /* calm warm charcoal (buttons) */
+  --color-primary-content: #faf7f2;
+  --color-secondary: #efe7dc;        /* soft warm taupe (menubar) */
+  --color-secondary-content: #36312b;
+  --color-accent: #b25e46;          /* muted terracotta / coral */
+  --color-accent-content: #ffffff;
+
+  /* neutrals + semantics */
+  --color-neutral: #5b5349;
+  --color-neutral-content: #faf7f2;
+  --color-info: #6b7f86;             /* muted slate */
+  --color-info-content: #ffffff;
+  --color-success: #5f8a6b;          /* muted green */
+  --color-success-content: #ffffff;
+  --color-warning: #c89a3e;          /* muted amber */
+  --color-warning-content: #2a2520;
+  --color-error: #bd5a4f;            /* muted brick */
+  --color-error-content: #ffffff;
+
+  /* borders + typography */
+  --color-border-base: #e0d7c8;      /* warm hairline border */
+  --color-border-base-content: #36312b;
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+}
+
+/* Warm dark mode: warm charcoal surfaces, warm off-white text, a touch
+   brighter terracotta accent so it stays legible on dark. */
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+
+    --color-base-100: #26211b;   /* warm charcoal (page background) */
+    --color-base-200: #1f1b16;   /* deeper warm charcoal */
+    --color-base-300: #171310;   /* near-black warm */
+    --color-base-content: #ece4d9; /* warm off-white text */
+
+    --color-primary: #d8cdb9;        /* warm light (buttons read as light on dark) */
+    --color-primary-content: #26211b;
+    --color-secondary: #221d18;        /* barely-different warm charcoal (menubar) */
+    --color-secondary-content: #ece4d9;
+    --color-accent: #c67a5f;          /* brighter terracotta for dark */
+    --color-accent-content: #ffffff;
+
+    --color-neutral: #3a342c;
+    --color-neutral-content: #ece4d9;
+    --color-info: #7e97a1;
+    --color-info-content: #171310;
+    --color-success: #79a688;
+    --color-success-content: #171310;
+    --color-warning: #d3ad55;
+    --color-warning-content: #171310;
+    --color-error: #cd6f63;
+    --color-error-content: #171310;
+
+    --color-border-base: #3a342c;     /* warm hairline border on dark */
+    --color-border-base-content: #ece4d9;
+  }
+}
+
+/* Base body: full-viewport warm background, calm text, antialiased.
+   Layout itself is handled by Tailwind utilities inside App.svelte; this only
+   establishes the ambient background, text color, and font. */
+body {
+  min-height: 100dvh;
+  background-color: var(--color-base-100);
+  color: var(--color-base-content);
+  font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
-
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-a:hover {
-  color: #535bf2;
-}
-
-body {
-  margin: 0;
-  display: flex;
-  place-items: center;
-  min-width: 320px;
-  min-height: 100vh;
-}
-
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
-}
-
-.card {
-  padding: 2em;
-}
-
-#app {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
-}
-
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
-  cursor: pointer;
-  transition: border-color 0.25s;
-}
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
-}
-
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
-  }
-  a:hover {
-    color: #747bff;
-  }
-  button {
-    background-color: #f9f9f9;
-  }
-} */
