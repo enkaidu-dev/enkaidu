@@ -72,10 +72,15 @@ module Enkaidu::CLI
         end
         path = Path.new(current_word)
         path = path.parent unless File.directory?(path)
-        {
-          "Files and Folders",
-          Dir.new(path).children.map { |name| (path / name).to_s },
-        }
+        begin
+          {
+            "Files and Folders",
+            Dir.new(path).children.map { |name| (path / name).to_s },
+          }
+        rescue
+          # Nothing to complete
+          {"", [] of String}
+        end
       elsif expression_before.strip == ""
         # Tab completion for commands and macros
         {
