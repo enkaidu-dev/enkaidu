@@ -55,11 +55,20 @@ module Tools
     def text_file?(resolved_path)
       File.open(resolved_path, "r") do |file|
         buffer = uninitialized UInt8[1024]
-        bytes_read = file.read_utf8(buffer.to_slice)
-        String.new(buffer.to_slice[0, bytes_read], "UTF-8").valid_encoding?
+        bytes_read = file.read(buffer.to_slice)
+        slice = buffer.to_slice[0, bytes_read]
+
+        # Back up to skip any incomplete trailing multibyte sequence
+        # including the first byte of multibyte sequence
+        last = bytes_read - 1
+        while last > 0 && (slice[last] & 0xC0) == 0x80
+          last -= 1
+        end
+        # Now slice[0, last] contains only complete characters
+        String.new(slice[0, last], "UTF-8").valid_encoding?
+      rescue
+        false
       end
-    rescue
-      false
     end
 
     def valid_directory?(requested_path)
