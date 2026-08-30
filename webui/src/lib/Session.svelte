@@ -159,7 +159,7 @@
 </script>
 
 <div use:scrollToBottom={entries} class="mb-auto overflow-scroll">
-  <div class="space-y-3 grid grid-cols-1 w-full max-w-5xl p-3 mx-auto">
+  <div class="space-y-6 flex flex-col w-full max-w-3xl p-3 mx-auto">
     {#each entries as entry}
       {#if entry.type == "query"}
         <UserTextCard message={entry.data[0].content || "??"} />

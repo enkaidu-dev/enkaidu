@@ -1,21 +1,17 @@
 <script lang="ts">
   let { name, args }: { name: string; args: string } = $props();
 
-  // svelte-ignore state_referenced_locally
+   // svelte-ignore state_referenced_locally
   let params = JSON.parse(args);
 </script>
 
 <div
-  class="px-4 place-self-start mb-0 bg-base-100 text-sm text-success"
-  // class=" w-7/8 px-4 py-1 card card-xs shadow-sm place-self-start bg-base-100 text-sm text-base-content dark:border-base-content dark:border-1 dark:border-dashed"
+  class="place-self-start w-7/8 text-xs text-base-content/40 font-mono"
 >
-  <div class="card-title text-ghost text-xs">
-    <i>
       {#if params.reason}
-        {params.reason} → CALL <code>{name}</code>
+        <span>{params.reason} → </span><span class="text-base-content/55">{name}</span>
       {:else}
-        → CALL <code>{name}</code> with <code>{args}</code>
+        <span>→ </span><span class="text-base-content/55">{name}</span>
+        <span class="text-base-content/30"> ({args})</span>
       {/if}
-    </i>
-  </div>
 </div>

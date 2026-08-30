@@ -102,3 +102,84 @@ body {
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
 }
+
+/* ---------------------------------------------------------------------------
+   Prose / Markdown tweaks for the warm palette.
+   These override Tailwind Typography's default prose colors so links,
+   code blocks, and other elements feel consistent with the rest of the
+   UI.
+--------------------------------------------------------------------------- */
+.prose {
+  color: var(--color-base-content);
+}
+.prose a {
+  color: var(--color-accent);
+  text-decoration: none;
+   border-bottom: 1px solid color-mix(in srgb, var(--color-accent) 30%, transparent);
+}
+.prose a:hover {
+  border-bottom-color: var(--color-accent);
+}
+/* inline code: subtle warm background, no border */
+.prose :not(pre) > code {
+  background-color: color-mix(in srgb, var(--color-base-300) 55%, transparent);
+  color: var(--color-base-content);
+  padding: 0.15em 0.35em;
+  border-radius: 0.25em;
+   font-size: 0.9em;
+   border: none;
+}
+/* block code: warm rounded card with inner padding */
+.prose pre {
+  background-color: var(--color-base-200);
+  border-radius: 0.5rem;
+  padding: 0.75rem 1rem;
+   border: 1px solid color-mix(in srgb, var(--color-border-base) 60%, transparent);
+}
+.prose pre code {
+  background-color: transparent;
+  padding: 0;
+   font-size: 0.85em;
+}
+/* horizontal rule: warm hairline */
+.prose hr {
+  border-color: color-mix(in srgb, var(--color-border-base) 50%, transparent);
+}
+/* headings: slightly warmer, a touch lighter */
+.prose h1,
+.prose h2,
+.prose h3,
+.prose h4 {
+  color: var(--color-base-content);
+   font-weight: 600;
+}
+.prose h1,
+.prose h2 {
+  letter-spacing: -0.01em;
+}
+/* blockquotes: subtle left border, muted */
+.prose blockquote {
+  border-left-color: color-mix(in srgb, var(--color-border-base) 70%, transparent);
+  color: color-mix(in srgb, var(--color-base-content) 75%, transparent);
+  font-weight: 400;
+}
+/* table borders: warm hairlines */
+.prose td,
+.prose th {
+  border-color: color-mix(in srgb, var(--color-border-base) 60%, transparent);
+}
+
+/* Menubar: solid background with a soft bottom gradient so scrolling content
+   appears to fade out beneath it (Claude-style "scroll under" effect). */
+.menubar-strip {
+  position: relative;
+  z-index: 10;
+  background-color: var(--color-base-100);
+  box-shadow: 0 4px 12px -4px rgba(0, 0, 0, 0.08);
+}
+
+@media (prefers-color-scheme: dark) {
+  .menubar-strip {
+    box-shadow: 0 4px 12px -4px rgba(0, 0, 0, 0.3);
+  }
+}

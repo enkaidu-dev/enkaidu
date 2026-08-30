@@ -15,6 +15,6 @@
   }
 </script>
 
-<div class="prose leading-5 max-w-full {add_class}">
-  {@html format(content)}
+<div class="prose leading-[1.65] max-w-full {add_class}">
+   {@html format(content)}
 </div>

@@ -14,13 +14,13 @@
 </script>
 
 <div
-  class="indicator card py-1 card-sm shadow-none w-7/8 bg-none border place-self-end {via_query_queue
-    ? 'border-info'
-    : 'border-accent'}"
+  class="indicator w-7/8 place-self-end py-1 rounded-2xl text-base-content/80 {via_query_queue
+    ? 'bg-info/10'
+    : 'bg-base-300'}"
 >
   <ContentUtilities copy_text={message} />
 
-  <div class="card-body py-1">
+  <div class="px-3 py-2">
     <Markdown
       content={command ? `\`${message}\`` : message}
       add_class="text-gray-600 dark:text-gray-300"
