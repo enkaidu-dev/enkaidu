@@ -160,47 +160,57 @@
 
 <div use:scrollToBottom={entries} class="mb-auto overflow-scroll">
   <div class="space-y-6 flex flex-col w-full max-w-3xl p-3 mx-auto">
-     {#if entries.length === 0}
-       <div class="flex-1 flex flex-col items-center justify-center min-h-[50vh]">
-         <p class="text-base-content/40 text-lg font-medium">How can I help?</p>
-       </div>
-     {:else}
-       {#each entries as entry}
-         {#if entry.type == "query"}
-           <UserTextCard message={entry.data[0].content || "??"} />
-         {:else if entry.type == "command"}
-           <UserTextCard message={entry.data[0].content || "/??"} command />
-         {:else if entry.type == "query_via_query_queue"}
-           <UserTextCard message={entry.data[0].content || "??"} via_query_queue />
-         {:else if entry.type == "command_via_query_queue"}
-           <UserTextCard
+    {#if entries.length === 0}
+      <div
+        class="flex-1 flex flex-col items-center justify-center min-h-[50vh]"
+      >
+        <p class="text-base-content/40 text-xl font-medium my-3">
+          <img src="/favicon.png" alt="Enkaidu" />
+        </p>
+        <p class="text-base-content/40 text-3xl font-medium my-3">
+          How can I help you?
+        </p>
+      </div>
+    {:else}
+      {#each entries as entry}
+        {#if entry.type == "query"}
+          <UserTextCard message={entry.data[0].content || "??"} />
+        {:else if entry.type == "command"}
+          <UserTextCard message={entry.data[0].content || "/??"} command />
+        {:else if entry.type == "query_via_query_queue"}
+          <UserTextCard
+            message={entry.data[0].content || "??"}
+            via_query_queue
+          />
+        {:else if entry.type == "command_via_query_queue"}
+          <UserTextCard
             message={entry.data[0].content || "/??"}
             command
             via_query_queue
-           />
-         {:else if entry.type == "query_image_url"}
-           <UserImageCard image_url={entry.data[0].content || "??"} />
-         {:else if entry.type == "llm_text"}
-           <AsstTextCard message={entry.data[0].content || "??"} />
-         {:else if entry.type == "llm_think"}
-           <AsstThinkCard message={entry.data[0].content} />
-         {:else if entry.type == "llm_image_url"}
-           <AsstImageCard image_url={entry.data[0].content || "??"} />
-         {:else if entry.type == "clarion"}
-           <ClarionCard subject={entry.data[0].content || "???"} />
-         {:else if entry.type == "tool_call"}
-           <ToolCallCard
+          />
+        {:else if entry.type == "query_image_url"}
+          <UserImageCard image_url={entry.data[0].content || "??"} />
+        {:else if entry.type == "llm_text"}
+          <AsstTextCard message={entry.data[0].content || "??"} />
+        {:else if entry.type == "llm_think"}
+          <AsstThinkCard message={entry.data[0].content} />
+        {:else if entry.type == "llm_image_url"}
+          <AsstImageCard image_url={entry.data[0].content || "??"} />
+        {:else if entry.type == "clarion"}
+          <ClarionCard subject={entry.data[0].content || "???"} />
+        {:else if entry.type == "tool_call"}
+          <ToolCallCard
             name={entry.data[0].subject as string}
             args={entry.data[0].content as string}
-           />
-         {:else if entry.type.startsWith("message_")}
-           <MsgCard
+          />
+        {:else if entry.type.startsWith("message_")}
+          <MsgCard
             level={entry.type.split("_").at(-1) || "info"}
             data={entry.data}
-           />
-         {/if}
-       {/each}
-     {/if}
+          />
+        {/if}
+      {/each}
+    {/if}
   </div>
 </div>
 

@@ -9,18 +9,18 @@
   export function update(hostname: string, workingpath: string) {
     host = hostname;
     cwd = workingpath;
-   }
+  }
 
   function hashHue(s: string): number {
     let hash = 0;
     for (let i = 0; i < s.length; i++) {
       hash = (hash * 31 + s.charCodeAt(i)) | 0;
-     }
+    }
     return Math.abs(hash) % 360;
-   }
+  }
 
   let sessionHue = $derived(hashHue(cwd || host || "enkaidu"));
-    
+
   function auto_grow(e: Event) {
     let el = e.target as HTMLTextAreaElement;
     el.style.height = "auto";
@@ -52,29 +52,38 @@
       text_area.style.height = "auto";
       input_text = "";
     }
-   }
+  }
 
   export function focus() {
     text_area.focus();
   }
 </script>
 
-<div class="w-full max-w-3xl mx-auto pl-1 pr-4 pb-4 pt-2" style="--session-hue: {sessionHue}">
-
-   {#if host || cwd}
-     <div
+<div
+  class="w-full max-w-3xl mx-auto pl-1 pr-4 pb-4 pt-2"
+  style="--session-hue: {sessionHue}"
+>
+  {#if host || cwd}
+    <div
       class="promptbar-tab flex items-center gap-2 rounded-t-xl border border-b-0 border-base-content/15 border-l-[3px] px-4 py-1.5 text-sm select-none"
       style="--session-hue: {sessionHue}"
-      >
-       <span class="font-medium text-base-content/90">{host}</span>
-       <span class="text-base-content/30">·</span>
-       <span class="truncate max-w-[45ch]" title={cwd}>{cwd}</span>
-     </div>
-   {/if}
-     <form
+    >
+      <span class="font-semibold tracking-tight text-base-content/90">
+        Enkaidu
+      </span>
+      <span class="text-base-content/30">&bull;</span>
+      <span class="font-medium text-base-content/70">{host}</span>
+      <span class="text-base-content/30">&bull;</span>
+      <span class="truncate max-w-[45ch]" title={cwd}>{cwd}</span>
+    </div>
+  {/if}
+  <form
     onsubmit={handle_submit}
-    class="promptbar-input group flex items-center gap-2 border border-base-content/15 border-l-[3px] bg-base-200/70 px-4 py-3 shadow-sm transition-shadow focus-within:shadow-md focus-within:border-base-content/25 {host || cwd ? 'rounded-b-xl border-t-0' : 'rounded-xl'}"
-   >
+    class="promptbar-input group flex items-center gap-2 border border-base-content/15 border-l-[3px] bg-base-200/70 px-4 py-3 shadow-sm transition-shadow focus-within:shadow-md focus-within:border-base-content/25 {host ||
+    cwd
+      ? 'rounded-b-xl border-t-0'
+      : 'rounded-xl'}"
+  >
     <textarea
       bind:this={text_area}
       disabled={loading}
