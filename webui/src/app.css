@@ -16,7 +16,7 @@
      base-100/200/300  surfaces / backgrounds
      base-content      primary text color
      primary           calm, near-neutral button (Promptbar "Send")
-     secondary         menubar background (Menubar: navbar bg-secondary)
+    secondary         general secondary surface (no longer tied to the removed menubar)
      accent            muted terracotta — user message highlight (UserTextCard border-accent)
      info, success, warning, error, neutral, plus -content variants -> semantic chips/alerts
    --------------------------------------------------------------------------- */
@@ -32,7 +32,7 @@
   /* accents */
   --color-primary: #3f3931;        /* calm warm charcoal (buttons) */
   --color-primary-content: #faf7f2;
-  --color-secondary: #efe7dc;        /* soft warm taupe (menubar) */
+   --color-secondary: #efe7dc;         /* soft warm taupe (general secondary surface) */
   --color-secondary-content: #36312b;
   --color-accent: #b25e46;          /* muted terracotta / coral */
   --color-accent-content: #ffffff;
@@ -69,7 +69,7 @@
 
     --color-primary: #d8cdb9;        /* warm light (buttons read as light on dark) */
     --color-primary-content: #26211b;
-    --color-secondary: #221d18;        /* barely-different warm charcoal (menubar) */
+     --color-secondary: #221d18;         /* barely-different warm charcoal (general secondary surface) */
     --color-secondary-content: #ece4d9;
     --color-accent: #c67a5f;          /* brighter terracotta for dark */
     --color-accent-content: #ffffff;
@@ -169,21 +169,6 @@ body {
   border-color: color-mix(in srgb, var(--color-border-base) 60%, transparent);
 }
 
-/* Menubar: solid background with a soft bottom gradient so scrolling content
-   appears to fade out beneath it (Claude-style "scroll under" effect). */
-.menubar-strip {
-  position: relative;
-  z-index: 10;
-  background-color: var(--color-base-100);
-  box-shadow: 0 4px 12px -4px rgba(0, 0, 0, 0.08);
-}
-
-@media (prefers-color-scheme: dark) {
-  .menubar-strip {
-    box-shadow: 0 4px 12px -4px rgba(0, 0, 0, 0.3);
-  }
-}
-
 
 /* Promptbar tab: a filled header strip above the input that carries the
    session identity (host + cwd). Each session gets a stable hue derived from
@@ -208,4 +193,19 @@ body {
     background-color: hsl(var(--session-hue), 25%, 15%);
     border-left-color: hsl(var(--session-hue), 40%, 50%);
     }
+}
+
+/* .promptbar-input (the prompt form) now paints its 3px left border the same
+   session hue as the .promptbar-tab above, so the two halves of the promptbar
+   read as one component with one coherent session color. --session-hue is
+   inherited from the outer wrapper div. This supersedes the old
+   border-l-accent/25 terracotta stripe on the form. */
+.promptbar-input {
+    border-left-color: hsl(var(--session-hue), 50%, 55%);
+}
+
+@media (prefers-color-scheme: dark) {
+    .promptbar-input {
+        border-left-color: hsl(var(--session-hue), 40%, 50%);
+     }
 }

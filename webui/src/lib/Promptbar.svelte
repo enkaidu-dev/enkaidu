@@ -59,7 +59,7 @@
   }
 </script>
 
-<div class="w-full max-w-3xl mx-auto pl-1 pr-4 pb-4 pt-2">
+<div class="w-full max-w-3xl mx-auto pl-1 pr-4 pb-4 pt-2" style="--session-hue: {sessionHue}">
 
    {#if host || cwd}
      <div
@@ -73,7 +73,7 @@
    {/if}
      <form
     onsubmit={handle_submit}
-    class="promptbar-input group flex items-center gap-2 border border-base-content/15 border-l-[3px] border-l-accent/25 bg-base-200/70 px-4 py-3 shadow-sm transition-shadow focus-within:shadow-md focus-within:border-base-content/25 {host || cwd ? 'rounded-b-xl border-t-0' : 'rounded-xl'}"
+    class="promptbar-input group flex items-center gap-2 border border-base-content/15 border-l-[3px] bg-base-200/70 px-4 py-3 shadow-sm transition-shadow focus-within:shadow-md focus-within:border-base-content/25 {host || cwd ? 'rounded-b-xl border-t-0' : 'rounded-xl'}"
    >
     <textarea
       bind:this={text_area}

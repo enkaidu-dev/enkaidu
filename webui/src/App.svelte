@@ -3,13 +3,11 @@
 
   import { enkaidu_post_request, enkaidu_get_request } from "./utilities";
 
-  import Menubar from "./lib/Menubar.svelte";
   import Promptbar from "./lib/Promptbar.svelte";
   import Session from "./lib/Session.svelte";
   // import Sidebar from "./lib/Sidebar.svelte";
 
   let session: Session;
-  let menubar: Menubar;
   let prompt: Promptbar;
 
   let started = false;
@@ -63,7 +61,6 @@
         switch (msg.type) {
           case "system_info":
             prompt.update(msg.host, msg.cwd);
-            menubar.update(msg.host, msg.cwd);
             break;
           case "ask_for_inputs":
             session.ask_for_inputs(
@@ -276,7 +273,6 @@
           ? "flex flex-col h-screen justify-between"
           : "flex flex-col h-screen justify-center"}
       >
-        <Menubar bind:this={menubar} host="" cwd="" />
         <Session bind:this={session} />
         <Promptbar
           bind:this={prompt}
