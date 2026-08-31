@@ -3,12 +3,30 @@
   let text_area: HTMLTextAreaElement;
   let input_text = $state("");
 
+  let host = $state("");
+  let cwd = $state("");
+
+  export function update(hostname: string, workingpath: string) {
+    host = hostname;
+    cwd = workingpath;
+   }
+
+  function hashHue(s: string): number {
+    let hash = 0;
+    for (let i = 0; i < s.length; i++) {
+      hash = (hash * 31 + s.charCodeAt(i)) | 0;
+     }
+    return Math.abs(hash) % 360;
+   }
+
+  let sessionHue = $derived(hashHue(cwd || host || "enkaidu"));
+    
   function auto_grow(e: Event) {
     let el = e.target as HTMLTextAreaElement;
     el.style.height = "auto";
     el.style.height = el.scrollHeight + "px";
     input_text = el.value;
-   }
+  }
 
   function handle_key_event(event: KeyboardEvent) {
     if (!event.shiftKey && event.key == "Enter") {
@@ -19,22 +37,45 @@
         textarea.value = "";
         textarea.style.height = "auto";
         input_text = "";
-        }
       }
     }
+  }
 
-   export function focus() {
-     text_area.focus();
-     }
+  function handle_submit(event: Event) {
+    event.preventDefault();
+    if (onask && text_area) {
+      let value = text_area.value;
+      if (value.trim() !== "") {
+        onask(value);
+      }
+      text_area.value = "";
+      text_area.style.height = "auto";
+      input_text = "";
+    }
+   }
+
+  export function focus() {
+    text_area.focus();
+  }
 </script>
 
-<div
-  class="w-full max-w-3xl mx-auto px-3 pb-4 pt-2"
->
-    <form
-      class="promptbar-input group flex items-center gap-2 rounded-xl border border-base-content/15 border-l-[3px] border-l-accent/25 bg-base-200/70 px-4 py-3 shadow-sm transition-shadow focus-within:shadow-md focus-within:border-base-content/25"
-       >
-      <textarea
+<div class="w-full max-w-3xl mx-auto pl-1 pr-4 pb-4 pt-2">
+
+   {#if host || cwd}
+     <div
+      class="promptbar-tab flex items-center gap-2 rounded-t-xl border border-b-0 border-base-content/15 border-l-[3px] px-4 py-1.5 text-sm select-none"
+      style="--session-hue: {sessionHue}"
+      >
+       <span class="font-medium text-base-content/90">{host}</span>
+       <span class="text-base-content/30">·</span>
+       <span class="truncate max-w-[45ch]" title={cwd}>{cwd}</span>
+     </div>
+   {/if}
+     <form
+    onsubmit={handle_submit}
+    class="promptbar-input group flex items-center gap-2 border border-base-content/15 border-l-[3px] border-l-accent/25 bg-base-200/70 px-4 py-3 shadow-sm transition-shadow focus-within:shadow-md focus-within:border-base-content/25 {host || cwd ? 'rounded-b-xl border-t-0' : 'rounded-xl'}"
+   >
+    <textarea
       bind:this={text_area}
       disabled={loading}
       onkeydown={handle_key_event}
@@ -42,21 +83,32 @@
       rows="1"
       class="flex-1 bg-transparent text-base-content placeholder:text-base-content/30 focus:outline-none resize-none text-base leading-relaxed"
       placeholder="Message Enkaidu…"
-      ></textarea>
-       <button
-       type="submit"
-       disabled={loading || input_text.trim() === ""}
-       title="Send"
-       aria-label="Send message"
-       class="shrink-0 w-8 h-8 rounded-full bg-primary text-primary-content flex items-center justify-center text-sm transition-opacity disabled:opacity-30 disabled:cursor-not-allowed hover:opacity-80"
-       >
-         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4">
-           <path d="M12 19V5"/>
-           <path d="M5 12l7-7 7 7"/>
-         </svg>
-       </button>
-     </form>
-     <div class="text-center text-xs text-base-content/20 mt-1 group-focus-within:opacity-0 transition-opacity">
-      Enter to send · Shift+Enter for newline
-     </div>
+    ></textarea>
+    <button
+      type="submit"
+      disabled={loading || input_text.trim() === ""}
+      title="Send"
+      aria-label="Send message"
+      class="shrink-0 w-8 h-8 rounded-full bg-primary text-primary-content flex items-center justify-center text-sm transition-opacity disabled:opacity-30 disabled:cursor-not-allowed hover:opacity-80"
+    >
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2.5"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        class="w-4 h-4"
+      >
+        <path d="M12 19V5" />
+        <path d="M5 12l7-7 7 7" />
+      </svg>
+    </button>
+  </form>
+  <div
+    class="text-center text-xs text-base-content/20 mt-1 group-focus-within:opacity-0 transition-opacity"
+  >
+    Enter to send · Shift+Enter for newline
+  </div>
 </div>

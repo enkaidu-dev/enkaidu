@@ -183,3 +183,29 @@ body {
     box-shadow: 0 4px 12px -4px rgba(0, 0, 0, 0.3);
   }
 }
+
+
+/* Promptbar tab: a filled header strip above the input that carries the
+   session identity (host + cwd). Each session gets a stable hue derived from
+   a hash of the cwd (set as --session-hue on the tab element via inline
+   style), so a user can tell sessions apart at a glance. The background is a
+   very pale (light mode) or very dark (dark mode) tint of the hue; the 3px
+   left border uses a more saturated version of the same hue for a clear,
+   recognizable accent. A --session-hue default of 200 (calm blue) applies
+   before any session starts. This is the Item 12 implementation.
+   --session-hue is a JS-side value; the CSS uses hsl() with that variable
+   so it works in both light and dark without any additional JS.
+   Note: border-left-color overrides Tailwind's border-l-accent/25 since
+   this class appears after Tailwind's utilities in source order. */
+.promptbar-tab {
+   --session-hue: 200; /* default; overridden per-session via inline style */
+  background-color: hsl(var(--session-hue), 35%, 93%);
+  border-left-color: hsl(var(--session-hue), 50%, 55%);
+}
+
+@media (prefers-color-scheme: dark) {
+   .promptbar-tab {
+    background-color: hsl(var(--session-hue), 25%, 15%);
+    border-left-color: hsl(var(--session-hue), 40%, 50%);
+    }
+}

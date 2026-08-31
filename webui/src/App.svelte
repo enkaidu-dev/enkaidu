@@ -13,7 +13,8 @@
   let prompt: Promptbar;
 
   let started = false;
-  let handling_request = false;
+  let handling_request = $state(false);
+  let has_content = $state(false);
 
   async function read_line_by_line(
     response: Response,
@@ -61,6 +62,7 @@
         let msg = JSON.parse(line);
         switch (msg.type) {
           case "system_info":
+            prompt.update(msg.host, msg.cwd);
             menubar.update(msg.host, msg.cwd);
             break;
           case "ask_for_inputs":
@@ -166,7 +168,9 @@
             break;
           case "session_reset":
             session.reset();
+            has_content = false;
             break;
+
           default:
             console.log(`clarion: ${line}`);
             session.add_event({
@@ -212,6 +216,7 @@
           query.startsWith("/") || query.startsWith("!") ? "command" : "query",
         content: query,
       });
+      has_content = true;
       let resp = await enkaidu_post_request(
         "prompt",
         new_prompt_request(query),
@@ -266,7 +271,11 @@
   <div class="drawer drawer-end">
     <input id="my-drawer" type="checkbox" class="drawer-toggle" />
     <div class="drawer-content">
-      <div class="flex flex-col h-screen justify-between">
+      <div
+        class={has_content
+          ? "flex flex-col h-screen justify-between"
+          : "flex flex-col h-screen justify-center"}
+      >
         <Menubar bind:this={menubar} host="" cwd="" />
         <Session bind:this={session} />
         <Promptbar

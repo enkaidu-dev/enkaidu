@@ -5,7 +5,7 @@
   let { message }: { message: string } = $props();
 </script>
 
-<div class="indicator w-7/8 bg-base-100 text-base-content">
+<div class="group indicator w-7/8 bg-base-100 text-base-content">
   <ContentUtilities copy_text={message} />
   <div class="py-1">
     <Markdown content={message} />

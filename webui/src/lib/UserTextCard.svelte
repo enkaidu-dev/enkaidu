@@ -14,9 +14,9 @@
 </script>
 
 <div
-  class="indicator w-7/8 place-self-end py-1 rounded-2xl text-base-content/80 {via_query_queue
-    ? 'bg-info/10'
-    : 'bg-base-300'}"
+  class="group indicator w-7/8 place-self-end py-1 rounded-2xl text-base-content/80 {via_query_queue
+      ? 'bg-info/10'
+      : 'bg-base-300'}"
 >
   <ContentUtilities copy_text={message} />
 

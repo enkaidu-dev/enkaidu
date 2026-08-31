@@ -19,7 +19,7 @@
 </script>
 
 <!-- <div class="absolute "> -->
-<div class="absolute w-full px-1 flex place-content-end">
+<div class="absolute w-full px-1 flex place-content-end opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-150">
   <div class="tooltip tooltip-bottom" data-tip="Copy">
     <button
       class="btn btn-accent btn-soft btn-solid btn-xs {copy_state}"
