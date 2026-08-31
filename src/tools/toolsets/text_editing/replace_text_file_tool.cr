@@ -21,8 +21,9 @@ module Tools::TextEditing
                    "Tip: if a previous read_text_file call included line numbers, do not include them here."
     param "new_str", type: Param::Type::Str, required: true,
       description: "The new text to insert in place of the old text."
-    param "multiple", type: Param::Type::Bool, required: false,
-      description: "Optional. If true, tries to replaces multiple occurrences of the old string. Default is false, replacing only the first occurence."
+    param "occurrence", type: Param::Type::Num, required: false,
+      description: "Which occurrence of old_str to replace (1-based). " \
+                   "Use -1 to replace all occurrences. Defaults to 1 (first occurrence)."
 
     runner Runner
 
@@ -34,13 +35,15 @@ module Tools::TextEditing
 
       # Main entry point: performs the string replacement and returns structured results.
       #
-      # - Extracts and validates required parameters (file_path, old_str, new_str, multiple)
+      # - Extracts and validates required parameters (file_path, old_str, new_str, occurrence)
       # - Resolves the file path and verifies it is within the allowed directory
       # - Rejects paths that point to the deleted-files folder
       # - Reads the file content
       # - Finds all match positions of the search text in the content
       # - Raises an error if no matches are found
-      # - Applies the replacement to produce new content
+      # - Raises an error if `occurrence` is out of range (positive int greater than match count)
+      # - Selects target positions based on `occurrence` (specific index or all)
+      # - Replaces the text at each target position to produce new content
       # - Builds change hunks (before/after snippets with context) for the response
       # - Writes the new content to disk
       # - Returns a JSON-encoded success response with the file path, replacement count,
@@ -52,7 +55,7 @@ module Tools::TextEditing
                       return error_response("The required `old_str` was not specified")
         replacement_text = args["new_str"]?.try &.as_s? ||
                            return error_response("The required `new_str` was not specified")
-        multiple = args["multiple"]?.try &.as_bool? || false
+        occurrence = args["occurrence"]?.try &.as_i? || 1
 
         resolved_path = resolve_path(file_path)
 
@@ -62,13 +65,26 @@ module Tools::TextEditing
 
         begin
           content = File.read(resolved_path)
-          match_positions = find_match_positions(content, search_text, multiple)
-          raise RuntimeError.new("Unable to find old string in the file. Nothing to replace.") if match_positions.empty?
+          all_matches = find_all_match_positions(content, search_text)
+          raise RuntimeError.new("Unable to find old string in the file. Nothing to replace.") if all_matches.empty?
 
-          new_content = apply_replacement(content, search_text, replacement_text, multiple)
-          changes = build_change_hunks(content, search_text, replacement_text, match_positions, multiple)
+          if occurrence > 0 && occurrence > all_matches.size
+            count = all_matches.size
+            raise RuntimeError.new(
+              "Expected occurrence #{occurrence}, but only #{count} match#{"es" unless count == 1} found in the file.")
+          end
+
+          targets = if occurrence == -1
+                      all_matches
+                    else
+                      [all_matches[occurrence - 1]]
+                    end
+
+          new_content = replace_at_positions(content, targets, search_text, replacement_text)
+          replace_all = (occurrence == -1)
+          changes = build_change_hunks(content, search_text, replacement_text, targets, replace_all)
           File.write(resolved_path, new_content)
-          success_response(file_path, changes, match_positions.size)
+          success_response(file_path, changes, targets.size)
         rescue e
           error_response("An error occurred while modifying the file: #{e.message}")
         end
@@ -76,50 +92,49 @@ module Tools::TextEditing
 
       # Finds all byte offset positions of `search_text` within `content`.
       #
-      # - Scans `content` from the start to find the first occurrence of `search_text`
-      # - Records the byte offset of each match
-      # - If `multiple` is true, continues scanning after each match to find all occurrences
-      # - If `multiple` is false, stops after the first match
+      # - Scans the entire `content` sequentially
+      # - Records the byte offset of every non-overlapping occurrence
+      # - Each subsequent search starts immediately after the end of the previous match
       # - Returns an empty array if no match is found
-      private def find_match_positions(content : String, search_text : String, multiple : Bool) : Array(Int32)
+      private def find_all_match_positions(content : String, search_text : String) : Array(Int32)
         positions = [] of Int32
         start = 0
-        loop do
-          idx = content.index(search_text, start)
-          break if idx.nil?
+        while idx = content.index(search_text, start)
           positions << idx
-          break unless multiple
           start = idx + search_text.size
         end
         positions
       end
 
-      # Produces the new file content by performing the actual string replacement.
+      # Replaces `search_text` with `replacement_text` at each given byte position.
       #
-      # - If `multiple` is true, replaces all occurrences of `search_text` with `replacement_text`
-      # - If `multiple` is false, replaces only the first occurrence
-      # - Returns the fully updated string ready to be written to the file
-      private def apply_replacement(content : String, search_text : String, replacement_text : String, multiple : Bool) : String
-        if multiple
-          content.gsub(search_text, replacement_text)
-        else
-          content.sub(search_text, replacement_text)
+      # - Processes positions from last to first so that earlier positions remain valid
+      #   (replacing at a later position does not shift earlier byte offsets)
+      # - For each position, reconstructs the string as:
+      #   [content before match] + [replacement] + [content after match]
+      # - Returns the fully updated string
+      private def replace_at_positions(content : String, positions : Array(Int32), search_text : String, replacement_text : String) : String
+        result = content
+        positions.sort.reverse_each do |pos|
+          result = result[0...pos] + replacement_text + result[pos + search_text.size..]
         end
+        result
       end
 
       # Builds the array of change hunks to include in the response, showing only
       # the regions of the file that were affected (plus surrounding context).
       #
-      # - Converts each match's byte offset into a start/end line range
+      # - Converts each target's byte offset into a start/end line range
       # - Expands each range by CONTEXT_LINES above and below to include surrounding context
       # - Clamps expanded ranges to valid line numbers (1 through total lines in the file)
       # - Merges overlapping or adjacent expanded ranges into unified hunks
       # - For each merged range, extracts the original text as `before` and applies the
       #   replacement within the snippet to produce `after`
+      #   (uses gsub if replace_all is true, otherwise sub)
       # - Returns an array of hash entries, each with: start_line, end_line, before, after
       private def build_change_hunks(content : String, search_text : String, replacement_text : String,
-                                     match_positions : Array(Int32), multiple : Bool)
-        line_ranges = match_positions.map { |pos| match_line_range(content, pos, search_text.size) }
+                                     target_positions : Array(Int32), replace_all : Bool)
+        line_ranges = target_positions.map { |pos| match_line_range(content, pos, search_text.size) }
         expanded = line_ranges.map do |start, stop|
           {start - CONTEXT_LINES, stop + CONTEXT_LINES}
         end
@@ -131,7 +146,7 @@ module Tools::TextEditing
 
         merged.map do |start_line, end_line|
           before = extract_lines(content, start_line, end_line)
-          after = if multiple
+          after = if replace_all
                     before.gsub(search_text, replacement_text)
                   else
                     before.sub(search_text, replacement_text)
