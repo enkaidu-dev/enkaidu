@@ -1,5 +1,4 @@
 <script lang="ts">
-  // import SvelteMarkdown from "@humanspeak/svelte-markdown";
   import { marked } from "marked";
 
   let { content, add_class }: { content: string; add_class?: string } =
@@ -16,5 +15,5 @@
 </script>
 
 <div class="prose leading-[1.65] max-w-full {add_class}">
-   {@html format(content)}
+  {@html format(content)}
 </div>

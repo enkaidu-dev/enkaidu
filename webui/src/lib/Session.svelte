@@ -198,7 +198,7 @@
         </p>
       </div>
     {:else}
-      {#each entries as entry}
+      {#each entries as entry, i}
         {#if entry.type == "query"}
           <UserTextCard message={entry.data[0].content || "??"} />
         {:else if entry.type == "command"}
@@ -219,7 +219,14 @@
         {:else if entry.type == "llm_text"}
           <AsstTextCard message={entry.data[0].content || "??"} />
         {:else if entry.type == "llm_think"}
-          <AsstThinkCard message={entry.data[0].content} />
+          <!-- active = this is the most recent entry, i.e. the thinking block
+               currently receiving fragments (see add_event coalescing). When a
+               non-think event arrives, a new entry becomes last and this card
+               collapses (item 17). -->
+          <AsstThinkCard
+            message={entry.data[0].content || "??"}
+            active={i == entries.length - 1}
+          />
         {:else if entry.type == "llm_image_url"}
           <AsstImageCard image_url={entry.data[0].content || "??"} />
         {:else if entry.type == "clarion"}
