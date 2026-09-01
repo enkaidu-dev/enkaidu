@@ -209,3 +209,27 @@ body {
         border-left-color: hsl(var(--session-hue), 40%, 50%);
      }
 }
+
+/* Waiting dots in the promptbar while a request is in flight.
+   Three small dots pulse in a staggered sequence, communicating
+   "Enkaidu is working" without being distracting. */
+@keyframes waiting-dot {
+    0%, 80%, 100% {
+        opacity: 0.25;
+        transform: scale(0.7);
+    }
+    40% {
+        opacity: 0.7;
+        transform: scale(1);
+    }
+}
+
+.waiting-dot {
+    display: inline-block;
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 50%;
+    background-color: var(--color-base-content);
+    animation: waiting-dot 1.4s ease-in-out infinite;
+    animation-delay: calc(var(--i, 0) * 0.2s);
+}

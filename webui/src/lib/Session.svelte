@@ -13,15 +13,41 @@
   import InputsDialog from "./InputsDialog.svelte";
   import ToolCallCard from "./ToolCallCard.svelte";
 
-  const scrollToBottom = (node: HTMLElement, _list: Event[]) => {
-    const scroll = () =>
-      node.scroll({
-        top: node.scrollHeight,
-        behavior: "smooth",
-      });
-    scroll();
+  // Tolerance band (px) for "close enough to the bottom" so sub-pixel /
+  // rounded scroll values don't flip the flag spuriously.
+  const SCROLL_TOLERANCE = 50;
 
-    return { update: scroll };
+  const scrollToBottom = (node: HTMLElement, _list: Event[]) => {
+    // Assume the user starts at the bottom on a fresh session. The flag is
+    // ONLY updated by real scroll events (never by content growth), so the
+    // "new content pushed me off the bottom" edge case in the plan cannot
+    // falsely suppress the next auto-scroll: a user who was at the bottom
+    // keeps the flag true until they actually scroll.
+    let at_bottom = true;
+
+    const isAtBottom = () =>
+      node.scrollTop + node.clientHeight >=
+      node.scrollHeight - SCROLL_TOLERANCE;
+
+    const handleScroll = () => {
+      at_bottom = isAtBottom();
+    };
+
+    const maybeScroll = () => {
+      // Only auto-scroll to the bottom when the user is already there.
+      // Suppress the scroll while they have scrolled up; once they return
+      // to the bottom edge the flag flips back and auto-scroll resumes.
+      if (!at_bottom) return;
+      node.scroll({ top: node.scrollHeight, behavior: "smooth" });
+    };
+
+    node.addEventListener("scroll", handleScroll);
+    maybeScroll();
+
+    return {
+      update: maybeScroll,
+      destroy: () => node.removeEventListener("scroll", handleScroll),
+    };
   };
 
   type Event = {

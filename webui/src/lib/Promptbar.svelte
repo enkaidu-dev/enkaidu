@@ -84,40 +84,51 @@
       ? 'rounded-b-xl border-t-0'
       : 'rounded-xl'}"
   >
-    <textarea
-      bind:this={text_area}
-      disabled={loading}
-      onkeydown={handle_key_event}
-      oninput={auto_grow}
-      rows="1"
-      class="flex-1 bg-transparent text-base-content placeholder:text-base-content/30 focus:outline-none resize-none text-base leading-relaxed"
-      placeholder="Message Enkaidu…"
-    ></textarea>
-    <button
-      type="submit"
-      disabled={loading || input_text.trim() === ""}
-      title="Send"
-      aria-label="Send message"
-      class="shrink-0 w-8 h-8 rounded-full bg-primary text-primary-content flex items-center justify-center text-sm transition-opacity disabled:opacity-30 disabled:cursor-not-allowed hover:opacity-80"
-    >
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="2.5"
-        stroke-linecap="round"
-        stroke-linejoin="round"
-        class="w-4 h-4"
+    {#if loading}
+      <div class="flex-1 flex items-center px-1">
+        <div class="flex items-center gap-1.5">
+          <span class="waiting-dot" style="--i: 0"></span>
+          <span class="waiting-dot" style="--i: 1"></span>
+          <span class="waiting-dot" style="--i: 2"></span>
+        </div>
+      </div>
+    {:else}
+      <textarea
+        bind:this={text_area}
+        onkeydown={handle_key_event}
+        oninput={auto_grow}
+        rows="1"
+        class="flex-1 bg-transparent text-base-content placeholder:text-base-content/30 focus:outline-none resize-none text-base leading-relaxed"
+        placeholder="Message Enkaidu…"
+      ></textarea>
+      <button
+        type="submit"
+        disabled={input_text.trim() === ""}
+        title="Send"
+        aria-label="Send message"
+        class="shrink-0 w-8 h-8 rounded-full bg-primary text-primary-content flex items-center justify-center text-sm transition-opacity disabled:opacity-30 disabled:cursor-not-allowed hover:opacity-80"
       >
-        <path d="M12 19V5" />
-        <path d="M5 12l7-7 7 7" />
-      </svg>
-    </button>
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2.5"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          class="w-4 h-4"
+        >
+          <path d="M12 19V5" />
+          <path d="M5 12l7-7 7 7" />
+        </svg>
+      </button>
+    {/if}
   </form>
-  <div
-    class="text-center text-xs text-base-content/20 mt-1 group-focus-within:opacity-0 transition-opacity"
-  >
-    Enter to send · Shift+Enter for newline
-  </div>
+  {#if !loading}
+    <div
+      class="text-center text-xs text-base-content/20 mt-1 group-focus-within:opacity-0 transition-opacity"
+    >
+      Enter to send · Shift+Enter for newline
+    </div>
+  {/if}
 </div>
