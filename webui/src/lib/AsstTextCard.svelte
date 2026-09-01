@@ -22,7 +22,7 @@
   ];
 </script>
 
-<div class="group w-7/8 bg-base-100 text-base-content">
+<div class="group relative w-7/8 bg-base-100 text-base-content">
   <div class="py-1">
     <Markdown content={message} />
   </div>

@@ -20,7 +20,16 @@
     onAction: () => void | Promise<void>;
   };
 
-  let { actions }: { actions: UtilityAction[] } = $props();
+  let {
+    actions,
+    // Horizontal alignment of the bar's buttons within the (in-flow,
+    // full-width) bar: "start" (default, under left-aligned assistant
+    // content) or "end" (under right-justified user content).
+    align = "start",
+  }: {
+    actions: UtilityAction[];
+    align?: "start" | "end";
+  } = $props();
 
   // id of the action currently showing its success state ("" = none)
   let success_id = $state("");
@@ -29,7 +38,13 @@
   // is showing so mouse users still see the "Done" feedback after the
   // button was blurred (see fire()).
   const bar_class = $derived(
-    "flex items-center justify-end gap-1 select-none " +
+    // Absolutely positioned directly below the content (top-full) so the
+    // bar reserves *no* height in the layout: text blocks stay the same
+    // height as bar-less blocks (item 20). It overlaps into the transcript
+    // gap (space-y-6) only while revealed.
+    "absolute top-full inset-x-0 z-10 flex items-center " +
+      (align === "end" ? "justify-end" : "justify-start") +
+      " gap-1 select-none text-base-content/50 " +
       "opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 " +
       "transition-opacity duration-150 " +
       (success_id !== "" ? "opacity-100" : "")

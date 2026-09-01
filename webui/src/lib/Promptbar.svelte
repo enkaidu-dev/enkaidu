@@ -1,6 +1,6 @@
 <script lang="ts">
   let { onask = null, loading = false } = $props();
-  let text_area: HTMLTextAreaElement;
+  let text_area = $state<HTMLTextAreaElement | undefined>(undefined);
   let input_text = $state("");
 
   let host = $state("");
@@ -55,7 +55,7 @@
   }
 
   export function focus() {
-    text_area.focus();
+    text_area?.focus();
   }
 </script>
 

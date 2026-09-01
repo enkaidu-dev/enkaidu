@@ -29,18 +29,21 @@
   ];
 </script>
 
-<div
-  class="group w-7/8 place-self-end py-1 rounded-2xl text-base-content/80 {via_query_queue
-      ? 'bg-info/10'
-      : 'bg-base-300'}"
->
-  <div class="px-3 py-2">
-    <Markdown
-      content={command ? `\`${message}\`` : message}
-      add_class="text-gray-600 dark:text-gray-300"
-    />
+<!-- Outer wrapper carries the hover-reveal `group`; it has no background.
+     The pill holds the message text; the action bar sits outside and below
+     the pill, right-aligned with the pill's right edge. -->
+<div class="group relative w-7/8 place-self-end py-1">
+  <div
+    class="rounded-2xl text-base-content/80 {via_query_queue
+        ? 'bg-info/10'
+        : 'bg-base-300'}"
+  >
+    <div class="px-3 py-2">
+      <Markdown
+        content={command ? `\`${message}\`` : message}
+        add_class="text-gray-600 dark:text-gray-300"
+      />
+    </div>
   </div>
-  <div class="px-3">
-    <ContentUtilities actions={actions} />
-  </div>
+  <ContentUtilities actions={actions} align="end" />
 </div>
