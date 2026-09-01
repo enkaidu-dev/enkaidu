@@ -65,29 +65,34 @@ module Tools::TextEditing
 
         begin
           content = File.read(resolved_path)
-          all_matches = find_all_match_positions(content, search_text)
-          raise RuntimeError.new("Unable to find old string in the file. Nothing to replace.") if all_matches.empty?
-
-          if occurrence > 0 && occurrence > all_matches.size
-            count = all_matches.size
-            raise RuntimeError.new(
-              "Expected occurrence #{occurrence}, but only #{count} match#{"es" unless count == 1} found in the file.")
-          end
-
-          targets = if occurrence == -1
-                      all_matches
-                    else
-                      [all_matches[occurrence - 1]]
-                    end
-
-          new_content = replace_at_positions(content, targets, search_text, replacement_text)
-          replace_all = (occurrence == -1)
-          changes = build_change_hunks(content, search_text, replacement_text, targets, replace_all)
-          File.write(resolved_path, new_content)
-          success_response(file_path, changes, targets.size)
+          changes, replacements = perform_replace(resolved_path, content, occurrence, search_text, replacement_text)
+          success_response(file_path, changes, replacements)
         rescue e
           error_response("An error occurred while modifying the file: #{e.message}")
         end
+      end
+
+      private def perform_replace(resolved_path, content, occurrence, search_text, replacement_text)
+        all_matches = find_all_match_positions(content, search_text)
+        raise RuntimeError.new("Unable to find old string in the file. Nothing to replace.") if all_matches.empty?
+
+        if occurrence > 0 && occurrence > all_matches.size
+          count = all_matches.size
+          raise RuntimeError.new(
+            "Expected occurrence #{occurrence}, but only #{count} match#{"es" unless count == 1} found in the file.")
+        end
+
+        targets = if occurrence == -1
+                    all_matches
+                  else
+                    [all_matches[occurrence - 1]]
+                  end
+
+        new_content = replace_at_positions(content, targets, search_text, replacement_text)
+        replace_all = (occurrence == -1)
+        changes = build_change_hunks(content, search_text, replacement_text, targets, replace_all)
+        File.write(resolved_path, new_content)
+        {changes, targets.size}
       end
 
       # Finds all byte offset positions of `search_text` within `content`.
