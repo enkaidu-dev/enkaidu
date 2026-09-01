@@ -184,7 +184,7 @@ module Enkaidu
       </empowered>
       EMPOWERED
 
-    private SYSPROMPT_SUB_AGENT = <<-AGENTIC
+    private SYSPROMPT_SUB_AGENT_V1 = <<-AGENTIC
       <agentic>
       * Spawn sub-agents to handle tasks that would otherwise fill your context window, keeping your current session lean and focused.
         * When to spawn:
@@ -228,7 +228,7 @@ module Enkaidu
         * After thinking through a problem present your conclusion briefly so the user stays connected.
         </cooperative>
         #{if allow_sub_agents?
-            SYSPROMPT_SUB_AGENT
+            SYSPROMPT_SUB_AGENT_V1
           end}#{if allow_global_state?
                   SYSPROMPT_GLOBAL_STATE
                 end}#{if allow_tool_discovery?
@@ -407,6 +407,8 @@ module Enkaidu
               queue << event
               Fiber.yield
             end
+          rescue ex
+            notify_unexpected_connection_error(ex)
           ensure
             queue << SPAWN_DONE
           end
@@ -422,6 +424,10 @@ module Enkaidu
 
     private def spinner(count)
       SPINNER[count % SPINNER.size]
+    end
+
+    private def notify_unexpected_connection_error(ex)
+      renderer.error_with("\rUnexpected error, try your prompt again: #{ex}")
     end
 
     # Query LLM using a prompt and optional attachments
@@ -443,6 +449,8 @@ module Enkaidu
               queue << event
               Fiber.yield
             end
+          rescue ex
+            notify_unexpected_connection_error(ex)
           ensure
             queue << SPAWN_DONE
           end

@@ -10,23 +10,37 @@ module LLM
     protected property model : String? = nil
 
     # Keep client exclusive to avoid concurrent calls to same client
-    @sync : Sync::Exclusive(HTTP::Client)
+    @sync : Sync::Exclusive(HTTP::Client)?
 
-    def initialize
-      @sync = Sync::Exclusive.new(HTTP::Client.new(URI.parse(url)))
+    def initialize; end
+
+    private def connect
+      Sync::Exclusive.new(HTTP::Client.new(URI.parse(url)))
+    end
+
+    private def sync
+      @sync ||= connect
     end
 
     protected def post_and_stream(body, &)
-      @sync.lock do |client|
-        if TRACE
-          STDERR.puts ">>> POST #{path}" if TRACE
-          STDERR.puts ">>> #{headers}" if TRACE
+      reconnect = false
+      begin
+        sync.lock do |client|
+          if TRACE
+            STDERR.puts ">>> POST #{path}" if TRACE
+            STDERR.puts ">>> #{headers}" if TRACE
+          end
+          client.post(path, headers,
+            body: body) do |resp|
+            yield resp
+            resp # Always return the response at end of streaming handler block
+          end
+        rescue ex
+          reconnect = true
+          raise ex
         end
-        client.post(path, headers,
-          body: body) do |resp|
-          yield resp
-          resp # Always return the response at end of streaming handler block
-        end
+      ensure
+        @sync = nil if reconnect
       end
     end
 
