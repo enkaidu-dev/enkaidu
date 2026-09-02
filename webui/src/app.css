@@ -287,3 +287,18 @@ body {
   animation: waiting-dot 1.4s ease-in-out infinite;
   animation-delay: calc(var(--i, 0) * 0.2s);
 }
+
+/* Activity group: pulsing dot indicating the group is still receiving items
+   (the agent is mid-run). Subtle, non-distracting. */
+@keyframes activity-pulse {
+  0%, 100% { opacity: 0.35; transform: scale(0.75); }
+  50%      { opacity: 0.7;  transform: scale(1); }
+}
+.activity-dot {
+  display: inline-block;
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 50%;
+  background-color: var(--color-base-content);
+  animation: activity-pulse 1.5s ease-in-out infinite;
+}

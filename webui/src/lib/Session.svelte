@@ -12,6 +12,7 @@
   import ClarionCard from "./ClarionCard.svelte";
   import InputsDialog from "./InputsDialog.svelte";
   import ToolCallCard from "./ToolCallCard.svelte";
+  import ActivityGroup from "./ActivityGroup.svelte";
 
   // Tolerance band (px) for "close enough to the bottom" so sub-pixel /
   // rounded scroll values don't flip the flag spuriously.
@@ -67,6 +68,54 @@
   };
 
   let entries: SessionEntry[] = $state([]);
+
+  // ---- Activity grouping ---------------------------------------------------
+  // Consecutive "agent working" entries (think blocks, tool calls, messages)
+  // are collapsed into a single ActivityGroup to keep long runs compact.
+  // User queries, assistant text, alerts, and images stay standalone.
+  const GROUPABLE = new Set(["llm_think", "tool_call"]);
+
+  function is_groupable(entry: SessionEntry): boolean {
+    if (GROUPABLE.has(entry.type)) return true;
+    return entry.type.startsWith("message_");
+  }
+
+  type GroupedEntry =
+    | { kind: "group"; items: SessionEntry[]; active: boolean }
+    | { kind: "standalone"; entry: SessionEntry };
+
+  let grouped: GroupedEntry[] = $derived.by(() => {
+    const result: GroupedEntry[] = [];
+    let current: SessionEntry[] = [];
+
+    const flush = (active: boolean) => {
+      if (current.length === 0) return;
+      if (current.length === 1) {
+        // Single item: no grouping chrome, render as a standalone card.
+        result.push({ kind: "standalone", entry: current[0] });
+      } else {
+        result.push({ kind: "group", items: current, active });
+      }
+      current = [];
+    };
+
+    for (const entry of entries) {
+      if (is_groupable(entry)) {
+        current.push(entry);
+      } else {
+        flush(false);
+        result.push({ kind: "standalone", entry });
+      }
+    }
+
+    // Flush trailing group — active if the last entry is still groupable
+    // (i.e. the agent is mid-run and no response has arrived yet).
+    const lastEntry = entries.at(-1);
+    const lastActive = lastEntry ? is_groupable(lastEntry) : false;
+    flush(lastActive);
+
+    return result;
+  });
 
   let security_confirm_dialog_config: Common.SecurityConfirmDialogConfig =
     $state({
@@ -198,48 +247,46 @@
         </p>
       </div>
     {:else}
-      {#each entries as entry, i}
-        {#if entry.type == "query"}
-          <UserTextCard message={entry.data[0].content || "??"} />
-        {:else if entry.type == "command"}
-          <UserTextCard message={entry.data[0].content || "/??"} command />
-        {:else if entry.type == "query_via_query_queue"}
+      {#each grouped as g, gi (gi)}
+        {#if g.kind == "group"}
+          <ActivityGroup items={g.items} active={g.active} />
+        {:else if g.entry.type == "query"}
+          <UserTextCard message={g.entry.data[0].content || "??"} />
+        {:else if g.entry.type == "command"}
+          <UserTextCard message={g.entry.data[0].content || "/??"} command />
+        {:else if g.entry.type == "query_via_query_queue"}
           <UserTextCard
-            message={entry.data[0].content || "??"}
+            message={g.entry.data[0].content || "??"}
             via_query_queue
           />
-        {:else if entry.type == "command_via_query_queue"}
+        {:else if g.entry.type == "command_via_query_queue"}
           <UserTextCard
-            message={entry.data[0].content || "/??"}
+            message={g.entry.data[0].content || "/??"}
             command
             via_query_queue
           />
-        {:else if entry.type == "query_image_url"}
-          <UserImageCard image_url={entry.data[0].content || "??"} />
-        {:else if entry.type == "llm_text"}
-          <AsstTextCard message={entry.data[0].content || "??"} />
-        {:else if entry.type == "llm_think"}
-          <!-- active = this is the most recent entry, i.e. the thinking block
-               currently receiving fragments (see add_event coalescing). When a
-               non-think event arrives, a new entry becomes last and this card
-               collapses (item 17). -->
+        {:else if g.entry.type == "query_image_url"}
+          <UserImageCard image_url={g.entry.data[0].content || "??"} />
+        {:else if g.entry.type == "llm_text"}
+          <AsstTextCard message={g.entry.data[0].content || "??"} />
+        {:else if g.entry.type == "llm_think"}
           <AsstThinkCard
-            message={entry.data[0].content || "??"}
-            active={i == entries.length - 1}
+            message={g.entry.data[0].content || "??"}
+            active={g.entry === entries.at(-1)}
           />
-        {:else if entry.type == "llm_image_url"}
-          <AsstImageCard image_url={entry.data[0].content || "??"} />
-        {:else if entry.type == "clarion"}
-          <ClarionCard subject={entry.data[0].content || "???"} />
-        {:else if entry.type == "tool_call"}
+        {:else if g.entry.type == "llm_image_url"}
+          <AsstImageCard image_url={g.entry.data[0].content || "??"} />
+        {:else if g.entry.type == "clarion"}
+          <ClarionCard subject={g.entry.data[0].content || "???"} />
+        {:else if g.entry.type == "tool_call"}
           <ToolCallCard
-            name={entry.data[0].subject as string}
-            args={entry.data[0].content as string}
+            name={g.entry.data[0].subject as string}
+            args={g.entry.data[0].content as string}
           />
-        {:else if entry.type.startsWith("message_")}
+        {:else if g.entry.type.startsWith("message_")}
           <MsgCard
-            level={entry.type.split("_").at(-1) || "info"}
-            data={entry.data}
+            level={g.entry.type.split("_").at(-1) || "info"}
+            data={g.entry.data}
           />
         {/if}
       {/each}
