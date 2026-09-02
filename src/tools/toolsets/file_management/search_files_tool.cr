@@ -11,8 +11,12 @@ module Tools::FileManagement
     side_effects SideEffects::FileRead | SideEffects::DirRead
 
     description "Searches the files selected by `files` (a path or glob, e.g. '**/*.cr') for lines containing `pattern`, like grep, " \
-                "and returns an array of {\"file\", \"matches\": [{\"line\", \"num\"}]} (num is the 1-based line number of that file); " \
-                "an empty array means nothing matched — broaden the glob (use ** for subdirectories) before re-trying. " \
+                "and returns `{\"matches\": [{\"file\", \"matches\": [{\"line\", \"num\"}], \"truncated\"}], \"files_searched\", \"skipped_files\", \"skipped_sample\"}`. " \
+                "`num` is the 1-based line number within its file; `truncated` is true when a file hit the max of " \
+                "#{Runner::MAX_MATCHES_PER_FILE} matching lines (narrow the `pattern` for more); " \
+                "binary files and files over #{Runner::MAX_FILE_SIZE_FOR_SEARCH // (1024 * 1024)} MiB are not searched and are counted in " \
+                "`skipped_files` (up to 10 names in `skipped_sample`). " \
+                "An empty `matches` array means nothing matched — broaden the glob (use '**' for subdirectories) before re-trying. " \
                 "If `pattern_is_regex` is true, `pattern` is treated as a regular expression (e.g. 'TODO\\s+.*'); otherwise it is a literal substring."
 
     param "files", required: true,
@@ -59,38 +63,60 @@ module Tools::FileManagement
         regex = args["pattern_is_regex"]?.try &.as_bool? || false
 
         begin
-          results = [] of NamedTuple(file: String, matches: Array(NamedTuple(line: String, num: Int32)))
           pattern = regex ? Regex.new(search_pattern) : search_pattern
-          find_files(files_pattern, max_files) do |file|
-            # Pre-screen before reading: skip anything that is not a regular text file
-            # of a sane size, so binary blobs never reach the line-by-line reader
-            resolved = resolve_path(file)
-            next unless File.file?(resolved)
-            next if File.size(resolved) > MAX_FILE_SIZE_FOR_SEARCH
-            begin
-              next unless text_file?(resolved)
-            rescue
-              next
-            end
-
-            found = [] of NamedTuple(line: String, num: Int32)
-            begin
-              search_file(file, pattern) do |match|
-                found << match
-                break if found.size >= MAX_MATCHES_PER_FILE
-              end
-            rescue IO::Error
-              # Skip files with invalid encoding/IO problems instead of aborting the whole search
-              next
-            end
-            unless found.empty?
-              results << {file: file, matches: found}
-            end
-          end
-          success_response(results)
+          searched, results, skipped = find_and_search_files(files_pattern, max_files, pattern)
+          success_response(results, searched, skipped)
         rescue e
           error_response("An error occurred while searching files: #{e.message}")
         end
+      end
+
+      private def find_and_search_files(files_pattern, max_files, pattern)
+        results = [] of NamedTuple(file: String, matches: Array(NamedTuple(line: String, num: Int32)), truncated: Bool)
+        skipped = [] of String
+        searched = 0
+
+        find_files(files_pattern, max_files) do |file|
+          # Pre-screen before reading: skip anything that is not a regular text file
+          # of a sane size, so binary blobs never reach the line-by-line reader
+          resolved = resolve_path(file)
+          unless File.file?(resolved)
+            skipped << file
+            next
+          end
+          if File.size(resolved) > MAX_FILE_SIZE_FOR_SEARCH
+            skipped << file
+            next
+          end
+          begin
+            unless text_file?(resolved)
+              skipped << file
+              next
+            end
+          rescue
+            skipped << file
+            next
+          end
+
+          found = [] of NamedTuple(line: String, num: Int32)
+          begin
+            search_file(file, pattern) do |match|
+              found << match
+              break if found.size >= MAX_MATCHES_PER_FILE
+            end
+          rescue IO::Error
+            # Skip files with invalid encoding/IO problems instead of aborting the whole search
+            skipped << file
+            next
+          end
+          searched += 1
+          unless found.empty?
+            # `truncated` means more than MAX_MATCHES_PER_FILE lines matched in this file
+            results << {file: file, matches: found, truncated: found.size >= MAX_MATCHES_PER_FILE}
+          end
+        end
+
+        {searched, results, skipped}
       end
 
       private def search_file(file_path : String, pattern : String | Regex, &)
@@ -111,8 +137,14 @@ module Tools::FileManagement
         {"error" => message}.to_json
       end
 
-      private def success_response(found)
-        found.to_json
+      private def success_response(matches, searched, skipped)
+        {
+          matches:        matches,
+          files_searched: searched,
+          skipped_files:  skipped.size,
+          # Cap the sample so a node_modules-scale glob cannot balloon the response
+          skipped_sample: skipped.first(10),
+        }.to_json
       end
     end
   end
