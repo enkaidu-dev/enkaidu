@@ -15,19 +15,12 @@ module LLM::Ollama
       super || ENV["OLLAMA_MODEL"]?
     end
 
-    def api_key : String?
+    def api_key : String
       ENV.fetch("OLLAMA_API_KEY", "ollama")
     end
 
     protected def path : String
       "/v1/chat/completions"
     end
-
-    # protected def headers : HTTP::Headers
-    #   HTTP::Headers{
-    #     "Content-Type"  => "application/json",
-    #     "Authorization" => "Bearer ollama",
-    #   }
-    # end
   end
 end

@@ -4,6 +4,9 @@ require "sync/exclusive"
 require "./chat"
 
 module LLM
+  # Error raised by connection when protocol needs an API key
+  class MissingAPIKey < Exception; end
+
   # `Connection` is an abstract class that defines the basic structure
   # for chat connection implementations.
   abstract class Connection

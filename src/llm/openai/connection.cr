@@ -15,8 +15,8 @@ module LLM::OpenAI
       ENV.fetch("OPENAI_ENDPOINT", "https://api.openai.com")
     end
 
-    def api_key : String?
-      ENV.fetch("OPENAI_API_KEY", nil)
+    def api_key : String
+      ENV.fetch("OPENAI_API_KEY", nil) || raise MissingAPIKey.new("OpenAI connections require an API key.")
     end
 
     def model
@@ -28,13 +28,11 @@ module LLM::OpenAI
     end
 
     protected def headers : HTTP::Headers
-      headers = HTTP::Headers{
-        "Content-Type" => "application/json",
+      HTTP::Headers{
+        "Content-Type"  => "application/json",
+        "Connection"    => "keep-alive",
+        "Authorization" => "Bearer #{api_key}",
       }
-
-      headers["Authorization"] = "Bearer #{api_key}" unless api_key.nil?
-
-      headers
     end
   end
 end
