@@ -61,22 +61,22 @@
           </th>
           <td class="align-top px-0 py-1.5">
             {#if cell.composite}<span
-              class="font-mono text-base-content/70 break-words"
-              >{cell.text}</span
-            >
+                class="font-mono text-base-content/70 wrap-break-word"
+                >{cell.text}</span
+              >
             {:else}<span
-              class="text-base-content/75 whitespace-pre-wrap break-words"
-              >{cell.text}</span
-            >{/if}
+                class="text-base-content/75 whitespace-pre-wrap wrap-break-word"
+                >{cell.text}</span
+              >{/if}
           </td>
         </tr>
       {/each}
     </tbody>
   </table>
 {:else if scalar_text}
-  <div class="text-xs text-base-content/75 whitespace-pre-wrap break-words">{
-    scalar_text
-  }</div>
+  <div class="text-xs text-base-content/75 whitespace-pre-wrap wrap-break-word">
+    {scalar_text}
+  </div>
 {:else}
   <span class="text-xs text-base-content/30">no parameters</span>
 {/if}
