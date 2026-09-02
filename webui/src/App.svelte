@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onMount } from "svelte";
   import * as Acp from "./acp_schema_types";
 
   import { enkaidu_post_request, enkaidu_get_request } from "./utilities";
@@ -13,6 +14,19 @@
   let started = false;
   let handling_request = $state(false);
   let has_content = $state(false);
+
+  // Warn the user before closing/refreshing if a request is still
+  // in flight (the NDJSON stream or a pending dialog would be orphaned).
+  onMount(() => {
+    function handler(e: BeforeUnloadEvent) {
+      if (handling_request) {
+        e.preventDefault();
+        e.returnValue = ""; // required by spec to trigger the native prompt (legacy)
+      }
+    }
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  });
 
   async function read_line_by_line(
     response: Response,
