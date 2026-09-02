@@ -33,15 +33,15 @@ Spectator.describe Tools::FileManagement::SearchFilesTool do
     if hash_val
       err = hash_val["error"]?
       if err
-        return { success: false, data: parsed, error_msg: err.as_s }
+        return {success: false, data: parsed, error_msg: err.as_s}
       end
     end
-     { success: true, data: parsed, error_msg: nil }
+    {success: true, data: parsed, error_msg: nil}
   end
 
-    # -------------------------------------------------
-    # Successful string search scenarios
-    # -------------------------------------------------
+  # -------------------------------------------------
+  # Successful string search scenarios
+  # -------------------------------------------------
 
   context "searches for a pattern in files" do
     let(:file_a) { File.join(temp_dir, "file_a.txt") }
@@ -120,11 +120,11 @@ Spectator.describe Tools::FileManagement::SearchFilesTool do
     end
   end
 
-    # -------------------------------------------------
-    # Regex search scenario
-    # -------------------------------------------------
+  # -------------------------------------------------
+  # Regex search scenario
+  # -------------------------------------------------
 
-  context "searches using regex when search_regex is true" do
+  context "searches using regex when pattern_is_regex is true" do
     let(:file_a) { File.join(temp_dir, "file_a.txt") }
 
     before do
@@ -135,7 +135,7 @@ Spectator.describe Tools::FileManagement::SearchFilesTool do
       args = make_args(
         files: File.join(temp_dir, "*.txt"),
         pattern: "cat\\d+",
-        search_regex: true,
+        pattern_is_regex: true,
       )
 
       result_json = runner.execute(args)
@@ -151,7 +151,7 @@ Spectator.describe Tools::FileManagement::SearchFilesTool do
     end
   end
 
-  context "does regex matching when search_regex is false" do
+  context "does regex matching when pattern_is_regex is false" do
     let(:file_a) { File.join(temp_dir, "file_a.txt") }
 
     before do
@@ -162,7 +162,7 @@ Spectator.describe Tools::FileManagement::SearchFilesTool do
       args = make_args(
         files: File.join(temp_dir, "*.txt"),
         pattern: "cat\\d+",
-        search_regex: false,
+        pattern_is_regex: false,
       )
 
       result_json = runner.execute(args)
@@ -174,15 +174,15 @@ Spectator.describe Tools::FileManagement::SearchFilesTool do
     end
   end
 
-    # -------------------------------------------------
-    # Max files limit scenarios
-    # -------------------------------------------------
+  # -------------------------------------------------
+  # Max files limit scenarios
+  # -------------------------------------------------
 
   context "respects the max_files parameter" do
     let(:max_files_default) { 1000 }
 
     let(:files) do
-       (1..max_files_default).map { |i| File.join(temp_dir, "file_#{i}.txt") }
+      (1..max_files_default).map { |i| File.join(temp_dir, "file_#{i}.txt") }
     end
 
     before do
@@ -218,9 +218,9 @@ Spectator.describe Tools::FileManagement::SearchFilesTool do
     end
   end
 
-    # -------------------------------------------------
-    # Default values scenarios
-    # -------------------------------------------------
+  # -------------------------------------------------
+  # Default values scenarios
+  # -------------------------------------------------
 
   context "uses default values when params are omitted" do
     let(:file_a) { File.join(temp_dir, "file_a.txt") }
@@ -233,7 +233,7 @@ Spectator.describe Tools::FileManagement::SearchFilesTool do
       args = make_args(
         files: File.join(temp_dir, "*"),
         pattern: "default test line",
-        )
+      )
 
       result_json = runner.execute(args)
       result = parse_run_result(result_json)
@@ -242,7 +242,7 @@ Spectator.describe Tools::FileManagement::SearchFilesTool do
       expect(result[:data].as_a.size.to_i).to eq(1)
     end
 
-    it "defaults search_regex to false when not provided" do
+    it "defaults pattern_is_regex to false when not provided" do
       args = make_args(
         files: File.join(temp_dir, "*.txt"),
         pattern: "def",
@@ -257,9 +257,9 @@ Spectator.describe Tools::FileManagement::SearchFilesTool do
     end
   end
 
-    # -------------------------------------------------
-    # Security scenarios
-    # -------------------------------------------------
+  # -------------------------------------------------
+  # Security scenarios
+  # -------------------------------------------------
 
   context "blocks paths resolved outside the current directory" do
     let(:outside_path) { File.tempname("_outside.txt") }
@@ -313,9 +313,9 @@ Spectator.describe Tools::FileManagement::SearchFilesTool do
     end
   end
 
-    # -------------------------------------------------
-    # Error handling scenarios
-    # -------------------------------------------------
+  # -------------------------------------------------
+  # Error handling scenarios
+  # -------------------------------------------------
 
   context "fails when files is not provided" do
     it "returns an error" do
