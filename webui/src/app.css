@@ -24,33 +24,45 @@
   color-scheme: light;
 
   /* surfaces */
-  --color-base-100: #faf7f2;   /* warm near-white (page background) */
-  --color-base-200: #f1ebdf;   /* light warm sand */
-  --color-base-300: #e4dccc;   /* slightly deeper warm gray */
-  --color-base-content: #36312b; /* warm charcoal (primary text) */
+  --color-base-100: #faf7f2;
+  /* warm near-white (page background) */
+  --color-base-200: #f1ebdf;
+  /* light warm sand */
+  --color-base-300: #e4dccc;
+  /* slightly deeper warm gray */
+  --color-base-content: #36312b;
+  /* warm charcoal (primary text) */
 
   /* accents */
-  --color-primary: #3f3931;        /* calm warm charcoal (buttons) */
+  --color-primary: #3f3931;
+  /* calm warm charcoal (buttons) */
   --color-primary-content: #faf7f2;
-   --color-secondary: #efe7dc;         /* soft warm taupe (general secondary surface) */
+  --color-secondary: #efe7dc;
+  /* soft warm taupe (general secondary surface) */
   --color-secondary-content: #36312b;
-  --color-accent: #b25e46;          /* muted terracotta / coral */
+  --color-accent: #b25e46;
+  /* muted terracotta / coral */
   --color-accent-content: #ffffff;
 
   /* neutrals + semantics */
   --color-neutral: #5b5349;
   --color-neutral-content: #faf7f2;
-  --color-info: #6b7f86;             /* muted slate */
+  --color-info: #6b7f86;
+  /* muted slate */
   --color-info-content: #ffffff;
-  --color-success: #5f8a6b;          /* muted green */
+  --color-success: #5f8a6b;
+  /* muted green */
   --color-success-content: #ffffff;
-  --color-warning: #c89a3e;          /* muted amber */
+  --color-warning: #c89a3e;
+  /* muted amber */
   --color-warning-content: #2a2520;
-  --color-error: #bd5a4f;            /* muted brick */
+  --color-error: #bd5a4f;
+  /* muted brick */
   --color-error-content: #ffffff;
 
   /* borders + typography */
-  --color-border-base: #e0d7c8;      /* warm hairline border */
+  --color-border-base: #e0d7c8;
+  /* warm hairline border */
   --color-border-base-content: #36312b;
   --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
     "Helvetica Neue", Arial, sans-serif;
@@ -62,16 +74,23 @@
   :root {
     color-scheme: dark;
 
-    --color-base-100: #26211b;   /* warm charcoal (page background) */
-    --color-base-200: #1f1b16;   /* deeper warm charcoal */
-    --color-base-300: #171310;   /* near-black warm */
-    --color-base-content: #ece4d9; /* warm off-white text */
+    --color-base-100: #26211b;
+    /* warm charcoal (page background) */
+    --color-base-200: #1f1b16;
+    /* deeper warm charcoal */
+    --color-base-300: #171310;
+    /* near-black warm */
+    --color-base-content: #ece4d9;
+    /* warm off-white text */
 
-    --color-primary: #d8cdb9;        /* warm light (buttons read as light on dark) */
+    --color-primary: #d8cdb9;
+    /* warm light (buttons read as light on dark) */
     --color-primary-content: #26211b;
-     --color-secondary: #221d18;         /* barely-different warm charcoal (general secondary surface) */
+    --color-secondary: #221d18;
+    /* barely-different warm charcoal (general secondary surface) */
     --color-secondary-content: #ece4d9;
-    --color-accent: #c67a5f;          /* brighter terracotta for dark */
+    --color-accent: #c67a5f;
+    /* brighter terracotta for dark */
     --color-accent-content: #ffffff;
 
     --color-neutral: #3a342c;
@@ -85,7 +104,8 @@
     --color-error: #cd6f63;
     --color-error-content: #171310;
 
-    --color-border-base: #3a342c;     /* warm hairline border on dark */
+    --color-border-base: #3a342c;
+    /* warm hairline border on dark */
     --color-border-base-content: #ece4d9;
   }
 }
@@ -112,57 +132,67 @@ body {
 .prose {
   color: var(--color-base-content);
 }
+
 .prose a {
   color: var(--color-accent);
   text-decoration: none;
-   border-bottom: 1px solid color-mix(in srgb, var(--color-accent) 30%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--color-accent) 30%, transparent);
 }
+
 .prose a:hover {
   border-bottom-color: var(--color-accent);
 }
+
 /* inline code: subtle warm background, no border */
-.prose :not(pre) > code {
+.prose :not(pre)>code {
   background-color: color-mix(in srgb, var(--color-base-300) 55%, transparent);
   color: var(--color-base-content);
   padding: 0.15em 0.35em;
   border-radius: 0.25em;
-   font-size: 0.9em;
-   border: none;
+  font-size: 0.9em;
+  border: none;
 }
+
 /* block code: warm rounded card with inner padding */
 .prose pre {
   background-color: var(--color-base-200);
   border-radius: 0.5rem;
   padding: 0.75rem 1rem;
-   border: 1px solid color-mix(in srgb, var(--color-border-base) 60%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-border-base) 60%, transparent);
 }
+
 .prose pre code {
   background-color: transparent;
   padding: 0;
-   font-size: 0.85em;
+  font-size: 0.85em;
 }
+
 /* horizontal rule: warm hairline */
 .prose hr {
   border-color: color-mix(in srgb, var(--color-border-base) 50%, transparent);
 }
+
 /* headings: slightly warmer, a touch lighter */
 .prose h1,
 .prose h2,
 .prose h3,
 .prose h4 {
   color: var(--color-base-content);
-   font-weight: 600;
+  font-weight: 600;
 }
+
 .prose h1,
 .prose h2 {
   letter-spacing: -0.01em;
 }
+
 /* blockquotes: subtle left border, muted */
 .prose blockquote {
   border-left-color: color-mix(in srgb, var(--color-border-base) 70%, transparent);
   color: color-mix(in srgb, var(--color-base-content) 75%, transparent);
   font-weight: 400;
 }
+
 /* table borders: warm hairlines */
 .prose td,
 .prose th {
@@ -183,16 +213,17 @@ body {
    Note: border-left-color overrides Tailwind's border-l-accent/25 since
    this class appears after Tailwind's utilities in source order. */
 .promptbar-tab {
-   --session-hue: 200; /* default; overridden per-session via inline style */
+  --session-hue: 200;
+  /* default; overridden per-session via inline style */
   background-color: hsl(var(--session-hue), 35%, 93%);
   border-left-color: hsl(var(--session-hue), 50%, 55%);
 }
 
 @media (prefers-color-scheme: dark) {
-   .promptbar-tab {
-    background-color: hsl(var(--session-hue), 25%, 15%);
-    border-left-color: hsl(var(--session-hue), 40%, 50%);
-    }
+  .promptbar-tab {
+    background-color: hsl(var(--session-hue), 28%, 23%);
+    border-left-color: hsl(var(--session-hue), 45%, 50%);
+  }
 }
 
 /* .promptbar-input (the prompt form) now paints its 3px left border the same
@@ -201,35 +232,53 @@ body {
    inherited from the outer wrapper div. This supersedes the old
    border-l-accent/25 terracotta stripe on the form. */
 .promptbar-input {
-    border-left-color: hsl(var(--session-hue), 50%, 55%);
+  /* Light mode: pale session-hue tint so the input reflects the session
+       colour (mirroring the tab and the darker dark-mode treatment). Kept very
+       light/pastel so it reads gently against the warm page background. */
+  background-color: hsl(var(--session-hue), 38%, 95%);
+  /* NOTE: border-left-color MUST be the last border declaration here — the
+       border-color shorthand (if used) would otherwise clobber it. */
+  border-left-color: hsl(var(--session-hue), 50%, 55%);
 }
 
 @media (prefers-color-scheme: dark) {
-    .promptbar-input {
-        border-left-color: hsl(var(--session-hue), 40%, 50%);
-     }
+  .promptbar-input {
+    /* Dark-mode visibility: lift the background above the page surface via
+           a session-hue tint, strengthen the border, and add a drop shadow so
+           the promptbar reads as a raised element instead of blending into
+           base-100. Order matters: border-color (4-side shorthand) is set
+           BEFORE border-left-color so the left stripe keeps its hue. */
+    background-color: hsl(var(--session-hue), 22%, 21%);
+    border-color: hsl(var(--session-hue), 15%, 35%);
+    border-left-color: hsl(var(--session-hue), 45%, 50%);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+  }
 }
 
 /* Waiting dots in the promptbar while a request is in flight.
    Three small dots pulse in a staggered sequence, communicating
    "Enkaidu is working" without being distracting. */
 @keyframes waiting-dot {
-    0%, 80%, 100% {
-        opacity: 0.25;
-        transform: scale(0.7);
-    }
-    40% {
-        opacity: 0.7;
-        transform: scale(1);
-    }
+
+  0%,
+  80%,
+  100% {
+    opacity: 0.25;
+    transform: scale(0.7);
+  }
+
+  40% {
+    opacity: 0.7;
+    transform: scale(1);
+  }
 }
 
 .waiting-dot {
-    display: inline-block;
-    width: 0.5rem;
-    height: 0.5rem;
-    border-radius: 50%;
-    background-color: var(--color-base-content);
-    animation: waiting-dot 1.4s ease-in-out infinite;
-    animation-delay: calc(var(--i, 0) * 0.2s);
+  display: inline-block;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background-color: var(--color-base-content);
+  animation: waiting-dot 1.4s ease-in-out infinite;
+  animation-delay: calc(var(--i, 0) * 0.2s);
 }
