@@ -1,13 +1,15 @@
 <script lang="ts">
+  import JsonTable from "./JsonTable.svelte";
+
   let { name, args }: { name: string; args: string } = $props();
 
   // Parse the tool's argument JSON once so we can (a) lift the optional
-  // `reason` field to use as the card title and (b) pretty-print the remaining
-  // parameters for the body. Degrades to the raw string if parsing fails.
+  // `reason` field to use as the card title and (b) tabulate the remaining
+  // parameters. Degrades to the raw string if parsing fails.
   let parsed: Record<string, unknown> | null = $derived.by(() => {
     try {
       const value: unknown = JSON.parse(args);
-      return value && typeof value === "object"
+      return value && typeof value === "object" && !Array.isArray(value)
         ? (value as Record<string, unknown>)
         : null;
     } catch {
@@ -28,13 +30,13 @@
   // headline and it differs from the name — otherwise we'd lose which tool ran.
   let show_name = $derived(!!reason.trim() && reason !== name);
 
-  // Body: pretty-printed JSON of the parameters. The `reason` key is lifted to
-  // the title (mirroring the console renderer) so it isn't shown twice.
-  let body = $derived.by(() => {
+  // The object to tabulate (reason lifted to the title). Falls back to the raw
+  // string when args isn't a JSON object so nothing is lost.
+  let params: unknown = $derived.by(() => {
     if (!parsed) return args;
-    const params = { ...parsed };
-    delete params.reason;
-    return JSON.stringify(params, null, 2);
+    const p = { ...parsed };
+    delete p.reason;
+    return p;
   });
 </script>
 
@@ -52,10 +54,8 @@
         <span class="text-base-content/30">· {name}</span>
       {/if}
     </summary>
-    <div class="ms-5 ps-2 mt-1 max-h-40 overflow-y-auto text-base-content/60">
-      <pre
-        class="text-xs font-mono whitespace-pre-wrap break-words m-0 select-text"
-      >{body}</pre>
+    <div class="ms-5 ps-2 mt-1 max-h-40 overflow-y-auto pr-1">
+      <JsonTable value={params} />
     </div>
   </details>
 </div>
