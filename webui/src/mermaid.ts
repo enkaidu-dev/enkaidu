@@ -1,0 +1,52 @@
+// Lazy one-time mermaid load + render helper with a small result cache.
+//
+// mermaid is dynamically imported only when a transcript actually
+// contains a finished diagram — it is a large dependency and we don't
+// want it in the base bundle for the common case of chat text.
+//
+// `mermaid_render(source)` returns the SVG string for `source`. The
+// cache is keyed by the source string: during streaming, every fragment
+// re-parses the surrounding markdown and Svelte replaces the rendered
+// HTML, so the same diagram gets re-hydrated repeatedly. Returning the
+// already-rendered SVG instead of re-rendering each time keeps that
+// near-instant and flicker-free.
+type MermaidModule = typeof import("mermaid").default;
+
+let mermaid_promise: Promise<MermaidModule> | undefined;
+
+function load_mermaid(): Promise<MermaidModule> {
+  if (!mermaid_promise) {
+    mermaid_promise = import("mermaid").then((mod) => {
+      const instance = mod.default;
+      instance.initialize({
+        startOnLoad: false,
+        theme: "neutral",
+        securityLevel: "strict",
+      });
+      return instance;
+    });
+  }
+  return mermaid_promise;
+}
+
+const MAX_CACHE_ENTRIES = 50;
+const rendered_cache = new Map<string, string>();
+
+let diagram_id = 0;
+
+export async function mermaid_render(source: string): Promise<string> {
+  const cached = rendered_cache.get(source);
+  if (cached !== undefined) {
+    return cached;
+  }
+  const instance = await load_mermaid();
+  const { svg } = await instance.render(`enkaidu-mermaid-${++diagram_id}`, source);
+  if (rendered_cache.size >= MAX_CACHE_ENTRIES) {
+    const oldest = rendered_cache.keys().next().value;
+    if (oldest !== undefined) {
+      rendered_cache.delete(oldest);
+    }
+  }
+  rendered_cache.set(source, svg);
+  return svg;
+}
