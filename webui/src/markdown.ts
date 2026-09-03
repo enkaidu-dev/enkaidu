@@ -39,6 +39,79 @@ function render_mermaid_placeholder(source: string): string {
   );
 }
 
+// Fenced code blocks get wrapped in a container with a "Copy" button
+// (revealed on hover; Markdown.svelte owns the click via one delegated
+// listener, since {@html} replaces the block DOM on every content
+// change). The <pre> below is emitted here rather than by marked,
+// because marked's renderer patching offers no way to call the
+// previously-registered code renderer — and markedHighlight's walkTokens
+// pass has already replaced token.text with the highlight.js HTML
+// (escaped=true) before the renderer runs, so the tokens carry
+// everything we need.
+//
+// Only fenced code goes through renderer.code (inline code uses
+// renderer.codespan), and the <template>-bearing mermaid placeholders
+// are a separate extension, so neither is affected.
+function escape_html(text: string, encode: boolean): string {
+  const replacements: Record<string, string> = {
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;",
+  };
+  const pattern = encode
+    ? /[&<>"']/g
+    : /[<>"']|&(?!(#?\d+|#?[Xx][A-Fa-f0-9]+|\w+);)/g;
+  return text.replace(pattern, (ch) => replacements[ch] ?? ch);
+}
+
+function render_copyable_code(
+  code: unknown,
+  infoString: unknown,
+  escaped: unknown,
+): string {
+  // Renderer methods are called either as (text, lang, escaped) or with
+  // the token object as a single argument, depending on the marked
+  // version — handle both, like marked-highlight itself does.
+  let text: string;
+  let lang: string;
+  let is_escaped: boolean;
+  if (typeof code === "string") {
+    text = code;
+    lang = String(infoString ?? "");
+    is_escaped = escaped === true;
+  } else {
+    const token = (code ?? {}) as {
+      text?: string;
+      lang?: string;
+      escaped?: boolean;
+    };
+    text = token.text ?? "";
+    lang = token.lang ?? "";
+    is_escaped = token.escaped === true;
+  }
+  const language = lang.match(/\S*/)?.[0] ?? "";
+  const class_attr = language
+    ? ` class="hljs language-${language.replace(/["&<>]/g, "")}"`
+    : "";
+  text = text.replace(/\n$/, "");
+  const inner = is_escaped ? text : escape_html(text, true);
+  return (
+    '<div class="enkaidu-code group/code relative">' +
+    '<button type="button" data-copy-code aria-label="Copy code" ' +
+    'class="enkaidu-copy absolute right-2 top-2 z-10 opacity-0 transition-opacity duration-150 group-hover/code:opacity-100 focus-visible:opacity-100">' +
+    "Copy</button>" +
+    `<pre><code${class_attr}>${inner}\n</code></pre>` +
+    "</div>"
+  );
+}
+
+// Registration order matters: marked's use() calls the LAST registered
+// renderer first (earlier ones are only reached when a later one returns
+// false, which the <pre> producer below never does). So the copy wrapper
+// is registered AFTER markedHighlight to take precedence over the plain
+// <pre> it would otherwise emit.
 marked.use(
   {
     extensions: [
@@ -84,6 +157,13 @@ marked.use(
       return hljs.highlight(code, { language }).value;
     },
   }),
+  {
+    renderer: {
+      code(code?: unknown, infoString?: unknown, escaped?: unknown) {
+        return render_copyable_code(code, infoString, escaped);
+      },
+    },
+  },
 );
 
 export function render_markdown(text: string): string {
