@@ -1,7 +1,13 @@
 
+export type SecurityBanner = {
+  safe: boolean;
+  message: string;
+};
+
 export type SecurityConfirmDialogConfig = {
   description: string;
-  subject: string;
+  subjects: string[];
+  banner: SecurityBanner | null;
   id: string;
   show: boolean;
 }

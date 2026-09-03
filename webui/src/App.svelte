@@ -182,8 +182,9 @@
           case "security_confirmation":
             session.show_security_confirmation(
               msg.description,
-              msg.subject,
+              msg.subjects,
               msg.id,
+              msg.banner,
             );
             break;
           case "session_reset":

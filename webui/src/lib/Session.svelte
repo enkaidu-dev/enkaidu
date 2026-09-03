@@ -121,7 +121,8 @@
     $state({
       show: false,
       description: "",
-      subject: "",
+      subjects: [],
+      banner: null,
       id: "",
     });
 
@@ -182,12 +183,14 @@
 
   export function show_security_confirmation(
     description: string,
-    subject: string,
+    subjects: string[],
     id: string,
+    banner: Common.SecurityBanner | null,
   ) {
     security_confirm_dialog_config.show = true;
     security_confirm_dialog_config.description = description;
-    security_confirm_dialog_config.subject = subject;
+    security_confirm_dialog_config.subjects = subjects;
+    security_confirm_dialog_config.banner = banner;
     security_confirm_dialog_config.id = id;
   }
 
@@ -295,7 +298,8 @@
 </div>
 
 <SecurityConfirmDialog
-  subject={security_confirm_dialog_config.subject}
+  subjects={security_confirm_dialog_config.subjects}
+  banner={security_confirm_dialog_config.banner}
   description={security_confirm_dialog_config.description}
   id={security_confirm_dialog_config.id}
   show={security_confirm_dialog_config.show}
