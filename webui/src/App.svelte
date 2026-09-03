@@ -25,6 +25,12 @@
       }
     }
     window.addEventListener("beforeunload", handler);
+    // Fire the start request as soon as the page is usable, rather than
+    // waiting for the user's first prompt. Fire-and-forget with a catch so a
+    // failed /api/start surfaces as a clarion instead of an unhandled rejection.
+    check_if_started().catch((error) => {
+      session.add_event({ type: "clarion", content: error as string });
+    });
     return () => window.removeEventListener("beforeunload", handler);
   });
 
@@ -74,7 +80,10 @@
         let msg = JSON.parse(line);
         switch (msg.type) {
           case "system_info":
-            prompt.update(msg.host, msg.cwd);
+            prompt.update_system(msg.host, msg.cwd);
+            break;
+          case "session_info":
+            prompt.update_session(msg.model);
             break;
           case "ask_for_inputs":
             session.ask_for_inputs(
@@ -196,9 +205,9 @@
   // Send start / init request if not already sent
   async function check_if_started() {
     if (!started) {
+      started = true;
       let resp = await enkaidu_get_request("start");
       await handle_response(resp);
-      started = true;
     }
   }
 

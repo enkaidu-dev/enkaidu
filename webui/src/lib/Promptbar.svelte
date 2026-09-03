@@ -3,12 +3,17 @@
   let text_area = $state<HTMLTextAreaElement | undefined>(undefined);
   let input_text = $state("");
 
-  let host = $state("");
-  let cwd = $state("");
+  let host = $state("(host)");
+  let cwd = $state("(./)");
+  let model = $state("(unknown)");
 
-  export function update(hostname: string, workingpath: string) {
+  export function update_system(hostname: string, workingpath: string) {
     host = hostname;
     cwd = workingpath;
+  }
+
+  export function update_session(modelname: string) {
+    model = modelname;
   }
 
   function hashHue(s: string): number {
@@ -65,16 +70,19 @@
 >
   {#if host || cwd}
     <div
-      class="promptbar-tab flex items-center gap-2 rounded-t-xl border border-b-0 border-base-content/15 border-l-[3px] px-4 py-1.5 text-sm select-none"
+      class="promptbar-tab flex justify-between gap-2 rounded-t-xl border border-b-0 border-base-content/15 border-l-[3px] px-4 py-1.5 text-sm select-none"
       style="--session-hue: {sessionHue}"
     >
       <span class="font-semibold tracking-tight text-base-content/90">
         Enkaidu
       </span>
-      <span class="text-base-content/30">&bull;</span>
-      <span class="font-medium text-base-content/70">{host}</span>
-      <span class="text-base-content/30">&bull;</span>
+      <span class="truncate max-w-[25ch] font-medium text-base-content/70">
+        {host}
+      </span>
       <span class="truncate max-w-[45ch]" title={cwd}>{cwd}</span>
+      <span class="font-semibold text-base-content/90 text-nowrap">
+        {model}
+      </span>
     </div>
   {/if}
   <form
@@ -99,7 +107,7 @@
         oninput={auto_grow}
         rows="1"
         class="flex-1 bg-transparent text-base-content placeholder:text-base-content/30 focus:outline-none resize-none text-base leading-relaxed"
-        placeholder="Message Enkaidu…"
+        placeholder="Ask Enkaidu…"
       ></textarea>
       <button
         type="submit"
@@ -128,7 +136,7 @@
     <div
       class="text-center text-xs text-base-content/20 mt-1 group-focus-within:opacity-0 transition-opacity"
     >
-      Enter to send · Shift+Enter for newline
+      Enter to send &bull; Shift+Enter for newline
     </div>
   {/if}
 </div>

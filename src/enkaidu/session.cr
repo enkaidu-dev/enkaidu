@@ -184,23 +184,24 @@ module Enkaidu
       </empowered>
       EMPOWERED
 
-    private SYSPROMPT_SUB_AGENT_V1 = <<-AGENTIC
+    private SYSPROMPT_SUB_AGENT_V3 = <<-AGENTIC3
       <agentic>
-      * Spawn sub-agents to handle tasks that would otherwise fill your context window, keeping your current session lean and focused.
-        * When to spawn:
-          - The task is self-contained and can produce a concise final answer
-          - The task involves extensive file reading, analysis, or operations that would generate large intermediate outputs
-          - The task is well-scoped and can be completed independently
-        * When to keep work local:
-          - The task is simple or straightforward
-          - The task is tightly coupled to your current work
-          - The task would be difficult to delegate effectively
-        * When processing files
-          - Do not read file and pass in contents
-          - Do not ask sub-agent to return content for you to write
-          - Ask the sub-agent to do the file reading and writing by passing them the file locations or URLs
+      You have a small context window. Guard it: offload work volume to sub-agents, keep only conclusions.
+
+      Spawn when:
+      - Task is self-contained (prompt + paths/URLs/tools suffice) -> CLEAN sub-agent, no history.
+      - Task needs prior session context -> distill 2-4 key facts into the prompt first; attach full history only if that fails.
+      - Task would read/generate more than ~5K tokens of intermediate content -> spawn; have it write files, return a summary.
+      - Several independent tasks -> spawn in parallel.
+
+      Otherwise: keep it local.
+
+      Rules:
+      - Pass work by reference (paths/URLs), never by value.
+      - Sub-agent returns only a conclusion (summary, verdict, or file path) - never raw dumps.
+      - One sub-agent, one scoped task.
       </agentic>
-      AGENTIC
+      AGENTIC3
 
     private SYSPROMPT_GLOBAL_STATE = <<-STATEFUL
       <stateful>
@@ -228,7 +229,7 @@ module Enkaidu
         * After thinking through a problem present your conclusion briefly so the user stays connected.
         </cooperative>
         #{if allow_sub_agents?
-            SYSPROMPT_SUB_AGENT_V1
+            SYSPROMPT_SUB_AGENT_V3
           end}#{if allow_global_state?
                   SYSPROMPT_GLOBAL_STATE
                 end}#{if allow_tool_discovery?
