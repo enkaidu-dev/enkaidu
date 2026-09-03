@@ -66,6 +66,18 @@
   --color-border-base-content: #36312b;
   --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
     "Helvetica Neue", Arial, sans-serif;
+
+  /* code highlighting (highlight.js tokens) — light mode */
+  --hljs-comment: #8a8175;
+  /* warm gray */
+  --hljs-keyword: var(--color-info);
+  /* muted slate */
+  --hljs-string: var(--color-success);
+  /* muted green */
+  --hljs-number: var(--color-warning);
+  /* muted amber */
+  --hljs-function: var(--color-accent);
+  /* muted terracotta */
 }
 
 /* Warm dark mode: warm charcoal surfaces, warm off-white text, a touch
@@ -107,6 +119,17 @@
     --color-border-base: #3a342c;
     /* warm hairline border on dark */
     --color-border-base-content: #ece4d9;
+
+    /* code highlighting (highlight.js tokens) — dark mode */
+    --hljs-comment: color-mix(in srgb, var(--color-base-content) 50%, transparent);
+    --hljs-keyword: var(--color-info);
+    /* lifted slate */
+    --hljs-string: var(--color-success);
+    /* lifted green */
+    --hljs-number: var(--color-warning);
+    /* lifted amber */
+    --hljs-function: var(--color-accent);
+    /* brighter terracotta */
   }
 }
 
@@ -171,6 +194,51 @@ body {
   padding: 0;
   font-size: 0.85em;
 }
+
+/* Syntax highlighting (highlight.js via marked-highlight).
+   Colors come from the --hljs-* palette variables (defined per color
+   scheme in :root / dark media block) so tokens shift automatically
+   with light/dark and stay in the warm, low-saturation family. */
+.prose pre .hljs-comment,
+.prose pre .hljs-quote {
+  color: var(--hljs-comment);
+  font-style: italic;
+}
+
+.prose pre .hljs-keyword,
+.prose pre .hljs-selector-tag,
+.prose pre .hljs-tag,
+.prose pre .hljs-doctag {
+  color: var(--hljs-keyword);
+}
+
+.prose pre .hljs-string,
+.prose pre .hljs-regexp,
+.prose pre .hljs-addition {
+  color: var(--hljs-string);
+}
+
+.prose pre .hljs-number,
+.prose pre .hljs-literal,
+.prose pre .hljs-symbol,
+.prose pre .hljs-bullet {
+  color: var(--hljs-number);
+}
+
+.prose pre .hljs-title,
+.prose pre .hljs-name,
+.prose pre .hljs-section,
+.prose pre .hljs-selector-id,
+.prose pre .hljs-selector-class,
+.prose pre .hljs-attr,
+.prose pre .hljs-attribute,
+.prose pre .hljs-variable {
+  color: var(--hljs-function);
+}
+
+/* Untokened text and other token types (params, meta, type, built_in,
+   deletion, etc.) intentionally inherit var(--color-base-content) from
+   .prose pre — muted enough to read as background detail. */
 
 /* horizontal rule: warm hairline */
 .prose hr {
