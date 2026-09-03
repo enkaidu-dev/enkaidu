@@ -35,8 +35,10 @@
 
 <!-- Interactive mermaid block: rendered diagram with a Diagram/Code
      toggle. The action row (label left, chips right) is intentionally
-     generic so future per-block actions (e.g. "Copy source") can be
-     slotted in without touching the state logic. -->
+     generic so future per-block actions (e.g. "Download") can be
+     slotted in without touching the state logic. "Copy source" is
+     handled by the Code view wearing the regular fenced-block wrapper
+     (see the Code branch below). -->
 <div
   class="not-prose my-6 w-full overflow-hidden rounded-lg border border-base/85 text-sm"
 >
@@ -77,8 +79,20 @@
       {@html svg}
     </div>
   {:else if view === "code" && source}
-    <pre
-      class="overflow-x-auto bg-base-100/50 p-3 font-mono text-xs leading-relaxed"><code>{source}</code></pre>
+    <!-- Wears the same wrapper + button markup as a regular fenced block:
+         Markdown.svelte's delegated copy handler picks it up for free
+         (it watches for [data-copy-code] under .enkaidu-code anywhere in
+         the transcript, including hydrated blocks). Mermaid isn't a
+         highlight.js language, so the source stays plaintext. -->
+    <div class="enkaidu-code group/code relative">
+      <button
+        type="button"
+        data-copy-code
+        aria-label="Copy code"
+        class="enkaidu-copy absolute right-2 top-2 z-10 opacity-0 transition-opacity duration-150 group-hover/code:opacity-100 focus-visible:opacity-100">Copy</button>
+      <pre
+        class="overflow-x-auto bg-base-100/50 p-3 font-mono text-xs leading-relaxed"><code>{source}</code></pre>
+    </div>
   {:else if !rendered}
     <div class="p-3 text-xs text-base-content/40">Rendering diagram…</div>
   {/if}
