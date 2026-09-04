@@ -134,9 +134,10 @@
   </form>
   {#if !loading}
     <div
-      class="text-center text-xs text-base-content/20 mt-1 group-focus-within:opacity-0 transition-opacity"
+      class="text-center text-xs text-base-content/80 mt-1 group-focus-within:opacity-0 transition-opacity"
     >
-      Enter to send &bull; Shift+Enter for newline
+      Enter to send &bull; Shift+Enter for newline &bull; AI can make mistakes:
+      double-check responses.
     </div>
   {/if}
 </div>
