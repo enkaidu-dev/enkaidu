@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onDestroy, mount, unmount } from "svelte";
   import { render_markdown } from "../markdown";
-  import MermaidBlock from "./MermaidBlock.svelte";
+  import { get_renderer } from "./blocks/registry";
 
   let {content, add_class}: {content: string; add_class?: string} = $props();
 
@@ -9,10 +9,10 @@
   // every re-render of the card.
   let html = $derived(render_markdown(content));
 
-  // Hydration for interactive code blocks (currently mermaid): the
+  // Hydration for interactive code blocks (e.g. mermaid): the
   // marked extension emits inert placeholders (.enkaidu-codeblock)
   // whose source lives in a <template>. When the rendered HTML
-  // settles, we mount a MermaidBlock component into each placeholder.
+  // settles, we mount a block component from the registry into each placeholder.
   //
   // The @html string is replaced wholesale on every content change
   // (streaming fragments), so placeholders — and their components —
@@ -38,7 +38,7 @@
         try {
           unmount(instance);
         } catch (error) {
-          console.error("Failed to unmount mermaid block", error);
+          console.error("Failed to unmount code block", error);
         }
         instances.delete(el);
       }
@@ -46,19 +46,24 @@
 
     for (const el of live) {
       if (instances.has(el)) continue;
+      
+      const lang = el.getAttribute("data-language") ?? "";
+      const renderer = get_renderer(lang);
+      if (!renderer) continue;
+
       const template = el.querySelector("template");
       const source = template?.content.textContent ?? "";
       // Clear the placeholder children (template + visible code fallback)
       // so the interactive block renders by itself.
       el.replaceChildren();
       try {
-        const instance = mount(MermaidBlock, {
+        const instance = mount(renderer.component, {
           target: el,
-          props: {source},
+          props: { source, language: renderer.language },
         });
         instances.set(el, instance);
       } catch (error) {
-        console.error("Failed to mount mermaid block", error);
+        console.error(`Failed to mount ${lang} block`, error);
       }
     }
   }

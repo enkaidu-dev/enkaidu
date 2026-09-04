@@ -8,47 +8,46 @@
 import { marked } from "marked";
 import { markedHighlight } from "marked-highlight";
 import hljs from "highlight.js/lib/common";
-import { mermaid_cached } from "./mermaid";
+import { get_renderer, sniff_renderer } from "./lib/blocks/registry";
 
-// ```mermaid fences become a placeholder block that Markdown.svelte
-// hydrates into an interactive MermaidBlock (rendered diagram with a
-// Diagram/Code toggle). The diagram source is kept HTML-escaped inside
-// a <template>; Markdown.svelte reads it out when it mounts the block
-// component, so nothing executes at parse time.
-function render_mermaid_placeholder(source: string): string {
+// Custom code blocks become placeholder blocks that Markdown.svelte
+// hydrates into interactive components (e.g. MermaidBlock). The source
+// is kept HTML-escaped inside a <template>; Markdown.svelte reads it out
+// when it mounts the block component, so nothing executes at parse time.
+function render_block_placeholder(lang: string, source: string): string {
   const escaped = source
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
   // Visible content while the placeholder is inert. Two cases:
   //
-  // 1. Cache hit — a rendered SVG for this source+theme already exists
-  //    (the diagram was rendered once and its surrounding markdown keeps
+  // 1. Cache hit — a rendered representation for this source already exists
+  //    (the diagram/graphic was rendered once and its surrounding markdown keeps
   //    re-parsing as the rest of the response streams). Emit a pixel
-  //    clone of MermaidBlock's Diagram view (same frame, header and
-  //    chips) around the cached SVG. The markup deliberately duplicates
-  //    MermaidBlock.svelte's Diagram view — if you restyle the block's
-  //    frame, restyle this too (and vice versa). With both the
+  //    clone of BlockFrame's Diagram view (same frame, header and
+  //    chips) around the cached content. The markup deliberately duplicates
+  //    BlockFrame.svelte's Diagram view. With both the
   //    placeholder and the hydrated block indistinguishable, the
   //    placeholder → block swap during stream churn produces no visible
-  //    flash at all. Without this, the headerless placeholder shows for
-  //    up to the 150ms hydration debounce after each fragment and the
-  //    frame keeps flashing in and out.
+  //    flash at all.
   //
-  // 2. Cache miss — first render (or the diagram source just changed).
+  // 2. Cache miss — first render (or the source just changed).
   //    Show the source as highlighted plaintext: nothing else is
   //    available yet, and it matches the block's "Code" view.
-  const cached_svg = mermaid_cached(source);
-  const visible = cached_svg
+  const renderer = get_renderer(lang);
+  const cached_content = renderer?.getCached?.(source);
+  const displayName = renderer?.displayName ?? lang;
+
+  const visible = cached_content
     ? (
         '<div class="not-prose my-6 w-full overflow-hidden rounded-lg border border-base/85 text-sm">' +
         '<div class="flex items-center justify-between gap-2 border-b border-base/85 bg-base-200 px-3 py-1.5">' +
-        '<span class="font-mono text-xs text-base-content/50">mermaid</span>' +
+        `<span class="font-mono text-xs text-base-content/50">${displayName}</span>` +
         '<div class="flex items-center gap-1">' +
         '<span class="action-chip active">Diagram</span>' +
         '<span class="action-chip">Code</span>' +
         "</div></div>" +
-        `<div class="flex justify-center overflow-x-auto p-3">${cached_svg}</div>` +
+        `<div class="flex justify-center overflow-x-auto p-3">${cached_content}</div>` +
         "</div>"
       )
     : (
@@ -57,7 +56,7 @@ function render_mermaid_placeholder(source: string): string {
         "</code></pre>"
       );
   return (
-    '<div class="enkaidu-codeblock enkaidu-codeblock-mermaid">' +
+    `<div class="enkaidu-codeblock" data-language="${lang}">` +
     `<template>${escaped}</template>` +
     visible +
     "</div>"
@@ -75,7 +74,7 @@ function render_mermaid_placeholder(source: string): string {
 // everything we need.
 //
 // Only fenced code goes through renderer.code (inline code uses
-// renderer.codespan), and the <template>-bearing mermaid placeholders
+// renderer.codespan), and the <template>-bearing custom placeholders
 // are a separate extension, so neither is affected.
 function escape_html(text: string, encode: boolean): string {
   const replacements: Record<string, string> = {
@@ -86,8 +85,8 @@ function escape_html(text: string, encode: boolean): string {
     "'": "&#39;",
   };
   const pattern = encode
-    ? /[&<>"']/g
-    : /[<>"']|&(?!(#?\d+|#?[Xx][A-Fa-f0-9]+|\w+);)/g;
+    ? /[&<> "']/g
+    : /[<> "']|&(?!(#?\d+|#?[Xx][A-Fa-f0-9]+|\w+);)/g;
   return text.replace(pattern, (ch) => replacements[ch] ?? ch);
 }
 
@@ -133,26 +132,28 @@ function render_copyable_code(
 }
 
 // Registration order matters: marked's use() calls the LAST registered
-// renderer first (earlier ones are only reached when a later one returns
-// false, which the <pre> producer below never does). So the copy wrapper
-// is registered AFTER markedHighlight to take precedence over the plain
-// <pre> it would otherwise emit.
+// renderer first. So the copy wrapper is registered AFTER markedHighlight
+// to take precedence over the plain <pre> it would otherwise emit.
 marked.use(
   {
     extensions: [
       {
-        name: "mermaid",
+        name: "custom-block",
         level: "block",
         start(src) {
-          const index = src.indexOf("```mermaid");
+          const index = src.indexOf("```");
           if (index < 0) return undefined;
           if (index > 0 && src[index - 1] !== "\n") return undefined;
           return index;
         },
         tokenizer(src) {
-          const open = /^```mermaid[ \t]*\r?\n/.exec(src);
-          if (!open) return undefined;
-          const body_start = open[0].length;
+          // Match any backtick block fence, allowing empty/missing language
+          const match = /^```([a-zA-Z0-9_-]*)[ \t]*\r?\n/.exec(src);
+          if (!match) return undefined;
+          
+          const rawLang = match[1];
+
+          const body_start = match[0].length;
           const close = src.indexOf("```", body_start);
           if (close < 0) {
             // Fence not closed yet (still streaming) — let the default
@@ -163,14 +164,21 @@ marked.use(
           if (!/^[ \t]*(\r?\n|$)/.test(src.slice(close + 3))) return undefined;
           const source = src.slice(body_start, close).replace(/\r?\n$/, "");
           if (source.trim() === "") return undefined;
+
+          // Attempt to resolve or sniff the appropriate block renderer
+          const renderer = sniff_renderer(rawLang, source);
+          if (!renderer) return undefined;
+
           return {
-            type: "mermaid",
+            type: "custom-block",
             raw: src.slice(0, close + 3),
+            lang: renderer.language,
             source,
           };
         },
         renderer(token) {
-          return render_mermaid_placeholder((token as { source?: string })?.source ?? "");
+          const t = token as unknown as { lang: string; source: string };
+          return render_block_placeholder(t.lang, t.source);
         },
       },
     ],
