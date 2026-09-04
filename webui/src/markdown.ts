@@ -8,6 +8,7 @@
 import { marked } from "marked";
 import { markedHighlight } from "marked-highlight";
 import hljs from "highlight.js/lib/common";
+import { mermaid_cached } from "./mermaid";
 
 // ```mermaid fences become a placeholder block that Markdown.svelte
 // hydrates into an interactive MermaidBlock (rendered diagram with a
@@ -19,22 +20,46 @@ function render_mermaid_placeholder(source: string): string {
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
-  // Also render the diagram source as a visible code fallback. The
-  // placeholder is inert — Markdown.svelte hydrates it into the
-  // interactive MermaidBlock and replaces these children — so without
-  // the fallback, the moment a streaming fence closes there is a
-  // window where the block renders nothing (until hydration runs and
-  // mermaid itself renders, which can take a while on first load).
-  // Showing the source keeps the block stable visually, degrades
-  // gracefully if hydration fails, and matches the "Code" view of
-  // the interactive block.
-  const fallback = hljs.highlight(source, { language: "plaintext" }).value;
+  // Visible content while the placeholder is inert. Two cases:
+  //
+  // 1. Cache hit — a rendered SVG for this source+theme already exists
+  //    (the diagram was rendered once and its surrounding markdown keeps
+  //    re-parsing as the rest of the response streams). Emit a pixel
+  //    clone of MermaidBlock's Diagram view (same frame, header and
+  //    chips) around the cached SVG. The markup deliberately duplicates
+  //    MermaidBlock.svelte's Diagram view — if you restyle the block's
+  //    frame, restyle this too (and vice versa). With both the
+  //    placeholder and the hydrated block indistinguishable, the
+  //    placeholder → block swap during stream churn produces no visible
+  //    flash at all. Without this, the headerless placeholder shows for
+  //    up to the 150ms hydration debounce after each fragment and the
+  //    frame keeps flashing in and out.
+  //
+  // 2. Cache miss — first render (or the diagram source just changed).
+  //    Show the source as highlighted plaintext: nothing else is
+  //    available yet, and it matches the block's "Code" view.
+  const cached_svg = mermaid_cached(source);
+  const visible = cached_svg
+    ? (
+        '<div class="not-prose my-6 w-full overflow-hidden rounded-lg border border-base/85 text-sm">' +
+        '<div class="flex items-center justify-between gap-2 border-b border-base/85 bg-base-200 px-3 py-1.5">' +
+        '<span class="font-mono text-xs text-base-content/50">mermaid</span>' +
+        '<div class="flex items-center gap-1">' +
+        '<span class="action-chip active">Diagram</span>' +
+        '<span class="action-chip">Code</span>' +
+        "</div></div>" +
+        `<div class="flex justify-center overflow-x-auto p-3">${cached_svg}</div>` +
+        "</div>"
+      )
+    : (
+        '<pre class="not-prose overflow-x-auto bg-base-100/50 p-3 font-mono text-xs leading-relaxed"><code>' +
+        hljs.highlight(source, { language: "plaintext" }).value +
+        "</code></pre>"
+      );
   return (
     '<div class="enkaidu-codeblock enkaidu-codeblock-mermaid">' +
     `<template>${escaped}</template>` +
-    '<pre class="not-prose overflow-x-auto bg-base-100/50 p-3 font-mono text-xs leading-relaxed"><code>' +
-    fallback +
-    "</code></pre>" +
+    visible +
     "</div>"
   );
 }

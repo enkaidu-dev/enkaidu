@@ -1,16 +1,32 @@
 <script lang="ts">
-  import { mermaid_render } from "../mermaid";
+  import { mermaid_cached, mermaid_render } from "../mermaid";
 
   let { source }: { source: string } = $props();
 
+  // Seed from the render cache when possible. During streaming this
+  // component is recreated on nearly every fragment (the @html is
+  // replaced wholesale and the re-mounted placeholder starts fresh);
+  // starting already-rendered from cache means those re-creations show
+  // the diagram immediately instead of flashing through code fallback
+  // and "Rendering diagram…". The first render still goes through
+  // mermaid_render below and populates the cache; the effect then keeps
+  // the values current afterwards.
+  //
+  // NOTE: the top-level capture of `source` is deliberate and happens
+  // exactly once at construction — it intentionally triggers the
+  // svelte-state_referenced_locally advisory (do not "fix" it by moving
+  // the lookup inside a $state initializer: $state does not invoke
+  // function initializers, so the function itself becomes the state
+  // value and the diagram is blanked until the effect resolves).
+  const cached = mermaid_cached(source);
   let view = $state<"diagram" | "code">("diagram");
-  let svg = $state("");
+  let svg = $state(cached ?? "");
   let failed = $state(false);
   let error = $state("");
   // mermaid is loaded and rendered asynchronously, so the toggle is
   // hidden until there is something definite to show (diagram or a
   // failure). Once known, the state below is plain UI state.
-  let rendered = $state(false);
+  let rendered = $state(cached !== null);
 
   // mermaid themes are single-scheme (the SVG has colors baked in), so
   // when the OS color scheme flips we re-render the diagram under the
@@ -56,7 +72,11 @@
      generic so future per-block actions (e.g. "Download") can be
      slotted in without touching the state logic. "Copy source" is
      handled by the Code view wearing the regular fenced-block wrapper
-     (see the Code branch below). -->
+     (see the Code branch below).
+     NOTE: markdown.ts' render_mermaid_placeholder emits a pixel-identical
+     static clone of this Diagram view while a cache-hit diagram is
+     awaiting hydration — keep the frame/header markup in sync across
+     the two files to avoid a visible flash when the block mounts. -->
 <div
   class="not-prose my-6 w-full overflow-hidden rounded-lg border border-base/85 text-sm"
 >

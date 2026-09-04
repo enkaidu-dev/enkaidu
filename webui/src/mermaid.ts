@@ -62,3 +62,13 @@ export async function mermaid_render(source: string): Promise<string> {
   rendered_cache.set(cache_key, svg);
   return svg;
 }
+
+// Synchronous "is it already rendered?" lookup. MermaidBlock seeds its
+// initial state from this: during streaming the placeholder element (and
+// the mounted component) is recreated on nearly every fragment, and
+// starting already-rendered from cache means the re-creation shows the
+// diagram immediately instead of flashing through the
+// "Rendering diagram…" / code fallback views.
+export function mermaid_cached(source: string): string | null {
+  return rendered_cache.get(source + "\x00" + current_mermaid_theme()) ?? null;
+}
