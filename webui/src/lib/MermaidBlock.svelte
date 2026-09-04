@@ -12,7 +12,25 @@
   // failure). Once known, the state below is plain UI state.
   let rendered = $state(false);
 
+  // mermaid themes are single-scheme (the SVG has colors baked in), so
+  // when the OS color scheme flips we re-render the diagram under the
+  // other theme. Cheap: the switch is rare and each result is cached.
+  let scheme = $state(window.matchMedia("(prefers-color-scheme: dark)"));
   $effect(() => {
+    const handler = () => (scheme = window.matchMedia("(prefers-color-scheme: dark)"));
+    scheme.addEventListener("change", handler);
+    return () => scheme.removeEventListener("change", handler);
+  });
+
+  $effect(() => {
+    void scheme; // re-run when the OS color scheme changes
+    // A re-render (scheme flip) is also a retry: clear a stale failure
+    // so a successful render restores the Diagram view.
+    if (failed) {
+      failed = false;
+      error = "";
+      view = "diagram";
+    }
     let cancelled = false;
     mermaid_render(source)
       .then((diagram) => {
