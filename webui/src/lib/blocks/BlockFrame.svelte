@@ -8,6 +8,8 @@
     failed = false,
     error = "",
     view = $bindable("diagram"),
+    diagramLabel = "Diagram",
+    codeLabel = "Source",
     children,
   }: {
     language: string;
@@ -16,6 +18,8 @@
     failed?: boolean;
     error?: string;
     view?: "diagram" | "code";
+    diagramLabel?: string;
+    codeLabel?: string;
     children?: Snippet;
   } = $props();
 </script>
@@ -31,14 +35,14 @@
             class="action-chip"
             class:active={view === "diagram"}
             aria-pressed={view === "diagram"}
-            onclick={() => (view = "diagram")}>Diagram</button>
+            onclick={() => (view = "diagram")}>{diagramLabel}</button>
         {/if}
         <button
           type="button"
           class="action-chip"
           class:active={view === "code"}
           aria-pressed={view === "code"}
-          onclick={() => (view = "code")}>Code</button>
+          onclick={() => (view = "code")}>{codeLabel}</button>
       {/if}
     </div>
   </div>

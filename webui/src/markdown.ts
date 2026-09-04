@@ -37,6 +37,8 @@ function render_block_placeholder(lang: string, source: string): string {
   const renderer = get_renderer(lang);
   const cached_content = renderer?.getCached?.(source);
   const displayName = renderer?.displayName ?? lang;
+  const diagramLabel = renderer?.diagramLabel ?? "Diagram";
+  const codeLabel = renderer?.codeLabel ?? "Source";
 
   const visible = cached_content
     ? (
@@ -44,8 +46,8 @@ function render_block_placeholder(lang: string, source: string): string {
         '<div class="flex items-center justify-between gap-2 border-b border-base/85 bg-base-200 px-3 py-1.5">' +
         `<span class="font-mono text-xs text-base-content/50">${displayName}</span>` +
         '<div class="flex items-center gap-1">' +
-        '<span class="action-chip active">Diagram</span>' +
-        '<span class="action-chip">Code</span>' +
+        `<span class="action-chip active">${diagramLabel}</span>` +
+        `<span class="action-chip">${codeLabel}</span>` +
         "</div></div>" +
         `<div class="flex justify-center overflow-x-auto p-3">${cached_content}</div>` +
         "</div>"
