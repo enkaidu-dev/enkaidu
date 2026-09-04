@@ -12,12 +12,18 @@
   // mermaid_render below and populates the cache; the effect then keeps
   // the values current afterwards.
   //
-  // NOTE: the top-level capture of `source` is deliberate and happens
-  // exactly once at construction — it intentionally triggers the
-  // svelte-state_referenced_locally advisory (do not "fix" it by moving
-  // the lookup inside a $state initializer: $state does not invoke
-  // function initializers, so the function itself becomes the state
-  // value and the diagram is blanked until the effect resolves).
+  // NOTE: the lookup is a deliberate one-shot capture at construction —
+  // `source` never changes on a live instance (Markdown unmounts and
+  // re-mounts blocks rather than updating props), so it is not a
+  // stale-capture problem. The svelte-state_referenced_locally advisory
+  // it triggers is therefore a false positive and is accepted. Do NOT
+  // "fix" it by deferring the evaluation (e.g. a $state function
+  // initializer — $state does not invoke function initializers, so the
+  // function itself becomes the state value and the diagram is blanked
+  // until the effect resolves). An IIFE wrapper was also tested to
+  // quiet the warning, but the following test froze the tab (likely
+  // stale hot-reload state, root cause unconfirmed); the plain call
+  // below is known-good — leave it.
   const cached = mermaid_cached(source);
   let view = $state<"diagram" | "code">("diagram");
   let svg = $state(cached ?? "");
