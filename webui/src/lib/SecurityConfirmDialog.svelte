@@ -1,15 +1,25 @@
 <script lang="ts">
   import * as Common from "../common_types";
+  import Markdown from "./Markdown.svelte";
 
   let {
     onconfirm,
     description,
-    subject,
+    subjects,
+    banner,
     id,
     show = true,
   }: Common.SecurityConfirmDialogConfig & {
     onconfirm: Common.SecurityConfirmSubmit;
   } = $props();
+
+  // Present each subject as its own fenced code block (they are shell
+  // commands, possibly several). Rendering through the shared Markdown
+  // pipeline gives us syntax highlighting and the hover copy chip for
+  // free. One fence per subject keeps each command visually distinct.
+  let subjects_markdown = $derived(
+    subjects.map((subject) => "```bash\n" + subject + "\n```").join("\n\n"),
+  );
 
   function handleApprove() {
     onconfirm(id, true);
@@ -27,12 +37,17 @@
         ⚠️ Security-related Confirmation Required
       </h3>
       <div class="py-4">
+        {#if banner}
+          <p class="mb-3 font-medium {banner.safe ? "text-success" : "text-error"}">
+            {banner.message}
+          </p>
+        {/if}
         <p class="mb-4">
           {description}
         </p>
-        <div class="mockup-code">
-          <pre class="text-error"><code>{subject}</code></pre>
-        </div>
+        {#if subjects.length > 0}
+          <Markdown content={subjects_markdown} add_class="my-0" />
+        {/if}
         <p class="mt-4 text-sm text-base-content/70">
           Please review carefully before proceeding. Security confirmations are
           for operations that could adversely affect your system running

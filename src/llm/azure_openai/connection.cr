@@ -11,8 +11,8 @@ module LLM::AzureOpenAI
       ENV["AZURE_OPENAI_API_VER"]
     end
 
-    def api_key
-      ENV["AZURE_OPENAI_API_KEY"]
+    def api_key : String
+      ENV.fetch("AZURE_OPENAI_API_KEY", nil) || raise MissingAPIKey.new("Azure OpenAI connections require an API key.")
     end
 
     def model
@@ -25,13 +25,6 @@ module LLM::AzureOpenAI
 
     protected def path : String
       "/openai/deployments/#{model}/chat/completions?api-version=#{api_ver}"
-    end
-
-    protected def headers : HTTP::Headers
-      HTTP::Headers{
-        "Content-Type"  => "application/json",
-        "Authorization" => "Bearer #{api_key}",
-      }
     end
   end
 end

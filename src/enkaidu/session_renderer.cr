@@ -40,7 +40,7 @@ module Enkaidu
 
     abstract def time_elapsed(duration : Time::Span, label : String? = nil)
 
-    abstract def session_reset
+    abstract def session_reset(session : Session)
     abstract def session_pushed(depth, keep_tools, keep_prompts, keep_history)
     abstract def session_popped(depth)
 

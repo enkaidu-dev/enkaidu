@@ -1,21 +1,61 @@
 <script lang="ts">
+  import JsonTable from "./JsonTable.svelte";
+
   let { name, args }: { name: string; args: string } = $props();
 
-  // svelte-ignore state_referenced_locally
-  let params = JSON.parse(args);
+  // Parse the tool's argument JSON once so we can (a) lift the optional
+  // `reason` field to use as the card title and (b) tabulate the remaining
+  // parameters. Degrades to the raw string if parsing fails.
+  let parsed: Record<string, unknown> | null = $derived.by(() => {
+    try {
+      const value: unknown = JSON.parse(args);
+      return value && typeof value === "object" && !Array.isArray(value)
+        ? (value as Record<string, unknown>)
+        : null;
+    } catch {
+      return null;
+    }
+  });
+
+  // The LLM-supplied reason, when present. This stands in for the "Thinking"
+  // headline of AsstThinkCard — the tool call explains *why* it ran.
+  let reason = $derived(
+    parsed && typeof parsed.reason === "string" ? parsed.reason : "",
+  );
+
+  // Title: the reason when we have one, else fall back to the tool name.
+  let title = $derived(reason.trim() ? reason : name);
+
+  // Keep the tool name visible (as a trailing token) whenever a reason is the
+  // headline and it differs from the name — otherwise we'd lose which tool ran.
+  let show_name = $derived(!!reason.trim() && reason !== name);
+
+  // The object to tabulate (reason lifted to the title). Falls back to the raw
+  // string when args isn't a JSON object so nothing is lost.
+  let params: unknown = $derived.by(() => {
+    if (!parsed) return args;
+    const p = { ...parsed };
+    delete p.reason;
+    return p;
+  });
 </script>
 
-<div
-  class="px-4 place-self-start mb-0 bg-base-100 text-sm text-success"
-  // class=" w-7/8 px-4 py-1 card card-xs shadow-sm place-self-start bg-base-100 text-sm text-base-content dark:border-base-content dark:border-1 dark:border-dashed"
->
-  <div class="card-title text-ghost text-xs">
-    <i>
-      {#if params.reason}
-        {params.reason} → CALL <code>{name}</code>
-      {:else}
-        → CALL <code>{name}</code> with <code>{args}</code>
+<div class="w-7/8 place-self-start text-base-content/50">
+  <details class="group/tool">
+    <summary
+      class="cursor-pointer list-none py-0 text-xs font-medium text-base-content/40 hover:text-base-content/60 transition-colors select-none flex items-center gap-1"
+    >
+      <span
+        class="text-base-content/30 group-open/tool:rotate-90 transition-transform text-[0.85em] leading-none"
+        >▶</span
+      >
+      <span>{title}</span>
+      {#if show_name}
+        <span class="text-base-content/30">· {name}</span>
       {/if}
-    </i>
-  </div>
+    </summary>
+    <div class="ms-5 ps-2 mt-1 max-h-40 overflow-y-auto pr-1">
+      <JsonTable value={params} />
+    </div>
+  </details>
 </div>

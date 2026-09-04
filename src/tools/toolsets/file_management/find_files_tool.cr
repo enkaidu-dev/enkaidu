@@ -11,16 +11,17 @@ module Tools::FileManagement
     side_effects SideEffects::FileRead | SideEffects::DirRead
 
     # Provide a description for the tool
-    description "Finds files and directories in a directory hierarchy at `path` by matching a glob pattern in `expression`."
+    description "Finds files and directories at `path` matching the glob `expression` (the tool looks up 'path/expression'), " \
+                "and returns a JSON array of matching paths; an empty array means nothing matched — broaden the glob (use ** for subdirectories) before re-trying. " \
+                "Example: to list all Crystal files under src, use path=\"src\" and expression=\"**/*.cr\"."
 
     # Define the acceptable parameter using the `param` method
     param "expression", required: true,
-      description: "The glob pattern expression with which to find matching files and directories. "
+      description: "The glob pattern expression with which to find matching files and directories, relative to `path`, e.g. \"*.cr\" or \"tools/**/*.cr\". A single * is not recursive; use ** to recurse."
     param "path", required: true,
-      description: "The directory inside which this tool looks for " \
-                   "files and directories matching the `expression` pattern."
+      description: "The base directory inside which this tool looks for files and directories; it is combined with `expression` to form `path/expression`, so do not repeat `path` inside `expression`."
     param "max", type: Param::Type::Num, required: false,
-      description: "Optional. Maxmimum number of matches to return (default is #{FileHelper::MAX_FIND_FILE_MATCHES})"
+      description: "Optional. Maximum number of matches to return (default is #{FileHelper::MAX_FIND_FILE_MATCHES})"
     param "sort", type: Param::Type::Bool, required: false,
       description: "Optional. Set to false to disable sorting (default is true)"
 
@@ -50,7 +51,6 @@ module Tools::FileManagement
           return error_response("Reverse path navigation (via `..`) not allowed.")
         end
 
-        # Move the file to the deleted_files directory
         begin
           success_response(find_files(find_pattern, max, sort))
         rescue e

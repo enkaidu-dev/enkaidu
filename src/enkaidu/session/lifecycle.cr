@@ -15,10 +15,10 @@ module Enkaidu
         mcps = NamedTuple(mcp_servers: Array(String)).from_json(io.gets.as(String))
         toolsets = NamedTuple(toolsets: Array(Hash(String, String | Array(String)))).from_json(io.gets.as(String))
 
-        renderer.session_reset
         unload_all_toolsets
         unload_all_mcp_servers
         @chat = setup_chat # new chat BEFORE loading tools, MCP servers
+        renderer.session_reset(self)
 
         # load the toolsets
         toolsets[:toolsets].each do |toolset_spec|
@@ -41,7 +41,6 @@ module Enkaidu
       # Unload everything and start a new session as if we restarted Enkaidu, including auto loading from
       # the configuration; use given system prompt name if any
       def reset_session(sys_prompt_name : String?)
-        renderer.session_reset
         unload_all_toolsets
         unload_all_mcp_servers
         unload_all_prompts
@@ -50,6 +49,7 @@ module Enkaidu
                                 render_system_prompt(sys_prompt_name)
                               end
         @chat = setup_chat(override_sys_prompt)
+        renderer.session_reset(self)
 
         # new chat BEFORE loading tools, MCP servers
         auto_load_essentials(opts.config)

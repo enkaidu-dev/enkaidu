@@ -1,87 +1,432 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
 
-@plugin 'daisyui/index.js' {
+/* daisyUI v5 (Tailwind v4, CSS-first). `light --default, dark --prefersdark`
+   is the active, working config; the custom warm palette below restyles it by
+   overriding the same --color-* custom properties daisyUI v5 reads at runtime.
+   These overrides come AFTER the plugin, so by source order they win. */
+@plugin "daisyui" {
   themes: light --default, dark --prefersdark;
-  /* themes: corporate --default, business --prefersdark; */
 }
 
-/* :root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
+/* ---------------------------------------------------------------------------
+   Warm, low-contrast "Claude-feel" palette.
+   Light mode lives on :root; dark mode under prefers-color-scheme: dark.
+   Roles (what each token is used for, per the current components):
+     base-100/200/300  surfaces / backgrounds
+     base-content      primary text color
+     primary           calm, near-neutral button (Promptbar "Send")
+    secondary         general secondary surface (no longer tied to the removed menubar)
+     accent            muted terracotta — user message highlight (UserTextCard border-accent)
+     info, success, warning, error, neutral, plus -content variants -> semantic chips/alerts
+   --------------------------------------------------------------------------- */
+:root {
+  color-scheme: light;
 
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
+  /* surfaces */
+  --color-base-100: #faf7f2;
+  /* warm near-white (page background) */
+  --color-base-200: #f1ebdf;
+  /* light warm sand */
+  --color-base-300: #e4dccc;
+  /* slightly deeper warm gray */
+  --color-base-content: #36312b;
+  /* warm charcoal (primary text) */
 
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
+  /* accents */
+  --color-primary: #3f3931;
+  /* calm warm charcoal (buttons) */
+  --color-primary-content: #faf7f2;
+  --color-secondary: #efe7dc;
+  /* soft warm taupe (general secondary surface) */
+  --color-secondary-content: #36312b;
+  --color-accent: #b25e46;
+  /* muted terracotta / coral */
+  --color-accent-content: #ffffff;
+
+  /* neutrals + semantics */
+  --color-neutral: #5b5349;
+  --color-neutral-content: #faf7f2;
+  --color-info: #6b7f86;
+  /* muted slate */
+  --color-info-content: #ffffff;
+  --color-success: #5f8a6b;
+  /* muted green */
+  --color-success-content: #ffffff;
+  --color-warning: #c89a3e;
+  /* muted amber */
+  --color-warning-content: #2a2520;
+  --color-error: #bd5a4f;
+  /* muted brick */
+  --color-error-content: #ffffff;
+
+  /* borders + typography */
+  --color-border-base: #e0d7c8;
+  /* warm hairline border */
+  --color-border-base-content: #36312b;
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+
+  /* code highlighting (highlight.js tokens) — light mode */
+  --hljs-comment: #8a8175;
+  /* warm gray */
+  --hljs-keyword: var(--color-info);
+  /* muted slate */
+  --hljs-string: var(--color-success);
+  /* muted green */
+  --hljs-number: var(--color-warning);
+  /* muted amber */
+  --hljs-function: var(--color-accent);
+  /* muted terracotta */
+}
+
+/* Warm dark mode: warm charcoal surfaces, warm off-white text, a touch
+   brighter terracotta accent so it stays legible on dark. */
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+
+    --color-base-100: #26211b;
+    /* warm charcoal (page background) */
+    --color-base-200: #1f1b16;
+    /* deeper warm charcoal */
+    --color-base-300: #171310;
+    /* near-black warm */
+    --color-base-content: #ece4d9;
+    /* warm off-white text */
+
+    --color-primary: #d8cdb9;
+    /* warm light (buttons read as light on dark) */
+    --color-primary-content: #26211b;
+    --color-secondary: #221d18;
+    /* barely-different warm charcoal (general secondary surface) */
+    --color-secondary-content: #ece4d9;
+    --color-accent: #c67a5f;
+    /* brighter terracotta for dark */
+    --color-accent-content: #ffffff;
+
+    --color-neutral: #3a342c;
+    --color-neutral-content: #ece4d9;
+    --color-info: #7e97a1;
+    --color-info-content: #171310;
+    --color-success: #79a688;
+    --color-success-content: #171310;
+    --color-warning: #d3ad55;
+    --color-warning-content: #171310;
+    --color-error: #cd6f63;
+    --color-error-content: #171310;
+
+    --color-border-base: #3a342c;
+    /* warm hairline border on dark */
+    --color-border-base-content: #ece4d9;
+
+    /* code highlighting (highlight.js tokens) — dark mode */
+    --hljs-comment: color-mix(in srgb, var(--color-base-content) 50%, transparent);
+    --hljs-keyword: var(--color-info);
+    /* lifted slate */
+    --hljs-string: var(--color-success);
+    /* lifted green */
+    --hljs-number: var(--color-warning);
+    /* lifted amber */
+    --hljs-function: var(--color-accent);
+    /* brighter terracotta */
+  }
+}
+
+/* Base body: full-viewport warm background, calm text, antialiased.
+   Layout itself is handled by Tailwind utilities inside App.svelte; this only
+   establishes the ambient background, text color, and font. */
+body {
+  min-height: 100dvh;
+  background-color: var(--color-base-100);
+  color: var(--color-base-content);
+  font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-a:hover {
-  color: #535bf2;
-}
-
-body {
-  margin: 0;
-  display: flex;
-  place-items: center;
-  min-width: 320px;
-  min-height: 100vh;
+/* ---------------------------------------------------------------------------
+   Prose / Markdown tweaks for the warm palette.
+   These override Tailwind Typography's default prose colors so links,
+   code blocks, and other elements feel consistent with the rest of the
+   UI.
+--------------------------------------------------------------------------- */
+.prose {
+  color: var(--color-base-content);
 }
 
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
+.prose a {
+  color: var(--color-accent);
+  text-decoration: none;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-accent) 30%, transparent);
 }
 
-.card {
-  padding: 2em;
+.prose a:hover {
+  border-bottom-color: var(--color-accent);
 }
 
-#app {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
+/* inline code: subtle warm background, no border */
+.prose :not(pre)>code {
+  background-color: color-mix(in srgb, var(--color-base-300) 55%, transparent);
+  color: var(--color-base-content);
+  padding: 0.15em 0.35em;
+  border-radius: 0.25em;
+  font-size: 0.9em;
+  border: none;
 }
 
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
+/* block code: warm rounded card with inner padding.
+   color: set explicitly to var(--color-base-content) to override the
+   Tailwind Typography default `pre { color: var(--tw-prose-pre-code) }`,
+   which resolves to gray-200 (off-white) and would be invisible on the
+   light base-200 background in light mode. */
+.prose pre {
+  color: var(--color-base-content);
+  background-color: var(--color-base-200);
+  border-radius: 0.5rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid color-mix(in srgb, var(--color-border-base) 60%, transparent);
+}
+
+.prose pre code {
+  background-color: transparent;
+  padding: 0;
+  font-size: 0.85em;
+}
+
+/* Syntax highlighting (highlight.js via marked-highlight).
+   Colors come from the --hljs-* palette variables (defined per color
+   scheme in :root / dark media block) so tokens shift automatically
+   with light/dark and stay in the warm, low-saturation family. */
+.prose pre .hljs-comment,
+.prose pre .hljs-quote {
+  color: var(--hljs-comment);
+  font-style: italic;
+}
+
+.prose pre .hljs-keyword,
+.prose pre .hljs-selector-tag,
+.prose pre .hljs-tag,
+.prose pre .hljs-doctag {
+  color: var(--hljs-keyword);
+}
+
+.prose pre .hljs-string,
+.prose pre .hljs-regexp,
+.prose pre .hljs-addition {
+  color: var(--hljs-string);
+}
+
+.prose pre .hljs-number,
+.prose pre .hljs-literal,
+.prose pre .hljs-symbol,
+.prose pre .hljs-bullet {
+  color: var(--hljs-number);
+}
+
+.prose pre .hljs-title,
+.prose pre .hljs-name,
+.prose pre .hljs-section,
+.prose pre .hljs-selector-id,
+.prose pre .hljs-selector-class,
+.prose pre .hljs-attr,
+.prose pre .hljs-attribute,
+.prose pre .hljs-variable {
+  color: var(--hljs-function);
+}
+
+/* Untokened text and other token types (params, meta, type, built_in,
+   deletion, etc.) intentionally inherit var(--color-base-content) from
+   .prose pre — muted enough to read as background detail. */
+
+/* horizontal rule: warm hairline */
+.prose hr {
+  border-color: color-mix(in srgb, var(--color-border-base) 50%, transparent);
+}
+
+/* headings: slightly warmer, a touch lighter */
+.prose h1,
+.prose h2,
+.prose h3,
+.prose h4 {
+  color: var(--color-base-content);
+  font-weight: 600;
+}
+
+.prose h1,
+.prose h2 {
+  letter-spacing: -0.01em;
+}
+
+/* blockquotes: subtle left border, muted */
+.prose blockquote {
+  border-left-color: color-mix(in srgb, var(--color-border-base) 70%, transparent);
+  color: color-mix(in srgb, var(--color-base-content) 75%, transparent);
+  font-weight: 400;
+}
+
+/* table borders: warm hairlines */
+.prose td,
+.prose th {
+  border-color: color-mix(in srgb, var(--color-border-base) 60%, transparent);
+}
+
+
+/* Promptbar tab: a filled header strip above the input that carries the
+   session identity (host + cwd). Each session gets a stable hue derived from
+   a hash of the cwd (set as --session-hue on the tab element via inline
+   style), so a user can tell sessions apart at a glance. The background is a
+   very pale (light mode) or very dark (dark mode) tint of the hue; the 3px
+   left border uses a more saturated version of the same hue for a clear,
+   recognizable accent. A --session-hue default of 200 (calm blue) applies
+   before any session starts. This is the Item 12 implementation.
+   --session-hue is a JS-side value; the CSS uses hsl() with that variable
+   so it works in both light and dark without any additional JS.
+   Note: border-left-color overrides Tailwind's border-l-accent/25 since
+   this class appears after Tailwind's utilities in source order. */
+.promptbar-tab {
+  --session-hue: 200;
+  /* default; overridden per-session via inline style */
+  background-color: hsl(var(--session-hue), 35%, 93%);
+  border-left-color: hsl(var(--session-hue), 50%, 55%);
+}
+
+@media (prefers-color-scheme: dark) {
+  .promptbar-tab {
+    background-color: hsl(var(--session-hue), 28%, 23%);
+    border-left-color: hsl(var(--session-hue), 45%, 50%);
+  }
+}
+
+/* .promptbar-input (the prompt form) now paints its 3px left border the same
+   session hue as the .promptbar-tab above, so the two halves of the promptbar
+   read as one component with one coherent session color. --session-hue is
+   inherited from the outer wrapper div. This supersedes the old
+   border-l-accent/25 terracotta stripe on the form. */
+.promptbar-input {
+  /* Light mode: pale session-hue tint so the input reflects the session
+       colour (mirroring the tab and the darker dark-mode treatment). Kept very
+       light/pastel so it reads gently against the warm page background. */
+  background-color: hsl(var(--session-hue), 38%, 95%);
+  /* NOTE: border-left-color MUST be the last border declaration here — the
+       border-color shorthand (if used) would otherwise clobber it. */
+  border-left-color: hsl(var(--session-hue), 50%, 55%);
+}
+
+@media (prefers-color-scheme: dark) {
+  .promptbar-input {
+    /* Dark-mode visibility: lift the background above the page surface via
+           a session-hue tint, strengthen the border, and add a drop shadow so
+           the promptbar reads as a raised element instead of blending into
+           base-100. Order matters: border-color (4-side shorthand) is set
+           BEFORE border-left-color so the left stripe keeps its hue. */
+    background-color: hsl(var(--session-hue), 22%, 21%);
+    border-color: hsl(var(--session-hue), 15%, 35%);
+    border-left-color: hsl(var(--session-hue), 45%, 50%);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+  }
+}
+
+/* Waiting dots in the promptbar while a request is in flight.
+   Three small dots pulse in a staggered sequence, communicating
+   "Enkaidu is working" without being distracting. */
+@keyframes waiting-dot {
+
+  0%,
+  80%,
+  100% {
+    opacity: 0.25;
+    transform: scale(0.7);
+  }
+
+  40% {
+    opacity: 0.7;
+    transform: scale(1);
+  }
+}
+
+.waiting-dot {
+  display: inline-block;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background-color: var(--color-base-content);
+  animation: waiting-dot 1.4s ease-in-out infinite;
+  animation-delay: calc(var(--i, 0) * 0.2s);
+}
+
+/* Activity group: pulsing dot indicating the group is still receiving items
+   (the agent is mid-run). Subtle, non-distracting. */
+@keyframes activity-pulse {
+  0%, 100% { opacity: 0.35; transform: scale(0.75); }
+  50%      { opacity: 0.7;  transform: scale(1); }
+}
+.activity-dot {
+  display: inline-block;
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 50%;
+  background-color: var(--color-base-content);
+  animation: activity-pulse 1.5s ease-in-out infinite;
+}
+
+/* Copy button for fenced code blocks (markdown.ts emits it, Markdown.svelte
+   owns the click). Hidden by default, revealed by the group/code hover
+   utilities on the button itself; only this rule needs to exist for the
+   chip's look. */
+.enkaidu-copy {
   cursor: pointer;
-  transition: border-color 0.25s;
-}
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
+  padding: 0.125rem 0.5rem;
+  border-radius: 0.375rem;
+  font-size: 0.7rem;
+  line-height: 1.1rem;
+  font-family: var(--font-sans);
+  color: var(--color-base-content);
+  background-color: color-mix(
+    in srgb,
+    var(--color-base-300) 85%,
+    transparent
+  );
+  border: 1px solid
+    color-mix(in srgb, var(--color-border-base) 70%, transparent);
 }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
-  }
-  a:hover {
-    color: #747bff;
-  }
-  button {
-    background-color: #f9f9f9;
-  }
-} */
+.enkaidu-copy:hover {
+  background-color: var(--color-base-300);
+}
+
+/* The fence wrapper div is a direct child of .prose, so the typography
+   plugin's div margins would double up the code block spacing — cancel
+   them. */
+.prose .enkaidu-code {
+  margin: 0;
+}
+
+/* Small secondary action buttons for interactive content blocks
+   (currently the mermaid Diagram/Code toggle). Deliberately generic,
+   so future per-block actions (e.g. "Copy source" on rendered blocks)
+   slot in with the same affordance and no new CSS. */
+.action-chip {
+  cursor: pointer;
+  border-radius: 0.375rem;
+  padding: 0.125rem 0.5rem;
+  font-size: 0.75rem;
+  line-height: 1.15rem;
+  color: var(--color-base-content);
+  opacity: 0.55;
+  transition:
+    opacity 120ms ease,
+    background-color 120ms ease;
+}
+
+.action-chip:hover {
+  opacity: 0.85;
+  background-color: var(--color-base-300);
+}
+
+.action-chip.active {
+  opacity: 1;
+  font-weight: 500;
+  background-color: var(--color-base-300);
+}

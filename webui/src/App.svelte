@@ -1,19 +1,38 @@
 <script lang="ts">
+  import { onMount } from "svelte";
   import * as Acp from "./acp_schema_types";
 
   import { enkaidu_post_request, enkaidu_get_request } from "./utilities";
 
-  import Menubar from "./lib/Menubar.svelte";
   import Promptbar from "./lib/Promptbar.svelte";
   import Session from "./lib/Session.svelte";
   // import Sidebar from "./lib/Sidebar.svelte";
 
   let session: Session;
-  let menubar: Menubar;
   let prompt: Promptbar;
 
   let started = false;
-  let handling_request = false;
+  let handling_request = $state(false);
+  let has_content = $state(false);
+
+  // Warn the user before closing/refreshing if a request is still
+  // in flight (the NDJSON stream or a pending dialog would be orphaned).
+  onMount(() => {
+    function handler(e: BeforeUnloadEvent) {
+      if (handling_request) {
+        e.preventDefault();
+        e.returnValue = ""; // required by spec to trigger the native prompt (legacy)
+      }
+    }
+    window.addEventListener("beforeunload", handler);
+    // Fire the start request as soon as the page is usable, rather than
+    // waiting for the user's first prompt. Fire-and-forget with a catch so a
+    // failed /api/start surfaces as a clarion instead of an unhandled rejection.
+    check_if_started().catch((error) => {
+      session.add_event({ type: "clarion", content: error as string });
+    });
+    return () => window.removeEventListener("beforeunload", handler);
+  });
 
   async function read_line_by_line(
     response: Response,
@@ -61,7 +80,10 @@
         let msg = JSON.parse(line);
         switch (msg.type) {
           case "system_info":
-            menubar.update(msg.host, msg.cwd);
+            prompt.update_system(msg.host, msg.cwd);
+            break;
+          case "session_info":
+            prompt.update_session(msg.model);
             break;
           case "ask_for_inputs":
             session.ask_for_inputs(
@@ -160,13 +182,16 @@
           case "security_confirmation":
             session.show_security_confirmation(
               msg.description,
-              msg.subject,
+              msg.subjects,
               msg.id,
+              msg.banner,
             );
             break;
           case "session_reset":
             session.reset();
+            has_content = false;
             break;
+
           default:
             console.log(`clarion: ${line}`);
             session.add_event({
@@ -181,9 +206,9 @@
   // Send start / init request if not already sent
   async function check_if_started() {
     if (!started) {
+      started = true;
       let resp = await enkaidu_get_request("start");
       await handle_response(resp);
-      started = true;
     }
   }
 
@@ -212,6 +237,7 @@
           query.startsWith("/") || query.startsWith("!") ? "command" : "query",
         content: query,
       });
+      has_content = true;
       let resp = await enkaidu_post_request(
         "prompt",
         new_prompt_request(query),
@@ -266,8 +292,11 @@
   <div class="drawer drawer-end">
     <input id="my-drawer" type="checkbox" class="drawer-toggle" />
     <div class="drawer-content">
-      <div class="flex flex-col h-screen justify-between">
-        <Menubar bind:this={menubar} host="" cwd="" />
+      <div
+        class={has_content
+          ? "flex flex-col h-screen justify-between"
+          : "flex flex-col h-screen justify-center"}
+      >
         <Session bind:this={session} />
         <Promptbar
           bind:this={prompt}

@@ -12,16 +12,43 @@
   import ClarionCard from "./ClarionCard.svelte";
   import InputsDialog from "./InputsDialog.svelte";
   import ToolCallCard from "./ToolCallCard.svelte";
+  import ActivityGroup from "./ActivityGroup.svelte";
+
+  // Tolerance band (px) for "close enough to the bottom" so sub-pixel /
+  // rounded scroll values don't flip the flag spuriously.
+  const SCROLL_TOLERANCE = 50;
 
   const scrollToBottom = (node: HTMLElement, _list: Event[]) => {
-    const scroll = () =>
-      node.scroll({
-        top: node.scrollHeight,
-        behavior: "smooth",
-      });
-    scroll();
+    // Assume the user starts at the bottom on a fresh session. The flag is
+    // ONLY updated by real scroll events (never by content growth), so the
+    // "new content pushed me off the bottom" edge case in the plan cannot
+    // falsely suppress the next auto-scroll: a user who was at the bottom
+    // keeps the flag true until they actually scroll.
+    let at_bottom = true;
 
-    return { update: scroll };
+    const isAtBottom = () =>
+      node.scrollTop + node.clientHeight >=
+      node.scrollHeight - SCROLL_TOLERANCE;
+
+    const handleScroll = () => {
+      at_bottom = isAtBottom();
+    };
+
+    const maybeScroll = () => {
+      // Only auto-scroll to the bottom when the user is already there.
+      // Suppress the scroll while they have scrolled up; once they return
+      // to the bottom edge the flag flips back and auto-scroll resumes.
+      if (!at_bottom) return;
+      node.scroll({ top: node.scrollHeight, behavior: "smooth" });
+    };
+
+    node.addEventListener("scroll", handleScroll);
+    maybeScroll();
+
+    return {
+      update: maybeScroll,
+      destroy: () => node.removeEventListener("scroll", handleScroll),
+    };
   };
 
   type Event = {
@@ -42,11 +69,60 @@
 
   let entries: SessionEntry[] = $state([]);
 
+  // ---- Activity grouping ---------------------------------------------------
+  // Consecutive "agent working" entries (think blocks, tool calls, messages)
+  // are collapsed into a single ActivityGroup to keep long runs compact.
+  // User queries, assistant text, alerts, and images stay standalone.
+  const GROUPABLE = new Set(["llm_think", "tool_call"]);
+
+  function is_groupable(entry: SessionEntry): boolean {
+    if (GROUPABLE.has(entry.type)) return true;
+    return entry.type.startsWith("message_");
+  }
+
+  type GroupedEntry =
+    | { kind: "group"; items: SessionEntry[]; active: boolean }
+    | { kind: "standalone"; entry: SessionEntry };
+
+  let grouped: GroupedEntry[] = $derived.by(() => {
+    const result: GroupedEntry[] = [];
+    let current: SessionEntry[] = [];
+
+    const flush = (active: boolean) => {
+      if (current.length === 0) return;
+      if (current.length === 1) {
+        // Single item: no grouping chrome, render as a standalone card.
+        result.push({ kind: "standalone", entry: current[0] });
+      } else {
+        result.push({ kind: "group", items: current, active });
+      }
+      current = [];
+    };
+
+    for (const entry of entries) {
+      if (is_groupable(entry)) {
+        current.push(entry);
+      } else {
+        flush(false);
+        result.push({ kind: "standalone", entry });
+      }
+    }
+
+    // Flush trailing group — active if the last entry is still groupable
+    // (i.e. the agent is mid-run and no response has arrived yet).
+    const lastEntry = entries.at(-1);
+    const lastActive = lastEntry ? is_groupable(lastEntry) : false;
+    flush(lastActive);
+
+    return result;
+  });
+
   let security_confirm_dialog_config: Common.SecurityConfirmDialogConfig =
     $state({
       show: false,
       description: "",
-      subject: "",
+      subjects: [],
+      banner: null,
       id: "",
     });
 
@@ -107,12 +183,14 @@
 
   export function show_security_confirmation(
     description: string,
-    subject: string,
+    subjects: string[],
     id: string,
+    banner: Common.SecurityBanner | null,
   ) {
     security_confirm_dialog_config.show = true;
     security_confirm_dialog_config.description = description;
-    security_confirm_dialog_config.subject = subject;
+    security_confirm_dialog_config.subjects = subjects;
+    security_confirm_dialog_config.banner = banner;
     security_confirm_dialog_config.id = id;
   }
 
@@ -159,47 +237,69 @@
 </script>
 
 <div use:scrollToBottom={entries} class="mb-auto overflow-scroll">
-  <div class="space-y-3 grid grid-cols-1 w-full max-w-5xl p-3 mx-auto">
-    {#each entries as entry}
-      {#if entry.type == "query"}
-        <UserTextCard message={entry.data[0].content || "??"} />
-      {:else if entry.type == "command"}
-        <UserTextCard message={entry.data[0].content || "/??"} command />
-      {:else if entry.type == "query_via_query_queue"}
-        <UserTextCard message={entry.data[0].content || "??"} via_query_queue />
-      {:else if entry.type == "command_via_query_queue"}
-        <UserTextCard
-          message={entry.data[0].content || "/??"}
-          command
-          via_query_queue
-        />
-      {:else if entry.type == "query_image_url"}
-        <UserImageCard image_url={entry.data[0].content || "??"} />
-      {:else if entry.type == "llm_text"}
-        <AsstTextCard message={entry.data[0].content || "??"} />
-      {:else if entry.type == "llm_think"}
-        <AsstThinkCard message={entry.data[0].content} />
-      {:else if entry.type == "llm_image_url"}
-        <AsstImageCard image_url={entry.data[0].content || "??"} />
-      {:else if entry.type == "clarion"}
-        <ClarionCard subject={entry.data[0].content || "???"} />
-      {:else if entry.type == "tool_call"}
-        <ToolCallCard
-          name={entry.data[0].subject as string}
-          args={entry.data[0].content as string}
-        />
-      {:else if entry.type.startsWith("message_")}
-        <MsgCard
-          level={entry.type.split("_").at(-1) || "info"}
-          data={entry.data}
-        />
-      {/if}
-    {/each}
+  <div class="space-y-6 flex flex-col w-full max-w-3xl p-3 mx-auto">
+    {#if entries.length === 0}
+      <div
+        class="flex-1 flex flex-col items-center justify-center min-h-[50vh]"
+      >
+        <p class="text-base-content/40 text-xl font-medium my-3">
+          <img src="/favicon.png" alt="Enkaidu" />
+        </p>
+        <p class="text-base-content/40 text-3xl font-medium my-3">
+          How can I help you?
+        </p>
+      </div>
+    {:else}
+      {#each grouped as g, gi (gi)}
+        {#if g.kind == "group"}
+          <ActivityGroup items={g.items} active={g.active} />
+        {:else if g.entry.type == "query"}
+          <UserTextCard message={g.entry.data[0].content || "??"} />
+        {:else if g.entry.type == "command"}
+          <UserTextCard message={g.entry.data[0].content || "/??"} command />
+        {:else if g.entry.type == "query_via_query_queue"}
+          <UserTextCard
+            message={g.entry.data[0].content || "??"}
+            via_query_queue
+          />
+        {:else if g.entry.type == "command_via_query_queue"}
+          <UserTextCard
+            message={g.entry.data[0].content || "/??"}
+            command
+            via_query_queue
+          />
+        {:else if g.entry.type == "query_image_url"}
+          <UserImageCard image_url={g.entry.data[0].content || "??"} />
+        {:else if g.entry.type == "llm_text"}
+          <AsstTextCard message={g.entry.data[0].content || "??"} />
+        {:else if g.entry.type == "llm_think"}
+          <AsstThinkCard
+            message={g.entry.data[0].content || "??"}
+            active={g.entry === entries.at(-1)}
+          />
+        {:else if g.entry.type == "llm_image_url"}
+          <AsstImageCard image_url={g.entry.data[0].content || "??"} />
+        {:else if g.entry.type == "clarion"}
+          <ClarionCard subject={g.entry.data[0].content || "???"} />
+        {:else if g.entry.type == "tool_call"}
+          <ToolCallCard
+            name={g.entry.data[0].subject as string}
+            args={g.entry.data[0].content as string}
+          />
+        {:else if g.entry.type.startsWith("message_")}
+          <MsgCard
+            level={g.entry.type.split("_").at(-1) || "info"}
+            data={g.entry.data}
+          />
+        {/if}
+      {/each}
+    {/if}
   </div>
 </div>
 
 <SecurityConfirmDialog
-  subject={security_confirm_dialog_config.subject}
+  subjects={security_confirm_dialog_config.subjects}
+  banner={security_confirm_dialog_config.banner}
   description={security_confirm_dialog_config.description}
   id={security_confirm_dialog_config.id}
   show={security_confirm_dialog_config.show}

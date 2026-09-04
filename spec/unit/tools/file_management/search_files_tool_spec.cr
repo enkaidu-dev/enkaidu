@@ -33,15 +33,15 @@ Spectator.describe Tools::FileManagement::SearchFilesTool do
     if hash_val
       err = hash_val["error"]?
       if err
-        return { success: false, data: parsed, error_msg: err.as_s }
+        return {success: false, data: parsed, error_msg: err.as_s}
       end
     end
-     { success: true, data: parsed, error_msg: nil }
+    {success: true, data: parsed, error_msg: nil}
   end
 
-    # -------------------------------------------------
-    # Successful string search scenarios
-    # -------------------------------------------------
+  # -------------------------------------------------
+  # Successful string search scenarios
+  # -------------------------------------------------
 
   context "searches for a pattern in files" do
     let(:file_a) { File.join(temp_dir, "file_a.txt") }
@@ -63,10 +63,13 @@ Spectator.describe Tools::FileManagement::SearchFilesTool do
 
       expect(result[:success]).to be_true
       expect(result[:error_msg]).to be_nil
-      matches = result[:data].as_a
+      matches = result[:data].as_h["matches"].as_a
       expect(matches.size.to_i).to eq(1)
       match_tuple = matches.first.as_h
       expect(match_tuple["file"].as_s).to eq(file_a)
+      expect(match_tuple["truncated"].as_bool).to be_false
+      expect(result[:data].as_h["files_searched"].as_i >= 1).to be_true
+      expect(result[:data].as_h["skipped_files"].as_i).to eq(0)
       match_lines = match_tuple["matches"].as_a
       expect(match_lines.size.to_i).to eq(1)
       expect(match_lines.first.as_h["line"].as_s).to eq("hello world")
@@ -93,7 +96,7 @@ Spectator.describe Tools::FileManagement::SearchFilesTool do
       result = parse_run_result(result_json)
 
       expect(result[:success]).to be_true
-      matches = result[:data].as_a
+      matches = result[:data].as_h["matches"].as_a
       expect(matches.size.to_i).to eq(2)
     end
   end
@@ -115,16 +118,16 @@ Spectator.describe Tools::FileManagement::SearchFilesTool do
       result = parse_run_result(result_json)
 
       expect(result[:success]).to be_true
-      matches = result[:data].as_a
+      matches = result[:data].as_h["matches"].as_a
       expect(matches.size.to_i).to eq(0)
     end
   end
 
-    # -------------------------------------------------
-    # Regex search scenario
-    # -------------------------------------------------
+  # -------------------------------------------------
+  # Regex search scenario
+  # -------------------------------------------------
 
-  context "searches using regex when search_regex is true" do
+  context "searches using regex when pattern_is_regex is true" do
     let(:file_a) { File.join(temp_dir, "file_a.txt") }
 
     before do
@@ -135,14 +138,14 @@ Spectator.describe Tools::FileManagement::SearchFilesTool do
       args = make_args(
         files: File.join(temp_dir, "*.txt"),
         pattern: "cat\\d+",
-        search_regex: true,
+        pattern_is_regex: true,
       )
 
       result_json = runner.execute(args)
       result = parse_run_result(result_json)
 
       expect(result[:success]).to be_true
-      matches = result[:data].as_a
+      matches = result[:data].as_h["matches"].as_a
       expect(matches.size.to_i).to eq(1)
       match_lines = matches.first.as_h["matches"].as_a
       expect(match_lines.size.to_i).to eq(2)
@@ -151,7 +154,7 @@ Spectator.describe Tools::FileManagement::SearchFilesTool do
     end
   end
 
-  context "does regex matching when search_regex is false" do
+  context "does regex matching when pattern_is_regex is false" do
     let(:file_a) { File.join(temp_dir, "file_a.txt") }
 
     before do
@@ -162,27 +165,61 @@ Spectator.describe Tools::FileManagement::SearchFilesTool do
       args = make_args(
         files: File.join(temp_dir, "*.txt"),
         pattern: "cat\\d+",
-        search_regex: false,
+        pattern_is_regex: false,
       )
 
       result_json = runner.execute(args)
       result = parse_run_result(result_json)
 
       expect(result[:success]).to be_true
-      matches = result[:data].as_a
+      matches = result[:data].as_h["matches"].as_a
       expect(matches.size.to_i).to eq(0)
     end
   end
 
-    # -------------------------------------------------
-    # Max files limit scenarios
-    # -------------------------------------------------
+  context "reports truncation when a file exceeds the per-file match cap" do
+    let(:text_file) { File.join(temp_dir, "many_matches.txt") }
+    let(:binary_file) { File.join(temp_dir, "blob.bin") }
+
+    before do
+      File.write(text_file, (1..60).map { |i| "match line #{i}" }.join("\n"))
+      File.open(binary_file, "wb") { |io| io << "\xFF\xFE\x00\x01\x80\x81" }
+    end
+
+    it "caps matches at the limit, sets truncated, and counts skipped files" do
+      args = make_args(
+        files: File.join(temp_dir, "*"),
+        pattern: "match line",
+      )
+
+      result_json = runner.execute(args)
+      result = parse_run_result(result_json)
+
+      expect(result[:success]).to be_true
+      data = result[:data].as_h
+      expect(data["files_searched"].as_i).to eq(1)
+      expect(data["skipped_files"].as_i).to eq(1)
+      expect(data["skipped_sample"].as_a.map(&.as_s)).to contain(binary_file)
+
+      matches = data["matches"].as_a
+      expect(matches.size.to_i).to eq(1)
+      file_entry = matches.first.as_h
+      expect(file_entry["file"].as_s).to eq(text_file)
+      expect(file_entry["truncated"].as_bool).to be_true
+      expect(file_entry["matches"].as_a.size.to_i).to eq(50)
+      expect(file_entry["matches"].as_a.first.as_h["line"].as_s).to eq("match line 1")
+    end
+  end
+
+  # -------------------------------------------------
+  # Max files limit scenarios
+  # -------------------------------------------------
 
   context "respects the max_files parameter" do
     let(:max_files_default) { 1000 }
 
     let(:files) do
-       (1..max_files_default).map { |i| File.join(temp_dir, "file_#{i}.txt") }
+      (1..max_files_default).map { |i| File.join(temp_dir, "file_#{i}.txt") }
     end
 
     before do
@@ -200,7 +237,7 @@ Spectator.describe Tools::FileManagement::SearchFilesTool do
       result = parse_run_result(result_json)
 
       expect(result[:success]).to be_true
-      expect(result[:data].as_a.size.to_i).to eq(3)
+      expect(result[:data].as_h["matches"].as_a.size.to_i).to eq(3)
     end
 
     it "returns all matches when max_files exceeds the number of matches" do
@@ -214,13 +251,13 @@ Spectator.describe Tools::FileManagement::SearchFilesTool do
       result = parse_run_result(result_json)
 
       expect(result[:success]).to be_true
-      expect(result[:data].as_a.size.to_i).to eq(max_files_default)
+      expect(result[:data].as_h["matches"].as_a.size.to_i).to eq(max_files_default)
     end
   end
 
-    # -------------------------------------------------
-    # Default values scenarios
-    # -------------------------------------------------
+  # -------------------------------------------------
+  # Default values scenarios
+  # -------------------------------------------------
 
   context "uses default values when params are omitted" do
     let(:file_a) { File.join(temp_dir, "file_a.txt") }
@@ -233,16 +270,16 @@ Spectator.describe Tools::FileManagement::SearchFilesTool do
       args = make_args(
         files: File.join(temp_dir, "*"),
         pattern: "default test line",
-        )
+      )
 
       result_json = runner.execute(args)
       result = parse_run_result(result_json)
 
       expect(result[:success]).to be_true
-      expect(result[:data].as_a.size.to_i).to eq(1)
+      expect(result[:data].as_h["matches"].as_a.size.to_i).to eq(1)
     end
 
-    it "defaults search_regex to false when not provided" do
+    it "defaults pattern_is_regex to false when not provided" do
       args = make_args(
         files: File.join(temp_dir, "*.txt"),
         pattern: "def",
@@ -252,14 +289,14 @@ Spectator.describe Tools::FileManagement::SearchFilesTool do
       result = parse_run_result(result_json)
 
       expect(result[:success]).to be_true
-      matches = result[:data].as_a
+      matches = result[:data].as_h["matches"].as_a
       expect(matches.size.to_i).to eq(1)
     end
   end
 
-    # -------------------------------------------------
-    # Security scenarios
-    # -------------------------------------------------
+  # -------------------------------------------------
+  # Security scenarios
+  # -------------------------------------------------
 
   context "blocks paths resolved outside the current directory" do
     let(:outside_path) { File.tempname("_outside.txt") }
@@ -313,9 +350,9 @@ Spectator.describe Tools::FileManagement::SearchFilesTool do
     end
   end
 
-    # -------------------------------------------------
-    # Error handling scenarios
-    # -------------------------------------------------
+  # -------------------------------------------------
+  # Error handling scenarios
+  # -------------------------------------------------
 
   context "fails when files is not provided" do
     it "returns an error" do
@@ -373,7 +410,9 @@ Spectator.describe Tools::FileManagement::SearchFilesTool do
       result = parse_run_result(result_json)
 
       expect(result[:success]).to be_true
-      expect(result[:data].as_a.size.to_i).to eq(0)
+      expect(result[:data].as_h["matches"].as_a.size.to_i).to eq(0)
+      expect(result[:data].as_h["files_searched"].as_i).to eq(0)
+      expect(result[:data].as_h["skipped_files"].as_i).to eq(0)
     end
   end
 end
