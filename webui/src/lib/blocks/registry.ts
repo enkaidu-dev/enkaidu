@@ -2,16 +2,25 @@ import type { Component } from "svelte";
 import MermaidBlock from "./MermaidBlock.svelte";
 import SvgBlock from "./SvgBlock.svelte";
 import CsvBlock, { render_csv_to_html } from "./CsvBlock.svelte";
+import VegaBlock from "./VegaBlock.svelte";
 import { mermaid_cached } from "../../mermaid";
 
 export interface BlockRenderer {
   language: string;
   displayName: string;
   component: Component<{ source: string; language: string }>;
-  diagramLabel?: string; // Custom label for the visual view (defaults to "Diagram")
-  codeLabel?: string;    // Custom label for the raw view (defaults to "Source")
+  diagramLabel?: string;
+  codeLabel?: string;
   getCached?(source: string): string | null;
   sniff?(source: string, lang: string): boolean;
+}
+
+// Global cache for compiled Vega charts to support fluid streaming
+export const vega_cache = new Map<string, string>();
+
+// Normalize key to prevent line-ending (\r\n vs \n) and trailing whitespace mismatches
+export function normalize_cache_key(source: string): string {
+  return source.replace(/\r\n/g, "\n").trim();
 }
 
 const registry: Record<string, BlockRenderer> = {
@@ -80,7 +89,64 @@ const registry: Record<string, BlockRenderer> = {
       return false;
     },
   },
+  "vega-lite": {
+    language: "vega-lite",
+    displayName: "chart",
+    component: VegaBlock,
+    diagramLabel: "Chart",
+    codeLabel: "JSON",
+    getCached: (source: string) => vega_cache.get(normalize_cache_key(source)) ?? null,
+    sniff: sniff_vega,
+  },
+  vega: {
+    language: "vega",
+    displayName: "chart",
+    component: VegaBlock,
+    diagramLabel: "Chart",
+    codeLabel: "JSON",
+    getCached: (source: string) => vega_cache.get(normalize_cache_key(source)) ?? null,
+    sniff: sniff_vega,
+  },
 };
+
+// Dedicated sniffer function for Vega / Vega-Lite JSON structures
+function sniff_vega(source: string, lang: string): boolean {
+  const normalizedLang = lang.toLowerCase();
+  
+  // Only sniff if the declared block is generic JSON, unannotated, or plain text
+  if (
+    normalizedLang === "" ||
+    normalizedLang === "json" ||
+    normalizedLang === "plaintext"
+  ) {
+    try {
+      const parsed = JSON.parse(source);
+      
+      // Ensure it's a non-null object
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        // Heuristic 1: Explicit Vega schema declaration
+        if (typeof parsed.$schema === "string" && parsed.$schema.includes("vega")) {
+          return true;
+        }
+        
+        // Heuristic 2: Coexistence of core visualization grammar keys
+        const hasData = "data" in parsed;
+        const hasVisuals =
+          "mark" in parsed ||
+          "layer" in parsed ||
+          "hconcat" in parsed ||
+          "vconcat" in parsed;
+          
+        if (hasData && hasVisuals) {
+          return true;
+        }
+      }
+    } catch {
+      // Not valid JSON, ignore and let standard rendering handle it
+    }
+  }
+  return false;
+}
 
 export function get_renderer(lang: string): BlockRenderer | undefined {
   return registry[lang.toLowerCase()];
