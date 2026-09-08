@@ -252,6 +252,16 @@ module Enkaidu
       </stateful>
       STATEFUL
 
+    private SYSPROMPT_WEBUI = <<-WEBUI
+      <web-ui>
+      You are presenting via a graphical UI. Please consider the following iff the user asks for:
+      - Tabulated data: generate in CSV format within a code fence unless the user asks for a different format.
+      - Charts: generate in Vega-lite JSON format within a code fence unless the user asks for a different format.
+      - Diagrams: generate Mermaid diagrams for flow, sequence, and other applicable diagrams unless the user asks for a different format.
+      - DO NOT write data, charts, or diagrams to a file unless asked to do so.
+      </web-ui>
+      WEBUI
+
     private def system_prompt(override_system_prompt : String?)
       <<-WRAPPED
         You are Enkaidu, a capable assistant with tool calling and the ability to handle complex requests with planning and consideration.
@@ -274,9 +284,11 @@ module Enkaidu
                   SYSPROMPT_GLOBAL_STATE
                 end}#{if allow_tool_discovery?
                         SYSPROMPT_TOOL_DISCOVERY
-                      end}#{if prompt = override_system_prompt
-                              "\n<additional-guidance>\n#{prompt.strip}\n</additional-guidance>"
-                            end}
+                      end}#{if opts.webui?
+                              SYSPROMPT_WEBUI
+                            end}#{if prompt = override_system_prompt
+                                    "\n<additional-guidance>\n#{prompt.strip}\n</additional-guidance>"
+                                  end}
         WRAPPED
     end
 
