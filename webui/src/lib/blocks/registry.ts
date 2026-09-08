@@ -4,6 +4,7 @@ import SvgBlock from "./SvgBlock.svelte";
 import CsvBlock, { render_csv_to_html } from "./CsvBlock.svelte";
 import VegaBlock from "./VegaBlock.svelte";
 import { mermaid_cached } from "../../mermaid";
+import { sanitizeSvg } from "../sanitize";
 
 export interface BlockRenderer {
   language: string;
@@ -38,7 +39,10 @@ const registry: Record<string, BlockRenderer> = {
     component: SvgBlock,
     diagramLabel: "Diagram",
     codeLabel: "Source",
-    getCached: (source: string) => source,
+    // Defense in depth: sanitize the cached (placeholder) path too, so
+     // even if render_markdown's DOMPurify pass is ever bypassed, the
+     // SVG content is already clean.
+    getCached: (source: string) => sanitizeSvg(source),
     sniff(source: string, lang: string): boolean {
       const normalizedLang = lang.toLowerCase();
       if (
