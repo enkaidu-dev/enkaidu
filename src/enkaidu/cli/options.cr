@@ -225,9 +225,9 @@ module Enkaidu
       private def confirm_cordon
         report = Cordon.confirm
         if @cordon_confirmed = report.ok?
-          console.respond_with("OK: Cordon available on this system.")
+          console.info_with("SAFE: Cordon available on this system.")
         else
-          console.error_with("Could not confirm cordon", report)
+          console.error_with("UNSAFE: Could not confirm cordon", report)
         end
       end
 

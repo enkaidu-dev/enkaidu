@@ -54,7 +54,7 @@ module Enkaidu
       private getter session_requests = Channel(SessionRequests).new(2)
       private getter session_work = Channel(Work).new(10)
 
-      WELCOME_MSG = "Welcome to Enkaidu (WebUI Server Mode) #{VERSION}"
+      WELCOME_MSG = "\nWelcome to Enkaidu (WebUI Server Mode) #{VERSION}"
       WELCOME     = <<-TEXT
         This is your second-in-command(-line) designed to assist you with
         writing & maintaining code and other text-based content, by enabling LLMs
@@ -66,8 +66,8 @@ module Enkaidu
 
         @queue = EventRenderer.new(session_work)
 
-        console.info_with WELCOME_MSG, WELCOME, markdown: true
-        console.info_with ""
+        console.respond_with WELCOME_MSG, WELCOME, markdown: true
+        console.respond_with ""
 
         port = ENV.fetch("ENKAIDU_PORT", nil).try(&.to_i32?)
         @web_server = WebServer.new(port,
@@ -110,7 +110,7 @@ module Enkaidu
       private def prepare_web_server
         web_server.before_all do |req, resp|
           resp.content_type = "application/json"
-          STDERR.puts "#{req.method} #{req.path}".colorize(:green)
+          STDERR.puts "#{req.method} #{req.path}".colorize(:green) if req.path.includes?("api/")
         end
 
         web_server.get "/api/start" do |_, resp|
