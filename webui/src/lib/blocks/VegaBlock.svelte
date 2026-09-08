@@ -1,6 +1,7 @@
 <script lang="ts">
   import BlockFrame from "./BlockFrame.svelte";
   import { vega_cache, normalize_cache_key } from "./registry";
+  import { sanitizeSvg } from "../sanitize";
 
   let { source, language }: { source: string; language: string } = $props();
   let view = $state<"diagram" | "code">("diagram");
@@ -12,7 +13,10 @@
   const normalizedKey = normalize_cache_key(source);
   const cached = vega_cache.get(normalizedKey);
   let chartLoaded = $state(cached !== undefined);
-  let initialHtml = cached ?? "";
+  // Sanitize the cached SVG on read — a malicious spec could have cached
+  // a dangerous SVG (e.g. with foreignObject or onerror handlers) before
+  // this fix was deployed; sanitise at the boundary, not only at write time.
+  let initialHtml = cached !== undefined ? sanitizeSvg(cached) : "";
   
   let container = $state<HTMLDivElement | null>(null);
 
@@ -75,10 +79,13 @@
       .then(() => {
         if (cancelled) return;
         
-        // Extract the generated SVG to cache it for seamless streaming
+        // Extract the generated SVG to cache it for seamless streaming.
+        // Sanitise before caching so that the read path (initialHtml seed)
+        // never receives un-sanitized SVG, even from a future code path
+        // that forgets to sanitize on read.
         const svgElement = container?.querySelector("svg");
         if (svgElement) {
-          vega_cache.set(normalizedKey, svgElement.outerHTML);
+          vega_cache.set(normalizedKey, sanitizeSvg(svgElement.outerHTML));
         }
         
         chartLoaded = true;
