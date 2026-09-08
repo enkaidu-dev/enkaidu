@@ -2,8 +2,19 @@
   import BlockFrame from "./BlockFrame.svelte";
   import { vega_cache, normalize_cache_key } from "./registry";
   import { sanitizeSvg } from "../sanitize";
+  import type { SaveOption } from "./save";
 
-  let { source, language }: { source: string; language: string } = $props();
+  let {
+    source,
+    language,
+    saves = [],
+    saveBasename = "source",
+    }: {
+    source: string;
+    language: string;
+    saves?: SaveOption[];
+    saveBasename?: string;
+    } = $props();
   let view = $state<"diagram" | "code">("diagram");
   let failed = $state(false);
   let error = $state("");
@@ -104,7 +115,7 @@
   });
 </script>
 
-<BlockFrame {language} {source} rendered={true} {failed} {error} diagramLabel="Chart" codeLabel="JSON" bind:view>
+<BlockFrame {language} {source} rendered={true} {failed} {error} diagramLabel="Chart" codeLabel="JSON" {saves} {saveBasename} bind:view>
   <div class="flex justify-center overflow-x-auto p-3 w-full relative min-h-[150px]">
     {#if !chartLoaded && !failed}
       <div class="absolute inset-0 flex items-center justify-center bg-base-100 text-xs text-base-content/40">

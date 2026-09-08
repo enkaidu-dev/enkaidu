@@ -88,8 +88,19 @@
 
 <script lang="ts">
   import BlockFrame from "./BlockFrame.svelte";
+  import type { SaveOption } from "./save";
 
-  let { source, language }: { source: string; language: string } = $props();
+  let {
+    source,
+    language,
+    saves = [],
+    saveBasename = "source",
+    }: {
+    source: string;
+    language: string;
+    saves?: SaveOption[];
+    saveBasename?: string;
+    } = $props();
   let view = $state<"diagram" | "code">("diagram");
 
   let parsed = $derived(parse_csv(source));
@@ -97,7 +108,7 @@
   let rows = $derived(parsed.slice(1));
 </script>
 
-<BlockFrame {language} {source} rendered={true} failed={parsed.length === 0} error="No data" diagramLabel="Table" codeLabel="Raw" bind:view>
+<BlockFrame {language} {source} rendered={true} failed={parsed.length === 0} error="No data" diagramLabel="Table" codeLabel="Raw" {saves} {saveBasename} bind:view>
   {#if parsed.length > 0}
     <div class="overflow-x-auto max-h-[352px] overflow-y-auto w-full p-2">
       <table class="table table-zebra table-xs table-pin-rows w-full border-collapse text-left text-xs">

@@ -59,7 +59,12 @@
       try {
         const instance = mount(renderer.component, {
           target: el,
-          props: { source, language: renderer.language },
+          props: {
+            source,
+            language: renderer.language,
+            saves: renderer.saves ?? [],
+            saveBasename: renderer.saveBasename ?? renderer.language,
+            },
         });
         instances.set(el, instance);
       } catch (error) {
