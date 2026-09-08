@@ -180,7 +180,7 @@ module Enkaidu::Console
       ███████  ███ ███  ██    ██     ██████ ██   ██ ███████ ██████
       ANSI
 
-    def session_reset(session : Session)
+    def session_reset(old_session : Session, new_session : Session)
       puts fmt(:session_banner, RESET)
     end
 

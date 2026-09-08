@@ -96,9 +96,9 @@ module Enkaidu::WUI
       result
     end
 
-    def session_reset(session : Session)
+    def session_reset(old_session : Session, new_session : Session)
       post_event Render::SessionReset.new
-      post_event Render::SessionInfo.new(session)
+      post_event Render::SessionInfo.new(new_session)
     end
 
     def session_pushed(depth, keep_tools, keep_prompts, keep_history)

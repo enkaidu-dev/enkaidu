@@ -42,6 +42,8 @@ module Enkaidu
           unique_model_name: old_session.unique_model_name,
           load_session_io: load_session_io)
 
+        new_session.renderer.session_reset(old_session, new_session)
+
         deploy_injected_functions(new_session)
 
         # over-write
