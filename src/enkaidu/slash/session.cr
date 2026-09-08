@@ -72,8 +72,10 @@ module Enkaidu::Slash
 
     def handle(session_manager : SessionManager, cmd : CommandParser)
       case cmd
-      when .expect?(NAME, ["ls", "id", "usage"])    then handle_bare_commands(session_manager, cmd)
-      when .expect?(NAME, ["goto", "save"], String) then handle_one_string_commands(session_manager, cmd)
+      when .expect?(NAME, ["ls", "id", "usage"])                then handle_bare_commands(session_manager, cmd)
+      when .expect?(NAME, ["goto", "save"], String)             then handle_one_string_commands(session_manager, cmd)
+      when .expect?(NAME, "load", String, tail: String?)        then handle_session_load(session_manager, cmd)
+      when .expect?(NAME, "reset", system_prompt_name: String?) then handle_session_reset(session_manager, cmd)
       else
         handle_compound_commands(session_manager, cmd)
       end
@@ -103,8 +105,6 @@ module Enkaidu::Slash
       current_session_stack = session_manager.current
       session = current_session_stack.session
       case cmd
-      when .expect?(NAME, "load", String, tail: String?)        then handle_session_load(session, cmd)
-      when .expect?(NAME, "reset", system_prompt_name: String?) then handle_session_reset(session, cmd)
       when .expect?(NAME, "new", String, model: String?)
         handle_stack_new(session_manager, cmd)
       when .expect?(NAME, "push", system_prompt_name: String?,
@@ -205,17 +205,33 @@ module Enkaidu::Slash
       session.renderer.respond_with("Session saved to JSONL file: #{path}")
     end
 
-    private def handle_session_load(session, cmd)
+    private def handle_session_load(session_manager, cmd)
+      current_session_stack = session_manager.current
+      session = current_session_stack.session
       path = Path.new(cmd.arg_at(2).as(String))
       tail_n = cmd.arg_named?("tail").try(&.as(String).to_i) || -1
       session.renderer.respond_with("Loading previously saved session: #{path}")
       File.open(path, "r") do |file|
-        session.load_session(file, tail_num_chats: tail_n)
+        # session.load_session(file, tail_num_chats: tail_n)
+        session_manager.reset_session_stack(current_session_stack.name, file) do |new_session|
+          new_session.tail_session_events(tail_n)
+        end
       end
     end
 
-    private def handle_session_reset(session, cmd)
-      session.reset_session(sys_prompt_name: cmd.arg_named?("system_prompt_name").try(&.as(String)))
+    private def handle_session_reset(session_manager, cmd)
+      current_session_stack = session_manager.current
+      session = current_session_stack.session
+
+      sys_prompt_name = cmd.arg_named?("system_prompt_name").try(&.as(String))
+
+      session.renderer.respond_with("Resetting current session")
+      session_manager.reset_session_stack(current_session_stack.name) do |new_session|
+        if sys_prompt_name
+          session.renderer.respond_with("Resetting system prompt")
+          new_session.reset_system_prompt(sys_prompt_name)
+        end
+      end
     end
 
     private def handle_session_pop_with(session_stack, cmd)

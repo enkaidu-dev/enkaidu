@@ -54,13 +54,47 @@ module Enkaidu
     include Session::McpServers
 
     getter id = UUID.v7.to_s
+    getter unique_model_name : String?
 
     delegate streaming?, usage, to: @chat
     delegate debug?, to: @opts
     delegate readonly?, to: @opts
 
+    private def verify_loaded_session(io : IO?) : Nil
+      if io
+        # Four lines
+        about = JSON.parse(io.gets.as(String))
+        raise InvalidSessionData.new("Invalid or missing `about.app`") unless about["app"]? == About.me.app
+        raise InvalidSessionData.new("Invalid or missing `about.version`") unless about["ver"]? == About.me.ver
+      end
+    end
+
+    private def import_loaded_session(io : IO)
+      mcps = NamedTuple(mcp_servers: Array(String)).from_json(io.gets.as(String))
+      toolsets = NamedTuple(toolsets: Array(Hash(String, String | Array(String)))).from_json(io.gets.as(String))
+      # load the toolsets
+      toolsets[:toolsets].each do |toolset_spec|
+        load_toolset_by(
+          name: toolset_spec["name"].as(String),
+          select_tools: toolset_spec["select"]?.try(&.as(Array(String))))
+      end
+
+      # load MCP servers
+      mcps[:mcp_servers].each do |config_name|
+        use_mcp_by(config_name)
+      end
+
+      # load chat session
+      sess = io.gets.as(String)
+      @chat.load(sess)
+    end
+
     def initialize(@renderer, @opts,
-                   unique_model_name : String? = nil)
+                   @unique_model_name : String? = nil,
+                   load_session_io : IO? = nil)
+      # Attempt to verify the session contents
+      verify_loaded_session(load_session_io)
+
       @recorder = Recorder.new(opts.recorder_file)
 
       provider_type = nil
@@ -83,6 +117,10 @@ module Enkaidu
 
       @chat = setup_chat(override_model_name: model_name)
       @renderer.streaming = chat.streaming?
+
+      if load_session_io
+        import_loaded_session(load_session_io)
+      end
     end
 
     private def connection_provider_type
@@ -103,6 +141,8 @@ module Enkaidu
       override_sys_prompt = if system_prompt_name
                               render_system_prompt(system_prompt_name)
                             end
+
+      @unique_model_name = fork_from.unique_model_name
       @chat = setup_chat(override_system_prompt: override_sys_prompt,
         override_model_name: fork_from.chat.model)
       chat.fork(fork_from.chat, exclude_last_turn) if keep_history

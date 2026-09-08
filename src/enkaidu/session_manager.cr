@@ -33,6 +33,33 @@ module Enkaidu
       end
     end
 
+    # Reset the named session stack and, optionally, load a given saved session.
+    def reset_session_stack(name : String,
+                            load_session_io : IO? = nil, &)
+      if old_stack = @stacks[name]?
+        old_session = old_stack.session
+        new_session = Session.new(old_session.renderer, old_session.opts,
+          unique_model_name: old_session.unique_model_name,
+          load_session_io: load_session_io)
+
+        deploy_injected_functions(new_session)
+
+        # over-write
+        @stacks[name] = new_stack = SessionStack.new(name, new_session)
+
+        # detect if replacing current session stack
+        @current = new_stack if current == old_stack
+
+        # auto load config iff not loading a saved session
+        new_session.auto_load unless load_session_io
+
+        # inform caller about new session
+        yield new_session
+      else
+        raise ArgumentError.new("Unknown session stack: #{name}")
+      end
+    end
+
     # Creates a new named session stack and switches to it
     def new_session_stack(name : String, model_name : String?, &)
       raise ArgumentError.new("Session stack already exist with that name: #{name}") if has_session_stack?(name)
