@@ -13,8 +13,11 @@ module Enkaidu::Console
 
   enum Category
     Response
+    InfoTag
     Info
+    WarningTag
     Warning
+    ErrorTag
     Error
     BeforeQuery
     QuerySyntaxCommand
@@ -115,8 +118,11 @@ module Enkaidu::Console
     def self.default
       @@default_style_sheet ||= Console::StyleSheet.create do
         add :response, {fg: :white, format: [:bold]}
+        add :info_tag, {bg: :light_blue, fg: :white}
         add :info, {fg: :light_blue}
+        add :warning_tag, {bg: :yellow, fg: :black}
         add :warning, {fg: :light_yellow}
+        add :error_tag, {bg: :red, fg: :white}
         add :error, {fg: :red, format: [:bold]}
         add :before_query, {fg: :yellow}
         add :query_syntax_command, {fg: :light_cyan, format: [:italic]}

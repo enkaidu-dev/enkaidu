@@ -23,10 +23,10 @@ module Enkaidu
 
       private def render_system_prompt(prompt_name)
         if sys_prompt = find_system_prompt?(prompt_name)
-          renderer.info_with("INFO: System prompt: #{sys_prompt.description}")
+          renderer.info_with("System prompt: #{sys_prompt.description}")
           sys_prompt.render(profile: opts.profile)
         else
-          renderer.warning_with("WARN: Unable to find system prompt named: #{prompt_name}")
+          renderer.warning_with("Unable to find system prompt named: #{prompt_name}")
           nil
         end
       end

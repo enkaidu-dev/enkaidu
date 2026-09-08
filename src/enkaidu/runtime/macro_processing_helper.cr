@@ -134,13 +134,13 @@ module Enkaidu
             if val = cmd.arg_at?(key)
               keep + val.to_s
             else
-              raise InvalidMacroCall.new("WARN: Missing positional arg %{#{key}} in macro call")
+              raise InvalidMacroCall.new(" Missing positional arg %{#{key}} in macro call")
             end
           else
             if val = cmd.arg_named?(key)
               keep + val.to_s
             else
-              raise InvalidMacroCall.new("WARN: Missing named arg %{#{key}} in macro call")
+              raise InvalidMacroCall.new(" Missing named arg %{#{key}} in macro call")
             end
           end
         else
@@ -185,7 +185,7 @@ module Enkaidu
           # PreparedMacro.new(macro_call, prepared_queries)
           prepare_nested_macro(cmd, macro_call, mac.queries)
         else
-          renderer.warning_with("WARN: Unable to find macro: #{macro_call}")
+          renderer.warning_with("Unable to find macro: #{macro_call}")
           nil
         end
       end

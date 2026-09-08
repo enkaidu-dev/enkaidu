@@ -231,7 +231,7 @@ module Enkaidu
 
       def run
         web_server.start
-        console.info_with "INFO: WebUI server started: http://localhost:#{web_server.port}/"
+        console.info_with "WebUI server started: http://localhost:#{web_server.port}/"
         wait_and_handle_session_requests
         web_server.join
         console.info_with "Goodbye"

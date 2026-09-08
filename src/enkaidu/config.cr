@@ -265,7 +265,7 @@ module Enkaidu
         my_auto_load.merge(profile_auto_load)
       elsif auto_load_present?
         # nil set explicitly in app config
-        renderer.warning_with("WARN: Using `auto_load: nil` from app config, IGNORING `auto_load` in profile config.")
+        renderer.warning_with("Using `auto_load: nil` from app config, IGNORING `auto_load` in profile config.")
       else
         # no override, so use from profile
         @auto_load = profile_auto_load

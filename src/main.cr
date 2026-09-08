@@ -53,7 +53,7 @@ module Enkaidu
           cause = cause.cause
         end
       end
-      console.error_with("ERROR: #{ex}", details.empty? ? nil : details)
+      console.error_with("#{ex}", details.empty? ? nil : details)
     end
   end
 end

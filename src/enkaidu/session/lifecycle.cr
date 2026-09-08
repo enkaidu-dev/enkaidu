@@ -31,7 +31,7 @@ module Enkaidu
           if name = opts.config.find_mcp_server_by_url?(conn.uri.to_s)
             mcp_server_names << name
           else
-            renderer.warning_with("WARNING: MCP server not in config cannot be saved with session: #{conn.uri}")
+            renderer.warning_with("MCP server not in config cannot be saved with session: #{conn.uri}")
           end
         end
         {mcp_servers: mcp_server_names}.to_json(io)

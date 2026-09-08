@@ -178,7 +178,7 @@ module Enkaidu
         parser.on("--save-config-schema=FILEPATH",
           "Export a JSON schema for Enkaidu's YAML config file and exit") do |path|
           File.write(path, Config.json_schema.to_pretty_json)
-          console.info_with("INFO: Saved configuration JSON schema: #{path}")
+          console.info_with("Saved configuration JSON schema: #{path}")
           exit
         rescue ex
           error_and_exit_with "FATAL: Unable to create file (\"#{path}\"): #{ex.message}", parser
@@ -227,7 +227,7 @@ module Enkaidu
         if @cordon_confirmed = report.ok?
           console.respond_with("OK: Cordon available on this system.")
         else
-          console.error_with("ERROR: Could not confirm cordon", report)
+          console.error_with("Could not confirm cordon", report)
         end
       end
 
@@ -244,20 +244,20 @@ module Enkaidu
       private def parse_config_file(file) : Config
         text = File.read(file)
         config = Config.from_yaml(text)
-        console.info_with "INFO: Reading config file: #{file}" unless quiet?
+        console.info_with "Reading config file: #{file}" unless quiet?
         config
       end
 
       private def report_enforce_system_config_override
         if Enkaidu.enforce_system_config?
           if @options[:config_file]?
-            console.warning_with "WARN: Ignorning specified config! System config is enforced."
+            console.warning_with " Ignorning specified config! System config is enforced."
           elsif Config.find_config_file(Env::CURRENT_DIR)
-            console.warning_with "WARN: Ignorning current directory config! System config is enforced."
+            console.warning_with " Ignorning current directory config! System config is enforced."
           elsif Config.find_config_file(Env::HOME_DIR)
-            console.warning_with "WARN: Ignorning home directory config! System config is enforced."
+            console.warning_with " Ignorning home directory config! System config is enforced."
           else
-            console.info_with "INFO: System config is enforced."
+            console.info_with "System config is enforced."
           end
         end
       end

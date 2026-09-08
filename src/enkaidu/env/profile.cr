@@ -69,7 +69,7 @@ module Enkaidu::Env
       text = File.read(file)
       config = ProfileConfig.from_yaml(text)
       unless quiet
-        renderer.info_with "INFO: Reading profile config file: ./#{file.relative_to?(CURRENT_DIR)}"
+        renderer.info_with "Reading profile config file: ./#{file.relative_to?(CURRENT_DIR)}"
       end
       @config_path = file
       config
@@ -80,7 +80,7 @@ module Enkaidu::Env
       if file = (dir = profile_path) &&
                 Config.find_config_file(dir, base_name: CONFIG_FILE_NAME)
         if Enkaidu.enforce_system_config?
-          renderer.warning_with "WARN: Ignorning profile config! System config is enforced."
+          renderer.warning_with " Ignorning profile config! System config is enforced."
           nil
         else
           begin

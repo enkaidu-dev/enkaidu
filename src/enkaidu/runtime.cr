@@ -267,7 +267,7 @@ module Enkaidu
             io.puts line
           end
         end
-        renderer.error_with("ERROR: #{ex.inspect} (Report this please!)", markdown: false, help: detail)
+        renderer.error_with("#{ex.inspect} (Report this please!)", markdown: false, help: detail)
       end
     end
 
@@ -331,7 +331,7 @@ module Enkaidu
         in_macro = true
         yield Event::Macro
       else
-        renderer.error_with("ERROR: Aborting: Unknown macro: #{q}")
+        # Abort, unknown macro
         break
       end
     end

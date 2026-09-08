@@ -133,9 +133,9 @@ module Enkaidu::WUI
 
     def llm_error(err, message : String? = nil)
       if message
-        warning_with("ERROR: #{message}")
+        warning_with("#{message}")
       else
-        warning_with("ERROR: #{err.to_json}")
+        warning_with("#{err.to_json}")
       end
     end
 

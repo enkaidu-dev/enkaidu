@@ -80,7 +80,7 @@ module Enkaidu::Slash
         handle_compound_commands(session_manager, cmd)
       end
     rescue e
-      session_manager.current.session.renderer.warning_with("ERROR: #{e.message}",
+      session_manager.current.session.renderer.warning_with("#{e.message}",
         help: HELP, markdown: true)
     end
 
@@ -115,7 +115,7 @@ module Enkaidu::Slash
       when .expect?(NAME, "pop_and_transform", replace: YES_NO_NIL, prefix: String, response: String)
         handle_session_pop_and_transform(current_session_stack, cmd)
       else
-        session.renderer.warning_with("WARNING: Unknown or incomplete sub-command: '#{cmd.input}'",
+        session.renderer.warning_with("Unknown or incomplete sub-command: '#{cmd.input}'",
           help: HELP, markdown: true)
       end
     end
@@ -137,7 +137,7 @@ module Enkaidu::Slash
       model_name = cmd.arg_named?("model").try(&.as(String))
 
       if session_manager.has_session_stack?(name)
-        entry_session.renderer.error_with("ERROR: Another session exist with that name: #{name}")
+        entry_session.renderer.error_with("Another session exist with that name: #{name}")
       else
         session_manager.new_session_stack(name, model_name) do |session|
           session.renderer.session_stack_new(name)
@@ -149,14 +149,14 @@ module Enkaidu::Slash
       current_session_stack = session_manager.current
       name = cmd.arg_at?(2).as(String)
       if current_session_stack.name == name
-        session_manager.current.session.renderer.info_with("INFO: No change to session stack: #{name}")
+        session_manager.current.session.renderer.info_with("No change to session stack: #{name}")
         session_manager.current.session.renderer.session_stack_changed(name)
       else
         if session_manager.has_session_stack?(name)
           session_manager.goto_session_stack(name)
           session_manager.current.session.renderer.session_stack_changed(name)
         else
-          session_manager.current.session.renderer.info_with("ERROR: Unknown session stack: #{name}")
+          session_manager.current.session.renderer.info_with("Unknown session stack: #{name}")
         end
       end
     end

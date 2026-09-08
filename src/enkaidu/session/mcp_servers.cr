@@ -5,7 +5,7 @@ module Enkaidu
         mcp_functions.clear
         mcp_prompts.clear
         mcp_connections.each do |conn|
-          renderer.info_with("INFO: MCP server connection unloaded: #{conn.uri}.")
+          renderer.info_with("MCP server connection unloaded: #{conn.uri}.")
           conn.close
         end
         mcp_connections.clear
@@ -17,7 +17,7 @@ module Enkaidu
 
         mcp_server = config.mcp_servers.try &.[config_name]?
         if mcp_server.nil?
-          renderer.warning_with("WARNING: No MCP server found in the config under the name: #{config_name}.")
+          renderer.warning_with("No MCP server found in the config under the name: #{config_name}.")
           return
         end
 

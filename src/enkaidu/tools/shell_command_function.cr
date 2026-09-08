@@ -180,7 +180,7 @@ module Enkaidu
             end
           else
             unless found_restricted.empty? && found_unconfirmed.empty?
-              func.runtime.renderer.warning_with("WARNING: Skipping necessary shell command user confirmation by your request")
+              func.runtime.renderer.warning_with("Skipping necessary shell command user confirmation by your request")
             end
           end
 

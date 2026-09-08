@@ -104,7 +104,7 @@ module Enkaidu
           provider_type = ai[:llm].provider
           model_name = ai[:model].model
         else
-          renderer.warning_with("WARN: Unknown model '#{unique_model_name}`; using default from config.")
+          renderer.warning_with("Unknown model '#{unique_model_name}`; using default from config.")
         end
       end
 
@@ -170,7 +170,7 @@ module Enkaidu
       connection.new_chat do
         unless (m = override_model_name || opts.model_name).nil?
           with_model m
-          renderer.info_with("INFO: Using model #{m}")
+          renderer.info_with("Using model #{m}")
 
           @model_config = opts.config.find_llm_model_by_actual?(connection_provider_type, m)
         end
