@@ -65,9 +65,19 @@
     }
 </script>
 
+<!--
+  The frame root deliberately carries NO `not-prose`: Tailwind Typography's
+  generated rules all include an `:not(:where([class~=not-prose], [class~=not-prose] *))`
+  exclusion guard, so a not-prose ancestor would scope the block's contents OUT of
+  prose typing (headings collapse to body size, paragraph margins drop to zero).
+  The markdown preview block (MarkdownBlock) renders a .prose inside this frame and
+  needs those rules to apply; the block contents that must stay clean from prose
+  typing (frame's code view via .enkaidu-code, CSV table, diagram charts) each
+  wrap themselves in not-prose instead.
+-->
 <div
   bind:this={frameElement}
-  class="not-prose my-6 w-full overflow-hidden rounded-lg border border-base/85 text-sm"
+  class="my-6 w-full overflow-hidden rounded-lg border border-base/85 text-sm"
 >
     <div class="flex items-center justify-between gap-2 border-b border-base/85 bg-base-200 px-3 py-1.5">
       <span class="font-mono text-xs text-base-content/50">{language}</span>
@@ -110,7 +120,7 @@
     {#if view === "diagram" && rendered && !failed}
       {@render children?.()}
     {:else if view === "code" && source}
-      <div class="enkaidu-code group/code relative">
+      <div class="enkaidu-code group/code relative not-prose">
         <button
          type="button"
          data-copy-code

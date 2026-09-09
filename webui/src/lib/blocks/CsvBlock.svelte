@@ -59,7 +59,10 @@
     const headers = parsed[0];
     const rows = parsed.slice(1);
     
-    let html = '<div class="overflow-x-auto max-h-[352px] overflow-y-auto w-full p-2">' +
+    // not-prose mirrors the hydrated CsvBlock wrapper (parity: the placeholder
+    // sits in the transcript's .prose, where typography rules would otherwise
+    // re-style this table; the hydrated table is scoped out via its own wrapper).
+    let html = '<div class="not-prose overflow-x-auto max-h-[352px] overflow-y-auto w-full p-2">' +
                '<table class="table table-zebra table-xs table-pin-rows w-full border-collapse text-left text-xs">';
     
     // Header
@@ -110,7 +113,8 @@
 
 <BlockFrame {language} {source} rendered={true} failed={parsed.length === 0} error="No data" diagramLabel="Table" codeLabel="Raw" {saves} {saveBasename} bind:view>
   {#if parsed.length > 0}
-    <div class="overflow-x-auto max-h-[352px] overflow-y-auto w-full p-2">
+    <!-- not-prose: keeps the daisyUI table clean of prose table typing -->
+    <div class="not-prose overflow-x-auto max-h-[352px] overflow-y-auto w-full p-2">
       <table class="table table-zebra table-xs table-pin-rows w-full border-collapse text-left text-xs">
         <thead>
           <tr class="bg-base-300">

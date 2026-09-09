@@ -116,7 +116,7 @@
 </script>
 
 <BlockFrame {language} {source} rendered={true} {failed} {error} diagramLabel="Chart" codeLabel="JSON" {saves} {saveBasename} bind:view>
-  <div class="flex justify-center overflow-x-auto p-3 w-full relative min-h-[150px]">
+  <div class="not-prose flex justify-center overflow-x-auto p-3 w-full relative min-h-[150px]">
     {#if !chartLoaded && !failed}
       <div class="absolute inset-0 flex items-center justify-center bg-base-100 text-xs text-base-content/40">
         Rendering chart…

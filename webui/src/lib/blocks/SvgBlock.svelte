@@ -21,7 +21,7 @@
 </script>
 
 <BlockFrame {language} {source} rendered={true} failed={false} {saves} {saveBasename} bind:view>
-    <div class="flex justify-center overflow-x-auto p-3">
+    <div class="not-prose flex justify-center overflow-x-auto p-3">
       {@html safeSource}
     </div>
 </BlockFrame>

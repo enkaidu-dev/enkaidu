@@ -74,7 +74,7 @@
 </script>
 
 <BlockFrame {language} {source} {rendered} {failed} {error} {saves} {saveBasename} bind:view>
-  <div class="flex justify-center overflow-x-auto p-3">
+  <div class="not-prose flex justify-center overflow-x-auto p-3">
     {@html svg}
   </div>
 </BlockFrame>

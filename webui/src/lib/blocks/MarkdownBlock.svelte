@@ -32,6 +32,14 @@
   // delegation) nested interactive blocks and copy chips.
   bind:view
 >
+  <!--
+    Deliberate: no not-prose anywhere on this preview body. A not-prose
+    ancestor (on the frame or here) would scope the transcript's Tailwind
+    Typography rules out of the rendered markdown — headings would collapse
+    to body size and all paragraph margins would drop (see the note on the
+    BlockFrame root). Leaving this body unscoped is what makes the preview
+    inherit the same typography as the rest of the transcript.
+  -->
   <div class="p-3">
     <Markdown content={source} />
   </div>

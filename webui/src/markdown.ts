@@ -43,7 +43,12 @@ function render_block_placeholder(lang: string, source: string): string {
 
   const visible = cached_content
     ? (
-        '<div class="not-prose my-6 w-full overflow-hidden rounded-lg border border-base/85 text-sm">' +
+        // Cross-reference: the frame clone's root mirrors the BlockFrame.svelte
+        // root (no not-prose — see the comment there); the live code view
+        // wraps itself in not-prose, and cached content (the static CSV table)
+        // carries its own not-prose wrapper, so the clone matches the
+        // hydrated block's scoping exactly. Keep in sync.
+        '<div class="my-6 w-full overflow-hidden rounded-lg border border-base/85 text-sm">' +
         '<div class="flex items-center justify-between gap-2 border-b border-base/85 bg-base-200 px-3 py-1.5">' +
         `<span class="font-mono text-xs text-base-content/50">${displayName}</span>` +
         '<div class="flex items-center gap-1">' +
