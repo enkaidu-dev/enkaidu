@@ -6,6 +6,7 @@
 
   import Promptbar from "./lib/Promptbar.svelte";
   import Session from "./lib/Session.svelte";
+  import FilePanel from "./lib/FilePanel.svelte";
   // import Sidebar from "./lib/Sidebar.svelte";
 
   let session: Session;
@@ -14,6 +15,49 @@
   let started = false;
   let handling_request = $state(false);
   let has_content = $state(false);
+
+  // ---- File side panel -----------------------------------------------------
+  // The path currently shown in the panel (null = closed), plus the fetched
+  // content / loading / error state for it.
+  let open_file: string | null = $state(null);
+  let file_body = $state("");
+  let file_loading = $state(false);
+  let file_error = $state("");
+
+  // Toggle a file's panel: clicking the file already being shown closes the
+  // panel; clicking any other file (open or closed) opens it (refreshing
+  // the content if it was already open).
+  async function toggle_file(path: string) {
+    if (open_file === path) {
+      open_file = null;
+      return;
+    }
+    open_file = path;
+    file_body = "";
+    file_error = "";
+    file_loading = true;
+    try {
+      const url = new URL("/fs/read", window.location.href);
+      url.searchParams.set("path", path);
+      const resp = await fetch(url);
+      const data: any = await resp.json().catch(() => null);
+      if (!resp.ok || data == null || typeof data.body !== "string") {
+        file_error =
+          (data && data.error ? data.error : "") +
+          ` (HTTP ${resp.status})`;
+      } else {
+        file_body = data.body;
+      }
+    } catch (error) {
+      file_error = error as string;
+    } finally {
+      file_loading = false;
+    }
+  }
+
+  function close_file() {
+    open_file = null;
+  }
 
   // Warn the user before closing/refreshing if a request is still
   // in flight (the NDJSON stream or a pending dialog would be orphaned).
@@ -289,22 +333,45 @@
 </script>
 
 <main>
-  <div class="drawer drawer-end">
-    <input id="my-drawer" type="checkbox" class="drawer-toggle" />
-    <div class="drawer-content">
-      <div
-        class={has_content
-          ? "flex flex-col h-screen justify-between"
-          : "flex flex-col h-screen justify-center"}
-      >
-        <Session bind:this={session} />
-        <Promptbar
-          bind:this={prompt}
-          onask={on_prompt_ask}
-          loading={handling_request}
-        />
+  <div class="flex h-screen w-full overflow-hidden">
+    <!-- The transcript column: every level of this chain is a definite
+         height (row → drawer → row-tracked grid area → content → column),
+         so the Session's internal overflow-scroll is the ONLY scroll here
+         and this column can never push the page itself to scroll.
+         grid-rows-[100%] locks daisyUI's single auto-sized drawer grid row
+         to the full height, which is what makes the h-full chain resolve. -->
+    <div
+      class="drawer drawer-end grid-rows-[100%] h-full min-w-0 flex-1 overflow-hidden"
+    >
+      <input id="my-drawer" type="checkbox" class="drawer-toggle" />
+      <div class="drawer-content h-full min-h-0 overflow-hidden">
+        <div
+          class={has_content
+            ? "flex h-full flex-col justify-between"
+            : "flex h-full flex-col justify-center"}
+        >
+          <Session
+            bind:this={session}
+            active_file={open_file}
+            on_open_file={toggle_file}
+          />
+          <Promptbar
+            bind:this={prompt}
+            onask={on_prompt_ask}
+            loading={handling_request}
+          />
+        </div>
       </div>
+      <!-- <Sidebar /> -->
     </div>
-    <!-- <Sidebar /> -->
+    {#if open_file != null}
+      <FilePanel
+        path={open_file}
+        body={file_body}
+        loading={file_loading}
+        error={file_error}
+        onclose={close_file}
+      />
+    {/if}
   </div>
 </main>

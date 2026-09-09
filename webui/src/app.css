@@ -382,9 +382,19 @@ body {
 /* Activity group: pulsing dot indicating the group is still receiving items
    (the agent is mid-run). Subtle, non-distracting. */
 @keyframes activity-pulse {
-  0%, 100% { opacity: 0.35; transform: scale(0.75); }
-  50%      { opacity: 0.7;  transform: scale(1); }
+
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scale(0.75);
+  }
+
+  50% {
+    opacity: 0.7;
+    transform: scale(1);
+  }
 }
+
 .activity-dot {
   display: inline-block;
   width: 0.45rem;
@@ -406,13 +416,10 @@ body {
   line-height: 1.1rem;
   font-family: var(--font-sans);
   color: var(--color-base-content);
-  background-color: color-mix(
-    in srgb,
-    var(--color-base-300) 85%,
-    transparent
-  );
-  border: 1px solid
-    color-mix(in srgb, var(--color-border-base) 70%, transparent);
+  background-color: color-mix(in srgb,
+      var(--color-base-300) 85%,
+      transparent);
+  border: 1px solid color-mix(in srgb, var(--color-border-base) 70%, transparent);
 }
 
 .enkaidu-copy:hover {
@@ -452,4 +459,43 @@ body {
   opacity: 1;
   font-weight: 500;
   background-color: var(--color-base-300);
+}
+
+/* File-reference buttons on assistant cards: promptbar-bar look (rounded,
+   bordered, filled-on-state) rendered in the terracotta `--color-accent`
+   token so they pop in both light and dark modes. Sizing matches the
+   assistant response text (1rem) with taller vertical padding than the
+   small chips. Self-contained (does not inherit from `.action-chip`). */
+.file-chip {
+  cursor: pointer;
+  display: block;
+  width: 100%;
+  min-width: 0;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 1rem;
+  line-height: 1.6;
+  padding: 0.5rem 0.75rem;
+  color: var(--color-accent);
+  background-color: color-mix(in srgb, var(--color-accent) 8%, var(--color-base-100));
+  border: 1px solid color-mix(in srgb, var(--color-accent) 55%, transparent);
+  border-radius: 0.625rem;
+  transition:
+    background-color 120ms ease,
+    border-color 120ms ease,
+    color 120ms ease;
+}
+
+.file-chip:hover {
+  background-color: color-mix(in srgb, var(--color-accent) 16%, var(--color-base-100));
+  border-color: color-mix(in srgb, var(--color-accent) 85%, transparent);
+}
+
+.file-chip.active {
+  font-weight: 500;
+  color: var(--color-accent-content);
+  background-color: var(--color-accent);
+  border-color: var(--color-accent);
 }

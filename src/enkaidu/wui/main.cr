@@ -1,7 +1,9 @@
 require "option_parser"
 require "json"
 require "baked_file_system"
-require "mime"
+require "mime_map"
+
+require "../../tools/file_helper"
 
 require "../../acpa"
 require "../../sucre/web_server"
@@ -39,6 +41,8 @@ module Enkaidu
     # `Sever` is the interim WIP entry point for the server-mode build of Enkaidu.
     # At some point it will be available via a `--server` switch from the same binary
     class Main
+      include Tools::FileHelper
+
       private getter? done = false
       private getter count = 0
       private getter opts : CLI::Options
@@ -110,7 +114,7 @@ module Enkaidu
       private def prepare_web_server
         web_server.before_all do |req, resp|
           resp.content_type = "application/json"
-          STDERR.puts "#{req.method} #{req.path}".colorize(:green) if req.path.includes?("api/")
+          STDERR.puts "#{req.method} #{req.path}".colorize(:green) if req.path.starts_with?(/^\/(api|fs)\//)
         end
 
         web_server.get "/api/start" do |_, resp|
@@ -156,10 +160,38 @@ module Enkaidu
           end
         end
 
+        # Expect ?path=PATH
+        web_server.get "/fs/read" do |req, resp|
+          if path = req.query_params["path"]?
+            if within_current_directory?(resolve_path(path))
+              begin
+                data = File.read(path)
+                resp.puts({
+                  path:         path,
+                  body:         data,
+                  content_type: MimeMap.from_filename(path) || "unknown",
+                }.to_json)
+              rescue ex : File::Error
+                resp.status_code = 404
+                resp.puts({
+                  error: ex.message,
+                }.to_json)
+              end
+            else
+              resp.status_code = 403
+              resp.puts({
+                error: "Not authorized to access: #{path}",
+              }.to_json)
+            end
+          else
+            raise ArgumentError.new("Missing query param: path")
+          end
+        end
+
         web_server.unknown_get do |req, resp|
           path = req.path == "/" ? "/index.html" : req.path
           if file = FileStorage.get(path)
-            resp.content_type = MIME.from_filename(path)
+            resp.content_type = MimeMap.from_filename(path) || "unknown"
             IO.copy(file, resp)
           else
             raise ArgumentError.new("Unknown request: #{req.method} #{path}")
