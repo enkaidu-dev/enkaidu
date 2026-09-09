@@ -64,7 +64,7 @@ module Enkaidu
 
         check_config_for_defaults
         verify_required_options
-        confirm_cordon if config.cordon.confirm
+        check_cordon_availability
 
         if console_styles = config.console.try(&.style_sheet)
           @console.style_sheet = console_styles
@@ -222,12 +222,24 @@ module Enkaidu
         end
       end
 
-      private def confirm_cordon
-        report = Cordon.confirm
-        if @cordon_confirmed = report.ok?
-          console.info_with("SAFE: Cordon available on this system.")
+      private def check_cordon_availability
+        if config.cordon!.confirm?
+          report = Cordon.confirm
+          if @cordon_confirmed = report.ok?
+            if config.cordon!.mode == ProfileConfig::Cordon::Mode::UNSAFE
+              console.error_with("UNSAFE: Cordon is available on this system, but you've disabled it.")
+            else
+              console.info_with("SAFE: Cordon is available on this system, and it's enabled.")
+            end
+          else
+            console.error_with("UNAVAILABLE: Could not find and confirm cordon", report)
+          end
         else
-          console.error_with("UNSAFE: Could not confirm cordon", report)
+          if config.cordon!.mode == ProfileConfig::Cordon::Mode::UNSAFE
+            console.error_with("UNSAFE: Cordon has been disabled.")
+          else
+            console.warning_with("UNKNOWN: Cordon status unknown")
+          end
         end
       end
 

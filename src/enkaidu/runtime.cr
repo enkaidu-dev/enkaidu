@@ -92,15 +92,17 @@ module Enkaidu
     end
 
     def cordon_policy : Cordon::Policy
-      cordon_config = options.config.cordon
+      cordon_config = options.config.cordon!
 
       # Setup initial policy defaults
       policy = Cordon::Policy.new
-      cordon_config.policy.read_only_paths.each do |path|
-        policy.read_only(path)
-      end
-      cordon_config.policy.read_write_paths.each do |path|
-        policy.read_write(path)
+      if cordon_policy = cordon_config.policy
+        cordon_policy.read_only_paths.each do |path|
+          policy.read_only(path)
+        end
+        cordon_policy.read_write_paths.each do |path|
+          policy.read_write(path)
+        end
       end
 
       # Pull in system preset

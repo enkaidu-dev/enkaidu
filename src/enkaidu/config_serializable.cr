@@ -78,11 +78,24 @@ module Enkaidu
       {% presence_name = "#{name}_present".id %}
       {% if @top_level.has_constant?("JSON") %}  @[JSON::Field(ignore: true)]   {% end %}
       {% if @top_level.has_constant?("YAML") %}  @[YAML::Field(ignore: true)]   {% end %}
-      getter? {{ presence_name }} : Bool
+      getter? {{ presence_name }} : Bool = false
 
       # Now declare the getter for which we want to detect presence
       {% if @top_level.has_constant?("YAML") %}  @[YAML::Field(presence: true)]  {% end %}
       getter {{ name }} : {{ type }}
+    end
+
+    # This convenience macro intentionally doesn't use `TypeDeclaration` macro-level type node
+    # to work around an emaba bug: https://github.com/crystal-ameba/ameba/issues/447
+    macro getter_with_presence?(name, default)
+      {% presence_name = "#{name}_present".id %}
+      {% if @top_level.has_constant?("JSON") %}  @[JSON::Field(ignore: true)]   {% end %}
+      {% if @top_level.has_constant?("YAML") %}  @[YAML::Field(ignore: true)]   {% end %}
+      getter? {{ presence_name }} : Bool = false
+
+      # Now declare the getter for which we want to detect presence
+      {% if @top_level.has_constant?("YAML") %}  @[YAML::Field(presence: true)]  {% end %}
+      getter? {{ name }} = {{ default }}
     end
 
     # Support env var substitution for all instance vars with
