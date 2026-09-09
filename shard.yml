@@ -16,6 +16,8 @@ development_dependencies:
     gitlab: arctic-fox/spectator
 
 dependencies:
+  mime_map:
+    github: shpeckman/mime_map
   cordon:
     github: modelarmy/cordon.cr
     version: 0.6.3
