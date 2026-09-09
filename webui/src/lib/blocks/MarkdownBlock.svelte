@@ -39,8 +39,17 @@
     to body size and all paragraph margins would drop (see the note on the
     BlockFrame root). Leaving this body unscoped is what makes the preview
     inherit the same typography as the rest of the transcript.
+
+    Long previews are height-capped and scroll, using the shared
+    --scrollable-max-h custom property from app.css (0.8 × (viewport −
+    prompt bar height), floor 12rem — the exact same cap the code sources
+    get via the `.prose pre` rule, so the two can never drift apart).
+    Rendered views of the *other* blocks (mermaid/svg/vega diagrams and
+    tables) intentionally have no cap — cropping diagrammatic content to a
+    scroll window isn't useful, while flowing text and code are exactly the
+    kinds of content that benefit.
   -->
-  <div class="p-3">
+  <div class="max-h-(--scrollable-max-h) overflow-y-auto p-3">
     <Markdown content={source} />
   </div>
 </BlockFrame>

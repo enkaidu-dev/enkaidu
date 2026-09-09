@@ -166,6 +166,21 @@ body {
   border-bottom-color: var(--color-accent);
 }
 
+/* Scrollable-content height caps (long code sources + the markdown
+   preview body). The cap reserves 80% of the space ABOVE the bottom-pinned
+   prompt bar: --promptbar-h is the bar's live height, maintained by a
+   ResizeObserver in Promptbar.svelte (falls back to 0 before first paint),
+   floored at 12rem so a very small window can't shrink the code area below
+   the point of usefulness (at the floor the page scrolls instead, keeping
+   the content readable and selectable). Single source of truth: consumed
+   by the .prose pre rule below AND by MarkdownBlock.svelte's preview body.
+   max-height only ever trims overflow — short content renders at its
+   natural height, no padding or stretching. */
+:root {
+  --promptbar-h: 0px;
+  --scrollable-max-h: max(calc((100vh - var(--promptbar-h)) * 0.8), 12rem);
+}
+
 /* inline code: subtle warm background, no border */
 .prose :not(pre)>code {
   background-color: color-mix(in srgb, var(--color-base-300) 55%, transparent);
@@ -187,6 +202,14 @@ body {
   border-radius: 0.5rem;
   padding: 0.75rem 1rem;
   border: 1px solid color-mix(in srgb, var(--color-border-base) 60%, transparent);
+  /* Height-capped and scrolling for long sources: --scrollable-max-h
+     (defined above — 0.8 × (viewport − prompt bar), floor 12rem). One
+     hand-written rule covers every code fence AND every rendered block's
+     code view, because both are <pre> descendants of a .prose container
+     and this rule has no not-prose exclusion guard (unlike the
+     typography plugin's generated rules). */
+  max-height: var(--scrollable-max-h);
+  overflow-y: auto;
 }
 
 .prose pre code {
