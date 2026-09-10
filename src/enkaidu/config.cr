@@ -43,69 +43,6 @@ module Enkaidu
 
     alias ToolSettings = Hash(String, LLM::Function::Settings)
 
-    getter_with_presence auto_load, AutoLoad?
-
-    getter tool_settings : ToolSettings?
-  end
-
-  # Application level configuration class facilitates settings for the Enkaidu application.
-  class Config < ProfileConfig
-    DEFAULT_NAME = "enkaidu"
-
-    # ---------------------- start of content definition
-
-    # Represents a Language Model configuration within the Enkaidu application.
-    class LLM < ConfigSerializable
-      # Represents a Model within an LLM.
-      class Model < ConfigSerializable
-        # Represents settings for a model
-        class Settings < ConfigSerializable
-          getter? exclude_past_reasoning = false
-          getter think = ::LLM::Reasoning::Default
-        end
-
-        getter name : String
-        getter model : String
-        getter settings : Settings?
-      end
-
-      getter provider : String
-      getter models : Array(Model)?
-      # Use this to populate environment variables for the specific
-      # provider and they will be passed through
-      getter env = {} of String => String
-    end
-
-    # Debug configuration settings for Enkaidu.
-    class Debug < ConfigSerializable
-      getter? trace_mcp = false
-    end
-
-    # Session configuration settings for Enkaidu.
-    class Session < ConfigSerializable
-      # Streaming chat enabled by default
-      getter? streaming = true
-
-      # Quiet mode disabled by default
-      getter? quiet = false
-
-      # Readonly mode disallows built-in tools when enabled; disabled by default
-      getter? readonly = false
-
-      # Excluding reasoning in "past turn" chat responses to LLM disabled by default
-      getter? exclude_past_reasoning = false
-
-      # Disallowed by default, set to `true` to disallow
-      getter? allow_tool_discovery = false
-      getter? allow_sub_agents = false
-      getter? allow_global_state = false
-      getter? allow_shell_commands = false
-
-      getter provider_type : String?
-      getter model : String?
-      getter input_history_file : String?
-    end
-
     class Cordon < ConfigSerializable
       class Policy < ConfigSerializable
         # Add read-only access to specific paths
@@ -138,6 +75,8 @@ module Enkaidu
         # case use a map with `venv_path` propert to point to your venv path
         # so we can work out paths to allow access from inside the cordon
         getter using_python : (Bool | UsingPython)? = nil
+
+        protected def initialize; end
       end
 
       enum Mode
@@ -148,15 +87,114 @@ module Enkaidu
       end
 
       # Enable cordoning agent by default
-      getter mode = Mode::COMMANDS
+      getter_with_presence mode, Mode?
       # Default policy doesn't add anything to defaults
-      getter policy = Policy.new
+      getter_with_presence policy, Policy?
       # Configure workspace to indicate if using brew, python, ruby etc.
-      getter workspace : Workspace?
+      getter_with_presence workspace, Workspace?
       # Confirm cordon is working by running and reporting on some tests; default to true.
-      getter confirm : Bool? = true
+      getter_with_presence? confirm, true
 
-      def initialize; end
+      def initialize
+        @mode = Mode::COMMANDS
+        @policy = Policy.new
+        @workspace = Workspace.new
+      end
+
+      protected def merge(from : Cordon)
+        {% for name in [:mode, :policy, :workspace] %}
+        @{{ name.id }} = from.{{ name.id }} if from.{{ name.id }}_present?
+        {% end %}
+
+        @confirm = from.confirm? unless confirm_present?
+      end
+    end
+
+    # Session configuration settings for Enkaidu.
+    class Session < ConfigSerializable
+      # Streaming chat enabled by default
+      getter_with_presence? streaming, true
+
+      # Quiet mode disabled by default
+      getter_with_presence? quiet, false
+
+      # Readonly mode disallows built-in tools when enabled; disabled by default
+      getter_with_presence? readonly, false
+
+      # Excluding reasoning in "past turn" chat responses to LLM disabled by default
+      getter_with_presence? exclude_past_reasoning, false
+
+      # Disallowed by default, set to `true` to disallow
+      getter_with_presence? allow_tool_discovery, false
+      getter_with_presence? allow_sub_agents, false
+      getter_with_presence? allow_global_state, false
+      getter_with_presence? allow_shell_commands, false
+
+      getter_with_presence provider_type, String?
+      getter_with_presence model, String?
+      getter_with_presence input_history_file, String?
+
+      protected def merge(from : Session)
+        # Booleans
+        {% for name in [
+                         :streaming, :quiet, :readonly, :exclude_past_reasoning,
+                         :allow_tool_discovery, :allow_sub_agents, :allow_global_state,
+                         :allow_shell_commands,
+                       ] %}
+        @{{ name.id }} = from.{{ (name + '?').id }} if from.{{ name.id }}_present?
+        {% end %}
+        # Non-booleans
+        {% for name in [:provider_type, :model, :input_history_file] %}
+        @{{ name.id }} = from.{{ name.id }} if from.{{ name.id }}_present?
+        {% end %}
+      end
+    end
+
+    # Can be set to `nil` to disable inherited auto_load
+    getter_with_presence auto_load, AutoLoad?
+
+    getter cordon : Cordon?
+    getter tool_settings : ToolSettings?
+    getter session : Session?
+
+    # Force defaults if not specified
+    def cordon!
+      @cordon ||= Cordon.new
+    end
+  end
+
+  # Application level configuration class facilitates settings for the Enkaidu application.
+  class Config < ProfileConfig
+    DEFAULT_NAME = "enkaidu"
+
+    # ---------------------- start of content definition
+
+    # Represents a Language Model configuration within the Enkaidu application.
+    class LLM < ConfigSerializable
+      # Represents a Model within an LLM.
+      class Model < ConfigSerializable
+        # Represents settings for a model
+        class Settings < ConfigSerializable
+          getter? exclude_past_reasoning = false
+          getter think : ::LLM::Reasoning = ::LLM::Reasoning::Default
+          getter_with_presence temperature, Int32 | Float32?
+        end
+
+        getter name : String
+        getter model : String
+        getter settings : Settings?
+      end
+
+      getter provider : String
+      getter models : Array(Model)?
+      # Use this to populate environment variables for the specific
+      # provider and they will be passed through
+      getter env = {} of String => String
+    end
+
+    # Debug configuration settings for Enkaidu.
+    class Debug < ConfigSerializable
+      getter? trace_mcp = false
     end
 
     class Console < ConfigSerializable
@@ -196,11 +234,7 @@ module Enkaidu
       getter template : String
     end
 
-    # Default cordon configuration
-    getter cordon = Cordon.new
-
     getter debug : Debug?
-    getter session : Session?
     getter llms : Hash(String, LLM)?
 
     getter mcp_servers : Hash(String, MCPServer)?
@@ -243,6 +277,20 @@ module Enkaidu
       if profile_tool_settings = profile_config.tool_settings
         merge_profile_tool_settings(profile_tool_settings, renderer)
       end
+
+      # At worst both are default and no merge needed
+      # Otherwise, anything explicitly set in profile config overrides
+      if profile_cordon = profile_config.cordon
+        cordon!.merge(from: profile_cordon)
+      end
+
+      if profile_session = profile_config.session
+        if my_session = session
+          my_session.merge(profile_session)
+        else
+          @session = profile_session
+        end
+      end
     end
 
     # Merge tool settings config from profile
@@ -265,7 +313,7 @@ module Enkaidu
         my_auto_load.merge(profile_auto_load)
       elsif auto_load_present?
         # nil set explicitly in app config
-        renderer.warning_with("WARN: Using `auto_load: nil` from app config, IGNORING `auto_load` in profile config.")
+        renderer.warning_with("Using `auto_load: nil` from app config, IGNORING `auto_load` in profile config.")
       else
         # no override, so use from profile
         @auto_load = profile_auto_load

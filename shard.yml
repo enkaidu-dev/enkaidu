@@ -1,5 +1,5 @@
 name: enkaidu
-version: 0.9.12
+version: 0.9.13-pre
 license: MPL-2.0
 description: Command line tool that can use local and remote AI models to assist
   with local editing and refinement tasks.
@@ -16,12 +16,14 @@ development_dependencies:
     gitlab: arctic-fox/spectator
 
 dependencies:
+  mime_map:
+    github: shpeckman/mime_map
   cordon:
     github: modelarmy/cordon.cr
     version: 0.6.3
   termify:
     github: nogginly/termify.cr
-    version: 0.6.1
+    version: 0.7.0
   liquid:
     github: amberframework/liquid.cr
     version: 1.0.0

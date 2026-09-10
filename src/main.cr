@@ -8,7 +8,7 @@ module Enkaidu
   # `Main` is the entry point for executing the application, managing initialization and execution flow.
   class Main
     private getter console : Console::Renderer
-    private getter terminal : Termify::TerminalCommon
+    private getter terminal : Termify::Terminal
 
     def initialize
       @terminal = Termify.terminal
@@ -53,7 +53,7 @@ module Enkaidu
           cause = cause.cause
         end
       end
-      console.error_with("ERROR: #{ex}", details.empty? ? nil : details)
+      console.error_with("#{ex}", details.empty? ? nil : details)
     end
   end
 end

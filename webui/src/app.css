@@ -166,6 +166,21 @@ body {
   border-bottom-color: var(--color-accent);
 }
 
+/* Scrollable-content height caps (long code sources + the markdown
+   preview body). The cap reserves 80% of the space ABOVE the bottom-pinned
+   prompt bar: --promptbar-h is the bar's live height, maintained by a
+   ResizeObserver in Promptbar.svelte (falls back to 0 before first paint),
+   floored at 12rem so a very small window can't shrink the code area below
+   the point of usefulness (at the floor the page scrolls instead, keeping
+   the content readable and selectable). Single source of truth: consumed
+   by the .prose pre rule below AND by MarkdownBlock.svelte's preview body.
+   max-height only ever trims overflow — short content renders at its
+   natural height, no padding or stretching. */
+:root {
+  --promptbar-h: 0px;
+  --scrollable-max-h: max(calc((100vh - var(--promptbar-h)) * 0.8), 12rem);
+}
+
 /* inline code: subtle warm background, no border */
 .prose :not(pre)>code {
   background-color: color-mix(in srgb, var(--color-base-300) 55%, transparent);
@@ -187,6 +202,14 @@ body {
   border-radius: 0.5rem;
   padding: 0.75rem 1rem;
   border: 1px solid color-mix(in srgb, var(--color-border-base) 60%, transparent);
+  /* Height-capped and scrolling for long sources: --scrollable-max-h
+     (defined above — 0.8 × (viewport − prompt bar), floor 12rem). One
+     hand-written rule covers every code fence AND every rendered block's
+     code view, because both are <pre> descendants of a .prose container
+     and this rule has no not-prose exclusion guard (unlike the
+     typography plugin's generated rules). */
+  max-height: var(--scrollable-max-h);
+  overflow-y: auto;
 }
 
 .prose pre code {
@@ -359,9 +382,19 @@ body {
 /* Activity group: pulsing dot indicating the group is still receiving items
    (the agent is mid-run). Subtle, non-distracting. */
 @keyframes activity-pulse {
-  0%, 100% { opacity: 0.35; transform: scale(0.75); }
-  50%      { opacity: 0.7;  transform: scale(1); }
+
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scale(0.75);
+  }
+
+  50% {
+    opacity: 0.7;
+    transform: scale(1);
+  }
 }
+
 .activity-dot {
   display: inline-block;
   width: 0.45rem;
@@ -383,13 +416,10 @@ body {
   line-height: 1.1rem;
   font-family: var(--font-sans);
   color: var(--color-base-content);
-  background-color: color-mix(
-    in srgb,
-    var(--color-base-300) 85%,
-    transparent
-  );
-  border: 1px solid
-    color-mix(in srgb, var(--color-border-base) 70%, transparent);
+  background-color: color-mix(in srgb,
+      var(--color-base-300) 85%,
+      transparent);
+  border: 1px solid color-mix(in srgb, var(--color-border-base) 70%, transparent);
 }
 
 .enkaidu-copy:hover {
@@ -429,4 +459,93 @@ body {
   opacity: 1;
   font-weight: 500;
   background-color: var(--color-base-300);
+}
+
+/* File-reference buttons on assistant cards: promptbar-bar look (rounded,
+   bordered, filled-on-state) rendered in the terracotta `--color-accent`
+   token so they pop in both light and dark modes. Sizing matches the
+   assistant response text (1rem) with taller vertical padding than the
+   small chips. Self-contained (does not inherit from `.action-chip`). */
+.file-chip {
+  cursor: pointer;
+  display: block;
+  width: 100%;
+  min-width: 0;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 1rem;
+  line-height: 1.6;
+  padding: 0.5rem 0.75rem;
+  color: var(--color-accent);
+  background-color: color-mix(in srgb, var(--color-accent) 8%, var(--color-base-100));
+  border: 1px solid color-mix(in srgb, var(--color-accent) 55%, transparent);
+  border-radius: 0.625rem;
+  transition:
+    background-color 120ms ease,
+    border-color 120ms ease,
+    color 120ms ease;
+}
+
+.file-chip:hover {
+  background-color: color-mix(in srgb, var(--color-accent) 16%, var(--color-base-100));
+  border-color: color-mix(in srgb, var(--color-accent) 85%, transparent);
+}
+
+.file-chip.active {
+  font-weight: 500;
+  color: var(--color-accent-content);
+  background-color: var(--color-accent);
+  border-color: var(--color-accent);
+}
+
+
+/* ---------------------------------------------------------------------------
+   Split-view resizer -- the draggable divide between the transcript column and
+   the file side panel. It is a slim flex child (width set below) sitting
+   between the two columns in App.svelte; the transcript's flex-1 absorbs the
+   rest, so dragging only needs to grow/shrink the panel. A 1px hairline sits
+   at the strip's centre and lifts to a 2px accent stripe on hover/focus/drag,
+   so the affordance is visible without being loud.
+--------------------------------------------------------------------------- */
+.resizer {
+  flex: 0 0 auto;
+  width: 0.5rem;
+  cursor: col-resize;
+  background-color: transparent;
+  position: relative;
+   /* We draw our own focus ring on the hairline, so hide the default box. */
+  outline: none;
+}
+
+/* The visible hairline, centred in the strip. */
+.resizer::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 1px;
+  transform: translateX(-50%);
+  background-color: color-mix(in srgb, var(--color-border-base) 90%, transparent);
+  transition:
+    width 120ms ease,
+    background-color 120ms ease;
+}
+
+.resizer:hover::after,
+.resizer:focus-visible::after,
+.enkaidu-resizing .resizer::after {
+  width: 2px;
+  background-color: var(--color-accent);
+}
+
+/* While dragging, lock the cursor and disable text selection across the whole
+   document so a fast drag doesn't drag-select the transcript text. Toggled on
+   the <body> from App.svelte's start_resize / on_up handlers. */
+.enkaidu-resizing,
+.enkaidu-resizing * {
+  cursor: col-resize !important;
+  user-select: none !important;
 }

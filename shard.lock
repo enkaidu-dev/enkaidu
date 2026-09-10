@@ -36,6 +36,10 @@ shards:
     git: https://github.com/amberframework/liquid.cr.git
     version: 1.0.0
 
+  mime_map:
+    git: https://github.com/shpeckman/mime_map.git
+    version: 0.5.0+git.commit.5b602e0add39b9e7b9a56e1ea3277a415c3b2f7a
+
   reply:
     git: https://github.com/nogginly/reply.cr.fork.git
     version: 0.4.0+git.commit.f314535853df876af35ec1986ecf85fdff38e809
@@ -54,11 +58,11 @@ shards:
 
   tartrazine:
     git: https://github.com/ralsina/tartrazine.git
-    version: 0.21.3
+    version: 0.22.0
 
   termify:
     git: https://github.com/nogginly/termify.cr.git
-    version: 0.6.1
+    version: 0.7.0
 
   textseg:
     git: https://github.com/naqvis/uni_text_seg.git

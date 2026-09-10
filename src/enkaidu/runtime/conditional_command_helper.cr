@@ -87,12 +87,12 @@ module Enkaidu
         when .if?
           if file_exists
             continue = Continue::Break
-            message = "INFO: Break: File exists: #{file}"
+            message = "Break: File exists: #{file}"
           end
         when .unless?
           unless file_exists
             continue = Continue::Break
-            message = "INFO: Break: File does not exist: #{file}"
+            message = "Break: File does not exist: #{file}"
           end
         end
         {continue: continue, message: message}
@@ -112,12 +112,12 @@ module Enkaidu
         when .if?
           if file_contains
             continue = Continue::Break
-            message = "INFO: Break: File contains \"#{contains}\""
+            message = "Break: File contains \"#{contains}\""
           end
         when .unless?
           unless file_contains
             continue = Continue::Break
-            message = "INFO: Break: File doesn't exist, or doesn't contain \"#{contains}\""
+            message = "Break: File doesn't exist, or doesn't contain \"#{contains}\""
           end
         end
         {continue: continue, message: message}
@@ -135,12 +135,12 @@ module Enkaidu
       when .if?
         if key_value_matched
           continue = Continue::Break
-          message = "INFO: Break: Global state key's value equals: #{equals}"
+          message = "Break: Global state key's value equals: #{equals}"
         end
       when .unless?
         unless key_value_matched
           continue = Continue::Break
-          message = "INFO: Break: Global state key doesn't exist/equal: #{equals}"
+          message = "Break: Global state key doesn't exist/equal: #{equals}"
         end
       end
       {continue: continue, message: message}

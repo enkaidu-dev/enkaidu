@@ -5,6 +5,7 @@
 // exactly once. Duplicating them via per-component marked.use()
 // calls makes parsing recursively re-enter and grows exponentially with
 // the number of rendered Markdown components.
+import DOMPurify from "dompurify";
 import { marked } from "marked";
 import { markedHighlight } from "marked-highlight";
 import hljs from "highlight.js/lib/common";
@@ -42,7 +43,12 @@ function render_block_placeholder(lang: string, source: string): string {
 
   const visible = cached_content
     ? (
-        '<div class="not-prose my-6 w-full overflow-hidden rounded-lg border border-base/85 text-sm">' +
+        // Cross-reference: the frame clone's root mirrors the BlockFrame.svelte
+        // root (no not-prose — see the comment there); the live code view
+        // wraps itself in not-prose, and cached content (the static CSV table)
+        // carries its own not-prose wrapper, so the clone matches the
+        // hydrated block's scoping exactly. Keep in sync.
+        '<div class="my-6 w-full overflow-hidden rounded-lg border border-base/85 text-sm">' +
         '<div class="flex items-center justify-between gap-2 border-b border-base/85 bg-base-200 px-3 py-1.5">' +
         `<span class="font-mono text-xs text-base-content/50">${displayName}</span>` +
         '<div class="flex items-center gap-1">' +
@@ -201,6 +207,17 @@ marked.use(
   },
 );
 
+// marked does not sanitize inline HTML, so LLM- or tool-driven content can carry
+// <script>, on* event handlers, javascript:/data: URIs and similar. Run the
+// parsed HTML through DOMPurify before it reaches {@html} in Markdown.svelte.
+//
+// A bare sanitize() (no config) is the right call here: its DEFAULT_ALLOWED_TAGS
+// keep the structural HTML our own renderer emits (div/button/pre/code/template)
+// AND keep SVG, but it still strips <script>/<iframe>/<foreignObject>
+// (FORBID_CONTENTS + svgDisallowed), every on* event handler, and
+// javascript:/data: URIs. Do NOT swap this for USE_PROFILES:{html:true} — that
+// drops SVG and blanks the SVG block's cached placeholder, which relies on the
+// de-scripted SVG surviving.
 export function render_markdown(text: string): string {
-  return marked.parse(text) as string;
+  return DOMPurify.sanitize(marked.parse(text) as string);
 }

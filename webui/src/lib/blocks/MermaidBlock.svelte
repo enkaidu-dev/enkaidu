@@ -1,8 +1,19 @@
 <script lang="ts">
   import { mermaid_cached, mermaid_render } from "../../mermaid";
   import BlockFrame from "./BlockFrame.svelte";
+  import type { SaveOption } from "./save";
 
-  let { source, language }: { source: string; language: string } = $props();
+  let {
+    source,
+    language,
+    saves = [],
+    saveBasename = "source",
+    }: {
+    source: string;
+    language: string;
+    saves?: SaveOption[];
+    saveBasename?: string;
+    } = $props();
 
   // Seed from the render cache when possible. During streaming this
   // component is recreated on nearly every fragment (the @html is
@@ -62,8 +73,8 @@
   });
 </script>
 
-<BlockFrame {language} {source} {rendered} {failed} {error} bind:view>
-  <div class="flex justify-center overflow-x-auto p-3">
+<BlockFrame {language} {source} {rendered} {failed} {error} {saves} {saveBasename} bind:view>
+  <div class="not-prose flex justify-center overflow-x-auto p-3">
     {@html svg}
   </div>
 </BlockFrame>

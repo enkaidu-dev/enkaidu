@@ -96,9 +96,9 @@ module Enkaidu::WUI
       result
     end
 
-    def session_reset(session : Session)
+    def session_reset(old_session : Session, new_session : Session)
       post_event Render::SessionReset.new
-      post_event Render::SessionInfo.new(session)
+      post_event Render::SessionInfo.new(new_session)
     end
 
     def session_pushed(depth, keep_tools, keep_prompts, keep_history)
@@ -133,9 +133,9 @@ module Enkaidu::WUI
 
     def llm_error(err, message : String? = nil)
       if message
-        warning_with("ERROR: #{message}")
+        warning_with("#{message}")
       else
-        warning_with("ERROR: #{err.to_json}")
+        warning_with("#{err.to_json}")
       end
     end
 

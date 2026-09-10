@@ -10,7 +10,6 @@ dependencies:
 hooks:
   before:
     - mkdir -p bin/release bin/debug
-    - (test -f "config/$environment/$APP.$CONFIG" && ln -sf config/$environment/$APP.$CONFIG) || true
 actions:
   build-webui:
     command: cd webui && npm run build && cd ..

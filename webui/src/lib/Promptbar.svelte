@@ -2,6 +2,27 @@
   let { onask = null, loading = false } = $props();
   let text_area = $state<HTMLTextAreaElement | undefined>(undefined);
   let input_text = $state("");
+  let root_el = $state<HTMLDivElement | null>(null);
+
+  // Publish this bar's live height to CSS as `--promptbar-h` (on <html>), so
+  // the scrollable-content height caps in app.css (--scrollable-max-h, used
+  // by .prose pre and the markdown preview body) reserve the space below
+  // this bottom-pinned bar. A ResizeObserver catches every way the bar's
+  // height changes: window resize, textarea auto-grow, the session tab
+  // appearing, and the hint line toggling on focus.
+  $effect(() => {
+    const el = root_el;
+    if (!el) return;
+    const set_h = () =>
+      document.documentElement.style.setProperty(
+        "--promptbar-h",
+        el.offsetHeight + "px",
+      );
+    set_h();
+    const ro = new ResizeObserver(set_h);
+    ro.observe(el);
+    return () => ro.disconnect();
+  });
 
   let host = $state("(host)");
   let cwd = $state("(./)");
@@ -65,6 +86,7 @@
 </script>
 
 <div
+  bind:this={root_el}
   class="w-full max-w-3xl mx-auto pl-1 pr-4 pb-4 pt-2"
   style="--session-hue: {sessionHue}"
 >

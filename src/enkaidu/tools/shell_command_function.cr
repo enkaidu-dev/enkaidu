@@ -69,8 +69,8 @@ module Enkaidu
     # Returns CordonHow for how commands should run cordoned off
     def run_with_cordon : CordonHow
       config = runtime.options.config
-      case config.cordon.mode
-      when .commands?
+      case config.cordon!.mode
+      when ProfileConfig::Cordon::Mode::COMMANDS
         # In Command mode, though, use readonly? flag to decide
         # how to use the cordon
         if config.session.try(&.readonly?)
@@ -180,7 +180,7 @@ module Enkaidu
             end
           else
             unless found_restricted.empty? && found_unconfirmed.empty?
-              func.runtime.renderer.warning_with("WARNING: Skipping necessary shell command user confirmation by your request")
+              func.runtime.renderer.warning_with("Skipping necessary shell command user confirmation by your request")
             end
           end
 
