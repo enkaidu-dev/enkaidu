@@ -24,6 +24,66 @@
   let file_loading = $state(false);
   let file_error = $state("");
 
+  // The split-view panel width the user can drag to resize (pixels). It starts
+  // at half the window and is remembered across open/close cycles.
+  let main_ref: HTMLElement;
+  let file_panel_width = $state(Math.round(window.innerWidth / 2));
+
+  // Keep a sensible floor for each side so neither the transcript nor the panel
+  // can be squeezed past 20rem.
+  const MIN_PANEL = 320;
+  const MIN_LEFT = 320;
+
+  function clamp_width(w: number): number {
+    const total = main_ref ? main_ref.clientWidth : window.innerWidth;
+    return Math.max(MIN_PANEL, Math.min(total - MIN_LEFT, w));
+  }
+
+  // Begin a pointer drag on the resizer; track the cursor until release and
+  // recompute the panel width from the container's right edge.
+  function start_resize(e: PointerEvent) {
+    e.preventDefault();
+    if (!main_ref) return;
+    const start = main_ref.getBoundingClientRect();
+
+    function on_move(ev: PointerEvent) {
+      // The panel is the right column, so its width is the distance from the
+      // container's right edge to the cursor.
+      file_panel_width = clamp_width(start.right - ev.clientX);
+    }
+    function on_up() {
+      window.removeEventListener("pointermove", on_move);
+      window.removeEventListener("pointerup", on_up);
+      document.body.classList.remove("enkaidu-resizing");
+    }
+    document.body.classList.add("enkaidu-resizing");
+    window.addEventListener("pointermove", on_move);
+    window.addEventListener("pointerup", on_up);
+  }
+
+  // Reset the split back to an even 50/50 divide (e.g. on a double-click).
+  function reset_width() {
+    const total = main_ref ? main_ref.clientWidth : window.innerWidth;
+    file_panel_width = Math.round(total / 2);
+  }
+
+  // Keyboard support for the resizer separator: arrows nudge, Home/End snap.
+  function on_resizer_key(e: KeyboardEvent) {
+    const step = 16;
+    if (e.key === "ArrowRight") {
+      file_panel_width = clamp_width(file_panel_width - step);
+      e.preventDefault();
+    } else if (e.key === "ArrowLeft") {
+      file_panel_width = clamp_width(file_panel_width + step);
+      e.preventDefault();
+    } else if (e.key === "Home") {
+      file_panel_width = MIN_PANEL;
+    } else if (e.key === "End") {
+      const total = main_ref ? main_ref.clientWidth : window.innerWidth;
+      file_panel_width = total - MIN_LEFT;
+    }
+  }
+
   // Toggle a file's panel: clicking the file already being shown closes the
   // panel; clicking any other file (open or closed) opens it (refreshing
   // the content if it was already open).
@@ -43,8 +103,7 @@
       const data: any = await resp.json().catch(() => null);
       if (!resp.ok || data == null || typeof data.body !== "string") {
         file_error =
-          (data && data.error ? data.error : "") +
-          ` (HTTP ${resp.status})`;
+          (data && data.error ? data.error : "") + ` (HTTP ${resp.status})`;
       } else {
         file_body = data.body;
       }
@@ -333,7 +392,7 @@
 </script>
 
 <main>
-  <div class="flex h-screen w-full overflow-hidden">
+  <div class="flex h-screen w-full overflow-hidden" bind:this={main_ref}>
     <!-- The transcript column: every level of this chain is a definite
          height (row → drawer → row-tracked grid area → content → column),
          so the Session's internal overflow-scroll is the ONLY scroll here
@@ -365,12 +424,29 @@
       <!-- <Sidebar /> -->
     </div>
     {#if open_file != null}
+      <!-- Draggable divide between the transcript column and the file panel:
+      a slim flex child whose width the user drags; the transcript's
+      flex-1 absorbs the rest, so only the panel's width changes. -->
+      <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+      <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+      <div
+        role="separator"
+        aria-orientation="vertical"
+        aria-label="Resize file panel"
+        tabindex="0"
+        class="resizer h-full"
+        style="touch-action:none"
+        onpointerdown={start_resize}
+        ondblclick={reset_width}
+        onkeydown={on_resizer_key}
+      ></div>
       <FilePanel
         path={open_file}
         body={file_body}
         loading={file_loading}
         error={file_error}
         onclose={close_file}
+        width={file_panel_width}
       />
     {/if}
   </div>

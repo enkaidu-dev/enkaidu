@@ -5,12 +5,14 @@
     loading = false,
     error = "",
     onclose,
+    width,
   }: {
     path: string;
     body: string;
     loading?: boolean;
     error?: string;
     onclose?: () => void;
+    width?: number;
   } = $props();
 
   function file_name() {
@@ -20,7 +22,8 @@
 </script>
 
 <aside
-  class="h-full w-1/2 min-w-[20rem] max-w-2xl flex flex-col overflow-hidden border-l border-base bg-base-100 md:max-w-3xl"
+  class="h-full min-w-[20rem] flex flex-col overflow-hidden border-l border-base bg-base-100"
+  style={width != null ? `width: ${width}px` : "width: 50%"}
 >
   <div
     class="flex items-center gap-2 border-b border-base bg-base-200 px-3 py-2"
@@ -45,14 +48,14 @@
         Loading {file_name()}…
       </p>
     {:else if error}
-      <p class="m-3 rounded-md border-l-[3px] border-error/70 bg-error/8 p-2 text-sm text-base-content/80"
-        >{error}</p
+      <p
+        class="m-3 rounded-md border-l-[3px] border-error/70 bg-error/8 p-2 text-sm text-base-content/80"
       >
+        {error}
+      </p>
     {:else}
       <pre
-        class="whitespace-pre-wrap break-words p-3 font-mono text-xs leading-5 text-base-content/90"
-        >{body}</pre
-      >
+        class="whitespace-pre-wrap wrap-break-word p-3 font-mono text-xs leading-5 text-base-content/90">{body}</pre>
     {/if}
   </div>
 </aside>

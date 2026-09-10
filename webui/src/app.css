@@ -499,3 +499,53 @@ body {
   background-color: var(--color-accent);
   border-color: var(--color-accent);
 }
+
+
+/* ---------------------------------------------------------------------------
+   Split-view resizer -- the draggable divide between the transcript column and
+   the file side panel. It is a slim flex child (width set below) sitting
+   between the two columns in App.svelte; the transcript's flex-1 absorbs the
+   rest, so dragging only needs to grow/shrink the panel. A 1px hairline sits
+   at the strip's centre and lifts to a 2px accent stripe on hover/focus/drag,
+   so the affordance is visible without being loud.
+--------------------------------------------------------------------------- */
+.resizer {
+  flex: 0 0 auto;
+  width: 0.5rem;
+  cursor: col-resize;
+  background-color: transparent;
+  position: relative;
+   /* We draw our own focus ring on the hairline, so hide the default box. */
+  outline: none;
+}
+
+/* The visible hairline, centred in the strip. */
+.resizer::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 1px;
+  transform: translateX(-50%);
+  background-color: color-mix(in srgb, var(--color-border-base) 90%, transparent);
+  transition:
+    width 120ms ease,
+    background-color 120ms ease;
+}
+
+.resizer:hover::after,
+.resizer:focus-visible::after,
+.enkaidu-resizing .resizer::after {
+  width: 2px;
+  background-color: var(--color-accent);
+}
+
+/* While dragging, lock the cursor and disable text selection across the whole
+   document so a fast drag doesn't drag-select the transcript text. Toggled on
+   the <body> from App.svelte's start_resize / on_up handlers. */
+.enkaidu-resizing,
+.enkaidu-resizing * {
+  cursor: col-resize !important;
+  user-select: none !important;
+}
