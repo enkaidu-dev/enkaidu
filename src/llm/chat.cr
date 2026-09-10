@@ -32,6 +32,7 @@ module LLM
     getter? streaming = false
     getter? readonly = false
     getter reasoning = Reasoning::Default
+    getter temperature : Float32? = nil
 
     def initialize
       @tools_by_name = {} of String => Function
@@ -48,6 +49,15 @@ module LLM
 
     def with_streaming
       @streaming = true
+    end
+
+    # Use null to rever to default and not send property
+    def with_temperature(level : Float32?)
+      unless level && level.positive? && level <= 2
+        raise ArgumentError.new("Temperature (#{level}) must be > 0 and <= 2.0")
+      end
+
+      @temperature = level
     end
 
     # Make chat session read-only. This will remove all tools that are not readonly.

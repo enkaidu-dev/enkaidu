@@ -179,9 +179,19 @@ module Enkaidu
         with_readonly if readonly?
         with_system_message system_prompt(override_system_prompt)
 
-        if effort = @model_config.try(&.settings.try(&.think))
-          with_reasoning(effort)
+        if model_settings = @model_config.try(&.settings)
+          with_reasoning(model_settings.think)
+          if model_settings.temperature_present?
+            begin
+              with_temperature(model_settings.temperature.try(&.to_f32))
+            rescue ex
+              renderer.warning_with("Unable to set temperature for #{model}: #{ex.message}")
+            end
+          end
         end
+        # if effort = @model_config.try(&.settings.try(&.think))
+        #   with_reasoning(effort)
+        # end
       end
     end
 
@@ -190,6 +200,12 @@ module Enkaidu
       opts.config.session.try(&.exclude_past_reasoning?) ||
         @model_config.try(&.settings.try(&.exclude_past_reasoning?)) ||
         false
+    end
+
+    # Return based on model settings, if any. Nil means
+    # default for server.
+    def temperature : Float32?
+      @model_config.try(&.settings.try(&.temperature))
     end
 
     # Return based on session override

@@ -176,7 +176,8 @@ module Enkaidu
         # Represents settings for a model
         class Settings < ConfigSerializable
           getter? exclude_past_reasoning = false
-          getter think = ::LLM::Reasoning::Default
+          getter think : ::LLM::Reasoning = ::LLM::Reasoning::Default
+          getter_with_presence temperature, Int32 | Float32?
         end
 
         getter name : String
