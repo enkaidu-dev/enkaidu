@@ -8,7 +8,7 @@ module Enkaidu
   # `Main` is the entry point for executing the application, managing initialization and execution flow.
   class Main
     private getter console : Console::Renderer
-    private getter terminal : Termify::TerminalCommon
+    private getter terminal : Termify::Terminal
 
     def initialize
       @terminal = Termify.terminal

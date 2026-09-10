@@ -14,12 +14,12 @@ module Enkaidu::Console
     property? streaming = true
     property? quiet = false
 
-    @term_subscroller = Termify::ANSI::SubScroller.new(Termify.terminal, 5)
+    @term_scroll_region = Termify::ScrollRegion.new(Termify.terminal, 5)
 
     # Call when exiting Enkaidu, especially on interrupts, to clean
     # up interim terminal state
     def reset
-      @term_subscroller.stop if @term_subscroller.active?
+      @term_scroll_region.stop if @term_scroll_region.active?
     end
 
     # Internal input for prompt args
@@ -258,14 +258,14 @@ module Enkaidu::Console
             # Use a mini-scroll region in quiet mode, and then erase it.
             if starting
               puts fmt(:thinking_content, REASONING_START)
-              @term_subscroller.start
+              @term_scroll_region.start
             end
             print fmt(:thinking_content, text)
             if ending
               puts "", fmt(:thinking_content, REASONING_FINISH)
               STDOUT.flush
               sleep 100.milliseconds
-              @term_subscroller.stop(top: true)
+              @term_scroll_region.stop(top: true)
               print Termify::ANSI::Cursor.up(1)
               print Termify::ANSI::Clear.screen(Termify::ANSI::Erase::After)
               STDOUT.flush
