@@ -119,6 +119,7 @@ module Enkaidu
         list
       end
 
+      # ameba:disable Metrics/CyclomaticComplexity - Not applicable
       private def prepare_web_server
         web_server.before_all do |req, resp|
           resp.content_type = "application/json"
@@ -172,7 +173,7 @@ module Enkaidu
           resp.puts prompt_history.history.map(&.join('\n')).to_json
         end
 
-        web_server.post "/api/prompt_history" do |req, resp|
+        web_server.post "/api/prompt_history" do |req, _|
           if body_io = req.body
             prompts = Array(String).from_json(body_io.gets_to_end)
             prompts.each do |prompt|
