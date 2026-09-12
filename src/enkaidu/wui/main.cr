@@ -58,6 +58,9 @@ module Enkaidu
       private getter session_requests = Channel(SessionRequests).new(2)
       private getter session_work = Channel(Work).new(10)
 
+      getter prompt_history_file : String
+      getter prompt_history : Reply::History
+
       WELCOME_MSG = "\nWelcome to Enkaidu (WebUI Server Mode) #{VERSION}"
       WELCOME     = <<-TEXT
         This is your second-in-command(-line) designed to assist you with
@@ -69,6 +72,11 @@ module Enkaidu
         @console = opts.renderer
 
         @queue = EventRenderer.new(session_work)
+
+        @prompt_history = Reply::History.new
+        @prompt_history_file = opts.config.session.try &.input_history_file ||
+                               ENV.fetch("ENKAIDU_HISTORY_FILE", ".enkaidu_history")
+        prompt_history.load(prompt_history_file)
 
         console.respond_with WELCOME_MSG, WELCOME, markdown: true
         console.respond_with ""
@@ -157,6 +165,20 @@ module Enkaidu
             resp.puts({"status": "ok"}.to_json)
           else
             raise ArgumentError.new("Nil body: #{req.method} #{req.path}")
+          end
+        end
+
+        web_server.get "/api/prompt_history" do |_req, resp|
+          resp.puts prompt_history.history.map(&.join('\n')).to_json
+        end
+
+        web_server.post "/api/prompt_history" do |req, resp|
+          if body_io = req.body
+            prompts = Array(String).from_json(body_io.gets_to_end)
+            prompts.each do |prompt|
+              prompt_history << prompt.split('\n')
+            end
+            prompt_history.save(prompt_history_file)
           end
         end
 
