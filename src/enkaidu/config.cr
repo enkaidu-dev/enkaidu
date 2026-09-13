@@ -297,8 +297,8 @@ module Enkaidu
     private def merge_profile_tool_settings(profile_tool_settings : ProfileConfig::ToolSettings, renderer)
       if my_tool_settings = tool_settings
         # Merge with config's tool settings having priority
-        my_tool_settings.merge!(profile_tool_settings) do |_key, config_value, _profile_value|
-          config_value
+        my_tool_settings.merge!(profile_tool_settings) do |_key, _config_value, profile_value|
+          profile_value
         end
       else
         # no override, so use from profile
