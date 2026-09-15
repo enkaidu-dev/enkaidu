@@ -1,4 +1,5 @@
 import type { Component } from "svelte";
+import type { BlockProps } from "./types";
 import MermaidBlock from "./MermaidBlock.svelte";
 import SvgBlock from "./SvgBlock.svelte";
 import CsvBlock, { render_csv_to_html } from "./CsvBlock.svelte";
@@ -11,12 +12,11 @@ import { saveSource, saveRenderedSvg, type SaveOption } from "./save";
 export interface BlockRenderer {
   language: string;
   displayName: string;
-  component: Component<{
-    source: string;
-    language: string;
-    saves?: SaveOption[];
-    saveBasename?: string;
-   }>;
+  // Every block takes the shared BlockProps contract (source, language,
+  // saves, saveBasename, mode, onclose — see types.ts). Markdown.svelte
+  // mounts with mode defaulting to "inline" (self-framed box); the
+  // FilePanel mounts with mode "panel" (frameless bar + body).
+  component: Component<BlockProps>;
   diagramLabel?: string;
   codeLabel?: string;
   getCached?(source: string): string | null;

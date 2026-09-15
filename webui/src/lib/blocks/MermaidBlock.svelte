@@ -1,19 +1,16 @@
 <script lang="ts">
   import { mermaid_cached, mermaid_render } from "../../mermaid";
   import BlockFrame from "./BlockFrame.svelte";
-  import type { SaveOption } from "./save";
+  import type { BlockProps } from "./types";
 
   let {
     source,
     language,
     saves = [],
     saveBasename = "source",
-    }: {
-    source: string;
-    language: string;
-    saves?: SaveOption[];
-    saveBasename?: string;
-    } = $props();
+    mode = "inline",
+    onclose,
+  }: BlockProps = $props();
 
   // Seed from the render cache when possible. During streaming this
   // component is recreated on nearly every fragment (the @html is
@@ -45,7 +42,7 @@
   });
 
   $effect(() => {
-    void scheme; // re-run when the OS color scheme changes
+    void scheme; // re-render when the OS color scheme changes
     // A re-render (scheme flip) is also a retry: clear a stale failure
     // so a successful render restores the Diagram view.
     if (failed) {
@@ -59,10 +56,12 @@
         if (!cancelled) svg = diagram;
       })
       .catch((reason) => {
-        if (cancelled) return;
-        failed = true;
-        error = reason instanceof Error ? reason.message : String(reason);
-        view = "code";
+        if (!cancelled) {
+          console.error("Failed to render mermaid diagram", reason);
+          failed = true;
+          error = reason instanceof Error ? reason.message : String(reason);
+          view = "code";
+        }
       })
       .finally(() => {
         if (!cancelled) rendered = true;
@@ -73,8 +72,21 @@
   });
 </script>
 
-<BlockFrame {language} {source} {rendered} {failed} {error} {saves} {saveBasename} bind:view>
-  <div class="not-prose flex justify-center overflow-x-auto p-3">
+<BlockFrame
+  {language}
+  {source}
+  {rendered}
+  {failed}
+  {error}
+  {saves}
+  {saveBasename}
+  {mode}
+  {onclose}
+  bind:view
+>
+  <!-- min-h-full is inert inline (auto-height ancestor) and makes the
+       diagram fill + center vertically in the panel -->
+  <div class="not-prose flex min-h-full items-center justify-center overflow-x-auto p-3">
     {@html svg}
   </div>
 </BlockFrame>

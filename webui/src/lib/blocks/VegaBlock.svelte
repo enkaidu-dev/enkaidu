@@ -2,23 +2,20 @@
   import BlockFrame from "./BlockFrame.svelte";
   import { vega_cache, normalize_cache_key } from "./registry";
   import { sanitizeSvg } from "../sanitize";
-  import type { SaveOption } from "./save";
+  import type { BlockProps } from "./types";
 
   let {
     source,
     language,
     saves = [],
     saveBasename = "source",
-    }: {
-    source: string;
-    language: string;
-    saves?: SaveOption[];
-    saveBasename?: string;
-    } = $props();
+    mode = "inline",
+    onclose,
+  }: BlockProps = $props();
   let view = $state<"diagram" | "code">("diagram");
   let failed = $state(false);
   let error = $state("");
-  
+
   // Seed state from cache if already rendered in a previous stream chunk
   // svelte-ignore state_referenced_locally
   const normalizedKey = normalize_cache_key(source);
@@ -28,7 +25,7 @@
   // a dangerous SVG (e.g. with foreignObject or onerror handlers) before
   // this fix was deployed; sanitise at the boundary, not only at write time.
   let initialHtml = cached !== undefined ? sanitizeSvg(cached) : "";
-  
+
   let container = $state<HTMLDivElement | null>(null);
 
   // Track the OS color scheme so we can re-render Vega if the theme changes
@@ -89,7 +86,7 @@
       })
       .then(() => {
         if (cancelled) return;
-        
+
         // Extract the generated SVG to cache it for seamless streaming.
         // Sanitise before caching so that the read path (initialHtml seed)
         // never receives un-sanitized SVG, even from a future code path
@@ -98,7 +95,7 @@
         if (svgElement) {
           vega_cache.set(normalizedKey, sanitizeSvg(svgElement.outerHTML));
         }
-        
+
         chartLoaded = true;
       })
       .catch((err) => {
@@ -115,8 +112,26 @@
   });
 </script>
 
-<BlockFrame {language} {source} rendered={true} {failed} {error} diagramLabel="Chart" codeLabel="JSON" {saves} {saveBasename} bind:view>
-  <div class="not-prose flex justify-center overflow-x-auto p-3 w-full relative min-h-[150px]">
+<BlockFrame
+  {language}
+  {source}
+  rendered={true}
+  {failed}
+  {error}
+  diagramLabel="Chart"
+  codeLabel="JSON"
+  {saves}
+  {saveBasename}
+  {mode}
+  {onclose}
+  bind:view
+>
+  <div
+    class="not-prose relative flex w-full justify-center overflow-x-auto p-3 {mode ===
+    'panel'
+      ? 'h-full'
+      : 'min-h-[150px]'}"
+  >
     {#if !chartLoaded && !failed}
       <div class="absolute inset-0 flex items-center justify-center bg-base-100 text-xs text-base-content/40">
         Rendering chart…
