@@ -14,7 +14,7 @@ shards:
 
   cordon:
     git: https://github.com/modelarmy/cordon.cr.git
-    version: 0.6.4
+    version: 0.6.5
 
   crimage:
     git: https://github.com/naqvis/crimage.git
