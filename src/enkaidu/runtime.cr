@@ -103,6 +103,9 @@ module Enkaidu
         cordon_policy.read_write_paths.each do |path|
           policy.read_write(path)
         end
+        if cordon_policy.allow_network_present?
+          policy.allow_network = cordon_policy.allow_network?
+        end
       end
 
       # Pull in system preset

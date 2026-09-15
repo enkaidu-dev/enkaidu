@@ -45,6 +45,8 @@ module Enkaidu
 
     class Cordon < ConfigSerializable
       class Policy < ConfigSerializable
+        # Allow network access
+        getter_with_presence? allow_network, false
         # Add read-only access to specific paths
         getter read_only_paths = [] of String
         # Add read-write access to specific paths
