@@ -85,15 +85,13 @@ module Enkaidu
       private def define_usage_options(parser)
         parser.separator("\nOPTIONS")
         parser.on("--sandbox", "Run Enkaidu in a sandbox folder, not here.") do
-          begin
-            path = Env::Sandbox.new_path
-            Dir.mkdir_p(path)
-            Dir.cd(path)
-            @sandbox = Dir.current
-            renderer.warning_with("Entering sandbox: #{path.basename}")
-          rescue ex
-            error_and_exit_with("Unable to establish sandbox: #{ex}", help)
-          end
+          path = Env::Sandbox.new_path
+          Dir.mkdir_p(path)
+          Dir.cd(path)
+          @sandbox = Dir.current
+          renderer.warning_with("Entering sandbox: #{path.basename}")
+        rescue ex
+          error_and_exit_with("Unable to establish sandbox: #{ex}", help)
         end
         parser.on("--model=NAME", "-m NAME", "The name of the AI model to use") do |name|
           @model_name = name
