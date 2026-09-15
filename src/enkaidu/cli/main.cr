@@ -109,12 +109,24 @@ module Enkaidu::CLI
       end
     end
 
+    @query_mode_prefixes : String?
+
+    private def query_modes
+      @query_mode_prefixes ||= begin
+        prefixes = [] of String
+        prefixes << "Ro" if session.readonly?
+        prefixes << "Sb" if opts.sandbox
+        prefixes.join('|')
+      end
+    end
+
     private def query_prefix
       stack = session_manager.current
       depth = stack.depth
 
       String.build do |str|
-        str << "(R/o) " if session.readonly?
+        prefixes = query_modes
+        str << '[' << prefixes << "] " unless prefixes.empty?
         str << '@' << stack.name
         str << ':' << depth if depth > 1
       end

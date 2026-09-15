@@ -23,6 +23,10 @@ module Enkaidu
       getter? webui = false
       getter? readonly = false
 
+      # Unless nil, Enkaidu is running in sandbox mode in a temporary
+      # folder.
+      getter sandbox : String? = nil
+
       getter recorder_file : IO? = nil
       getter profile : Env::Profile
 
@@ -53,7 +57,7 @@ module Enkaidu
         end
 
         @config = load_config || empty_config
-        @profile = Env::Profile.new(Env::CURRENT_DIR, console, quiet?)
+        @profile = Env::Profile.new(Env.current_dir, console, quiet?)
         if profile_config = profile.config
           if Enkaidu.enforce_system_config?
             error_and_exit_with "FATAL: Profile config should not have loaded since system config enforced. Report it please.", @opts
@@ -80,6 +84,17 @@ module Enkaidu
 
       private def define_usage_options(parser)
         parser.separator("\nOPTIONS")
+        parser.on("--sandbox", "Run Enkaidu in a sandbox folder, not here.") do
+          begin
+            path = Env::Sandbox.new_path
+            Dir.mkdir_p(path)
+            Dir.cd(path)
+            @sandbox = Dir.current
+            renderer.warning_with("Entering sandbox: #{path.basename}")
+          rescue ex
+            error_and_exit_with("Unable to establish sandbox: #{ex}", help)
+          end
+        end
         parser.on("--model=NAME", "-m NAME", "The name of the AI model to use") do |name|
           @model_name = name
           add(:model, name)
@@ -264,7 +279,7 @@ module Enkaidu
         if Enkaidu.enforce_system_config?
           if @options[:config_file]?
             console.warning_with " Ignorning specified config! System config is enforced."
-          elsif Config.find_config_file(Env::CURRENT_DIR)
+          elsif Config.find_config_file(Env.current_dir)
             console.warning_with " Ignorning current directory config! System config is enforced."
           elsif Config.find_config_file(Env::HOME_DIR)
             console.warning_with " Ignorning home directory config! System config is enforced."
@@ -282,7 +297,7 @@ module Enkaidu
       private def load_config : Config?
         if file = Enkaidu.enforced_system_config_file ||
                   @options[:config_file]? ||
-                  Config.find_config_file(Env::CURRENT_DIR) ||
+                  Config.find_config_file(Env.current_dir) ||
                   Config.find_config_file(Env::HOME_DIR)
           report_enforce_system_config_override
           parse_config_file(file)

@@ -4,10 +4,13 @@ require "../config"
 module Enkaidu::Env
   # Environment folder name that we look for
   DOT_ENKAIDU = ".enkaidu"
+
   # Current user's HOME directory
   HOME_DIR = Path.home
-  # Current directory from which Enkaidu was run
-  CURRENT_DIR = Path.new(Dir.current)
+
+  def self.current_dir
+    Path.new(Dir.current)
+  end
 
   alias VarValue = String | Array(String) | Hash(String, String | Array(String))
   alias Variables = Hash(String, VarValue)
@@ -69,7 +72,7 @@ module Enkaidu::Env
       text = File.read(file)
       config = ProfileConfig.from_yaml(text)
       unless quiet
-        renderer.info_with "Reading profile config file: ./#{file.relative_to?(CURRENT_DIR)}"
+        renderer.info_with "Reading profile config file: ./#{file.relative_to?(Env.current_dir)}"
       end
       @config_path = file
       config
@@ -86,12 +89,12 @@ module Enkaidu::Env
           begin
             parse_config_file(file, quiet)
           rescue IO::Error
-            error_and_exit_with "FATAL: Failed to open profile config file: #{file.relative_to?(CURRENT_DIR)}"
+            error_and_exit_with "FATAL: Failed to open profile config file: #{file.relative_to?(Env.current_dir)}"
           rescue ex : TooManyDefaultConfigFiles | UnknownConfigFileFormat
             error_and_exit_with "FATAL: #{ex}"
           rescue ex : ConfigParseError
             # Config parsing errors are always bad
-            error_and_exit_with "FATAL: Error parsing profile config file: #{file.relative_to?(CURRENT_DIR)}\n#{ex}"
+            error_and_exit_with "FATAL: Error parsing profile config file: #{file.relative_to?(Env.current_dir)}\n#{ex}"
           end
         end
       end
@@ -126,7 +129,7 @@ module Enkaidu::Env
         macros.merge!(macro_map)
       rescue ex
         # If error, log where we are for context when the error message gets shown
-        renderer.warning_with "FYI: Reading profile macro file: ./#{file.relative_to?(CURRENT_DIR)}"
+        renderer.warning_with "FYI: Reading profile macro file: ./#{file.relative_to?(Env.current_dir)}"
         raise ex
       end
       macros
