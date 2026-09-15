@@ -36,7 +36,7 @@ module Enkaidu
           end
           renderer.respond_with("Prompt details: #{prompt_name} (#{sel_prompt.origin})", text, markdown: true)
         else
-          renderer.info_with("INFO: No such prompt available: #{prompt_name}")
+          renderer.info_with("No such prompt available: #{prompt_name}")
         end
       end
 
@@ -51,7 +51,7 @@ module Enkaidu
         if prompt = find_prompt?(prompt_name)
           case prompt
           when MCPPrompt
-            renderer.warning_with("WARN: Including attachments not supported for MCP prompts. Sorry.") if attach
+            renderer.warning_with("Including attachments not supported for MCP prompts. Sorry.") if attach
             arg_inputs = renderer.mcp_prompt_ask_input(prompt)
             unless (prompt_result = prompt.render(arg_inputs)).nil?
               text_count = 0

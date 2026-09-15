@@ -5,11 +5,11 @@
     let row: string[] = [];
     let curr = "";
     let inQuotes = false;
-    
+
     for (let i = 0; i < text.length; i++) {
       const char = text[i];
       const nextChar = text[i + 1];
-      
+
       if (inQuotes) {
         if (char === '"') {
           if (nextChar === '"') {
@@ -24,17 +24,17 @@
       } else {
         if (char === '"') {
           inQuotes = true;
-        } else if (char === ',') {
+        } else if (char === ",") {
           row.push(curr);
           curr = "";
-        } else if (char === '\n' || char === '\r') {
+        } else if (char === "\n" || char === "\r") {
           row.push(curr);
           curr = "";
-          if (row.length > 0 || (char === '\n' && lines.length > 0)) {
+          if (row.length > 0 || (char === "\n" && lines.length > 0)) {
             lines.push(row);
           }
           row = [];
-          if (char === '\r' && nextChar === '\n') {
+          if (char === "\r" && nextChar === "\n") {
             i++;
           }
         } else {
@@ -42,54 +42,73 @@
         }
       }
     }
-    
+
     if (curr || row.length > 0) {
       row.push(curr);
       lines.push(row);
     }
-    
+
     return lines;
   }
-  
+
   // Renders a high-fidelity static HTML table directly for streaming placeholders
   export function render_csv_to_html(source: string): string {
     const parsed = parse_csv(source);
-    if (parsed.length === 0) return '<div class="p-3 text-xs text-base-content/45">Empty CSV</div>';
-    
+    if (parsed.length === 0)
+      return '<div class="p-3 text-xs text-base-content/45">Empty CSV</div>';
+
     const headers = parsed[0];
     const rows = parsed.slice(1);
-    
-    let html = '<div class="overflow-x-auto max-h-[352px] overflow-y-auto w-full p-2">' +
-               '<table class="table table-zebra table-xs table-pin-rows w-full border-collapse text-left text-xs">';
-    
+
+    // not-prose mirrors the hydrated CsvBlock wrapper (parity: the placeholder
+    // sits in the transcript's .prose, where typography rules would otherwise
+    // re-style this table; the hydrated table is scoped out via its own wrapper).
+    let html =
+      '<div class="not-prose overflow-x-auto max-h-[352px] overflow-y-auto w-full p-2">' +
+      '<table class="table table-zebra table-xs table-pin-rows w-full border-collapse text-left text-xs">';
+
     // Header
     html += '<thead><tr class="bg-base-300">';
     for (const h of headers) {
-      const esc = h.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      const esc = h
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
       html += `<th class="px-3 py-1.5 border border-base-300 font-bold bg-base-200">${esc}</th>`;
     }
-    html += '</tr></thead>';
-    
+    html += "</tr></thead>";
+
     // Body
-    html += '<tbody>';
+    html += "<tbody>";
     for (const r of rows) {
       html += '<tr class="border-t border-base-content/10">';
       for (let j = 0; j < headers.length; j++) {
-        const val = r[j] ?? '';
-        const esc = val.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        const val = r[j] ?? "";
+        const esc = val
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;");
         html += `<td class="px-3 py-1.5 border border-base-300 whitespace-nowrap text-base-content/85">${esc}</td>`;
       }
-      html += '</tr>';
+      html += "</tr>";
     }
-    html += '</tbody></table></div>';
+    html += "</tbody></table></div>";
     return html;
   }
 </script>
 
 <script lang="ts">
   import BlockFrame from "./BlockFrame.svelte";
+  import type { BlockProps } from "./types";
 
-  let { source, language }: { source: string; language: string } = $props();
+  let {
+    source,
+    language,
+    saves = [],
+    saveBasename = "source",
+    mode = "inline",
+    onclose,
+  }: BlockProps = $props();
   let view = $state<"diagram" | "code">("diagram");
 
   let parsed = $derived(parse_csv(source));
@@ -97,14 +116,41 @@
   let rows = $derived(parsed.slice(1));
 </script>
 
-<BlockFrame {language} {source} rendered={true} failed={parsed.length === 0} error="No data" diagramLabel="Table" codeLabel="Raw" bind:view>
+<BlockFrame
+  {language}
+  {source}
+  rendered={true}
+  failed={parsed.length === 0}
+  error="No data"
+  diagramLabel="Table"
+  codeLabel="Raw"
+  {saves}
+  {saveBasename}
+  {mode}
+  {onclose}
+  bind:view
+>
   {#if parsed.length > 0}
-    <div class="overflow-x-auto max-h-[352px] overflow-y-auto w-full p-2">
-      <table class="table table-zebra table-xs table-pin-rows w-full border-collapse text-left text-xs">
+    <!-- not-prose: keeps the daisyUI table clean of prose table typing.
+         Inline caps its own height (the transcript frame is auto-height);
+         the panel body has a definite height, so h-full fills and
+         scrolls inside it instead. -->
+    <div
+      class="not-prose w-full overflow-x-auto overflow-y-auto p-2 {mode ===
+      'panel'
+        ? 'h-full'
+        : 'max-h-88'}"
+    >
+      <table
+        class="table table-zebra table-xs table-pin-rows w-full border-collapse text-left text-xs"
+      >
         <thead>
           <tr class="bg-base-300">
             {#each headers as header}
-              <th class="px-3 py-1.5 border border-base-300 font-bold bg-base-200">{header}</th>
+              <th
+                class="px-3 py-1.5 border border-base-300 font-bold bg-base-200"
+                >{header}</th
+              >
             {/each}
           </tr>
         </thead>
@@ -112,7 +158,9 @@
           {#each rows as row}
             <tr class="border-t border-base-content/10">
               {#each headers as _, i}
-                <td class="px-3 py-1.5 border border-base-300 whitespace-nowrap text-base-content/85">
+                <td
+                  class="px-3 py-1.5 border border-base-300 whitespace-nowrap text-base-content/85"
+                >
                   {row[i] ?? ""}
                 </td>
               {/each}

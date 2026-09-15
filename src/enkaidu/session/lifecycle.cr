@@ -3,61 +3,6 @@ module Enkaidu
   # different types of events for user queries via the command line app
   class Session
     module Lifecycle
-      # Load a session a previously saved session (expects JSONL-format per the `#save_session` method)
-      # and render past N chat events (or none by default)
-      # last N chats..
-      def load_session(io : IO, tail_num_chats = -1)
-        # Four lines
-        about = JSON.parse(io.gets.as(String))
-        raise InvalidSessionData.new("Invalid or missing `about.app`") unless about["app"]? == About.me.app
-        raise InvalidSessionData.new("Invalid or missing `about.version`") unless about["ver"]? == About.me.ver
-
-        mcps = NamedTuple(mcp_servers: Array(String)).from_json(io.gets.as(String))
-        toolsets = NamedTuple(toolsets: Array(Hash(String, String | Array(String)))).from_json(io.gets.as(String))
-
-        unload_all_toolsets
-        unload_all_mcp_servers
-        @chat = setup_chat # new chat BEFORE loading tools, MCP servers
-        renderer.session_reset(self)
-
-        # load the toolsets
-        toolsets[:toolsets].each do |toolset_spec|
-          load_toolset_by(
-            name: toolset_spec["name"].as(String),
-            select_tools: toolset_spec["select"]?.try(&.as(Array(String))))
-        end
-
-        # load MCP servers
-        mcps[:mcp_servers].each do |config_name|
-          use_mcp_by(config_name)
-        end
-
-        # load chat session
-        sess = io.gets.as(String)
-        @chat.load(sess)
-        tail_session_events(tail_num_chats)
-      end
-
-      # Unload everything and start a new session as if we restarted Enkaidu, including auto loading from
-      # the configuration; use given system prompt name if any
-      def reset_session(sys_prompt_name : String?)
-        unload_all_toolsets
-        unload_all_mcp_servers
-        unload_all_prompts
-
-        override_sys_prompt = if sys_prompt_name
-                                render_system_prompt(sys_prompt_name)
-                              end
-        @chat = setup_chat(override_sys_prompt)
-        renderer.session_reset(self)
-
-        # new chat BEFORE loading tools, MCP servers
-        auto_load_essentials(opts.config)
-        unless override_sys_prompt
-          check_and_set_system_prompt(opts.config)
-        end
-      end
-
       # Reset session history without affecting any other configuration.
       def erase_history
         @chat.erase_history
@@ -86,7 +31,7 @@ module Enkaidu
           if name = opts.config.find_mcp_server_by_url?(conn.uri.to_s)
             mcp_server_names << name
           else
-            renderer.warning_with("WARNING: MCP server not in config cannot be saved with session: #{conn.uri}")
+            renderer.warning_with("MCP server not in config cannot be saved with session: #{conn.uri}")
           end
         end
         {mcp_servers: mcp_server_names}.to_json(io)
@@ -137,7 +82,7 @@ module Enkaidu
         text_count
       end
 
-      private def tail_session_events(num_chats)
+      def tail_session_events(num_chats)
         text_count = 0
         @chat.tail(num_chats) do |chat_ev|
           text_count = render_session_event chat_ev, text_count

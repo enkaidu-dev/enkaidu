@@ -1,7 +1,37 @@
 <script lang="ts">
+  import { PromptHistory } from "./prompt_history";
+
   let { onask = null, loading = false } = $props();
   let text_area = $state<HTMLTextAreaElement | undefined>(undefined);
   let input_text = $state("");
+  let root_el = $state<HTMLDivElement | null>(null);
+
+  const history = new PromptHistory({ maxSize: 200 });
+
+  // Load history from server once on mount
+  $effect(() => {
+    history.loadFromServer();
+  });
+
+  // Publish this bar's live height to CSS as `--promptbar-h` (on <html>), so
+  // the scrollable-content height caps in app.css (--scrollable-max-h, used
+  // by .prose pre and the markdown preview body) reserve the space below
+  // this bottom-pinned bar. A ResizeObserver catches every way the bar's
+  // height changes: window resize, textarea auto-grow, the session tab
+  // appearing, and the hint line toggling on focus.
+  $effect(() => {
+    const el = root_el;
+    if (!el) return;
+    const set_h = () =>
+      document.documentElement.style.setProperty(
+        "--promptbar-h",
+        el.offsetHeight + "px",
+      );
+    set_h();
+    const ro = new ResizeObserver(set_h);
+    ro.observe(el);
+    return () => ro.disconnect();
+  });
 
   let host = $state("(host)");
   let cwd = $state("(./)");
@@ -33,29 +63,85 @@
     input_text = el.value;
   }
 
-  function handle_key_event(event: KeyboardEvent) {
-    if (!event.shiftKey && event.key == "Enter") {
-      let textarea = event.target as HTMLTextAreaElement;
-      if (textarea) {
-        event.preventDefault();
-        if (onask) onask(textarea.value);
-        textarea.value = "";
-        textarea.style.height = "auto";
-        input_text = "";
+  function set_value(value: string, cursorAtStart = false) {
+    if (!text_area) return;
+    text_area.value = value;
+    input_text = value;
+    // auto-grow without faking an Event to avoid TS conversion warning
+    text_area.style.height = "auto";
+    text_area.style.height = text_area.scrollHeight + "px";
+    const pos = cursorAtStart ? 0 : value.length;
+    requestAnimationFrame(() => {
+      if (text_area) {
+        text_area.selectionStart = pos;
+        text_area.selectionEnd = pos;
       }
+    });
+  }
+
+  function isOnFirstLine(ta: HTMLTextAreaElement) {
+    const pos = ta.selectionStart ?? 0;
+    return !ta.value.slice(0, pos).includes("\n");
+  }
+
+  function isOnLastLine(ta: HTMLTextAreaElement) {
+    const pos = ta.selectionStart ?? 0;
+    return !ta.value.slice(pos).includes("\n");
+  }
+
+  async function syncPrompt(text: string) {
+    history.push(text);
+    // sync to server asynchronously, fire-and-forget
+    history.syncToServer([text]).catch(() => {});
+  }
+
+  function handle_key_event(event: KeyboardEvent) {
+    if (!text_area) return;
+    const textarea = text_area;
+
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
+      const value = textarea.value;
+      if (value.trim() !== "") {
+        syncPrompt(value);
+        if (onask) onask(value);
+        set_value("");
+      }
+      return;
+    }
+
+    if (event.key === "ArrowUp") {
+      if (isOnFirstLine(textarea)) {
+        event.preventDefault();
+        const prev = history.previous(textarea.value);
+        if (prev !== null) {
+          set_value(prev, true);
+        }
+      }
+      return;
+    }
+
+    if (event.key === "ArrowDown") {
+      if (isOnLastLine(textarea)) {
+        event.preventDefault();
+        const next = history.next();
+        if (next !== null) {
+          set_value(next, false);
+        }
+      }
+      return;
     }
   }
 
   function handle_submit(event: Event) {
     event.preventDefault();
     if (onask && text_area) {
-      let value = text_area.value;
+      const value = text_area.value;
       if (value.trim() !== "") {
+        syncPrompt(value);
         onask(value);
       }
-      text_area.value = "";
-      text_area.style.height = "auto";
-      input_text = "";
+      set_value("");
     }
   }
 
@@ -65,6 +151,7 @@
 </script>
 
 <div
+  bind:this={root_el}
   class="w-full max-w-3xl mx-auto pl-1 pr-4 pb-4 pt-2"
   style="--session-hue: {sessionHue}"
 >
@@ -136,8 +223,8 @@
     <div
       class="text-center text-xs text-base-content/80 mt-1 group-focus-within:opacity-0 transition-opacity"
     >
-      Enter to send &bull; Shift+Enter for newline &bull; AI can make mistakes:
-      double-check responses.
+      Enter to send &bull; Shift+Enter for newline &bull; Up / Down for history
+      &bull; AI can make mistakes: double-check responses.
     </div>
   {/if}
 </div>

@@ -98,7 +98,7 @@ module Enkaidu::Slash
           "ERROR: Unknown or incomplete sub-command: '#{cmd.input}'",
           help: HELP, markdown: true) if ok.nil?
       rescue e
-        session.renderer.warning_with("ERROR: #{e.message}",
+        session.renderer.warning_with("#{e.message}",
           help: HELP, markdown: true)
       end
     end

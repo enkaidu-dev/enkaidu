@@ -16,13 +16,13 @@ module Enkaidu
         if auto_load = config.auto_load
           if mcp_servers = config.mcp_servers
             if (mcp_server_names = auto_load.mcp_servers) && mcp_server_names.present?
-              renderer.info_with("INFO: Auto-loading MCP servers: #{mcp_server_names.join(", ")}")
+              renderer.info_with("Auto-loading MCP servers: #{mcp_server_names.join(", ")}")
               load_mcp_servers(mcp_servers, mcp_server_names)
             end
           end
 
           if (toolsets = auto_load.toolsets) && toolsets.present?
-            renderer.info_with("INFO: Auto-loading toolsets: #{toolsets.join(", ")}")
+            renderer.info_with("Auto-loading toolsets: #{toolsets.join(", ")}")
             load_toolsets(toolsets)
           end
         end
@@ -32,12 +32,12 @@ module Enkaidu
 
       private def auto_load_system_prompts(config)
         unless (sys_prompts = opts.profile.system_prompts).empty?
-          renderer.info_with("INFO: Auto-loading profile system prompts: #{sys_prompts.keys.join(", ")}")
+          renderer.info_with("Auto-loading profile system prompts: #{sys_prompts.keys.join(", ")}")
           load_system_prompts(sys_prompts, origin: "Enkaidu/Profile")
         end
 
         if sys_prompts = config.system_prompts
-          renderer.info_with("INFO: Auto-loading system prompts: #{sys_prompts.keys.join(", ")}")
+          renderer.info_with("Auto-loading system prompts: #{sys_prompts.keys.join(", ")}")
           load_system_prompts(sys_prompts, origin: "Enkaidu/Config")
         end
       end
@@ -48,7 +48,7 @@ module Enkaidu
             if sys_prompt = render_system_prompt(name)
               @chat.with_system_message(system_prompt(sys_prompt))
             else
-              renderer.warning_with("WARN: Unable to use system prompt named '#{name}")
+              renderer.warning_with("Unable to use system prompt named '#{name}")
             end
           end
         end
@@ -56,12 +56,12 @@ module Enkaidu
 
       private def auto_load_config_prompts(config)
         unless (prompts = opts.profile.prompts).empty?
-          renderer.info_with("INFO: Auto-loading profile prompts: #{prompts.keys.join(", ")}")
+          renderer.info_with("Auto-loading profile prompts: #{prompts.keys.join(", ")}")
           load_config_prompts(prompts, origin: "Enkaidu/Profile")
         end
 
         if prompts = config.prompts
-          renderer.info_with("INFO: Auto-loading config prompts: #{prompts.keys.join(", ")}")
+          renderer.info_with("Auto-loading config prompts: #{prompts.keys.join(", ")}")
           load_config_prompts(prompts, origin: "Enkaidu/Config")
         end
       end

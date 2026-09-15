@@ -97,7 +97,7 @@ module Enkaidu::Slash
         if command = commands[cmd_name]?
           command.handle(session_manager, cmd)
         else
-          renderer.warning_with("ERROR: Unknown command: #{q}")
+          renderer.warning_with("Unknown command: #{q}")
         end
       end
       state

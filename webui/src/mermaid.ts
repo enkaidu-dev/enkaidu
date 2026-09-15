@@ -33,7 +33,10 @@ let diagram_id = 0;
 // setting so diagrams sit well in both app themes. "neutral" and "dark"
 // are chosen because they are the low-chroma, gray-based pair that
 // matches the app's warm palette better than the stock "default/forest".
-function current_mermaid_theme(): string {
+// (The narrow return type is mermaid's literal union for initialize().)
+type MermaidTheme = "dark" | "neutral";
+
+function current_mermaid_theme(): MermaidTheme {
   return window.matchMedia("(prefers-color-scheme: dark)").matches
     ? "dark"
     : "neutral";

@@ -1,6 +1,7 @@
 require "./llm/local_function"
 require "./llm/connection"
 require "./llm/azure_openai"
+require "./llm/azure_foundry"
 require "./llm/google_ai_studio"
 require "./llm/ollama"
 
@@ -28,6 +29,7 @@ module LLM
     when "openai"           then OpenAI::Connection.new
     when "ollama"           then Ollama::Connection.new
     when "azure_openai"     then AzureOpenAI::Connection.new
+    when "azure_foundry"    then AzureFoundry::Connection.new
     when "google_ai_studio" then GoogleAIStudio::Connection.new
     end
   end
@@ -35,10 +37,11 @@ module LLM
   # Returns the provider label for the given connection instance
   def self.connection_provider_label(connection : Connection) : String
     case connection
-    when LLM::Ollama::Connection      then "ollama"
-    when LLM::AzureOpenAI::Connection then "azure_openai"
-    when GoogleAIStudio::Connection   then "google_ai_studio"
-    when LLM::OpenAI::Connection      then "openai"
+    when LLM::Ollama::Connection       then "ollama"
+    when LLM::AzureOpenAI::Connection  then "azure_openai"
+    when LLM::AzureFoundry::Connection then "azure_foundry"
+    when GoogleAIStudio::Connection    then "google_ai_studio"
+    when LLM::OpenAI::Connection       then "openai"
     else
       raise Error.new("Unknown connection implementation: #{connection.class}")
     end
