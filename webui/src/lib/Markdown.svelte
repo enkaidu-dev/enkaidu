@@ -2,6 +2,7 @@
   import { onDestroy, mount, unmount } from "svelte";
   import { render_markdown } from "../markdown";
   import { get_renderer } from "./blocks/registry";
+  import { handle_copy_click } from "./copy";
 
   let {content, add_class}: {content: string; add_class?: string} = $props();
 
@@ -87,65 +88,10 @@
     instances.clear();
   });
 
-  // Copy buttons for code blocks. The {@html} string is wholesale
-  // replaced on every content change, so instead of wiring each button
-  // individually we keep ONE delegated listener on the persistent
-  // container div: it survives every re-render and reaches whatever
-  // block is on screen.
-  const flash_timers = new WeakMap<Element, number>();
-
-  async function copy_to_clipboard(text: string): Promise<boolean> {
-    try {
-      await navigator.clipboard.writeText(text);
-      return true;
-    } catch {
-      // Fallback for non-secure contexts (the app is often served on
-      // plain HTTP, where navigator.clipboard is unavailable).
-      try {
-        const ta = document.createElement("textarea");
-        ta.value = text;
-        ta.style.position = "fixed";
-        ta.style.opacity = "0";
-        document.body.appendChild(ta);
-        ta.select();
-        const ok = document.execCommand("copy");
-        ta.remove();
-        return ok;
-      } catch {
-        return false;
-      }
-    }
-  }
-
-  function flash_copied(chip: Element): void {
-    const existing = flash_timers.get(chip);
-    if (existing !== undefined) window.clearTimeout(existing);
-    if (!chip.hasAttribute("data-copy-label")) {
-      chip.setAttribute("data-copy-label", chip.textContent ?? "");
-    }
-    chip.textContent = "Copied";
-    const timer = window.setTimeout(() => {
-      chip.textContent = chip.getAttribute("data-copy-label") ?? "";
-      flash_timers.delete(chip);
-    }, 1200);
-    flash_timers.set(chip, timer);
-  }
-
-  function handle_copy_click(event: MouseEvent): void {
-    const target = event.target;
-    if (!(target instanceof Element)) return;
-    const chip = target.closest("[data-copy-code]");
-    if (!chip) return;
-    const pre = chip.closest(".enkaidu-code")?.querySelector("pre");
-    if (!pre) return;
-    // The highlighted spans don't change the text content, so the
-    // pre's textContent IS the original fenced code.
-    void copy_to_clipboard((pre.textContent ?? "").replace(/\n$/, "")).then(
-      (ok) => {
-        if (ok) flash_copied(chip);
-      },
-    );
-  }
+  // Copy buttons for code blocks are handled by handle_copy_click
+  // (lib/copy.ts), wired via one delegated listener on the persistent
+  // container div below: it survives every {@html} re-render and reaches
+  // whatever block is on screen.
 
   $effect(() => {
     const el = container;

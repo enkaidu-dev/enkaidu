@@ -221,3 +221,13 @@ marked.use(
 export function render_markdown(text: string): string {
   return DOMPurify.sanitize(marked.parse(text) as string);
 }
+
+// Standalone highlight helper for non-markdown sources (the file panel's
+// raw-text fallback). Uses the SAME highlight.js "common" bundle and the
+// same plaintext-fallback semantics as fenced code in the transcript, so
+// highlighted code looks identical wherever it appears. hljs HTML-escapes
+// its input, so the result is safe for {@html}.
+export function highlight_source(source: string, language: string): string {
+  const lang = hljs.getLanguage(language) ? language : "plaintext";
+  return hljs.highlight(source.replace(/\n$/, ""), { language: lang }).value;
+}

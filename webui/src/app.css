@@ -221,41 +221,64 @@ body {
 /* Syntax highlighting (highlight.js via marked-highlight).
    Colors come from the --hljs-* palette variables (defined per color
    scheme in :root / dark media block) so tokens shift automatically
-   with light/dark and stay in the warm, low-saturation family. */
+   with light/dark and stay in the warm, low-saturation family.
+   The .filepanel selectors give the file viewer's raw-text fallback the
+   same token colors — its markup lives outside any .prose container. */
 .prose pre .hljs-comment,
-.prose pre .hljs-quote {
+.filepanel .hljs-comment,
+.prose pre .hljs-quote,
+.filepanel .hljs-quote {
   color: var(--hljs-comment);
   font-style: italic;
 }
 
 .prose pre .hljs-keyword,
+.filepanel .hljs-keyword,
 .prose pre .hljs-selector-tag,
+.filepanel .hljs-selector-tag,
 .prose pre .hljs-tag,
-.prose pre .hljs-doctag {
+.filepanel .hljs-tag,
+.prose pre .hljs-doctag,
+.filepanel .hljs-doctag {
   color: var(--hljs-keyword);
 }
 
 .prose pre .hljs-string,
+.filepanel .hljs-string,
 .prose pre .hljs-regexp,
-.prose pre .hljs-addition {
+.filepanel .hljs-regexp,
+.prose pre .hljs-addition,
+.filepanel .hljs-addition {
   color: var(--hljs-string);
 }
 
 .prose pre .hljs-number,
+.filepanel .hljs-number,
 .prose pre .hljs-literal,
+.filepanel .hljs-literal,
 .prose pre .hljs-symbol,
-.prose pre .hljs-bullet {
+.filepanel .hljs-symbol,
+.prose pre .hljs-bullet,
+.filepanel .hljs-bullet {
   color: var(--hljs-number);
 }
 
 .prose pre .hljs-title,
+.filepanel .hljs-title,
 .prose pre .hljs-name,
+.filepanel .hljs-name,
 .prose pre .hljs-section,
+.filepanel .hljs-section,
 .prose pre .hljs-selector-id,
+.filepanel .hljs-selector-id,
 .prose pre .hljs-selector-class,
+.filepanel .hljs-selector-class,
 .prose pre .hljs-attr,
+.filepanel .hljs-attr,
 .prose pre .hljs-attribute,
-.prose pre .hljs-variable {
+.filepanel .hljs-attribute,
+.prose pre .hljs-variable,
+.filepanel .hljs-variable {
   color: var(--hljs-function);
 }
 

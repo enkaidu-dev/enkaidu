@@ -200,6 +200,41 @@ export function is_registered_renderer(lang: string): boolean {
   return lang.toLowerCase() in registry;
 }
 
+// Resolve a viewed file to its block renderer, keyed by file extension.
+// Used by FilePanel so files of these types render with the same
+// interactive blocks (view toggle + save chips) as inline fences.
+// `json` is the deliberate exception: only files that actually sniff as
+// a Vega/Vega-Lite spec become blocks; plain JSON stays raw highlighted
+// text. Anything else resolves to undefined (raw-highlighted fallback).
+export function file_renderer(
+  path: string,
+  source: string,
+): BlockRenderer | undefined {
+  const name = path.split("/").filter(Boolean).pop() ?? "";
+  const dot = name.lastIndexOf(".");
+  if (dot < 0) return undefined;
+  const ext = name.slice(dot + 1).toLowerCase();
+
+  switch (ext) {
+    case "mmd":
+    case "mermaid":
+      return get_renderer("mermaid");
+    case "svg":
+      return get_renderer("svg");
+    case "csv":
+      return get_renderer("csv");
+    case "md":
+    case "markdown":
+      return get_renderer("markdown");
+    case "json":
+      // sniff_renderer only matches the vega renderers when the content
+      // really carries a vega/$schema or data+mark shape.
+      return sniff_renderer("json", source);
+    default:
+      return undefined;
+  }
+}
+
 export function sniff_renderer(lang: string, source: string): BlockRenderer | undefined {
   const normalizedLang = lang.toLowerCase();
 
