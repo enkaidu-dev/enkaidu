@@ -20,7 +20,7 @@ dependencies:
     github: shpeckman/mime_map
   cordon:
     github: modelarmy/cordon.cr
-    version: 0.6.3
+    version: 0.6.4
   termify:
     github: nogginly/termify.cr
     version: 0.7.0
