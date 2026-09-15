@@ -123,7 +123,7 @@ module Enkaidu
       CONSTRAINTS:
       - Allowed commands: #{allowed_commands.join(", ")}
       #{unless run_with_cordon.none?
-          "- Cordon (sandbox) mode: #{run_with_cordon}"
+          "- Cordon (system access protection) mode: #{run_with_cordon}"
         end}
       #{if execute_through_shell?
           "- Execute commands through shell: Enabled"
