@@ -84,7 +84,11 @@ export class PromptHistory {
   next(): string | null {
     if (this.entries.length === 0) return null;
     if (this._index === -1) {
-      return this._previewBuffer ?? "";
+      // Not navigating history: the in-progress draft is already on this line
+      // (reached without ever pressing Up, or after a full round-trip that
+      // already restored the draft). Returning null lets the caller keep the
+      // typed text instead of clobbering it with the empty preview buffer.
+      return null;
     }
     this._index++;
     if (this._index >= this.entries.length) {
