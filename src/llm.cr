@@ -1,3 +1,5 @@
+require "socket_connect_fix"
+
 require "./llm/local_function"
 require "./llm/connection"
 require "./llm/azure_openai"

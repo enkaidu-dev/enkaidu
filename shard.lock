@@ -48,6 +48,10 @@ shards:
     git: https://github.com/ralsina/sixteen.git
     version: 0.9.0
 
+  socket_connect_fix:
+    git: https://github.com/nogginly/socket_connect_fix.cr.git
+    version: 0.1.0
+
   spectator:
     git: https://gitlab.com/arctic-fox/spectator.git
     version: 0.12.4

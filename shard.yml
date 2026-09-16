@@ -16,6 +16,9 @@ development_dependencies:
     gitlab: arctic-fox/spectator
 
 dependencies:
+  socket_connect_fix:
+    github: nogginly/socket_connect_fix.cr
+    version: 0.1.0
   mime_map:
     github: shpeckman/mime_map
   cordon:
