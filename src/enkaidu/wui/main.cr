@@ -1,7 +1,9 @@
 require "option_parser"
 require "json"
 require "baked_file_system"
-require "mime"
+require "mime_map"
+
+require "../../tools/file_helper"
 
 require "../../acpa"
 require "../../sucre/web_server"
@@ -39,6 +41,8 @@ module Enkaidu
     # `Sever` is the interim WIP entry point for the server-mode build of Enkaidu.
     # At some point it will be available via a `--server` switch from the same binary
     class Main
+      include Tools::FileHelper
+
       private getter? done = false
       private getter count = 0
       private getter opts : CLI::Options
@@ -54,7 +58,10 @@ module Enkaidu
       private getter session_requests = Channel(SessionRequests).new(2)
       private getter session_work = Channel(Work).new(10)
 
-      WELCOME_MSG = "Welcome to Enkaidu (WebUI Server Mode) #{VERSION}"
+      getter prompt_history_file : String
+      getter prompt_history : Reply::History
+
+      WELCOME_MSG = "\nWelcome to Enkaidu (WebUI Server Mode) #{VERSION}"
       WELCOME     = <<-TEXT
         This is your second-in-command(-line) designed to assist you with
         writing & maintaining code and other text-based content, by enabling LLMs
@@ -66,8 +73,13 @@ module Enkaidu
 
         @queue = EventRenderer.new(session_work)
 
-        console.info_with WELCOME_MSG, WELCOME, markdown: true
-        console.info_with ""
+        @prompt_history = Reply::History.new
+        @prompt_history_file = opts.config.session.try &.input_history_file ||
+                               ENV.fetch("ENKAIDU_HISTORY_FILE", ".enkaidu_history")
+        prompt_history.load(prompt_history_file)
+
+        console.respond_with WELCOME_MSG, WELCOME, markdown: true
+        console.respond_with ""
 
         port = ENV.fetch("ENKAIDU_PORT", nil).try(&.to_i32?)
         @web_server = WebServer.new(port,
@@ -107,10 +119,11 @@ module Enkaidu
         list
       end
 
+      # ameba:disable Metrics/CyclomaticComplexity - Not applicable
       private def prepare_web_server
         web_server.before_all do |req, resp|
           resp.content_type = "application/json"
-          STDERR.puts "#{req.method} #{req.path}".colorize(:green)
+          STDERR.puts "#{req.method} #{req.path}".colorize(:green) if req.path.starts_with?(/^\/(api|fs)\//)
         end
 
         web_server.get "/api/start" do |_, resp|
@@ -156,10 +169,52 @@ module Enkaidu
           end
         end
 
+        web_server.get "/api/prompt_history" do |_req, resp|
+          resp.puts prompt_history.history.map(&.join('\n')).to_json
+        end
+
+        web_server.post "/api/prompt_history" do |req, _|
+          if body_io = req.body
+            prompts = Array(String).from_json(body_io.gets_to_end)
+            prompts.each do |prompt|
+              prompt_history << prompt.split('\n')
+            end
+            prompt_history.save(prompt_history_file)
+          end
+        end
+
+        # Expect ?path=PATH
+        web_server.get "/fs/read" do |req, resp|
+          if path = req.query_params["path"]?
+            if within_current_directory?(resolve_path(path))
+              begin
+                data = File.read(path)
+                resp.puts({
+                  path:         path,
+                  body:         data,
+                  content_type: MimeMap.from_filename(path) || "unknown",
+                }.to_json)
+              rescue ex : File::Error
+                resp.status_code = 404
+                resp.puts({
+                  error: ex.message,
+                }.to_json)
+              end
+            else
+              resp.status_code = 403
+              resp.puts({
+                error: "Not authorized to access: #{path}",
+              }.to_json)
+            end
+          else
+            raise ArgumentError.new("Missing query param: path")
+          end
+        end
+
         web_server.unknown_get do |req, resp|
           path = req.path == "/" ? "/index.html" : req.path
           if file = FileStorage.get(path)
-            resp.content_type = MIME.from_filename(path)
+            resp.content_type = MimeMap.from_filename(path) || "unknown"
             IO.copy(file, resp)
           else
             raise ArgumentError.new("Unknown request: #{req.method} #{path}")
@@ -231,7 +286,7 @@ module Enkaidu
 
       def run
         web_server.start
-        console.info_with "INFO: WebUI server started: http://localhost:#{web_server.port}/"
+        console.info_with "WebUI server started: http://localhost:#{web_server.port}/"
         wait_and_handle_session_requests
         web_server.join
         console.info_with "Goodbye"

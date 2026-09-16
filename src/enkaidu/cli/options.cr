@@ -23,6 +23,10 @@ module Enkaidu
       getter? webui = false
       getter? readonly = false
 
+      # Unless nil, Enkaidu is running in sandbox mode in a temporary
+      # folder.
+      getter sandbox : String? = nil
+
       getter recorder_file : IO? = nil
       getter profile : Env::Profile
 
@@ -53,7 +57,7 @@ module Enkaidu
         end
 
         @config = load_config || empty_config
-        @profile = Env::Profile.new(Env::CURRENT_DIR, console, quiet?)
+        @profile = Env::Profile.new(Env.current_dir, console, quiet?)
         if profile_config = profile.config
           if Enkaidu.enforce_system_config?
             error_and_exit_with "FATAL: Profile config should not have loaded since system config enforced. Report it please.", @opts
@@ -64,7 +68,7 @@ module Enkaidu
 
         check_config_for_defaults
         verify_required_options
-        confirm_cordon if config.cordon.confirm
+        check_cordon_availability
 
         if console_styles = config.console.try(&.style_sheet)
           @console.style_sheet = console_styles
@@ -80,6 +84,15 @@ module Enkaidu
 
       private def define_usage_options(parser)
         parser.separator("\nOPTIONS")
+        parser.on("--sandbox", "Run Enkaidu in a sandbox folder, not here.") do
+          path = Env::Sandbox.new_path
+          Dir.mkdir_p(path)
+          Dir.cd(path)
+          @sandbox = Dir.current
+          renderer.warning_with("Entering sandbox: #{path.basename}")
+        rescue ex
+          error_and_exit_with("Unable to establish sandbox: #{ex}", help)
+        end
         parser.on("--model=NAME", "-m NAME", "The name of the AI model to use") do |name|
           @model_name = name
           add(:model, name)
@@ -178,7 +191,7 @@ module Enkaidu
         parser.on("--save-config-schema=FILEPATH",
           "Export a JSON schema for Enkaidu's YAML config file and exit") do |path|
           File.write(path, Config.json_schema.to_pretty_json)
-          console.info_with("INFO: Saved configuration JSON schema: #{path}")
+          console.info_with("Saved configuration JSON schema: #{path}")
           exit
         rescue ex
           error_and_exit_with "FATAL: Unable to create file (\"#{path}\"): #{ex.message}", parser
@@ -222,12 +235,24 @@ module Enkaidu
         end
       end
 
-      private def confirm_cordon
-        report = Cordon.confirm
-        if @cordon_confirmed = report.ok?
-          console.respond_with("OK: Cordon available on this system.")
+      private def check_cordon_availability
+        if config.cordon!.confirm?
+          report = Cordon.confirm
+          if @cordon_confirmed = report.ok?
+            if config.cordon!.mode == ProfileConfig::Cordon::Mode::UNSAFE
+              console.error_with("UNSAFE: Cordon is available on this system, but you've disabled it.")
+            else
+              console.info_with("SAFE: Cordon is available on this system, and it's enabled.")
+            end
+          else
+            console.error_with("UNAVAILABLE: Could not find and confirm cordon", report)
+          end
         else
-          console.error_with("ERROR: Could not confirm cordon", report)
+          if config.cordon!.mode == ProfileConfig::Cordon::Mode::UNSAFE
+            console.error_with("UNSAFE: Cordon has been disabled.")
+          else
+            console.warning_with("UNKNOWN: Cordon status unknown")
+          end
         end
       end
 
@@ -244,20 +269,20 @@ module Enkaidu
       private def parse_config_file(file) : Config
         text = File.read(file)
         config = Config.from_yaml(text)
-        console.info_with "INFO: Reading config file: #{file}" unless quiet?
+        console.info_with "Reading config file: #{file}" unless quiet?
         config
       end
 
       private def report_enforce_system_config_override
         if Enkaidu.enforce_system_config?
           if @options[:config_file]?
-            console.warning_with "WARN: Ignorning specified config! System config is enforced."
-          elsif Config.find_config_file(Env::CURRENT_DIR)
-            console.warning_with "WARN: Ignorning current directory config! System config is enforced."
+            console.warning_with " Ignorning specified config! System config is enforced."
+          elsif Config.find_config_file(Env.current_dir)
+            console.warning_with " Ignorning current directory config! System config is enforced."
           elsif Config.find_config_file(Env::HOME_DIR)
-            console.warning_with "WARN: Ignorning home directory config! System config is enforced."
+            console.warning_with " Ignorning home directory config! System config is enforced."
           else
-            console.info_with "INFO: System config is enforced."
+            console.info_with "System config is enforced."
           end
         end
       end
@@ -270,7 +295,7 @@ module Enkaidu
       private def load_config : Config?
         if file = Enkaidu.enforced_system_config_file ||
                   @options[:config_file]? ||
-                  Config.find_config_file(Env::CURRENT_DIR) ||
+                  Config.find_config_file(Env.current_dir) ||
                   Config.find_config_file(Env::HOME_DIR)
           report_enforce_system_config_override
           parse_config_file(file)

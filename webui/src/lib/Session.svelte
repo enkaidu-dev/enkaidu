@@ -65,9 +65,27 @@
   type SessionEntry = {
     type: string;
     data: SessionData[];
+    // File paths (referenced by file-writing tool calls) that this
+    // assistant text entry should offer as viewable files.
+    files?: string[];
   };
 
   let entries: SessionEntry[] = $state([]);
+
+  // File paths extracted from file-modifying tool calls that are waiting to
+  // be attached to the *next* assistant text entry (whose card renders the
+  // file buttons).
+  let pending_files: string[] = $state([]);
+
+  const FILE_TOOLS = new Set(["str_replace_in_text_file", "write_text_file"]);
+
+  let {
+    active_file = null,
+    on_open_file,
+  }: {
+    active_file?: string | null;
+    on_open_file?: (path: string) => void;
+  } = $props();
 
   // ---- Activity grouping ---------------------------------------------------
   // Consecutive "agent working" entries (think blocks, tool calls, messages)
@@ -152,9 +170,32 @@
 
   export function reset() {
     entries.length = 0;
+    pending_files.length = 0;
   }
 
   export function add_event(ev: Event) {
+    // Harvest the file_path from file-modifying tool calls; it rides onto
+    // the next assistant text entry as a clickable file button.
+    if (
+      ev.type === "tool_call" &&
+      typeof ev.subject === "string" &&
+      FILE_TOOLS.has(ev.subject) &&
+      typeof ev.content === "string"
+    ) {
+      try {
+        const path: unknown = JSON.parse(ev.content)?.file_path;
+        if (
+          typeof path === "string" &&
+          path.length > 0 &&
+          !pending_files.includes(path)
+        ) {
+          pending_files.push(path);
+        }
+      } catch {
+        // args weren't valid JSON — nothing to harvest
+      }
+    }
+
     let last = entries.at(-1);
     let ev_data = { subject: ev.subject, content: ev.content };
     if (last && last.type == ev.type) {
@@ -170,10 +211,15 @@
     } else {
       check_and_trim_last_entry();
       // Append the new event type
-      entries.push({
-        type: ev.type,
-        data: [ev_data],
-      });
+      const entry: SessionEntry = { type: ev.type, data: [ev_data] };
+      // Attach any harvested file paths to this assistant text entry.
+      if (ev.type === "llm_text" && pending_files.length > 0) {
+        // splice takes the items AND empties the pending list in one move;
+        // assigning the pending array directly (then clearing it) would
+        // leave the entry holding an empty array.
+        entry.files = pending_files.splice(0);
+      }
+      entries.push(entry);
     }
   }
 
@@ -236,7 +282,10 @@
   }
 </script>
 
-<div use:scrollToBottom={entries} class="mb-auto overflow-scroll">
+<div
+  use:scrollToBottom={entries}
+  class="mb-auto flex-1 min-h-0 overflow-scroll"
+>
   <div class="space-y-6 flex flex-col w-full max-w-3xl p-3 mx-auto">
     {#if entries.length === 0}
       <div
@@ -271,7 +320,12 @@
         {:else if g.entry.type == "query_image_url"}
           <UserImageCard image_url={g.entry.data[0].content || "??"} />
         {:else if g.entry.type == "llm_text"}
-          <AsstTextCard message={g.entry.data[0].content || "??"} />
+          <AsstTextCard
+            message={g.entry.data[0].content || "??"}
+            files={g.entry.files}
+            {active_file}
+            {on_open_file}
+          />
         {:else if g.entry.type == "llm_think"}
           <AsstThinkCard
             message={g.entry.data[0].content || "??"}
