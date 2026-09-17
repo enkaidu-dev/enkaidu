@@ -72,7 +72,7 @@ module Enkaidu::Env
       text = File.read(file)
       config = ProfileConfig.from_yaml(text)
       unless quiet
-        renderer.info_with "Reading profile config file: ./#{file.relative_to?(Env.current_dir)}"
+        renderer.info_with "Reading profile config file: ./#{file}"
       end
       @config_path = file
       config

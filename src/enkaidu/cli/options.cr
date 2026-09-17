@@ -45,6 +45,17 @@ module Enkaidu
         @options[name] = value.to_s
       end
 
+      # If sandbox is enabled, we DO NOT want to load a config from within
+      # since a model could have put on there to gain privileged access.
+      # Return current directory if NOT in sandbox mode.
+      # Return parent directory otherwise. This allows us to control the config in
+      #     one place for _all_ sandbox sessions.
+      private def safe_current_dir_for_config
+        return Env.current_dir if sandbox.nil?
+
+        Env.current_dir.parent
+      end
+
       def initialize(@console)
         @opts = OptionParser.parse do |parser|
           parser.banner = "Usage: #{PROGRAM_NAME} [arguments]"
@@ -57,7 +68,7 @@ module Enkaidu
         end
 
         @config = load_config || empty_config
-        @profile = Env::Profile.new(Env.current_dir, console, quiet?)
+        @profile = Env::Profile.new(safe_current_dir_for_config, console, quiet?)
         if profile_config = profile.config
           if Enkaidu.enforce_system_config?
             error_and_exit_with "FATAL: Profile config should not have loaded since system config enforced. Report it please.", @opts
@@ -295,7 +306,7 @@ module Enkaidu
       private def load_config : Config?
         if file = Enkaidu.enforced_system_config_file ||
                   @options[:config_file]? ||
-                  Config.find_config_file(Env.current_dir) ||
+                  Config.find_config_file(safe_current_dir_for_config) ||
                   Config.find_config_file(Env::HOME_DIR)
           report_enforce_system_config_override
           parse_config_file(file)
