@@ -35,6 +35,7 @@ module Enkaidu
     @allowed_cmds : Array(String)? = nil
     @approved_cmds : Array(String)? = nil
     @restricted_terms : Array(String)? = nil
+    @network_access_cmds : Array(String)? = nil
 
     # -----
     # Approved and Allowed commands are tested as prefixes. This allows allowed commands to include
@@ -50,7 +51,7 @@ module Enkaidu
     # Approved commands are includes in the allowed commands list.
     def allowed_commands : Array(String)
       @allowed_cmds ||= approved_commands |
-                        extract_setting("allowed_commands", "ENKAIDU_ALLOWED_EXECUTABLES", "grep whoami file wc")
+                        extract_setting("allowed_commands", "ENKAIDU_ALLOWED_EXECUTABLES")
     end
 
     # Approved commands can be specified via tool settings in the config file, or
@@ -64,6 +65,12 @@ module Enkaidu
     def restricted_terms : Array(String)
       @restricted_terms ||= ALWAYS_RESTRICTED |
                             extract_setting("restricted_terms", "ENKAIDU_RESTRICTED_TERMS")
+    end
+
+    # Subset of allowed / approved commands that have network access via
+    # cordon
+    def network_allowed_commands : Array(String)
+      @network_access_cmds ||= extract_setting("network_allowed_commands", "ENKAIDU_NETWORK_ALLOWED_COMMANDS")
     end
 
     # Returns CordonHow for how commands should run cordoned off
@@ -196,6 +203,12 @@ module Enkaidu
         end
       end
 
+      def network_access_allowed?(cmd)
+        func.network_allowed_commands.any? do |allowed|
+          cmd.starts_with?(allowed)
+        end
+      end
+
       def run_command(cmd)
         stdout = IO::Memory.new
         stderr = IO::Memory.new
@@ -225,12 +238,15 @@ module Enkaidu
           when .read_write?
             policy.read_write Dir.current
           end
-          policy.allow_network = false # deny all network access
           policy.working_dir = Dir.current
         end
         if runtime_policy = func.runtime.cordon_policy
           cmd_policy = cmd_policy.merge(runtime_policy)
+          # Allow network access IF cordon policy allows networking AND cmd matches the network allowed list
+          cmd_policy.allow_network = runtime_policy.allow_network? && network_access_allowed?(cmd)
         end
+
+        # Check
         result = if func.execute_through_shell?
                    Cordon.run([cmd], cmd_policy, shell: true)
                  else
