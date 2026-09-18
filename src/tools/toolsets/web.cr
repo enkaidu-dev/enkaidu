@@ -3,7 +3,7 @@ require "./web/*"
 
 module Tools
   module Web
-    MAX_CONTENT_SIZE = 256*1024
+    MAX_CONTENT_SIZE = 32*1024
 
     TEXT_CTYPE_PREFIXES = [
       "text/",
