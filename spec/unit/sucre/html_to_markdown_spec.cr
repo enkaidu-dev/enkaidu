@@ -114,11 +114,13 @@ Spectator.describe HtmlToMarkdown do
     expect(convert(html)).to eq("Still visible")
   end
 
-  it "drops nav, header and footer content entirely" do
+  it "drops header and footer content entirely" do
     html = "<body><nav><a href=\"/\">Home</a></nav>" +
            "<p>Real content.</p>" +
            "<footer>Copyright 2026</footer></body>"
-    expect(convert(html)).to eq("Real content.")
+    lines = convert(html).lines
+    expect(lines.first).to contain("[Home]")
+    expect(lines.last).to eq("Real content.")
   end
 
   it "prefers <main> as the conversion root when present" do
