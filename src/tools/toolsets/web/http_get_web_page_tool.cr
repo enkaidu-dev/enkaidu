@@ -3,11 +3,11 @@ require "http"
 require "uri"
 require "xml"
 
-require "../../built_in_function"
+require "./http_get"
 
 module Tools::Web
   # The `HttpGetWebPageTool` class defines a tool for making HTTP GET requests to retrieve text content.
-  class HttpGetWebPageTool < BuiltInFunction
+  class HttpGetWebPageTool < HttpGet
     name "http_get_web_page"
     side_effects SideEffects::NetRead
 
@@ -35,12 +35,13 @@ module Tools::Web
     param "preserve_source", type: Param::Type::Bool,
       description: "Optional flag to ask to preserve the content from the server without any attempts to condense the text; default is false."
 
-    runner Runner
+    # Replace `runner` macro to create with self
+    def new_runner : Runner
+      Runner.new(self)
+    end
 
     # The Runner class executes the function
-    class Runner < LLM::Function::Runner
-      USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:146.0) Gecko/20100101 Firefox/146.0"
-
+    class Runner < HttpGet::BaseRunner
       def execute(args : JSON::Any) : String
         url = args["url"]?.try(&.as_s?) || return error_response("The required URL was not specified")
         user_agent = args["user_agent"]?.try(&.as_s?) || USER_AGENT
@@ -51,7 +52,11 @@ module Tools::Web
           "User-Agent" => user_agent,
         }
         headers.add("Accept", accept) if accept
+
+        func.host_policy.check!(URI.parse(url))
         fetch(url, headers, preserve_source)
+      rescue ex : HostPolicy::Error
+        error_response(ex)
       end
 
       # Setup the HTTP request and process content if appropriate,
@@ -104,11 +109,6 @@ module Tools::Web
           content_type: content_type,
           body:         reduced_content || content,
         }.to_json
-      end
-
-      # Create an error response as a JSON string
-      private def error_response(message)
-        {error: message}.to_json
       end
 
       #
