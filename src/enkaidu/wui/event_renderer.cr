@@ -65,19 +65,6 @@ module Enkaidu::WUI
       post_event Render::Query.new(Render::ContentType::ImageUrl, url)
     end
 
-    # def user_confirm_shell_command?(command)
-    #   confirmation_id = Random::Secure.hex(16)
-    #   confirmation_channel = Channel(Bool).new
-    #   pending_confirmations[confirmation_id] = confirmation_channel
-
-    #   post_event Render::ShellConfirmation.new(command, confirmation_id)
-
-    #   # Wait for the response
-    #   result = confirmation_channel.receive
-    #   pending_confirmations.delete(confirmation_id)
-    #   result
-    # end
-
     # Prompt the user with a confirmation request for security confirmation
     # by presenting the `description` followed by the `subject` of the question.
     # The renderer should further emphasize the `subject` when presenting the question.
