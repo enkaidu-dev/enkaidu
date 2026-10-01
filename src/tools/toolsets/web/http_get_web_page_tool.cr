@@ -53,7 +53,20 @@ module Tools::Web
         }
         headers.add("Accept", accept) if accept
 
-        func.host_policy.check!(URI.parse(url))
+        uri = URI.parse(url)
+        begin
+          func.host_policy.check!(uri)
+        rescue ex : HostPolicy::HostUnknownError
+          perm = ask_user_permission(url)
+          if host = uri.host
+            if perm.approved?
+              func.host_policy.always_allow(host) if perm.remember?
+            else
+              func.host_policy.always_deny(host) if perm.remember?
+              raise ex # deny
+            end
+          end
+        end
         fetch(url, headers, preserve_source)
       rescue ex : HostPolicy::Error
         error_response(ex)

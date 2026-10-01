@@ -18,9 +18,12 @@ require "uri"
 # A redirect is a new URL and gets a new `check!`; the caller is
 # responsible for not following one unchecked.
 #
-# Raises `HostNotAllowedError`, whose suggestion distinguishes the two
-# cases a caller can be in: this host is refused, or no host is allowed
-# at all and there is no point trying another.
+# Raises errors that distinguishes the two
+# cases a caller can be in:
+# - host is unknown, i.e. neither allowed nor denies
+# - host is denied, i.e. in denied list
+# - host is missing
+#
 class HostPolicy
   class Error < Exception
     getter suggestion : String?
@@ -34,7 +37,14 @@ class HostPolicy
     end
   end
 
-  class HostNotAllowedError < Error; end
+  # Invalud URL without host name
+  class HostNotGivenError < Error; end
+
+  # When not in allowed list not denied list
+  class HostUnknownError < Error; end
+
+  # When in denied list already
+  class HostDeniedError < Error; end
 
   class FetchFailedError < Error; end
 
@@ -66,7 +76,7 @@ class HostPolicy
     # Nil means there is no allowlist. An empty array is an allowlist
     # naming nothing, which permits nothing -- a list means exactly what
     # it contains.
-    property allowed_hosts : Array(String)? = nil
+    property allowed_hosts : Array(String) = [] of String
     property denied_hosts : Array(String) = [] of String
     property? allow_private_hosts : Bool = false
 
@@ -87,8 +97,20 @@ class HostPolicy
     end
 
     private def each_pattern(&)
-      @allowed_hosts.try(&.each { |pattern| yield pattern })
+      @allowed_hosts.each { |pattern| yield pattern }
       @denied_hosts.each { |pattern| yield pattern }
+    end
+
+    def allow(host)
+      unless @allowed_hosts.includes?(host)
+        @allowed_hosts << host
+      end
+    end
+
+    def deny(host : String)
+      unless @denied_hosts.includes?(host)
+        @denied_hosts << host
+      end
     end
   end
 
@@ -99,6 +121,14 @@ class HostPolicy
     new(settings)
   end
 
+  def always_allow(host : String)
+    @settings.allow host
+  end
+
+  def always_deny(host : String)
+    @settings.deny host
+  end
+
   def initialize(@settings : Settings = Settings.new)
     @settings.validate!
   end
@@ -106,7 +136,7 @@ class HostPolicy
   # Raises unless every address `uri`'s host resolves to may be reached.
   def check!(uri : URI) : Nil
     host = uri.hostname
-    raise HostNotAllowedError.new("the URL names no host", "Send an absolute URL, such as https://example.com/page.") unless host
+    raise HostNotGivenError.new("the URL names no host", "Send an absolute URL, such as https://example.com/page.") unless host
 
     check_lists(host)
     check_addresses(host, uri) unless @settings.allow_private_hosts?
@@ -114,22 +144,14 @@ class HostPolicy
 
   private def check_lists(host : String) : Nil
     if matches?(host, @settings.denied_hosts)
-      raise HostNotAllowedError.new(
+      raise HostDeniedError.new(
         "#{host} is not a host this tool may fetch",
         "Fetch a different site, or ask the operator to allow this one.")
     end
 
-    allowed = @settings.allowed_hosts
-    return unless allowed
-    return if matches?(host, allowed)
+    return if matches?(host, @settings.allowed_hosts)
 
-    if allowed.empty?
-      raise HostNotAllowedError.new(
-        "this tool is configured to fetch no hosts at all",
-        "Do not retry with another URL; no URL will work. Use a local file, or ask the operator to allow a host.")
-    end
-
-    raise HostNotAllowedError.new(
+    raise HostUnknownError.new(
       "#{host} is not one of the hosts this tool may fetch",
       "Fetch one of the allowed sites, or ask the operator to allow this one.")
   end
@@ -150,7 +172,7 @@ class HostPolicy
 
     addresses.each do |address|
       next unless private?(address)
-      raise HostNotAllowedError.new(
+      raise HostUnknownError.new(
         "#{host} resolves to #{address}, which is on this machine or its private network",
         "Fetch a public URL. Local files are read with read_text_file.")
     end
