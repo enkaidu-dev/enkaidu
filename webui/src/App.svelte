@@ -290,6 +290,14 @@
               msg.banner,
             );
             break;
+          case "security_permission":
+            session.show_security_permission(
+              msg.description,
+              msg.subjects,
+              msg.id,
+              msg.banner,
+            );
+            break;
           case "session_reset":
             session.reset();
             has_content = false;

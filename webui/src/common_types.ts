@@ -12,7 +12,16 @@ export type SecurityConfirmDialogConfig = {
   show: boolean;
 }
 
+export type SecurityPermissionDialogConfig = {
+  description: string;
+  subjects: string[];
+  banner: SecurityBanner | null;
+  id: string;
+  show: boolean;
+}
+
 export type SecurityConfirmSubmit = (id: string, approved: boolean) => void
+export type SecurityPermssionSubmit = (id: string, approved: boolean, remember: boolean) => void
 
 // for InputDialog
 export type InputArg = {
