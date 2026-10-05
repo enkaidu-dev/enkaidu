@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onMount } from "svelte";
   import { PromptHistory } from "./prompt_history";
   import HistorySearch from "./HistorySearch.svelte";
 
@@ -198,6 +199,14 @@
   export function focus() {
     text_area?.focus();
   }
+
+  // Land the caret in the prompt bar on page load so the user can
+  // start typing immediately (the textarea is already mounted — its
+  // waiting-dots replacement only exists while a request is in
+  // flight, which isn't the case on first load).
+  onMount(() => {
+    text_area?.focus();
+  });
 </script>
 
 <div
