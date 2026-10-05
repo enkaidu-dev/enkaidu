@@ -1,5 +1,6 @@
 <script lang="ts">
   import { PromptHistory } from "./prompt_history";
+  import HistorySearch from "./HistorySearch.svelte";
 
   let { onask = null, loading = false } = $props();
   let text_area = $state<HTMLTextAreaElement | undefined>(undefined);
@@ -8,9 +9,21 @@
 
   const history = new PromptHistory({ maxSize: 200 });
 
+  // PromptHistory mutates its plain array in place, which Svelte can't
+  // track. This counter is bumped on every change so live_entries below
+  // re-reads the snapshot (consumed by the Ctrl+R search panel).
+  let history_version = $state(0);
+
   // Load history from server once on mount
   $effect(() => {
-    history.loadFromServer();
+    history.loadFromServer().then(() => {
+      history_version++;
+    });
+  });
+
+  let live_entries = $derived.by(() => {
+    void history_version;
+    return [...history.entriesSnapshot];
   });
 
   // Publish this bar's live height to CSS as `--promptbar-h` (on <html>), so
@@ -93,11 +106,48 @@
     history.push(text);
     // sync to server asynchronously, fire-and-forget
     history.syncToServer([text]).catch(() => {});
+    history_version++;
+  }
+
+  // --- Prompt-history search (Spotlight-style) ======================
+  // Bindings: ⌘K / Ctrl+K (web-app command-palette convention) and
+  // ⌘R / Ctrl+R (shell reverse-search muscle memory). Both only clash
+  // with browser "reload"/"focus address bar" while the textarea has
+  // focus; elsewhere the browser keeps its bindings.
+  let hsearch_open = $state(false);
+
+  // If a request starts while the search is open, drop it rather than
+  // let it reappear out from under the loading indicator.
+  $effect(() => {
+    if (loading) hsearch_open = false;
+  });
+
+  function open_history_search() {
+    if (!loading) hsearch_open = true;
+  }
+
+  function on_history_select(text: string | null) {
+    if (!hsearch_open) return; // ignore the trailing blur after a pick
+    hsearch_open = false;
+    if (text !== null && text.trim() !== "") set_value(text);
+    text_area?.focus();
   }
 
   function handle_key_event(event: KeyboardEvent) {
     if (!text_area) return;
     const textarea = text_area;
+
+    // ⌘K/Ctrl+K (command-palette convention) and ⌘R/Ctrl+R (shell
+    // reverse search): open history search. preventDefault keeps the
+    // browser from reloading / jumping to the address bar.
+    if (
+      (event.ctrlKey || event.metaKey) &&
+      ["r", "k"].includes(event.key.toLowerCase())
+    ) {
+      event.preventDefault();
+      open_history_search();
+      return;
+    }
 
     if (event.key === "Enter" && !event.shiftKey) {
       event.preventDefault();
@@ -172,6 +222,26 @@
       </span>
     </div>
   {/if}
+  {#if hsearch_open && !loading}
+    <!-- Spotlight-style overlay: bottom-anchored 12px above the prompt
+         bar (the bar publishes its live height as --promptbar-h on
+         <html>, so the card tracks it), growing upward, with the
+         dimmed/blur backdrop covering the rest of the viewport.
+         Clicking the backdrop (not the card) dismisses without
+         changing the draft. -->
+    <div
+      class="fixed inset-0 z-50 flex items-end justify-center px-4 pb-[calc(var(--promptbar-h)_+_12px)] bg-base-100/40 backdrop-blur-[2px]"
+      role="presentation"
+      onpointerdown={(e) => {
+        if (e.target === e.currentTarget) on_history_select(null);
+      }}
+    >
+      <HistorySearch
+        entries={live_entries}
+        onselect={on_history_select}
+      />
+    </div>
+  {/if}
   <form
     onsubmit={handle_submit}
     class="promptbar-input group flex items-center gap-2 border border-base-content/15 border-l-[3px] bg-base-200/70 px-4 py-3 shadow-sm transition-shadow focus-within:shadow-md focus-within:border-base-content/25 {host ||
@@ -224,7 +294,8 @@
       class="text-center text-xs text-base-content/80 mt-1 group-focus-within:opacity-0 transition-opacity"
     >
       Enter to send &bull; Shift+Enter for newline &bull; Up / Down for history
-      &bull; AI can make mistakes: double-check responses.
+      &bull; &#8984;K / Ctrl+K (or &#8984;R / Ctrl+R) to search history &bull; AI can
+      make mistakes: double-check responses.
     </div>
   {/if}
 </div>
