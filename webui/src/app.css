@@ -218,6 +218,29 @@ body {
   font-size: 0.85em;
 }
 
+/*
+  SourceView renders one <pre class="line-code"> per source line inside
+  .source-lines (inline mode: transcript, .prose is an ancestor;
+  panel mode: file panel, .prose is NOT an ancestor, so the rule has
+  no effect there). The .prose pre rule above intentionally has no
+  not-prose guard, so it applies a padded, rounded, bordered background
+  box to every <pre> in a .prose context — which for per-line rendering
+  means every source line looks like its own button and is thicker than
+  it should. The block-level background and scroll are handled by
+  .source-lines itself, so the per-pre chrome here is wrong.
+  Token colors from .prose pre .hljs-* are unaffected (that selector
+  targets child spans of the pre, not the pre element itself, and those
+  rules are not overridden here).
+*/
+.source-lines pre {
+  background-color: transparent;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  max-height: none;
+  overflow-y: visible;
+}
+
 /* Syntax highlighting (highlight.js via marked-highlight).
    Colors come from the --hljs-* palette variables (defined per color
    scheme in :root / dark media block) so tokens shift automatically
