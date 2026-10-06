@@ -195,11 +195,22 @@ module Enkaidu
       end
     end
 
-    # Return based on session override, or model settings
     def exclude_past_reasoning? : Bool
-      opts.config.session.try(&.exclude_past_reasoning?) ||
-        @model_config.try(&.settings.try(&.exclude_past_reasoning?)) ||
-        false
+      case value = opts.config.session.try(&.exclude_past_reasoning) || @model_config.try(&.settings.try(&.exclude_past_reasoning))
+      when Nil  then false
+      when Bool then value
+      else           !value.negative?
+      end
+    end
+
+    # Return based on session override, or model settings
+    def exclude_past_reasoning_from : Int32
+      case value = opts.config.session.try(&.exclude_past_reasoning) || @model_config.try(&.settings.try(&.exclude_past_reasoning))
+      when Nil   then -1
+      when Int32 then value.negative? ? -1 : value
+      when false then -1
+      else            0
+      end
     end
 
     # Return based on model settings, if any. Nil means
@@ -514,7 +525,8 @@ module Enkaidu
             chat.ask(query,
               attach: attach,
               response_schema: response_json_schema,
-              exclude_reasoning_in_history: exclude_past_reasoning?) do |event|
+              exclude_reasoning_in_history: exclude_past_reasoning?,
+              exclude_reasoning_skip: exclude_past_reasoning_from) do |event|
               queue << event
               Fiber.yield
             end

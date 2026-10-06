@@ -57,10 +57,23 @@ module LLM::OpenAI
       @messages << MessageWrap.new(msg, usage)
     end
 
+    # This yields each `Message` in the history; reverse to start with most recent message
+    def each_message(reverse : Bool, &)
+      if reverse
+        @messages.reverse_each do |msgplus|
+          yield msgplus.message
+        end
+      else
+        @messages.each do |msgplus|
+          yield msgplus.message
+        end
+      end
+    end
+
     # This yields each `Message` in the history
-    def each_message(&)
-      @messages.each do |msgplus|
-        yield msgplus.message
+    def each_message(kind : Message.class, reverse = false, &)
+      each_message(reverse: reverse) do |msg|
+        yield msg if msg === kind
       end
     end
 
@@ -74,15 +87,28 @@ module LLM::OpenAI
       nil
     end
 
-    # Mark all historical responses to exclude reasoning from now on
-    protected def exclude_past_reasoning
+    # Mark all historical responses to exclude reasoning from now on,
+    # after skipping specified most recent turns. 2 means skip most
+    # recent 2 turns before marking the responses to not include
+    # reasoning in future requests. A turn starts with user input (i.e. `MultiContent`)
+    # and includes all tool calls and responses until next user input
+    protected def exclude_past_reasoning(skip_turns = 0)
       # Walk the messages in reverse, and break when we encounter
       # message already excluding reasoning
+      turns = 0
       @messages.reverse_each do |msg|
         actual = msg.message
-        if actual.is_a? Message::Response
+        if actual.is_a? Message::MultiContent
+          # Each turn starts with a user prompt, sent via `MultiContent` message
+          turns += 1
+        elsif actual.is_a? Message::Response
+          # Responses arrive after prompt as well as after tool calls.
+          # Stop when we find a response already skipping reasoning, means
+          # earlier ones have been marked
           break unless actual.include_reasoning?
-          actual.include_reasoning = false
+
+          # Only exclude after we skip specified turns
+          actual.include_reasoning = false if turns > skip_turns
         end
       end
     end
