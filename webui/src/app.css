@@ -241,6 +241,26 @@ body {
   overflow-y: visible;
 }
 
+/*
+  Blank-line alignment for SourceView's two per-line columns. A blank source
+  line highlights to "" → an empty <pre>, and an empty block-level element
+  establishes NO line box, so it collapses to 0 height, while the gutter
+   always renders a number (a full line box). The code column therefore
+  comes up short of the gutter by one line per blank source line, and the
+  side-by-side flex stretch leaves an empty tail at the bottom — "extra
+  empty lines at the end, proportional to document size" (more file → more
+  blank lines → taller tail). min-height of exactly one line box (the `lh`
+  unit = the element's own line-height, so it tracks leading-relaxed with no
+  magic number) forces every code line, empty or not, to one full line so the
+  two per-line columns stay 1:1. Only .code-line strictly needs it (gutter
+  lines always have content), but setting both keeps the intent symmetric and
+  guards a future where a gutter cell could be empty.
+ */
+.source-gutter .gutter-line,
+.source-code .code-line {
+  min-height: 1lh;
+}
+
 /* Syntax highlighting (highlight.js via marked-highlight).
    Colors come from the --hljs-* palette variables (defined per color
    scheme in :root / dark media block) so tokens shift automatically
