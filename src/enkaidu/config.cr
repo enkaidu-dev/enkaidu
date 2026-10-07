@@ -203,7 +203,8 @@ module Enkaidu
     class Console < ConfigSerializable
       alias StyleSheet = Hash(String, NamedTuple(
         fg: String | UInt8 | Tuple(UInt8, UInt8, UInt8),
-        format: Array(String)))
+        bg: String | UInt8 | Tuple(UInt8, UInt8, UInt8)?,
+        format: Array(String)?))
 
       # Example:
       # style_sheet:
