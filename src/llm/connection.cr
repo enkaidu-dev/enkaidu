@@ -29,7 +29,10 @@ module LLM
       sync.lock do |client|
         h = headers
         if sid = session_id
-          h["x-enkaidu-session-id"] = sid
+          h[Connection.http_session_id_key] = sid
+        end
+        if ua = Connection.http_user_agent
+          h["User-Agent"] = ua
         end
         if TRACE
           STDERR.puts ">>> POST #{path}"
@@ -72,5 +75,28 @@ module LLM
     protected abstract def headers : HTTP::Headers
 
     abstract def new_chat(&) : Chat
+
+    # -------
+
+    @@http_session_id_key = "session_id"
+    @@http_user_agent : String? = nil
+
+    def self.http_session_id_key
+      @@http_session_id_key
+    end
+
+    def self.http_user_agent
+      @@http_user_agent
+    end
+
+    # Allow the agent to set this once
+    def self.agent_name=(name : String)
+      @@agent_name = "session-#{name.downcase}-id"
+    end
+
+    # Allow the agent to set this once
+    def self.http_user_agent=(user_agent : String)
+      @@http_user_agent = user_agent.downcase
+    end
   end
 end
