@@ -1,5 +1,5 @@
-require "termify"
 require "colorize"
+require "termify"
 
 require "./style_sheet"
 require "./input_reader"
@@ -132,23 +132,14 @@ module Enkaidu::Console
       puts fmt(:query_feedback, "IMAGE #{trim_text(url, MAX_IMAGE_URL_LENGTH)}")
     end
 
-    # Prompt the user with a confirmation request for security confirmation
+    # Prompt the user with an allow once / allow / deny request for security confirmation
     # by presenting the `description` followed by the `subject` of the question.
     # The renderer should further emphasize the `subject` when presenting the question.
-    # @return True to confirm, false otherwise.
-    def user_confirm_security_question?(description, subject : String | Array(String),
-                                        banner : NamedTuple(safe: Bool, message: String)? = nil) : Bool
-      if banner
-        style = banner[:safe] ? :confirm_banner_safe : :confirm_banner_unsafe
-        msg = banner[:message]
-        bar = "─" * msg.size
-        puts fmt(style, <<-BANNER)
-          ┌#{bar}┐
-          │#{banner[:message]}│
-          └#{bar}┘
-          BANNER
-      end
-
+    def user_permission_question(description,
+                                 subject : String | Array(String),
+                                 caution : String? = nil,
+                                 banner : Banner? = nil) : Permission
+      render_banner(banner) if banner
       puts fmt(:confirm_question, "  CONFIRM: #{description}\n")
       subjects = if subject.is_a? String
                    [subject]
@@ -158,7 +149,64 @@ module Enkaidu::Console
       subjects.each do |str|
         puts fmt(:confirm_content, "  > #{str}")
       end
+
       puts
+      puts fmt(:confirm_question, "  #{caution}\n") if caution
+      print fmt(:confirm_question, permission_options)
+      response = STDIN.raw &.read_char
+      puts fmt(:confirm_input, response.to_s)
+
+      Permission.new(
+        approved: ['a', 'A'].includes?(response),
+        remember: ['A', 'D'].includes?(response),
+      )
+    end
+
+    private def permission_options : String
+      String.build do |io|
+        io << "  ("
+        io << fmt(:confirm_hotkey, "d") << ')' << "eny / ("
+        io << fmt(:confirm_hotkey, "a") << ')' << "llow / Always ("
+        io << fmt(:confirm_hotkey, "D") << ')' << "eny / Always ("
+        io << fmt(:confirm_hotkey, "A") << ')' << "llow [d/a/D/A] "
+      end
+    end
+
+    private def render_question(description, subject : String | Array(String), banner : Banner?)
+      if banner
+        style = banner.safe? ? :confirm_banner_safe : :confirm_banner_unsafe
+        msg = banner.message
+        bar = "─" * msg.size
+        puts fmt(style, <<-BANNER)
+          ┌#{bar}┐
+          │#{msg}│
+          └#{bar}┘
+          BANNER
+      end
+
+      puts fmt(:confirm_question, "  APPROVE: #{description}\n")
+      subjects = if subject.is_a? String
+                   [subject]
+                 else
+                   subject # already array
+                 end
+      subjects.each do |str|
+        puts fmt(:confirm_content, "  > #{str}")
+      end
+    end
+
+    # Prompt the user with a confirmation request for security confirmation
+    # by presenting the `description` followed by the `subject` of the question.
+    # The renderer should further emphasize the `subject` when presenting the question.
+    # @return True to confirm, false otherwise.
+    def user_confirm_security_question?(description, subject : String | Array(String),
+                                        banner : NamedTuple(safe: Bool, message: String)? = nil) : Bool
+      render_question(
+        description,
+        subject,
+        banner ? Banner.new(safe: banner[:safe], message: banner[:message]) : nil)
+      puts
+
       puts fmt(:confirm_question, "  Please review carefully for any operations that could adversely affect your system.\n")
       print fmt(:confirm_question, "  Allow? [y/N] ")
       response = STDIN.raw &.read_char

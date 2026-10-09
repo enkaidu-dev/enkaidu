@@ -44,9 +44,6 @@ module Enkaidu::Slash
           - Retain some of the chat history if `retain=` specified, otherwise `none` and
           - Replace parent chat history if `replace=yes`, otherwise `no`
         - Without parameters, throws away session history
-
-      **Experimental**
-
       - `pop_and_transform prefix=PROMPTPREFIX response=NEWRESPONSE [replace=yes/no]`
         - Transforms the last response into a prompt (with `prefix` pre-pended) message by the user,
           followed by a `response` message by the LLM,  creating a synthetic conversation
@@ -54,6 +51,13 @@ module Enkaidu::Slash
         - Return to last pushed (parent) chat session and
           - Replace parent chat history if `replace=yes`, otherwise `no`, and
           - Append the transformed synthetic conversation
+
+      **Experimental**
+
+      - `x-squish`
+        - "Squish" the current session history by keeping the initial request and final response
+          for each turn and dropping everything in between.
+        - In effect drops all tool calling and intermediate responses for every turn.
       HELP1
 
     def name : String
@@ -76,6 +80,7 @@ module Enkaidu::Slash
       when .expect?(NAME, ["goto", "save"], String)             then handle_one_string_commands(session_manager, cmd)
       when .expect?(NAME, "load", String, tail: String?)        then handle_session_load(session_manager, cmd)
       when .expect?(NAME, "reset", system_prompt_name: String?) then handle_session_reset(session_manager, cmd)
+      when .expect?(NAME, "x-squish")                           then handle_session_x_squish(session_manager)
       else
         handle_compound_commands(session_manager, cmd)
       end
@@ -118,6 +123,13 @@ module Enkaidu::Slash
         session.renderer.warning_with("Unknown or incomplete sub-command: '#{cmd.input}'",
           help: HELP, markdown: true)
       end
+    end
+
+    private def handle_session_x_squish(session_manager)
+      session = session_manager.current.session
+      session.renderer.warning_with("Session squishing is an experimental operation.")
+      session.squish_history
+      session.renderer.respond_with("Session squished.")
     end
 
     private def handle_session_pop_and_transform(session_stack, cmd)

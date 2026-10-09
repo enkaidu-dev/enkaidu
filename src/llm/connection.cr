@@ -25,14 +25,20 @@ module LLM
       @sync ||= connect
     end
 
-    private def attempt_post_and_stream(body, &)
+    private def attempt_post_and_stream(body, session_id : String? = nil, &)
       sync.lock do |client|
+        h = headers
+        if sid = session_id
+          h[Connection.http_session_id_key] = sid
+        end
+        if ua = Connection.http_user_agent
+          h["User-Agent"] = ua
+        end
         if TRACE
           STDERR.puts ">>> POST #{path}"
-          STDERR.puts ">>> #{headers}"
+          STDERR.puts ">>> #{h}"
         end
-        client.post(path, headers,
-          body: body) do |resp|
+        client.post(path, headers: h, body: body) do |resp|
           yield resp
           resp # Always return the response at end of streaming handler block
         end
@@ -43,11 +49,11 @@ module LLM
       end
     end
 
-    protected def post_and_stream(body, &)
+    protected def post_and_stream(body, session_id : String? = nil, &)
       STDERR.puts ">>> --- first try" if TRACE
       retry = false
       begin
-        attempt_post_and_stream(body) { |resp| yield resp }
+        attempt_post_and_stream(body, session_id) { |resp| yield resp }
       rescue
         retry = true
       end
@@ -58,7 +64,7 @@ module LLM
       #   by retrying at least once.
       if retry
         STDERR.puts ">>> --- the one and only retry".colorize(:red) if TRACE
-        attempt_post_and_stream(body) { |resp| yield resp }
+        attempt_post_and_stream(body, session_id) { |resp| yield resp }
       end
     end
 
@@ -69,5 +75,28 @@ module LLM
     protected abstract def headers : HTTP::Headers
 
     abstract def new_chat(&) : Chat
+
+    # -------
+
+    @@http_session_id_key = "x-session-id"
+    @@http_user_agent : String? = nil
+
+    def self.http_session_id_key
+      @@http_session_id_key
+    end
+
+    def self.http_user_agent
+      @@http_user_agent
+    end
+
+    # Allow the agent to set this once
+    def self.agent_name=(name : String)
+      @@agent_name = "x-session-#{name.downcase}-id"
+    end
+
+    # Allow the agent to set this once
+    def self.http_user_agent=(user_agent : String)
+      @@http_user_agent = user_agent.downcase
+    end
   end
 end

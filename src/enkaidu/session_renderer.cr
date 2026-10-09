@@ -20,12 +20,27 @@ module Enkaidu
     # Prompt query image
     abstract def user_query_image_url(url)
 
-    def user_confirm_shell_command?(command)
-      user_confirm_security_question?(
-        description: "The agent's AI model wants to run the following system command:",
-        subject: command
-      )
+    struct Permission
+      getter? approved : Bool
+      getter? remember : Bool
+
+      def initialize(@approved, @remember); end
     end
+
+    struct Banner
+      getter? safe : Bool
+      getter message : String
+
+      def initialize(@safe, @message); end
+    end
+
+    # Prompt the user with an allow once / allow / deny request for security confirmation
+    # by presenting the `description` followed by the `subject` of the question.
+    # The renderer should further emphasize the `subject` when presenting the question.
+    abstract def user_permission_question(description,
+                                          subject : String | Array(String),
+                                          caution : String? = nil,
+                                          banner : Banner? = nil) : Permission
 
     # Prompt the user with a confirmation request for security confirmation
     # by presenting the `description` followed by the `subject` of the question.

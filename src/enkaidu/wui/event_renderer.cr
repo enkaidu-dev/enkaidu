@@ -6,6 +6,7 @@ require "reply"
 
 module Enkaidu::WUI
   alias ConfirmationChannel = Channel(Bool)
+  alias PermissionChannel = Channel(SessionRenderer::Permission)
   alias InputsChannel = Channel(Hash(String, String))
 
   # This class is responsible for rendering console outputs into a queue
@@ -15,6 +16,9 @@ module Enkaidu::WUI
 
     # Confirmation requests made to the WUI
     private getter pending_confirmations = Hash(String, ConfirmationChannel).new
+
+    # Permission requests made to the WUI
+    private getter pending_permissions = Hash(String, PermissionChannel).new
 
     # Input requests made to the WUI
     private getter pending_inputs = Hash(String, InputsChannel).new
@@ -65,18 +69,24 @@ module Enkaidu::WUI
       post_event Render::Query.new(Render::ContentType::ImageUrl, url)
     end
 
-    # def user_confirm_shell_command?(command)
-    #   confirmation_id = Random::Secure.hex(16)
-    #   confirmation_channel = Channel(Bool).new
-    #   pending_confirmations[confirmation_id] = confirmation_channel
+    # Prompt the user with an allow once / allow / deny request for security confirmation
+    # by presenting the `description` followed by the `subject` of the question.
+    # The renderer should further emphasize the `subject` when presenting the question.
+    def user_permission_question(description,
+                                 subject : String | Array(String),
+                                 caution : String? = nil,
+                                 banner : Banner? = nil) : Permission
+      permission_id = Random::Secure.hex(16)
+      permission_channel = Channel(Permission).new
+      pending_permissions[permission_id] = permission_channel
 
-    #   post_event Render::ShellConfirmation.new(command, confirmation_id)
+      post_event Render::SecurityPermission.new(description, subject, permission_id, banner)
 
-    #   # Wait for the response
-    #   result = confirmation_channel.receive
-    #   pending_confirmations.delete(confirmation_id)
-    #   result
-    # end
+      # Wait for the response
+      result = permission_channel.receive
+      pending_permissions.delete(permission_id)
+      result
+    end
 
     # Prompt the user with a confirmation request for security confirmation
     # by presenting the `description` followed by the `subject` of the question.
@@ -122,6 +132,13 @@ module Enkaidu::WUI
     def respond_to_confirmation(confirmation_id : String, approved : Bool)
       if channel = pending_confirmations[confirmation_id]?
         channel.send(approved)
+      end
+    end
+
+    # Server handler calls to provide response to a pending permission request
+    def respond_to_permission(permission_id : String, approved : Bool, remember : Bool)
+      if channel = pending_permissions[permission_id]?
+        channel.send(Permission.new(approved, remember))
       end
     end
 

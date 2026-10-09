@@ -123,9 +123,6 @@ module Enkaidu
       # Readonly mode disallows built-in tools when enabled; disabled by default
       getter_with_presence? readonly, false
 
-      # Excluding reasoning in "past turn" chat responses to LLM disabled by default
-      getter_with_presence? exclude_past_reasoning, false
-
       # Disallowed by default, set to `true` to disallow
       getter_with_presence? allow_tool_discovery, false
       getter_with_presence? allow_sub_agents, false
@@ -136,17 +133,21 @@ module Enkaidu
       getter_with_presence model, String?
       getter_with_presence input_history_file, String?
 
+      # Excluding reasoning in "past turn" chat responses to LLM disabled by default
+      # Nil and False mean no exclusion.
+      getter_with_presence exclude_past_reasoning, Bool | Int32?
+
       protected def merge(from : Session)
         # Booleans
         {% for name in [
-                         :streaming, :quiet, :readonly, :exclude_past_reasoning,
+                         :streaming, :quiet, :readonly,
                          :allow_tool_discovery, :allow_sub_agents, :allow_global_state,
                          :allow_shell_commands,
                        ] %}
         @{{ name.id }} = from.{{ (name + '?').id }} if from.{{ name.id }}_present?
         {% end %}
         # Non-booleans
-        {% for name in [:provider_type, :model, :input_history_file] %}
+        {% for name in [:provider_type, :model, :exclude_past_reasoning, :input_history_file] %}
         @{{ name.id }} = from.{{ name.id }} if from.{{ name.id }}_present?
         {% end %}
       end
@@ -177,7 +178,7 @@ module Enkaidu
       class Model < ConfigSerializable
         # Represents settings for a model
         class Settings < ConfigSerializable
-          getter? exclude_past_reasoning = false
+          getter_with_presence exclude_past_reasoning, Bool | Int32?
           getter think : ::LLM::Reasoning = ::LLM::Reasoning::Default
           getter_with_presence temperature, Int32 | Float32?
         end
@@ -202,7 +203,8 @@ module Enkaidu
     class Console < ConfigSerializable
       alias StyleSheet = Hash(String, NamedTuple(
         fg: String | UInt8 | Tuple(UInt8, UInt8, UInt8),
-        format: Array(String)))
+        bg: String | UInt8 | Tuple(UInt8, UInt8, UInt8)?,
+        format: Array(String)?))
 
       # Example:
       # style_sheet:

@@ -8,6 +8,11 @@ module Enkaidu
         @chat.erase_history
       end
 
+      # Squish session history without affecting any other configuration.
+      def squish_history
+        @chat.squish
+      end
+
       # Save session to a JSONL file,  where each line in order is as follows:
       #   - about the file / app
       #   - active MCP server connection info

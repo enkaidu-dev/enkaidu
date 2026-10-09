@@ -128,7 +128,7 @@ module Enkaidu
 
         web_server.get "/api/start" do |_, resp|
           list = [] of Render::Event
-          list.unshift(WUI::Render::SystemInfo.new)
+          list.unshift(WUI::Render::SystemInfo.new(runtime))
           list.unshift(WUI::Render::SessionInfo.new(session))
           list.each { |line| resp.puts line.to_json }
         end
@@ -153,6 +153,19 @@ module Enkaidu
             confirmation_id = confirmation_data["id"].as_s
             approved = confirmation_data["approved"].as_bool
             queue.respond_to_confirmation(confirmation_id, approved)
+            resp.puts({"status": "ok"}.to_json)
+          else
+            raise ArgumentError.new("Nil body: #{req.method} #{req.path}")
+          end
+        end
+
+        web_server.post "/api/permission" do |req, resp|
+          if body_io = req.body
+            permission_data = JSON.parse(body_io.gets_to_end)
+            perm_id = permission_data["id"].as_s
+            approved = permission_data["approved"].as_bool
+            remember = permission_data["remember"].as_bool
+            queue.respond_to_permission(perm_id, approved, remember)
             resp.puts({"status": "ok"}.to_json)
           else
             raise ArgumentError.new("Nil body: #{req.method} #{req.path}")

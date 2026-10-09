@@ -183,7 +183,7 @@
         let msg = JSON.parse(line);
         switch (msg.type) {
           case "system_info":
-            prompt.update_system(msg.host, msg.cwd);
+            prompt.update_system(msg.host, msg.cwd, msg.macros);
             break;
           case "session_info":
             prompt.update_session(msg.model);
@@ -284,6 +284,14 @@
             break;
           case "security_confirmation":
             session.show_security_confirmation(
+              msg.description,
+              msg.subjects,
+              msg.id,
+              msg.banner,
+            );
+            break;
+          case "security_permission":
+            session.show_security_permission(
               msg.description,
               msg.subjects,
               msg.id,

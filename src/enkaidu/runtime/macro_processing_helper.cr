@@ -122,6 +122,22 @@ module Enkaidu
       end
     end
 
+    alias AllMacros = Array(NamedTuple(name: String, description: String, category: String))
+
+    @all_macros : AllMacros?
+
+    # Array of NamedTuples, one for each macro available.
+    def all_macros : AllMacros
+      @all_macros ||= begin
+        mac_docs = AllMacros.new
+
+        each_macro do |name, mac, cat|
+          mac_docs << {name: name, description: mac.description, category: cat}
+        end
+        mac_docs
+      end
+    end
+
     private def substitute_macro_call_args(line : String, cmd : CommandParser)
       # check if `line` has %{X} in it and replace with argument,
       # using %{<N>} for positional or %{<KEY>} for named

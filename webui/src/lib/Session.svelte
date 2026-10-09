@@ -7,6 +7,7 @@
   import AsstImageCard from "./AsstImageCard.svelte";
   import AsstThinkCard from "./AsstThinkCard.svelte";
   import SecurityConfirmDialog from "./SecurityConfirmDialog.svelte";
+  import SecurityPermissionDialog from "./SecurityPermissionDialog.svelte";
   import UserTextCard from "./UserTextCard.svelte";
   import UserImageCard from "./UserImageCard.svelte";
   import ClarionCard from "./ClarionCard.svelte";
@@ -135,6 +136,15 @@
     return result;
   });
 
+  let security_permission_dialog_config: Common.SecurityPermissionDialogConfig =
+    $state({
+      show: false,
+      description: "",
+      subjects: [],
+      banner: null,
+      id: "",
+    });
+
   let security_confirm_dialog_config: Common.SecurityConfirmDialogConfig =
     $state({
       show: false,
@@ -253,6 +263,40 @@
     send_confirmation_response(id, approved);
   }
 
+  export function show_security_permission(
+    description: string,
+    subjects: string[],
+    id: string,
+    banner: Common.SecurityBanner | null,
+  ) {
+    security_permission_dialog_config.show = true;
+    security_permission_dialog_config.description = description;
+    security_permission_dialog_config.subjects = subjects;
+    security_permission_dialog_config.banner = banner;
+    security_permission_dialog_config.id = id;
+  }
+
+  async function send_permission_response(
+    id: string,
+    approved: boolean,
+    remember: boolean,
+  ) {
+    try {
+      await enkaidu_post_request("permission", { id, approved, remember });
+    } catch (error) {
+      console.error("Failed to send permission response:", error);
+    }
+  }
+
+  function handle_security_permission(
+    id: string,
+    approved: boolean,
+    remember: boolean,
+  ) {
+    security_permission_dialog_config.show = false;
+    send_permission_response(id, approved, remember);
+  }
+
   export function ask_for_inputs(
     id: string,
     title: string,
@@ -358,6 +402,15 @@
   id={security_confirm_dialog_config.id}
   show={security_confirm_dialog_config.show}
   onconfirm={handle_security_confirmation}
+/>
+
+<SecurityPermissionDialog
+  subjects={security_permission_dialog_config.subjects}
+  banner={security_permission_dialog_config.banner}
+  description={security_permission_dialog_config.description}
+  id={security_permission_dialog_config.id}
+  show={security_permission_dialog_config.show}
+  onconfirm={handle_security_permission}
 />
 
 <InputsDialog

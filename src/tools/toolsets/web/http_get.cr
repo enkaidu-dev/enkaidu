@@ -15,7 +15,7 @@ module Tools::Web
 
     def host_policy : HostPolicy
       @host_policy ||= HostPolicy.new do |config|
-        config.allowed_hosts = extract_setting("allowed_hosts")
+        config.allowed_hosts = extract_setting("allowed_hosts") || [] of String
         config.allow_private_hosts = settings.try &.["allow_private_hosts"]? == true
         config.denied_hosts = extract_setting("denied_hosts") || [] of String
       end
@@ -28,6 +28,13 @@ module Tools::Web
       protected getter func : HttpGet
 
       def initialize(@func); end
+
+      def ask_user_permission(url)
+        func.renderer.user_permission_question(
+          description: "The agent's AI model wants to fetch the following URL.",
+          subject: url.to_s
+        )
+      end
 
       # Create an error response as a JSON string
       def error_response(message : String)

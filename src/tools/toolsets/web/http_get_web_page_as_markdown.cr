@@ -42,7 +42,22 @@ module Tools::Web
           "User-Agent" => user_agent,
           "Accept"     => "text/markdown",
         }
-        func.host_policy.check!(URI.parse(url))
+        uri = URI.parse(url)
+        begin
+          func.host_policy.check!(uri)
+        rescue HostPolicy::HostUnknownError
+          perm = ask_user_permission(url)
+          if host = uri.host
+            if perm.approved?
+              func.host_policy.always_allow(host) if perm.remember?
+            else
+              func.host_policy.always_deny(host) if perm.remember?
+              raise HostPolicy::HostDeniedError.new(
+                "#{host} is not a host this tool may fetch",
+                "User has denied permission to fetch this URL.")
+            end
+          end
+        end
         fetch(url, headers)
       rescue ex : HostPolicy::Error
         error_response(ex)

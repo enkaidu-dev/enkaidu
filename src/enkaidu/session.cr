@@ -21,6 +21,9 @@ module Enkaidu
 
   class UnexpectedError < Exception; end
 
+  LLM::Connection.agent_name = "Enkaidu"
+  LLM::Connection.http_user_agent = "Enkaidu #{VERSION}"
+
   # The Session class manages connection setup, logging, and the processing of
   # different types of events for user queries via the command line app
   class Session
@@ -177,6 +180,7 @@ module Enkaidu
         with_debug if opts.debug?
         with_streaming if opts.stream?
         with_readonly if readonly?
+        with_session_id id
         with_system_message system_prompt(override_system_prompt)
 
         if model_settings = @model_config.try(&.settings)
@@ -195,11 +199,22 @@ module Enkaidu
       end
     end
 
-    # Return based on session override, or model settings
     def exclude_past_reasoning? : Bool
-      opts.config.session.try(&.exclude_past_reasoning?) ||
-        @model_config.try(&.settings.try(&.exclude_past_reasoning?)) ||
-        false
+      case value = opts.config.session.try(&.exclude_past_reasoning) || @model_config.try(&.settings.try(&.exclude_past_reasoning))
+      when Nil  then false
+      when Bool then value
+      else           !value.negative?
+      end
+    end
+
+    # Return based on session override, or model settings
+    def exclude_past_reasoning_from : Int32
+      case value = opts.config.session.try(&.exclude_past_reasoning) || @model_config.try(&.settings.try(&.exclude_past_reasoning))
+      when Nil   then -1
+      when Int32 then value.negative? ? -1 : value
+      when false then -1
+      else            0
+      end
     end
 
     # Return based on model settings, if any. Nil means
@@ -514,7 +529,8 @@ module Enkaidu
             chat.ask(query,
               attach: attach,
               response_schema: response_json_schema,
-              exclude_reasoning_in_history: exclude_past_reasoning?) do |event|
+              exclude_reasoning_in_history: exclude_past_reasoning?,
+              exclude_reasoning_skip: exclude_past_reasoning_from) do |event|
               queue << event
               Fiber.yield
             end

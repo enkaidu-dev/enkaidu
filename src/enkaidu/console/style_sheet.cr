@@ -32,6 +32,7 @@ module Enkaidu::Console
     ConfirmQuestion
     ConfirmContent
     ConfirmInput
+    ConfirmHotkey
     PromptQuestion
     PromptContent
     PromptInput
@@ -137,6 +138,7 @@ module Enkaidu::Console
         add :confirm_question, {fg: :white}
         add :confirm_content, {fg: :red, format: [:bold]}
         add :confirm_input, {fg: :white, format: [:bold]}
+        add :confirm_hotkey, {fg: :white, format: [:bold]}
         add :session_banner, {fg: :light_green}
         add :session_open, {fg: :white}
         add :session_close, {fg: :white}

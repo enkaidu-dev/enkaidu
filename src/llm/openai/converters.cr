@@ -74,7 +74,7 @@ module LLM::OpenAI
                 json.field "content", sm
               end
             end
-            session.each_message do |msg|
+            session.each_message(reverse: false) do |msg|
               # msg.to_json(json)
               msg.to_protocol_json(json)
             end
