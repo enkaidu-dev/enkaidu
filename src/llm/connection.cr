@@ -78,7 +78,7 @@ module LLM
 
     # -------
 
-    @@http_session_id_key = "session_id"
+    @@http_session_id_key = "x-session-id"
     @@http_user_agent : String? = nil
 
     def self.http_session_id_key
@@ -91,7 +91,7 @@ module LLM
 
     # Allow the agent to set this once
     def self.agent_name=(name : String)
-      @@agent_name = "session-#{name.downcase}-id"
+      @@agent_name = "x-session-#{name.downcase}-id"
     end
 
     # Allow the agent to set this once
