@@ -43,7 +43,7 @@
 
 <!--
     Dropdown card shown above the promptbar when the user types "!" in
-    an empty prompt.  Each row presents an Enkahu macro with:
+    an empty prompt.  Each row presents an Enkaidu macro with:
         • `!name` in monospace with the matched portion highlighted
         • a short description
         • a small category tag
