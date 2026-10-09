@@ -25,14 +25,17 @@ module LLM
       @sync ||= connect
     end
 
-    private def attempt_post_and_stream(body, &)
+    private def attempt_post_and_stream(body, session_id : String? = nil, &)
       sync.lock do |client|
+        h = headers
+        if sid = session_id
+          h["x-enkaidu-session-id"] = sid
+        end
         if TRACE
           STDERR.puts ">>> POST #{path}"
-          STDERR.puts ">>> #{headers}"
+          STDERR.puts ">>> #{h}"
         end
-        client.post(path, headers,
-          body: body) do |resp|
+        client.post(path, headers: h, body: body) do |resp|
           yield resp
           resp # Always return the response at end of streaming handler block
         end
@@ -43,11 +46,11 @@ module LLM
       end
     end
 
-    protected def post_and_stream(body, &)
+    protected def post_and_stream(body, session_id : String? = nil, &)
       STDERR.puts ">>> --- first try" if TRACE
       retry = false
       begin
-        attempt_post_and_stream(body) { |resp| yield resp }
+        attempt_post_and_stream(body, session_id) { |resp| yield resp }
       rescue
         retry = true
       end
@@ -58,7 +61,7 @@ module LLM
       #   by retrying at least once.
       if retry
         STDERR.puts ">>> --- the one and only retry".colorize(:red) if TRACE
-        attempt_post_and_stream(body) { |resp| yield resp }
+        attempt_post_and_stream(body, session_id) { |resp| yield resp }
       end
     end
 

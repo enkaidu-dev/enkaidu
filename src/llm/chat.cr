@@ -33,6 +33,7 @@ module LLM
     getter? readonly = false
     getter reasoning = Reasoning::Default
     getter temperature : Float32? = nil
+    getter session_id : String? = nil
 
     def initialize
       @tools_by_name = {} of String => Function
@@ -41,6 +42,10 @@ module LLM
 
     def with_debug
       @debug = true
+    end
+
+    def with_session_id(sid : String)
+      @session_id = sid
     end
 
     def with_reasoning(effort : Reasoning)

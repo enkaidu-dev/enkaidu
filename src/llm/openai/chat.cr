@@ -222,7 +222,7 @@ module LLM::OpenAI
       yield({type: "debug/request", content: JSON.parse(body)}) if debug?
 
       STDERR.puts ">>> #{body}" if TRACE
-      @conn.post_and_stream(body) do |resp|
+      @conn.post_and_stream(body, session_id) do |resp|
         STDERR.puts "<<< #{resp.headers}" if TRACE
         case resp.content_type
         when "text/event-stream" then handle_text_event_stream(resp) { |msg| yield msg }
