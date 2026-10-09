@@ -183,7 +183,7 @@
         let msg = JSON.parse(line);
         switch (msg.type) {
           case "system_info":
-            prompt.update_system(msg.host, msg.cwd);
+            prompt.update_system(msg.host, msg.cwd, msg.macros);
             break;
           case "session_info":
             prompt.update_session(msg.model);

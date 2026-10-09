@@ -177,6 +177,7 @@ module Enkaidu
         with_debug if opts.debug?
         with_streaming if opts.stream?
         with_readonly if readonly?
+        with_session_id id
         with_system_message system_prompt(override_system_prompt)
 
         if model_settings = @model_config.try(&.settings)

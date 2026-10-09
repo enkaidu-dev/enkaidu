@@ -128,7 +128,7 @@ module Enkaidu
 
         web_server.get "/api/start" do |_, resp|
           list = [] of Render::Event
-          list.unshift(WUI::Render::SystemInfo.new)
+          list.unshift(WUI::Render::SystemInfo.new(runtime))
           list.unshift(WUI::Render::SessionInfo.new(session))
           list.each { |line| resp.puts line.to_json }
         end
