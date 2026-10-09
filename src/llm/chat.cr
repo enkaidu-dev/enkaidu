@@ -156,6 +156,10 @@ module LLM
     # Load chat history
     abstract def load(io : IO | String) : Nil
 
+    # Squish the session by keeping the initial request and final response for each turn,
+    # dropping everything in between.
+    abstract def squish
+
     # Yield the latest `num_responses` messages from chat history
     abstract def tail(num_responses = 1, & : ChatEvent ->) : Nil
 

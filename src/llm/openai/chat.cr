@@ -199,6 +199,11 @@ module LLM::OpenAI
       end
     end
 
+    def squish
+      @history = @history.squish_turns
+      @usage = nil
+    end
+
     def ask(content : String,
             attach : ChatInclusions? = nil,
             response_schema : ResponseSchema? = nil,

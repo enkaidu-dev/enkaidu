@@ -33,6 +33,33 @@ module LLM::OpenAI
       @messages = [] of MessageWrap
     end
 
+    # Returns a `History` where for each turn the new history keeps the user input and the last response,
+    # dropping everything in-between.
+    # MAYBE? Consider yielding the turn to give the caller option to do some processing and
+    # return an alternative response.
+    def squish_turns
+      squistory = self.class.new
+      prev_response = nil
+      each_message(reverse: false) do |msg|
+        case msg
+        when Message::MultiContent
+          # Keep the last response from previous turn
+          squistory.append_message(prev_response) if prev_response
+          # Keep the request for the next turn
+          squistory.append_message(msg)
+        when Message::Response
+          # Hold on to the response until we find end of turn
+          prev_response = msg
+        else
+          # Anything else is tool call responses which we don't want
+          # But that also means the last response asked for tool calls
+          prev_response = prev_response.dup_without_tool_calls if prev_response
+        end
+      end
+      STDERR.puts "~~ #squish_history: #{@messages.size} -> #{squistory.@messages.size} messages"
+      squistory
+    end
+
     #
     # Copy the messages from another session's history, optionally excluding the last "turn".
     def branch(from : History, exclude_last_turn = false)
