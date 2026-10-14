@@ -164,29 +164,101 @@
   }
 
   function set_value(value: string, cursorAtStart = false) {
-    if (!text_area) return;
-    text_area.value = value;
+    const ta = text_area;
+    if (!ta) return;
+    ta.value = value;
     input_text = value;
     // auto-grow without faking an Event to avoid TS conversion warning
-    text_area.style.height = "auto";
-    text_area.style.height = text_area.scrollHeight + "px";
+    ta.style.height = "auto";
+    ta.style.height = ta.scrollHeight + "px";
+    // Set the caret synchronously so the next keydown sees a consistent
+    // (value, selectionStart) pair. Deferring to requestAnimationFrame
+    // desyncs value and caret for one frame, and isOnFirstVisualLine /
+    // isOnLastVisualLine then evaluate a stale caret against the new value,
+    // causing arrows to navigate history at unintended line positions.
     const pos = cursorAtStart ? 0 : value.length;
-    requestAnimationFrame(() => {
-      if (text_area) {
-        text_area.selectionStart = pos;
-        text_area.selectionEnd = pos;
-      }
-    });
+    ta.setSelectionRange(pos, pos);
   }
 
-  function isOnFirstLine(ta: HTMLTextAreaElement) {
-    const pos = ta.selectionStart ?? 0;
-    return !ta.value.slice(0, pos).includes("\n");
+  // A logical-line test ("does the caret see a \n?") is not enough: a long
+  // sentence wraps to several *visual* rows, and the caret can sit on an upper
+  // or lower wrapped row.  For history navigation we want to fire only when the
+  // caret is on the *boundary visual row* — the very top row for ArrowUp, the
+  // very bottom row for ArrowDown — so that pressing from a second-to-boundary
+  // row just moves the caret within the wrap instead of jumping history.
+  //
+  // "On already at the boundary" is measured with a hidden mirror div that
+  // reproduces the textarea's text layout (same font, width, padding,
+  // line-height, wrapping rules).  The caret's vertical position and the total
+  // content height are read from it, and we compare against whole line-heights
+  // so a full-line gap (i.e. one row below the bottom / above the top) is
+  // excluded.
+  interface VisualRowInfo {
+    caretH: number; // height of text up to the caret
+    totalH: number; // height of the whole text
+    lh: number; // rendered line-height in px
   }
 
-  function isOnLastLine(ta: HTMLTextAreaElement) {
+  function measureVisualRows(ta: HTMLTextAreaElement): VisualRowInfo | null {
     const pos = ta.selectionStart ?? 0;
-    return !ta.value.slice(pos).includes("\n");
+    const text = ta.value;
+    if (text === "") return null;
+
+    const cs = getComputedStyle(ta);
+    const lh = parseFloat(cs.lineHeight) || parseFloat(cs.fontSize) * 1.2;
+
+    const m = document.createElement("div");
+    m.style.cssText = [
+      "position:fixed","top:-9999px","left:0","visibility:hidden",
+      "width:" + ta.clientWidth + "px","box-sizing:border-box","border:0",
+      "padding:" + cs.padding,
+      "font-family:" + cs.fontFamily,
+      "font-size:" + cs.fontSize,
+      "font-weight:" + cs.fontWeight,
+      "line-height:" + cs.lineHeight,
+      "letter-spacing:" + cs.letterSpacing,
+      "white-space:pre-wrap","word-wrap:break-word","overflow:hidden",
+    ].join(";");
+
+    document.body.appendChild(m);
+    m.textContent = text;
+    const totalH = m.offsetHeight;
+    // A trailing zero-width space makes a partial row round up to its full
+    // row height even when the text ends mid-row.
+    m.textContent = text.slice(0, pos) + "\u200B";
+    const caretH = m.offsetHeight;
+    document.body.removeChild(m);
+
+    return { caretH, totalH, lh };
+  }
+
+  function isOnFirstVisualLine(ta: HTMLTextAreaElement): boolean {
+    const pos = ta.selectionStart ?? 0;
+    // Another logical line precedes the caret → it is past the top row.
+    if (ta.value.slice(0, pos).includes("\n")) return false;
+    // Caret at the very start of the input → top row.
+    if (pos === 0) return true;
+    const info = measureVisualRows(ta);
+    if (!info) return true;
+    // On the top visual row ⇔ no full line-height of text sits above the
+    // caret.  A wrapped 2nd/3rd row of the first sentence puts at least a
+    // full line-height above it, so it is excluded.
+    return info.caretH <= info.lh + 1;
+  }
+
+  function isOnLastVisualLine(ta: HTMLTextAreaElement): boolean {
+    const pos = ta.selectionStart ?? 0;
+    // Another logical line follows the caret → it is above the bottom row.
+    if (ta.value.slice(pos).includes("\n")) return false;
+    // Caret at the very end of the text → bottom row.
+    if (pos >= ta.value.length) return true;
+    const info = measureVisualRows(ta);
+    if (!info) return true;
+    // On the bottom visual row ⇔ the gap of text below the caret is less than a
+    // full line-height.  A second-to-last wrapped row leaves a full line-height
+    // below it, so it is excluded: only a caret actually on the bottom row
+    // (gap ≈ 0) navigates history.
+    return info.totalH - info.caretH < info.lh - 1;
   }
 
   async function syncPrompt(text: string) {
@@ -300,7 +372,7 @@
     }
 
     if (event.key === "ArrowUp") {
-      if (isOnFirstLine(textarea)) {
+      if (isOnFirstVisualLine(textarea)) {
         event.preventDefault();
         const prev = history.previous(textarea.value);
         if (prev !== null) {
@@ -311,7 +383,7 @@
     }
 
     if (event.key === "ArrowDown") {
-      if (isOnLastLine(textarea)) {
+      if (isOnLastVisualLine(textarea)) {
         event.preventDefault();
         const next = history.next();
         if (next !== null) {
