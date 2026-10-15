@@ -16,40 +16,57 @@
   import HelpCard from "./HelpCard.svelte";
   import ActivityGroup from "./ActivityGroup.svelte";
 
-  // Tolerance band (px) for "close enough to the bottom" so sub-pixel /
-  // rounded scroll values don't flip the flag spuriously.
-  const SCROLL_TOLERANCE = 50;
+  // Tolerance band (px) for "close enough to the bottom."  A generous value
+  // so sub-pixel rounding and brief layout transients (group form / collapse)
+  // don't spuriously break the pin.
+  const SCROLL_TOLERANCE = 80;
 
   const scrollToBottom = (node: HTMLElement, _list: Event[]) => {
-    // Assume the user starts at the bottom on a fresh session. The flag is
-    // ONLY updated by real scroll events (never by content growth), so the
-    // "new content pushed me off the bottom" edge case in the plan cannot
-    // falsely suppress the next auto-scroll: a user who was at the bottom
-    // keeps the flag true until they actually scroll.
-    let at_bottom = true;
+    // `stuck` tracks whether the user is "pinned to the bottom."
+    // Starts true (a fresh session starts at the bottom). Only a
+    // user-initiated scroll away from the bottom breaks the pin;
+    // scrolling back down (including our own programmatic scroll)
+    // re-pins.
+    let stuck = true;
 
     const isAtBottom = () =>
       node.scrollTop + node.clientHeight >=
       node.scrollHeight - SCROLL_TOLERANCE;
 
+    // On any scroll event (user or programmatic) update the sticky flag.
+    // A scroll to near-bottom sets stuck = true; a scroll up away
+    // from the bottom sets it false.
     const handleScroll = () => {
-      at_bottom = isAtBottom();
+      stuck = isAtBottom();
     };
+
+    // Coalesce rapid `update` calls (streaming fragments, group churn)
+    // into a single rAF per frame so we scroll at most once per paint,
+    // after the browser has reflowed the new DOM.
+    let rafId = 0;
 
     const maybeScroll = () => {
-      // Only auto-scroll to the bottom when the user is already there.
-      // Suppress the scroll while they have scrolled up; once they return
-      // to the bottom edge the flag flips back and auto-scroll resumes.
-      if (!at_bottom) return;
-      node.scroll({ top: node.scrollHeight, behavior: "smooth" });
+      if (!stuck) return;
+      cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(() => {
+        // Re-check both conditions inside the frame: the user may have
+        // scrolled up between the update and the paint, or layout may
+        // have shifted so we are already at the bottom.
+        if (stuck && !isAtBottom()) {
+          node.scrollTop = node.scrollHeight;
+        }
+      });
     };
 
-    node.addEventListener("scroll", handleScroll);
+    node.addEventListener("scroll", handleScroll, { passive: true });
     maybeScroll();
 
     return {
       update: maybeScroll,
-      destroy: () => node.removeEventListener("scroll", handleScroll),
+      destroy: () => {
+        cancelAnimationFrame(rafId);
+        node.removeEventListener("scroll", handleScroll);
+      },
     };
   };
 
