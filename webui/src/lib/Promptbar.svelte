@@ -81,22 +81,60 @@
   let sessionHue = $derived(hashHue(cwd || host || "enkaidu"));
 
   // ---- Macro picker --------------------------------------------------
-  // When the user types "!" in the prompt bar, a dropdown lists all
-  // available Enkaidu macros, filtered by the text after "!".  Arrow
-  // keys navigate, Enter selects (inserting "!name "), Escape dismisses.
-  // After a selection the picker stays closed while the user types args,
-  // and reopens if the "!" portion is backspaced or a new "!…" prompt is
-  // started.
+  // When the user types "!" in the prompt bar, a dropdown lists available
+  // macros filtered by the macro *name* — the text after "!" up to the first
+  // space/tab/newline (a macro is one token, then its args).  The picker's one
+  // job is to help *find* a name, so it is driven by the caret: open only while
+  // the caret is on or within the name token, and closed the moment the user
+  // moves into the arguments — which is what stops the picker from re-popping
+  // while the user edits the args of a macro that already starts the prompt.
+  // This replaces an earlier selection-lock that was created only on a dropdown
+  // pick and so never covered a prompt that already started with a macro (from
+  // a history load, a paste, or hand-typed).  Escape (and a no-match Enter)
+  // gives a short-lived dismissal; arrow navigation and Enter/Escape selection
+  // live in handle_key_event.
   let macro_picker_open = $state(false);
   let macro_sel = $state(0);
-  // The completed "!name " string; the lock keeps the picker closed
-  // while the user appends positional or named arguments after it.
-  let macro_locked_value: string | null = null;
+  // Set by Escape (and a no-match Enter) to suppress auto-open on caret
+  // moves; cleared by the next typed input, so a dismiss is short-lived — it
+  // won't bug the user again on the same text, but the next keystroke
+  // re-engages finding.
+  let macro_dismissed = $state(false);
 
-  // Text after "!" is the filter; empty filter shows all macros.
-  let macro_filter = $derived(
-    input_text.startsWith("!") ? input_text.slice(1) : "",
-  );
+  // Filter is the macro *name* portion only: text after "!" up to the first
+  // whitespace (args live past it).  Empty filter shows the top macros.
+  // Keeping it name-only stops an arg edit from reshuffling the filtered list
+  // / jumping the highlighted row.
+  let macro_filter = $derived.by(() => {
+    const t = input_text;
+    if (!t.startsWith("!")) return "";
+    const rest = t.slice(1);
+    const ws = rest.search(/[ \t\n]/);
+    return ws === -1 ? rest : rest.slice(0, ws);
+  });
+
+  // Decide open/close from the caret's position relative to the name token.
+  // Open while the caret is on or within the name; closed once it lands in the
+  // arguments (just past the first whitespace after "!name").  A dismissed or
+  // non-macro input stays closed.  Called from auto_grow (typing), onselect
+  // (click / arrow caret moves) and set_value (programmatic set).
+  function recompute_macro_picker() {
+    if (!input_text.startsWith("!") || macros.length === 0) {
+      macro_picker_open = false;
+      macro_dismissed = false;
+      return;
+    }
+    if (macro_dismissed) {
+      macro_picker_open = false;
+      return;
+    }
+    const ta = text_area;
+    const caret = ta ? ta.selectionStart ?? 0 : input_text.length;
+    const rest = input_text.slice(1);
+    const ws = rest.search(/[ \t\n]/);
+    const nameEnd = ws === -1 ? input_text.length : 1 + ws;
+    macro_picker_open = caret <= nameEnd;
+  }
 
   let macro_matches = $derived.by(() => {
     if (!macro_picker_open || macros.length === 0) return [] as Macro[];
@@ -121,16 +159,19 @@
 
   function on_macro_select(macro: Macro) {
     // Insert the macro name with a trailing space so the user can
-    // immediately start typing positional or named arguments.
+    // immediately start typing positional or named arguments.  set_value
+    // places the caret just past that trailing space — in the argument
+    // region — so recompute leaves the picker closed; re-finding happens only
+    // if the user steps the caret back into the name.
     set_value(`!${macro.name} `);
-    macro_locked_value = `!${macro.name} `;
-    macro_picker_open = false;
     text_area?.focus();
   }
 
+  // Close without dismissing (a backdrop click), so a later caret move into the
+  // name still re-opens the picker.  Escape instead sets the short-lived
+  // dismissal.
   function close_macro_picker() {
     macro_picker_open = false;
-    macro_locked_value = null;
   }
 
   function auto_grow(e: Event) {
@@ -138,36 +179,25 @@
     el.style.height = "auto";
     el.style.height = el.scrollHeight + "px";
     input_text = el.value;
-
-    // Macro picker activation: opens when the input starts with "!" and
-    // there are macros; stays closed after a completed selection while
-    // the user appends args (lock); clears lock when the "!" prefix
-    // changes so a new macro can be picked.
-    if (input_text.startsWith("!") && macros.length > 0) {
-      if (
-        macro_locked_value !== null &&
-        input_text.startsWith(macro_locked_value)
-      ) {
-        // User is on the same macro they just completed — stay closed.
-        macro_picker_open = false;
-      } else {
-        // New "!" prefix or the lock has been invalidated by backspacing
-        // into the name — pick again.
-        macro_locked_value = null;
-        macro_picker_open = true;
-      }
-    } else {
-      // Not in macro mode.
-      macro_picker_open = false;
-      macro_locked_value = null;
-    }
+    // A typed change always re-engages finding (clears any Escape dismissal)
+    // and recomputes open/close from the caret position.
+    macro_dismissed = false;
+    recompute_macro_picker();
   }
 
-  function set_value(value: string, cursorAtStart = false) {
+  function set_value(
+    value: string,
+    cursorAtStart = false,
+    programmatic = false,
+  ) {
     const ta = text_area;
     if (!ta) return;
     ta.value = value;
     input_text = value;
+    // A programmatic set (history load / recall / snippet insert) should not
+    // auto-open the picker even when the text starts with "!"; mark it
+    // dismissed so the recompute below keeps it closed until the user types.
+    if (programmatic) macro_dismissed = true;
     // auto-grow without faking an Event to avoid TS conversion warning
     ta.style.height = "auto";
     ta.style.height = ta.scrollHeight + "px";
@@ -178,6 +208,7 @@
     // causing arrows to navigate history at unintended line positions.
     const pos = cursorAtStart ? 0 : value.length;
     ta.setSelectionRange(pos, pos);
+    recompute_macro_picker();
   }
 
   // A logical-line test ("does the caret see a \n?") is not enough: a long
@@ -281,7 +312,7 @@
     if (loading) {
       hsearch_open = false;
       macro_picker_open = false;
-      macro_locked_value = null;
+      macro_dismissed = false;
     }
   });
 
@@ -289,20 +320,24 @@
     if (!loading) {
       hsearch_open = true;
       macro_picker_open = false;
-      macro_locked_value = null;
+      macro_dismissed = false;
     }
   }
 
   function on_history_select(text: string | null) {
     if (!hsearch_open) return; // ignore the trailing blur after a pick
     hsearch_open = false;
-    if (text !== null && text.trim() !== "") set_value(text);
+    // A history snippet drop is programmatic — pass programmatic so an
+    // inserted macro prefix does not immediately re-pop the picker while the
+    // user edits it.
+    if (text !== null && text.trim() !== "") set_value(text, false, true);
     text_area?.focus();
   }
 
-  // When the textarea loses focus (Tab, click elsewhere, loading starts),
-  // close the macro picker but leave the lock intact so resuming the same
-  // prompt doesn't re-pop the picker.
+  // When the textarea loses focus (Tab, click elsewhere, loading starts) we
+  // close the picker.  Re-engaging is driven by the caret: a click or arrow that
+  // moves into the name region still re-opens via onselect, and the next typed
+  // character always recomputes.
   function on_textarea_blur() {
     if (macro_picker_open) macro_picker_open = false;
   }
@@ -317,7 +352,10 @@
     if (macro_picker_open) {
       if (event.key === "Escape") {
         event.preventDefault();
-        close_macro_picker();
+        // Short-lived dismissal: stay closed on caret moves until the next
+        // typed character re-engages finding.
+        macro_dismissed = true;
+        macro_picker_open = false;
         return;
       }
       if (event.key === "ArrowDown") {
@@ -341,7 +379,9 @@
         if (selected) {
           on_macro_select(selected);
         } else {
-          // No match — close the picker so the user can continue typing.
+          // No match — dismiss so the picker does not re-pop while the user
+          // keeps typing (or submits) this line.
+          macro_dismissed = true;
           macro_picker_open = false;
         }
         return;
@@ -376,7 +416,7 @@
         event.preventDefault();
         const prev = history.previous(textarea.value);
         if (prev !== null) {
-          set_value(prev, true);
+          set_value(prev, true, true);
         }
       }
       return;
@@ -387,7 +427,7 @@
         event.preventDefault();
         const next = history.next();
         if (next !== null) {
-          set_value(next, false);
+          set_value(next, false, true);
         }
       }
       return;
@@ -499,6 +539,7 @@
         bind:this={text_area}
         onkeydown={handle_key_event}
         oninput={auto_grow}
+        onselect={() => recompute_macro_picker()}
         onblur={on_textarea_blur}
         rows="1"
         class="flex-1 bg-transparent text-base-content placeholder:text-base-content/30 focus:outline-none resize-none text-base leading-relaxed"
