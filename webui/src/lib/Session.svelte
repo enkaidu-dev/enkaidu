@@ -13,6 +13,7 @@
   import ClarionCard from "./ClarionCard.svelte";
   import InputsDialog from "./InputsDialog.svelte";
   import ToolCallCard from "./ToolCallCard.svelte";
+  import HelpCard from "./HelpCard.svelte";
   import ActivityGroup from "./ActivityGroup.svelte";
 
   // Tolerance band (px) for "close enough to the bottom" so sub-pixel /
@@ -383,6 +384,12 @@
           <ToolCallCard
             name={g.entry.data[0].subject as string}
             args={g.entry.data[0].content as string}
+          />
+        {:else if g.entry.type == "help_response"}
+          <HelpCard
+            title={g.entry.data[0].subject || "Help"}
+            body={g.entry.data[0].content || ""}
+            active={g.entry === entries.at(-1)}
           />
         {:else if g.entry.type.startsWith("message_")}
           <MsgCard

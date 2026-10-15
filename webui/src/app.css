@@ -332,6 +332,8 @@ body {
 /* horizontal rule: warm hairline */
 .prose hr {
   border-color: color-mix(in srgb, var(--color-border-base) 50%, transparent);
+  margin-top: 0.75em;
+  margin-bottom: 0.75em;
 }
 
 /* headings: slightly warmer, a touch lighter */

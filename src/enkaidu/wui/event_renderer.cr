@@ -41,7 +41,11 @@ module Enkaidu::WUI
 
     # delegate to `#info_with`
     def respond_with(message, help = nil, markdown = false)
-      info_with message, help, markdown
+      if help && !(body = help.to_s).empty?
+        post_event Render::HelpResponse.new(message, body)
+      else
+        info_with message, help, markdown
+      end
     end
 
     def info_with(message, help = nil, markdown = false)

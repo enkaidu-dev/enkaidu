@@ -282,6 +282,13 @@
               content: msg.args,
             });
             break;
+          case "help_response":
+            session.add_event({
+              type: "help_response",
+              subject: msg.title,
+              content: msg.body,
+            });
+            break;
           case "security_confirmation":
             session.show_security_confirmation(
               msg.description,
