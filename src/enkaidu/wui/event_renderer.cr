@@ -115,6 +115,12 @@ module Enkaidu::WUI
       post_event Render::SessionInfo.new(new_session)
     end
 
+    # The runtime is done (e.g. /bye) and the server is shutting down: post the
+    # one-shot "session is over" signal the web UI uses to lock its prompt bar.
+    def session_shutdown
+      post_event Render::SessionShutdown.new
+    end
+
     def session_pushed(depth, keep_tools, keep_prompts, keep_history)
       post_event Render::SuccessMessage.new("SESSION PUSHED (#{depth}) #{keep_history ? "with" : "without"} session history")
     end

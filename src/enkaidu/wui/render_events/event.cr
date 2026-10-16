@@ -16,6 +16,7 @@ module Enkaidu::WUI::Render
       shell_confirmation:    ShellConfirmation,
       session_update:        SessionUpdate,
       session_info:          SessionInfo,
+      session_shutdown:      SessionShutdown,
       system_info:           SystemInfo,
       help_response:         HelpResponse,
     }

@@ -4,7 +4,7 @@
   import HistorySearch from "./HistorySearch.svelte";
   import MacroPicker from "./MacroPicker.svelte";
 
-  let { onask = null, loading = false } = $props();
+  let { onask = null, loading = false, closed = false } = $props();
   let text_area = $state<HTMLTextAreaElement | undefined>(undefined);
   let input_text = $state("");
   let root_el = $state<HTMLDivElement | null>(null);
@@ -486,7 +486,7 @@
        --promptbar-h on <html>, so the card tracks it), growing upward,
        with the dimmed/blur backdrop covering the rest of the viewport.
        Clicking the backdrop (not the card) dismisses the draft. -->
-  {#if hsearch_open && !loading}
+  {#if hsearch_open && !loading && !closed}
     <div
       class="fixed inset-0 z-50 flex items-end justify-center px-4 pb-[calc(var(--promptbar-h)_+_12px)] bg-base-100/40 backdrop-blur-[2px]"
       role="presentation"
@@ -500,7 +500,7 @@
   <!-- Macro picker: same overlay pattern, shown when the user starts
        typing "!" in the prompt.  The backdrop click dismisses the
        picker and refocuses the textarea. -->
-  {#if macro_picker_open && !loading && !hsearch_open}
+  {#if macro_picker_open && !loading && !closed && !hsearch_open}
     <div
       class="fixed inset-0 z-50 flex items-end justify-center px-4 pb-[calc(var(--promptbar-h)_+_12px)] bg-base-100/40 backdrop-blur-[2px]"
       role="presentation"
@@ -533,6 +533,33 @@
           <span class="waiting-dot" style="--i: 1"></span>
           <span class="waiting-dot" style="--i: 2"></span>
         </div>
+      </div>
+    {:else if closed}
+      <!-- Backend is shutting down: the input is gone entirely, so no prompt
+           can be composed or sent. A one-line, icon-led notice tells the user
+           there's nothing left to do but close the tab. -->
+      <div
+        class="flex-1 flex items-center justify-center gap-2 px-1 text-base-content/70 select-none"
+        role="status"
+        aria-label="Session ended. You may safely close this tab."
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          class="w-5 h-5 shrink-0 text-base-content/50"
+          aria-hidden="true"
+        >
+          <line x1="12" y1="2" x2="12" y2="12" />
+          <path d="M18.36 6.64a9 9 0 1 1-12.73 0" />
+        </svg>
+        <span class="text-sm">
+          Enkaidu has stopped. You may safely close this tab.
+        </span>
       </div>
     {:else}
       <textarea
@@ -568,7 +595,7 @@
       </button>
     {/if}
   </form>
-  {#if !loading}
+  {#if !loading && !closed}
     <div
       class="text-center text-xs text-base-content/80 mt-1 group-focus-within:opacity-0 transition-opacity"
     >
