@@ -21,6 +21,22 @@
   // don't spuriously break the pin.
   const SCROLL_TOLERANCE = 80;
 
+  // The user's *own* submissions: a prompt, a slash/! command, an image, or
+  // any of those surfaced from the query queue. Each lands at the tail of the
+  // transcript as a new entry. When one becomes the tail, we force a scroll to
+  // the bottom and re-pin the follow, so the user's new message and its
+  // response come into view even after the transcript was scrolled up to read
+  // history. (Ordinary streaming appends an llm_text/llm_think tail instead,
+  // which must NOT re-pin — that is the "read at your own pace" behavior, so a
+  // scrolled-up transcript keeps its place while old output keeps streaming.)
+  const USER_PROMPT_TYPES = new Set([
+    "query",
+    "command",
+    "query_via_query_queue",
+    "command_via_query_queue",
+    "query_image_url",
+  ]);
+
   const scrollToBottom = (node: HTMLElement, _list: Event[]) => {
     // `stuck` tracks whether the user is "pinned to the bottom."
     // Starts true (a fresh session starts at the bottom). Only a
@@ -46,6 +62,12 @@
     let rafId = 0;
 
     const maybeScroll = () => {
+      // A newly submitted prompt re-engages the bottom pin: even if the user
+      // scrolled up to read earlier output, their own new message is a reason
+      // to follow the conversation downward again.
+      const last = entries.at(-1);
+      if (last && USER_PROMPT_TYPES.has(last.type)) stuck = true;
+
       if (!stuck) return;
       cancelAnimationFrame(rafId);
       rafId = requestAnimationFrame(() => {
