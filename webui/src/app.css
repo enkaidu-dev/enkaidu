@@ -529,6 +529,21 @@ body {
   background-color: var(--color-base-300);
 }
 
+/* The vendored drawio_svg renderer (DrawioBlock) emits a standalone <svg>
+   with intrinsic width/height plus a viewBox. The rule below overrides
+   the intrinsic size so the diagram scales to the container. The <svg> is
+   injected via {@html}, so a scoped <style> selector for it would flag as
+   "unused" in Svelte; declaring the sizing here in the global stylesheet —
+   alongside the other block chrome — is both the conventional place and what
+   actually reaches the injected node. */
+.enkaidu-drawio > div > svg,
+.enkaidu-drawio > svg {
+  width: 100%;
+  height: auto;
+  max-width: 100%;
+  display: block;
+}
+
 /* File-reference buttons on assistant cards: promptbar-bar look (rounded,
    bordered, filled-on-state) rendered in the terracotta `--color-accent`
    token so they pop in both light and dark modes. Sizing matches the

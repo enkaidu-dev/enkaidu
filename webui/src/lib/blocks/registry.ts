@@ -5,7 +5,9 @@ import SvgBlock from "./SvgBlock.svelte";
 import CsvBlock, { render_csv_to_html } from "./CsvBlock.svelte";
 import VegaBlock from "./VegaBlock.svelte";
 import MarkdownBlock from "./MarkdownBlock.svelte";
+import DrawioBlock from "./DrawioBlock.svelte";
 import { mermaid_cached } from "../../mermaid";
+import { drawio_cached } from "../../drawio";
 import { sanitizeSvg } from "../sanitize";
 import { saveSource, saveRenderedSvg, type SaveOption } from "./save";
 
@@ -232,6 +234,23 @@ const registry: Record<string, BlockRenderer> = {
     saveBasename: "chart",
     saves: [saveSource("JSON", "json"), saveRenderedSvg("SVG", "svg")],
     },
+  drawio: {
+    language: "drawio",
+    displayName: "drawio",
+    component: DrawioBlock,
+    diagramLabel: "Diagram",
+    codeLabel: "Source",
+    // The vendored translator's SVG is memoized per source so the streaming
+    // re-mount churn is flicker-free; a cache miss falls back to the
+    // highlighted Source view.
+    getCached: drawio_cached,
+    // AI-generated .drawio content sometimes arrives in an unlabeled
+    // ```xml``` / ``` ``` fence, so also sniff for the mxfile / mxGraphModel
+    // markup rather than requiring an explicit ```drawio info string.
+    sniff: sniff_drawio,
+    saveBasename: "diagram",
+    saves: [saveSource("Source", "drawio"), saveRenderedSvg("SVG", "svg")],
+  },
   markdown: markdownRenderer,
   md: markdownRenderer,
 };
@@ -275,6 +294,24 @@ function sniff_vega(source: string, lang: string): boolean {
   return false;
 }
 
+// A .drawio / diagram.net file is an <mxfile> (or a bare <mxGraphModel>
+// fragment). Only sniff generic/unlabeled fences: an explicit ```drawio info
+// string resolves via the registered language key directly (see
+// sniff_renderer), and this sniff must not hijack arbitrary XML. The svg
+// renderer's sniff requires a full <svg>…</svg> match, so it will not claim
+// this content, and the csv sniffer needs commas — none of which collide.
+function sniff_drawio(source: string, lang: string): boolean {
+  const normalizedLang = lang.toLowerCase();
+  if (
+    normalizedLang !== "" &&
+    normalizedLang !== "xml" &&
+    normalizedLang !== "plaintext"
+  ) {
+    return false;
+  }
+  return /<mxfile[\s>]/i.test(source) || /^<mxGraphModel[\s>]/i.test(source.trim());
+}
+
 export function get_renderer(lang: string): BlockRenderer | undefined {
   return registry[lang.toLowerCase()];
 }
@@ -309,6 +346,10 @@ export function file_renderer(
     case "md":
     case "markdown":
       return get_renderer("markdown");
+    case "drawio":
+    case "dio":
+      // .drawio is canonical; .dio is a common secondary extension.
+      return get_renderer("drawio");
     case "json":
       // sniff_renderer only matches the vega renderers when the content
       // really carries a vega/$schema or data+mark shape.
