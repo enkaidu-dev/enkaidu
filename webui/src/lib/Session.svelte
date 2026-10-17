@@ -248,17 +248,29 @@
 
     let last = entries.at(-1);
     let ev_data = { subject: ev.subject, content: ev.content };
+    // Streaming LLM/think text coalesces into the last entry's single
+    // record; other same-type events append to its data[] (e.g.
+    // message_* — MsgCard renders every record). Consecutive tool_call
+    // events deliberately do NOT coalesce: each call is its own
+    // transcript step (grouping, "N steps", and the group title all
+    // count entries), and the tool-call cards show only data[0] —
+    // merging a run of calls into one entry would hide every call
+    // after the first.
+    let coalesced = false;
     if (last && last.type == ev.type) {
       if (last.type == "llm_text" || last.type == "llm_think") {
         // append text if it's LLM or THINK text
         // this allows us to show streaming text
         let content = (last.data[0].content || "") + ev_data.content;
         last.data[0].content = content;
-      } else {
+        coalesced = true;
+      } else if (ev.type != "tool_call") {
         // append to data[] otherwise
         last.data.push(ev_data);
+        coalesced = true;
       }
-    } else {
+    }
+    if (!coalesced) {
       check_and_trim_last_entry();
       // Append the new event type
       const entry: SessionEntry = { type: ev.type, data: [ev_data] };
@@ -420,10 +432,15 @@
         {:else if g.entry.type == "clarion"}
           <ClarionCard subject={g.entry.data[0].content || "???"} />
         {:else if g.entry.type == "tool_call"}
-          <ToolCallCard
-            name={g.entry.data[0].subject as string}
-            args={g.entry.data[0].content as string}
-          />
+          <!-- One card per record: add_event keeps each tool call in its
+               own entry, but render every record so a coalesced entry can
+               never silently hide a call. -->
+          {#each g.entry.data as d, di (di)}
+            <ToolCallCard
+              name={d.subject as string}
+              args={d.content as string}
+            />
+          {/each}
         {:else if g.entry.type == "help_response"}
           <HelpCard
             title={g.entry.data[0].subject || "Help"}
