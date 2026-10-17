@@ -1,5 +1,10 @@
 <script lang="ts">
-  import { mermaid_cached, mermaid_render } from "../../mermaid";
+  import {
+    mermaid_cached,
+    mermaid_cached_error,
+    mermaid_render,
+    render_message,
+  } from "../../mermaid";
   import BlockFrame from "./BlockFrame.svelte";
   import type { BlockProps } from "./types";
 
@@ -22,14 +27,20 @@
   // the values current afterwards.
   // svelte-ignore state_referenced_locally
   const cached = mermaid_cached(source);
-  let view = $state<"diagram" | "code">("diagram");
+  // A source that already failed on a previous mount (during this stream)
+  // is remembered, so re-mounts skip the renderer and show the "Couldn't
+  // render" strip instantly instead of re-storming the main thread.
+  // svelte-ignore state_referenced_locally
+  const cached_error = mermaid_cached_error(source);
+  let view = $state<"diagram" | "code">(cached_error !== null ? "code" : "diagram");
   let svg = $state(cached ?? "");
-  let failed = $state(false);
-  let error = $state("");
+  let failed = $state(cached_error !== null);
+  let error = $state(cached_error ?? "");
   // mermaid is loaded and rendered asynchronously, so the toggle is
   // hidden until there is something definite to show (diagram or a
-  // failure). Once known, the state below is plain UI state.
-  let rendered = $state(cached !== null);
+  // failure). Once known, the state below is plain UI state. A
+  // remembered failure counts as "known" too.
+  let rendered = $state(cached !== null || cached_error !== null);
 
   // mermaid themes are single-scheme (the SVG has colors baked in), so
   // when the OS color scheme flips we re-render the diagram under the
@@ -43,8 +54,18 @@
 
   $effect(() => {
     void scheme; // re-render when the OS color scheme changes
-    // A re-render (scheme flip) is also a retry: clear a stale failure
-    // so a successful render restores the Diagram view.
+    void source; // re-render when the source changes
+    // If this exact source+theme is already known to fail, do NOT re-enter
+    // the renderer: the seeding above already reflected the failure, so
+    // re-running would only re-storm the main thread during streaming. A
+    // scheme flip changes the cache key (the theme part), so a flip
+    // naturally re-renders under the new scheme's key below.
+    if (mermaid_cached_error(source) !== null) {
+      rendered = true;
+      return;
+    }
+    // A fresh attempt (not known-failed): a re-render doubles as a retry,
+    // so clear any prior failure — a successful render restores Diagram.
     if (failed) {
       failed = false;
       error = "";
@@ -57,9 +78,9 @@
       })
       .catch((reason) => {
         if (!cancelled) {
-          console.error("Failed to render mermaid diagram", reason);
+          console.error("Failed to render mermaid diagram", render_message(reason));
           failed = true;
-          error = reason instanceof Error ? reason.message : String(reason);
+          error = render_message(reason);
           view = "code";
         }
       })

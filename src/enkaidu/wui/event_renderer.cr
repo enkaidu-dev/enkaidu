@@ -41,7 +41,11 @@ module Enkaidu::WUI
 
     # delegate to `#info_with`
     def respond_with(message, help = nil, markdown = false)
-      info_with message, help, markdown
+      if help && !(body = help.to_s).empty?
+        post_event Render::HelpResponse.new(message, body)
+      else
+        info_with message, help, markdown
+      end
     end
 
     def info_with(message, help = nil, markdown = false)
@@ -109,6 +113,12 @@ module Enkaidu::WUI
     def session_reset(old_session : Session, new_session : Session)
       post_event Render::SessionReset.new
       post_event Render::SessionInfo.new(new_session)
+    end
+
+    # The runtime is done (e.g. /bye) and the server is shutting down: post the
+    # one-shot "session is over" signal the web UI uses to lock its prompt bar.
+    def session_shutdown
+      post_event Render::SessionShutdown.new
     end
 
     def session_pushed(depth, keep_tools, keep_prompts, keep_history)

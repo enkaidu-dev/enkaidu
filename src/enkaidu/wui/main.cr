@@ -261,6 +261,7 @@ module Enkaidu
           case runtime_event
           when Runtime::Event::Done
             queue.info_with("GOOD BYE!")
+            queue.session_shutdown
             session_requests.send(:quit)
           end
         end

@@ -14,7 +14,7 @@ shards:
 
   cordon:
     git: https://github.com/modelarmy/cordon.cr.git
-    version: 0.6.5
+    version: 0.8.0
 
   crimage:
     git: https://github.com/naqvis/crimage.git
@@ -30,7 +30,7 @@ shards:
 
   json-schema:
     git: https://github.com/spider-gazelle/json-schema.git
-    version: 1.3.3
+    version: 2.1.1
 
   liquid:
     git: https://github.com/amberframework/liquid.cr.git
@@ -50,7 +50,7 @@ shards:
 
   socket_connect_fix:
     git: https://github.com/nogginly/socket_connect_fix.cr.git
-    version: 0.1.0
+    version: 0.1.1
 
   spectator:
     git: https://gitlab.com/arctic-fox/spectator.git
