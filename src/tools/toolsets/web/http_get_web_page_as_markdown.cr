@@ -29,13 +29,12 @@ module Tools::Web
 
     param "save_as_file", type: Param::Type::Str,
       description: <<-DESCR
-        Optionally specify a file to which to save the entire web page as Markdown.
+        Optionally specify a file to save entire web page as Markdown.
         If this is a temporary file save it in `tmp/` folder.
-        the
         DESCR
 
     param "overwrite", type: Param::Type::Bool, required: false,
-      description: "Optional. Set to true to overwrite existing file iff saving as a file"
+      description: "Optional. Set to true to overwrite existing file, applicable if saving as a file. Default is false."
 
     # Replace `runner` macro to create with self
     def new_runner : Runner
