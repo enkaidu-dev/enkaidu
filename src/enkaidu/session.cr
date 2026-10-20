@@ -21,7 +21,6 @@ module Enkaidu
 
   class UnexpectedError < Exception; end
 
-  LLM::Connection.agent_name = "Enkaidu"
   LLM::Connection.http_user_agent = "Enkaidu #{VERSION}"
 
   # The Session class manages connection setup, logging, and the processing of

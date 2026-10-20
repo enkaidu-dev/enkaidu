@@ -90,11 +90,6 @@ module LLM
     end
 
     # Allow the agent to set this once
-    def self.agent_name=(name : String)
-      @@agent_name = "x-session-#{name.downcase}-id"
-    end
-
-    # Allow the agent to set this once
     def self.http_user_agent=(user_agent : String)
       @@http_user_agent = user_agent.downcase
     end
