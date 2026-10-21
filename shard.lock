@@ -6,7 +6,7 @@ shards:
 
   baked_file_system:
     git: https://github.com/ralsina/baked_file_system.git
-    version: 0.10.0+git.commit.beb373124c7a235cfb9cd94e36849d8168eaa04b
+    version: 0.11.1
 
   base58:
     git: https://github.com/crystal-china/base58.cr.git
@@ -14,7 +14,7 @@ shards:
 
   cordon:
     git: https://github.com/modelarmy/cordon.cr.git
-    version: 0.8.0
+    version: 0.8.1
 
   crimage:
     git: https://github.com/naqvis/crimage.git
@@ -22,7 +22,11 @@ shards:
 
   docopt:
     git: https://github.com/ralsina/docopt.cr.git
-    version: 0.3.1
+    version: 1.5.0
+
+  hansa:
+    git: https://github.com/ralsina/hansa.git
+    version: 0.2.1
 
   html5:
     git: https://github.com/naqvis/crystal-html5.git
@@ -62,7 +66,7 @@ shards:
 
   tartrazine:
     git: https://github.com/ralsina/tartrazine.git
-    version: 0.22.0
+    version: 0.27.2
 
   termify:
     git: https://github.com/nogginly/termify.cr.git
