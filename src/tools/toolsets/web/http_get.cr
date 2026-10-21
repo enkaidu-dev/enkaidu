@@ -41,6 +41,25 @@ module Tools::Web
         {error: message}.to_json
       end
 
+      MAX_REDIRECTS = 3
+
+      # GET URL, redirect up to `MAX_REDIRECTS` time.
+      protected def http_get(url, headers, &)
+        count_redirects = 0
+        while count_redirects < MAX_REDIRECTS
+          HTTP::Client.get(url, headers) do |response|
+            case response.status_code
+            when 301, 307, 308
+              count_redirects += 1
+              url = response.headers["Location"]
+            when 200
+              return yield response
+            end
+          end
+        end
+        raise Exception.new("Too many HTTP redirects; aborting")
+      end
+
       # Create an error response as a JSON string
       def error_response(error : HostPolicy::Error)
         {

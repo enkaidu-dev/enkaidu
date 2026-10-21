@@ -116,7 +116,7 @@ module Tools::Web
       # Setup the HTTP request and process content if appropriate,
       # returning error or success JSON.
       private def fetch(url, headers, save_path : String? = nil)
-        HTTP::Client.get(url, headers) do |response|
+        http_get(url, headers) do |response|
           if response.status_code == 200
             case ctype = response.content_type
             when Nil                      then error_response("HTTP response did not return valid content type")
@@ -157,7 +157,7 @@ module Tools::Web
         if save_path
           write_to_file(save_path) do |file|
             response.body_io.each_line do |line|
-              file << line
+              file.puts(line)
             end
           end
           success_saved_markdown(url, save_path)
@@ -186,7 +186,7 @@ module Tools::Web
             file << "```"
             file.puts format_hint
             response.body_io.each_line do |line|
-              file << line
+              file.puts(line)
             end
             file << "```"
           end
