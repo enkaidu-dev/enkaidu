@@ -64,6 +64,10 @@ module Enkaidu
           getter venv_path : String
         end
 
+        class UsingCrystal < ConfigSerializable
+          getter shared_cache_path : String
+        end
+
         # If using brew, enable this so we can enable access to commands
         # within brew's environment
         getter? using_brew = false
@@ -72,6 +76,10 @@ module Enkaidu
         # case use a map with `path` property to point to your ruby executable
         # so we can work out paths to allow access from inside the cordon
         getter using_ruby : (Bool | UsingRuby)? = nil
+
+        # If using Crystak, set to true to use the shared cache path in $HOME
+        # or set a path to use explicitly
+        getter using_crystal : (Bool | UsingRuby)? = nil
 
         # If using python, set to true unless using a virtual env; in latter
         # case use a map with `venv_path` propert to point to your venv path
