@@ -95,7 +95,7 @@ module Enkaidu
       session = stack.session
       session.renderer.session_pushed(depth: stack.depth, keep_history: keep_history,
         keep_tools: true, keep_prompts: true)
-      session.ask(query)
+      session.ask_sync(query)
       extract = session.chat.extract_conversations(LLM::Conversation::SessionOuter)
       stack.pop_session(SessionStack::Retain::None) do
         session.renderer.session_popped(depth: stack.depth)

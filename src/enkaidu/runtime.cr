@@ -324,7 +324,7 @@ module Enkaidu
       when .starts_with?("/")
         _execute_slash_command_
       else
-        session.ask(query: q,
+        session.ask_sync(query: q,
           attach: commander.take_inclusions!,
           response_json_schema: commander.take_response_schema!)
         yield Event::Prompt

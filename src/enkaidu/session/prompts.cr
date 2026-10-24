@@ -58,12 +58,12 @@ module Enkaidu
               chat.import(prompt_result, emit: true) do |chat_ev|
                 text_count = render_session_event chat_ev, text_count
               end
-              re_ask(response_json_schema: response_schema)
+              re_ask_sync(response_json_schema: response_schema)
             end
           when TemplatePrompt
             arg_inputs = renderer.user_prompt_ask_input(prompt, params)
             prompt_text = prompt.render(arg_inputs, profile: opts.profile)
-            ask(query: prompt_text,
+            ask_sync(query: prompt_text,
               attach: attach,
               response_json_schema: response_schema,
               render_query: true)

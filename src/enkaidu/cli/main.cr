@@ -86,7 +86,7 @@ module Enkaidu::CLI
 
     private def query(q)
       recorder << "," if count.positive?
-      session.ask(query: q,
+      session.ask_sync(query: q,
         attach: commander.take_inclusions!,
         response_json_schema: commander.take_response_schema!)
       @count += 1
