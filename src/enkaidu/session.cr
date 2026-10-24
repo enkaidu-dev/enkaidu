@@ -11,6 +11,7 @@ require "./tools/*"
 require "./recorder"
 require "./session_options"
 require "./session_renderer"
+require "./progress"
 
 require "./session/*"
 
@@ -21,7 +22,6 @@ module Enkaidu
 
   class UnexpectedError < Exception; end
 
-  LLM::Connection.agent_name = "Enkaidu"
   LLM::Connection.http_user_agent = "Enkaidu #{VERSION}"
 
   # The Session class manages connection setup, logging, and the processing of
@@ -406,7 +406,8 @@ module Enkaidu
 
     # Perform tool calls and subsequent events repeatedly until
     # no more tool calls remain
-    private def consume_tool_calls(tools)
+    private def consume_tool_calls_sync(tools)
+      progress = Progress.new("Processing")
       until tools.empty?
         calls = tools
         tools = [] of JSON::Any
@@ -414,25 +415,21 @@ module Enkaidu
         prev_event = nil
         # Invoke the tool calls first since we
         # cannot do this concurrently since tool calls can prompt user for input
-        calls = chat.call_tools_and_setup_ask(calls) do |event|
+        progress.start
+        ncalls = chat.call_tools_and_setup_ask(calls) do |event|
+          progress.stop
           m_process_and_record_ask_event(event, prev_event)
           prev_event = event unless event["type"].starts_with?("debug")
         end
-        if calls.positive?
+        if ncalls.positive?
           # Hand over to the LLM to process the tool call responses
-          # in fiber
-          ev_queue = queue_chat_request do |queue|
-            spawn do
-              chat.re_ask do |event|
-                queue << event
-                Fiber.yield
-              end
-            ensure
-              queue << SPAWN_DONE
-            end
+          prev_event = nil
+          progress.start
+          chat.re_ask do |event|
+            progress.stop
+            m_process_and_record_ask_event(event, prev_event)
+            prev_event = event
           end
-          # Process events in queue
-          gather_and_handle(ev_queue, tools)
         end
         detect_text_ending(nil, prev_event)
       end
@@ -479,27 +476,24 @@ module Enkaidu
     end
 
     # Re-query LLM using current session history
-    private def re_ask(response_json_schema : LLM::ResponseSchema? = nil)
+    private def re_ask_sync(response_json_schema : LLM::ResponseSchema? = nil)
       recorder << "["
       tools = [] of JSON::Any
+      ix = 0
+      prev_event = nil
+      progress = Progress.new("Engaging")
       # ask and handle the initial query and its events
       report_time_taken(prefix: "Total ") do
-        ev_queue = queue_chat_request do |queue|
-          spawn do
-            chat.re_ask(response_schema: response_json_schema,
-              exclude_reasoning_in_history: exclude_past_reasoning?) do |event|
-              queue << event
-              Fiber.yield
-            end
-          rescue ex
-            notify_unexpected_connection_error(ex)
-          ensure
-            queue << SPAWN_DONE
-          end
+        chat.re_ask(response_schema: response_json_schema,
+          exclude_reasoning_in_history: exclude_past_reasoning?) do |event|
+          progress.stop
+          m_process_and_record_ask_event(event, prev_event)
+          prev_event = event
+        rescue ex
+          notify_unexpected_connection_error(ex)
         end
-        # Process events in queue
-        gather_and_handle(ev_queue, tools)
-        consume_tool_calls(tools)
+        detect_text_ending(nil, prev_event)
+        consume_tool_calls_sync(tools)
       end
       recorder << "]"
     end
@@ -515,34 +509,32 @@ module Enkaidu
     end
 
     # Query LLM using a prompt and optional attachments
-    def ask(query, attach : LLM::ChatInclusions? = nil,
-            response_json_schema : LLM::ResponseSchema? = nil,
-            render_query = false)
+    def ask_sync(query, attach : LLM::ChatInclusions? = nil,
+                 response_json_schema : LLM::ResponseSchema? = nil,
+                 render_query = false)
       recorder << "["
       tools = [] of JSON::Any
+      ix = 0
+      prev_event = nil
+      progress = Progress.new("Engaging")
       report_time_taken(prefix: "Total ") do
         # ask and handle the initial query and its events
         renderer.user_query_text(query) if render_query
-        # Run the chat query concurrently
-        ev_queue = queue_chat_request do |queue|
-          spawn do
-            chat.ask(query,
-              attach: attach,
-              response_schema: response_json_schema,
-              exclude_reasoning_in_history: exclude_past_reasoning?,
-              exclude_reasoning_skip: exclude_past_reasoning_from) do |event|
-              queue << event
-              Fiber.yield
-            end
-          rescue ex
-            notify_unexpected_connection_error(ex)
-          ensure
-            queue << SPAWN_DONE
-          end
+        # Run the chat query
+        progress.start
+        chat.ask(query,
+          attach: attach,
+          response_schema: response_json_schema,
+          exclude_reasoning_in_history: exclude_past_reasoning?,
+          exclude_reasoning_skip: exclude_past_reasoning_from) do |event|
+          progress.stop
+          m_process_and_record_ask_event(event, prev_event)
+          prev_event = event
         end
-        # Process events in queue
-        gather_and_handle(ev_queue, tools)
-        consume_tool_calls(tools)
+        detect_text_ending(nil, prev_event)
+        consume_tool_calls_sync(tools)
+      rescue ex
+        notify_unexpected_connection_error(ex)
       end
     ensure
       recorder << "]"

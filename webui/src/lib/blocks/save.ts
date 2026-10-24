@@ -34,6 +34,9 @@ export function mimeForExt(ext: string): string {
   switch (ext.toLowerCase()) {
     case "svg":
       return "image/svg+xml;charset=utf-8";
+    case "drawio":
+    case "xml":
+      return "application/xml;charset=utf-8";
     case "json":
       return "application/json;charset=utf-8";
     case "csv":

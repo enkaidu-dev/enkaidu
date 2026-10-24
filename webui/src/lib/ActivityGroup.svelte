@@ -82,10 +82,12 @@
               active={false}
             />
           {:else if item.type === "tool_call"}
-            <ToolCallCard
-              name={item.data[0]?.subject || "tool"}
-              args={item.data[0]?.content || "{}"}
-            />
+            {#each item.data as d, di (di)}
+              <ToolCallCard
+                name={d?.subject || "tool"}
+                args={d?.content || "{}"}
+              />
+            {/each}
           {:else if item.type.startsWith("message_")}
             <MsgCard
               level={item.type.split("_").at(-1) || "info"}
