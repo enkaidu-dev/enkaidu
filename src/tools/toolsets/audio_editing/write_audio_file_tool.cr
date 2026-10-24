@@ -28,9 +28,9 @@ module Tools::AudioEditing
       include AudioHelper
 
       def execute(args : JSON::Any) : String
-        file_path = args["file_path"].as_s? ||
+        file_path = args["file_path"]?.try(&.as_s?) ||
                     return error_response("The required file_path was not specified")
-        audio_data = args["audio_data"].as_s? ||
+        audio_data = args["audio_data"]?.try(&.as_s?) ||
                      return error_response("The required audio_data was not specified")
         overwrite = args["overwrite"]?.try(&.as_bool?) || false
 
@@ -48,6 +48,9 @@ module Tools::AudioEditing
           end
 
           decoded_data = Base64.decode(audio_data)
+          # Ensure directory-sub-tree for file exists
+          parent = Path.new(resolved_path).parent
+          Dir.mkdir_p(parent) unless Dir.exists?(parent)
           File.write(resolved_path, decoded_data)
 
           success_response(file_path)

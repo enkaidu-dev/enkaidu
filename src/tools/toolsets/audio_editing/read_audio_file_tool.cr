@@ -24,7 +24,7 @@ module Tools::AudioEditing
       include AudioHelper
 
       def execute(args : JSON::Any) : LLM::Function::Reply | String
-        file_path = args["file_path"].as_s? || return error_response("The required file_path was not specified")
+        file_path = args["file_path"]?.try(&.as_s?) || return error_response("The required file_path was not specified")
 
         resolved_path = resolve_path(file_path)
 

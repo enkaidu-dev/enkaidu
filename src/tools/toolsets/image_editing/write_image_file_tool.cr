@@ -32,9 +32,9 @@ module Tools::ImageEditing
       include ImageHelper
 
       def execute(args : JSON::Any) : String
-        file_path = args["file_path"].as_s? ||
+        file_path = args["file_path"]?.try(&.as_s?) ||
                     return error_response("The required file_path was not specified")
-        data_url = args["image_data"].as_s? ||
+        data_url = args["image_data"]?.try(&.as_s?) ||
                    return error_response("The required image_data was not specified")
         overwrite = args["overwrite"]?.try(&.as_bool?) || false
 
@@ -61,7 +61,9 @@ module Tools::ImageEditing
           end
 
           decoded_data = Base64.decode(base64_data)
-
+          # Ensure directory-sub-tree for file exists
+          parent = Path.new(resolved_path).parent
+          Dir.mkdir_p(parent) unless Dir.exists?(parent)
           File.write(resolved_path, decoded_data)
           success_response(file_path)
         rescue ex
