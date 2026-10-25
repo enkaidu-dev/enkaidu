@@ -77,7 +77,7 @@
                 >!
                 {#each segments(macro.name, q) as seg}
                   {#if seg.hit}
-                    <mark class="bg-warning/25 text-inherit rounded-[2px]"
+                    <mark class="bg-warning/25 text-inherit rounded-xs"
                       >{seg.text}</mark
                     >
                   {:else}

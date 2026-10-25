@@ -62,15 +62,14 @@
       </svg>
       <span
         class="text-base-content/30 group-open/help:rotate-90
-          transition-transform text-[0.85em] leading-none"
-        >▶</span
+          transition-transform text-[0.85em] leading-none">▶</span
       >
       <span class="font-medium truncate">{title}</span>
     </summary>
     {#if isOpen}
       <div
         class="px-3 pb-3 pt-1 border-t border-base-200/60
-          max-h-[var(--scrollable-max-h)] overflow-y-auto"
+          max-h-(--scrollable-max-h) overflow-y-auto"
       >
         <Markdown content={body} />
       </div>
