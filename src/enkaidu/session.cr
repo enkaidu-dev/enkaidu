@@ -406,32 +406,40 @@ module Enkaidu
 
     # Perform tool calls and subsequent events repeatedly until
     # no more tool calls remain
-    private def consume_tool_calls_sync(tools)
-      progress = Progress.new("Processing")
-      until tools.empty?
-        calls = tools
-        tools = [] of JSON::Any
-        ix = 0
-        prev_event = nil
-        # Invoke the tool calls first since we
-        # cannot do this concurrently since tool calls can prompt user for input
-        progress.start
-        ncalls = chat.call_tools_and_setup_ask(calls) do |event|
-          progress.stop
-          m_process_and_record_ask_event(event, prev_event)
-          prev_event = event unless event["type"].starts_with?("debug")
-        end
-        if ncalls.positive?
-          # Hand over to the LLM to process the tool call responses
-          prev_event = nil
-          progress.start
-          chat.re_ask do |event|
-            progress.stop
+    private def consume_tool_calls_sync(tools, progress)
+      prev_event = nil
+      begin
+        until tools.empty?
+          calls = tools
+          tools = [] of JSON::Any
+          ix = 0
+          # Invoke the tool calls first since we
+          # cannot do this concurrently since tool calls can prompt user for input
+          ncalls = chat.call_tools_and_setup_ask(calls) do |event|
             m_process_and_record_ask_event(event, prev_event)
-            prev_event = event
+            prev_event = event unless event["type"].starts_with?("debug")
+          ensure
+            detect_text_ending(nil, prev_event)
+          end
+          if ncalls.positive?
+            # Hand over to the LLM to process the tool call responses
+            prev_event = nil
+            progress.label = "Processing"
+            progress.start
+            begin
+              chat.re_ask do |event|
+                case event[:type]
+                when "receiving_tool_call" then progress.start
+                else                            progress.stop
+                end
+                m_process_and_record_ask_event(event, prev_event)
+                prev_event = event
+              end
+            ensure
+              detect_text_ending(nil, prev_event)
+            end
           end
         end
-        detect_text_ending(nil, prev_event)
       end
     end
 
@@ -475,26 +483,42 @@ module Enkaidu
       detect_text_ending(nil, prev_event)
     end
 
+    private def track_and_time(label, &)
+      progress = Progress.new(label)
+      report_time_taken(prefix: "Total ") do
+        progress.start
+        yield progress
+      ensure
+        progress.stop
+      end
+    end
+
     # Re-query LLM using current session history
     private def re_ask_sync(response_json_schema : LLM::ResponseSchema? = nil)
       recorder << "["
-      tools = [] of JSON::Any
-      ix = 0
-      prev_event = nil
-      progress = Progress.new("Engaging")
       # ask and handle the initial query and its events
-      report_time_taken(prefix: "Total ") do
-        chat.re_ask(response_schema: response_json_schema,
-          exclude_reasoning_in_history: exclude_past_reasoning?) do |event|
-          progress.stop
-          m_process_and_record_ask_event(event, prev_event)
-          prev_event = event
-        rescue ex
-          notify_unexpected_connection_error(ex)
+      track_and_time("Engaging") do |progress|
+        tools = [] of JSON::Any
+        ix = 0
+        prev_event = nil
+        begin
+          chat.re_ask(response_schema: response_json_schema,
+            exclude_reasoning_in_history: exclude_past_reasoning?) do |event|
+            case event[:type]
+            when "receiving_tool_call" then progress.start
+            else                            progress.stop
+            end
+            m_process_and_record_ask_event(event, prev_event)
+            prev_event = event
+          end
+        ensure
+          detect_text_ending(nil, prev_event)
         end
-        detect_text_ending(nil, prev_event)
-        consume_tool_calls_sync(tools)
+        consume_tool_calls_sync(tools, progress)
+      rescue ex
+        notify_unexpected_connection_error(ex)
       end
+    ensure
       recorder << "]"
     end
 
@@ -513,29 +537,33 @@ module Enkaidu
                  response_json_schema : LLM::ResponseSchema? = nil,
                  render_query = false)
       recorder << "["
-      tools = [] of JSON::Any
-      ix = 0
-      prev_event = nil
-      progress = Progress.new("Engaging")
-      report_time_taken(prefix: "Total ") do
+      track_and_time("Engaging") do |progress|
+        tools = [] of JSON::Any
+        ix = 0
+        prev_event = nil
         # ask and handle the initial query and its events
         renderer.user_query_text(query) if render_query
         # Run the chat query
-        progress.start
-        chat.ask(query,
-          attach: attach,
-          response_schema: response_json_schema,
-          exclude_reasoning_in_history: exclude_past_reasoning?,
-          exclude_reasoning_skip: exclude_past_reasoning_from) do |event|
-          progress.stop
-          m_process_and_record_ask_event(event, prev_event)
-          prev_event = event
+        begin
+          chat.ask(query,
+            attach: attach,
+            response_schema: response_json_schema,
+            exclude_reasoning_in_history: exclude_past_reasoning?,
+            exclude_reasoning_skip: exclude_past_reasoning_from) do |event|
+            case event[:type]
+            when "receiving_tool_call" then progress.start
+            else                            progress.stop
+            end
+            m_process_and_record_ask_event(event, prev_event)
+            prev_event = event
+          end
+        ensure
+          detect_text_ending(nil, prev_event)
         end
-        detect_text_ending(nil, prev_event)
-        consume_tool_calls_sync(tools)
-      rescue ex
-        notify_unexpected_connection_error(ex)
+        consume_tool_calls_sync(tools, progress)
       end
+    rescue ex
+      notify_unexpected_connection_error(ex)
     ensure
       recorder << "]"
     end

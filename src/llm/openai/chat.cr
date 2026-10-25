@@ -337,6 +337,10 @@ module LLM::OpenAI
       {type: "tool_call_requested", content: call}
     end
 
+    private def receiving_tool_call(starting_tool_call)
+      {type: "receiving_tool_call", content: JSON::Any.new(starting_tool_call.name)}
+    end
+
     # ameba:disable Metrics/CyclomaticComplexity: It's too messy if I split this up more.
     private def prepare_message_from_streamed_data(stream_io, &)
       tool_calls = [] of JSON::Any
@@ -367,6 +371,7 @@ module LLM::OpenAI
                   yield(wrap_up_tool_call(recent_tool_call, tool_calls)) if recent_tool_call
                   # and start a new one
                   recent_tool_call = extract_tool_call_from_message(msg)
+                  yield(receiving_tool_call(recent_tool_call))
                 when "tool_call_merge"
                   merge_with_recent_tool_call(msg, recent_tool_call) if recent_tool_call
                 when "finish_reason"
