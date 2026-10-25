@@ -224,6 +224,47 @@ module Enkaidu
           end
         end
 
+        # Expect ?path=PATH
+        # On success returns { path: String, dirs: [] of String], files: {} of {name:, type:} }
+        web_server.get "/fs/list" do |req, resp|
+          if path = req.query_params["path"]?
+            if within_current_directory?(resolve_path(path))
+              begin
+                subdirs = [] of String
+                files = [] of NamedTuple(name: String, type: String)
+
+                path = Path.new(path)
+                dir = Dir.new(path)
+                dir.each_child do |name|
+                  info = File.info(path / name)
+                  if info.type.directory?
+                    subdirs << name
+                  else
+                    files << {name: name, type: info.type.to_s}
+                  end
+                end
+                resp.puts({
+                  path:  path,
+                  dirs:  subdirs.sort,
+                  files: files.sort { |a, b| a[:name] <=> b[:name] },
+                }.to_json)
+              rescue ex : File::Error
+                resp.status_code = 404
+                resp.puts({
+                  error: ex.message,
+                }.to_json)
+              end
+            else
+              resp.status_code = 403
+              resp.puts({
+                error: "Not authorized to access: #{path}",
+              }.to_json)
+            end
+          else
+            raise ArgumentError.new("Missing query param: path")
+          end
+        end
+
         web_server.unknown_get do |req, resp|
           path = req.path == "/" ? "/index.html" : req.path
           if file = FileStorage.get(path)
