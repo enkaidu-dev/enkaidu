@@ -1,10 +1,13 @@
 <script lang="ts">
   import type { PromptHistoryEntry } from "./prompt_history";
 
-  let { entries, onselect } = $props<{
+  let {
+    entries,
+    onselect,
+  }: {
     entries: readonly PromptHistoryEntry[];
     onselect: (text: string | null) => void;
-  }>();
+  } = $props();
 
   const MAX_RESULTS = 12;
 

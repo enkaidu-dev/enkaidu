@@ -16,7 +16,9 @@
   // dismiss via onselect(null) without touching the draft.
   // (Promptbar owns the overlay; this card is display + pointer + its own
   // keyboard/input, and reports results back through `onselect`.)
-  let { onselect }: {
+  let {
+    onselect,
+  }: {
     onselect: (path: string | null) => void;
   } = $props();
 
@@ -39,17 +41,22 @@
   let listing = $state(false);
   let error = $state("");
 
-  // Split the typed path into (dir, frag): dir is everything up to and
-  // including the last "/" ("" means the server's cwd), frag is the rest.
+  // Split the typed path into (dir, frag) as two separate *string*
+  // deriveds (deliberately not one object): `dir` is everything up to and
+  // including the last "/" ("" means the server's cwd), `frag` is the rest.
   // A space is a legal path character and stays part of the fragment.
-  let parts = $derived.by(() => {
-    const s = query;
-    const ix = s.lastIndexOf("/");
-    if (ix === -1) return { dir: "", frag: s };
-    return { dir: s.slice(0, ix + 1), frag: s.slice(ix + 1) };
+  //
+  // Keeping `dir` its own string is what lets the listing effect below fire
+  // only when the *directory* changes: Svelte's object.is dirty-check leaves
+  // a value-equal `dir` untouched, so typing a filename prefix in the final
+  // segment changes only `frag` (and re-caches `matches` cheaply from the
+  // existing `entries`) instead of re-running the effect, wiping `entries`,
+  // and flashing a transient "Listing…" on every keystroke.
+  let dir = $derived.by(() => {
+    const ix = query.lastIndexOf("/");
+    return ix === -1 ? "" : query.slice(0, ix + 1);
   });
-
-  let frag = $derived(parts.frag);
+  let frag = $derived(query.slice(dir.length));
 
   // Fetch only when the *directory* changes; the fragment filters
   // locally. Dropping the stale listing up front keeps the previous
@@ -59,7 +66,7 @@
   // response from an older directory arriving last.
   let fetch_seq = 0;
   $effect(() => {
-    const d = parts.dir;
+    const d = dir;
     const id = ++fetch_seq;
     entries = [];
     error = "";
@@ -138,9 +145,7 @@
   // name.  Directories get a trailing "/" so a descent is a natural
   // continuation of the typed path.
   function path_for(entry: FsEntry): string {
-    return entry.is_dir
-      ? `${parts.dir}${entry.name}/`
-      : `${parts.dir}${entry.name}`;
+    return entry.is_dir ? `${dir}${entry.name}/` : `${dir}${entry.name}`;
   }
 
   function select(entry: FsEntry | null) {
@@ -263,7 +268,7 @@
   </div>
   {#if error}
     <div class="px-4 pb-2.5 text-sm text-error/80">
-      Can't list {parts.dir || "."}: {error}
+      Can't list {dir || "."}: {error}
     </div>
   {:else if matches.length}
     <ul class="px-1.5 pb-1.5 max-h-64 overflow-y-auto" role="listbox">
@@ -346,7 +351,7 @@
     {/if}
   {:else if listing}
     <div class="px-4 pb-2.5 text-sm text-base-content/40">
-      Listing {parts.dir || "."}…
+      Listing {dir || "."}…
     </div>
   {:else}
     <div class="px-4 pb-2.5 text-sm text-base-content/40">
@@ -356,8 +361,8 @@
   <div
     class="flex items-center gap-3 px-3 py-1.5 border-t border-base-content/10 text-[0.7rem] text-base-content/30"
   >
-    <span class="font-mono truncate" title={listed_dir || parts.dir || "."}>
-      browsing {listed_dir || parts.dir || "."}
+    <span class="font-mono truncate" title={listed_dir || dir || "."}>
+      browsing {listed_dir || dir || "."}
     </span>
     <span class="ml-auto shrink-0">&uarr;&darr; to navigate</span>
     <span class="shrink-0">Enter opens a folder / inserts a file</span>

@@ -1,12 +1,17 @@
 <script lang="ts">
   type Macro = { name: string; description: string; category: string };
 
-  let { matches, sel, filter, onselect } = $props<{
+  let {
+    matches,
+    sel,
+    filter,
+    onselect,
+  }: {
     matches: Macro[];
     sel: number;
     filter: string;
     onselect: (macro: Macro) => void;
-  }>();
+  } = $props();
 
   let items = $state<(HTMLLIElement | null)[]>([]);
 
