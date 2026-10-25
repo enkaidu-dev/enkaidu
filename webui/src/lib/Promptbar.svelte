@@ -3,6 +3,7 @@
   import { PromptHistory } from "./prompt_history";
   import HistorySearch from "./HistorySearch.svelte";
   import MacroPicker from "./MacroPicker.svelte";
+  import FilePicker from "./FilePicker.svelte";
 
   let { onask = null, loading = false, closed = false } = $props();
   let text_area = $state<HTMLTextAreaElement | undefined>(undefined);
@@ -129,7 +130,7 @@
       return;
     }
     const ta = text_area;
-    const caret = ta ? ta.selectionStart ?? 0 : input_text.length;
+    const caret = ta ? (ta.selectionStart ?? 0) : input_text.length;
     const rest = input_text.slice(1);
     const ws = rest.search(/[ \t\n]/);
     const nameEnd = ws === -1 ? input_text.length : 1 + ws;
@@ -187,7 +188,7 @@
 
   function set_value(
     value: string,
-    cursorAtStart = false,
+    caret: "start" | "end" | number = "end",
     programmatic = false,
   ) {
     const ta = text_area;
@@ -206,7 +207,8 @@
     // desyncs value and caret for one frame, and isOnFirstVisualLine /
     // isOnLastVisualLine then evaluate a stale caret against the new value,
     // causing arrows to navigate history at unintended line positions.
-    const pos = cursorAtStart ? 0 : value.length;
+    const pos =
+      caret === "start" ? 0 : typeof caret === "number" ? caret : value.length;
     ta.setSelectionRange(pos, pos);
     recompute_macro_picker();
   }
@@ -240,15 +242,22 @@
 
     const m = document.createElement("div");
     m.style.cssText = [
-      "position:fixed","top:-9999px","left:0","visibility:hidden",
-      "width:" + ta.clientWidth + "px","box-sizing:border-box","border:0",
+      "position:fixed",
+      "top:-9999px",
+      "left:0",
+      "visibility:hidden",
+      "width:" + ta.clientWidth + "px",
+      "box-sizing:border-box",
+      "border:0",
       "padding:" + cs.padding,
       "font-family:" + cs.fontFamily,
       "font-size:" + cs.fontSize,
       "font-weight:" + cs.fontWeight,
       "line-height:" + cs.lineHeight,
       "letter-spacing:" + cs.letterSpacing,
-      "white-space:pre-wrap","word-wrap:break-word","overflow:hidden",
+      "white-space:pre-wrap",
+      "word-wrap:break-word",
+      "overflow:hidden",
     ].join(";");
 
     document.body.appendChild(m);
@@ -306,13 +315,14 @@
   // focus; elsewhere the browser keeps its bindings.
   let hsearch_open = $state(false);
 
-  // If a request starts while either overlay is open, drop it rather
+  // If a request starts while any overlay is open, drop it rather
   // than let it reappear out from under the loading indicator.
   $effect(() => {
     if (loading) {
       hsearch_open = false;
       macro_picker_open = false;
       macro_dismissed = false;
+      filepick_open = false;
     }
   });
 
@@ -321,6 +331,7 @@
       hsearch_open = true;
       macro_picker_open = false;
       macro_dismissed = false;
+      filepick_open = false;
     }
   }
 
@@ -330,7 +341,55 @@
     // A history snippet drop is programmatic — pass programmatic so an
     // inserted macro prefix does not immediately re-pop the picker while the
     // user edits it.
-    if (text !== null && text.trim() !== "") set_value(text, false, true);
+    if (text !== null && text.trim() !== "") set_value(text, "end", true);
+    text_area?.focus();
+  }
+
+  // ---- File picker (Spotlight-style) --------------------------------
+  // ⌘F/Ctrl+F (while the textarea has focus, like the history hotkeys)
+  // opens a FilePicker above the bar for inserting a file path without
+  // the mouse: type a fragment, walk the listing with ↑/↓, Enter
+  // inserts the chosen path.  The anchor is the textarea's selection
+  // captured when the picker opened, so a selection is replaced by the
+  // path; the caret lands just past it so the user keeps typing the
+  // prompt.  A directory pick descends (inside the picker) instead of
+  // inserting — see FilePicker.
+  let filepick_open = $state(false);
+  let filepick_anchor: { start: number; end: number } = { start: 0, end: 0 };
+
+  function open_file_picker() {
+    if (loading || closed) return;
+    const ta = text_area;
+    filepick_anchor = {
+      start: ta?.selectionStart ?? 0,
+      end: ta?.selectionEnd ?? 0,
+    };
+    filepick_open = true;
+    hsearch_open = false;
+    macro_picker_open = false;
+    macro_dismissed = false;
+  }
+
+  function on_file_select(path: string | null) {
+    if (!filepick_open) return; // ignore the trailing blur after a pick
+    filepick_open = false;
+    const ta = text_area;
+    if (path === null || !ta) {
+      ta?.focus();
+      return;
+    }
+    // Splice the path in at the anchor captured on open (replacing any
+    // selection) and park the caret just past it.  programmatic=true
+    // marks the short-lived macro_dismissed, so a "!"-starting prompt
+    // does not re-pop the macro picker around the insertion.
+    const value = ta.value;
+    const start = Math.min(filepick_anchor.start, value.length);
+    const end = Math.min(filepick_anchor.end, value.length);
+    set_value(
+      value.slice(0, start) + path + value.slice(end),
+      start + path.length,
+      true,
+    );
     text_area?.focus();
   }
 
@@ -400,6 +459,19 @@
       return;
     }
 
+    // Cmd/Ctrl+F: open the file picker.  preventDefault stops the
+    // browser's in-page find bar.  Shift+F is a different keystroke
+    // (e.g. "Find Next") and is left alone.
+    if (
+      (event.ctrlKey || event.metaKey) &&
+      event.key.toLowerCase() === "f" &&
+      !event.shiftKey
+    ) {
+      event.preventDefault();
+      open_file_picker();
+      return;
+    }
+
     if (event.key === "Enter" && !event.shiftKey) {
       event.preventDefault();
       const value = textarea.value;
@@ -416,7 +488,7 @@
         event.preventDefault();
         const prev = history.previous(textarea.value);
         if (prev !== null) {
-          set_value(prev, true, true);
+          set_value(prev, "start", true);
         }
       }
       return;
@@ -427,7 +499,7 @@
         event.preventDefault();
         const next = history.next();
         if (next !== null) {
-          set_value(next, false, true);
+          set_value(next, "end", true);
         }
       }
       return;
@@ -488,7 +560,7 @@
        Clicking the backdrop (not the card) dismisses the draft. -->
   {#if hsearch_open && !loading && !closed}
     <div
-      class="fixed inset-0 z-50 flex items-end justify-center px-4 pb-[calc(var(--promptbar-h)_+_12px)] bg-base-100/40 backdrop-blur-[2px]"
+      class="fixed inset-0 z-50 flex items-end justify-center px-4 pb-[calc(var(--promptbar-h)+12px)] bg-base-100/40 backdrop-blur-[2px]"
       role="presentation"
       onpointerdown={(e) => {
         if (e.target === e.currentTarget) on_history_select(null);
@@ -500,9 +572,9 @@
   <!-- Macro picker: same overlay pattern, shown when the user starts
        typing "!" in the prompt.  The backdrop click dismisses the
        picker and refocuses the textarea. -->
-  {#if macro_picker_open && !loading && !closed && !hsearch_open}
+  {#if macro_picker_open && !loading && !closed && !hsearch_open && !filepick_open}
     <div
-      class="fixed inset-0 z-50 flex items-end justify-center px-4 pb-[calc(var(--promptbar-h)_+_12px)] bg-base-100/40 backdrop-blur-[2px]"
+      class="fixed inset-0 z-50 flex items-end justify-center px-4 pb-[calc(var(--promptbar-h)+12px)] bg-base-100/40 backdrop-blur-[2px]"
       role="presentation"
       onpointerdown={(e) => {
         if (e.target === e.currentTarget) {
@@ -517,6 +589,20 @@
         filter={macro_filter}
         onselect={on_macro_select}
       />
+    </div>
+  {/if}
+  <!-- File picker: same overlay pattern, opened with ⌘F/Ctrl+F to
+       insert a file path into the prompt.  The backdrop click cancels
+       (leaving the draft untouched) and refocuses the textarea. -->
+  {#if filepick_open && !loading && !closed}
+    <div
+      class="fixed inset-0 z-50 flex items-end justify-center px-4 pb-[calc(var(--promptbar-h)+12px)] bg-base-100/40 backdrop-blur-[2px]"
+      role="presentation"
+      onpointerdown={(e) => {
+        if (e.target === e.currentTarget) on_file_select(null);
+      }}
+    >
+      <FilePicker onselect={on_file_select} />
     </div>
   {/if}
   <form
@@ -570,8 +656,7 @@
         onblur={on_textarea_blur}
         rows="1"
         class="flex-1 bg-transparent text-base-content placeholder:text-base-content/30 focus:outline-none resize-none text-base leading-relaxed"
-        placeholder="Ask Enkaidu… or type ! for macros"
-      ></textarea>
+        placeholder="Ask Enkaidu… or type ! for macros"></textarea>
       <button
         type="submit"
         disabled={input_text.trim() === ""}
@@ -600,7 +685,8 @@
       class="text-center text-xs text-base-content/80 mt-1 group-focus-within:opacity-0 transition-opacity"
     >
       Enter to send &bull; Shift+Enter for newline &bull; Up / Down for history
-      &bull; &#8984;K / Ctrl+K (or &#8984;R / Ctrl+R) to search history
+      &bull; &#8984;K / Ctrl+K (or &#8984;R / Ctrl+R) to search history &bull;
+      &#8984;F / Ctrl+F for files
       {#if macros.length > 0}&bull; ! for macros{/if}
       &bull; AI can make mistakes: double-check responses.
     </div>
