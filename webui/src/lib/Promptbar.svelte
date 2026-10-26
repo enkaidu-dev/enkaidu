@@ -183,7 +183,9 @@
     // A typed change always re-engages finding (clears any Escape dismissal)
     // and recomputes open/close from the caret position.
     macro_dismissed = false;
+    filepick_dismissed = false;
     recompute_macro_picker();
+    recompute_file_picker();
   }
 
   function set_value(
@@ -323,6 +325,7 @@
       macro_picker_open = false;
       macro_dismissed = false;
       filepick_open = false;
+      filepick_dismissed = false;
     }
   });
 
@@ -356,14 +359,28 @@
   // inserting — see FilePicker.
   let filepick_open = $state(false);
   let filepick_anchor: { start: number; end: number } = { start: 0, end: 0 };
+  // The text to seed the picker's query with: "" for a bare ⌘F open, or the
+  // `./…` path token when the trigger fired on typing `./` in the prompt bar.
+  let filepick_seed = $state("");
+  // Short-lived "stop auto-opening" flag, set by a dismissal (Esc / backdrop /
+  // blur) and cleared by the next typed character — mirrors `macro_dismissed` so
+  // a cancel doesn't re-pop the picker on the next caret move.
+  let filepick_dismissed = $state(false);
 
-  function open_file_picker() {
+  // Open the picker with an explicit anchor + seed.  The `anchor` is the span
+  // in the textarea that a *file* pick replaces; the `seed` pre-fills the
+  // picker's query.  Used by the `./` typing trigger, which anchors on the typed
+  // token and seeds it so the picker continues the path from where the user
+  // left off; on a file pick the completed path replaces that whole span.
+  function open_file_picker_inplace(
+    anchor_start: number,
+    anchor_end: number,
+    seed: string,
+  ) {
     if (loading || closed) return;
-    const ta = text_area;
-    filepick_anchor = {
-      start: ta?.selectionStart ?? 0,
-      end: ta?.selectionEnd ?? 0,
-    };
+    filepick_anchor = { start: anchor_start, end: anchor_end };
+    filepick_seed = seed;
+    filepick_dismissed = false;
     filepick_open = true;
     hsearch_open = false;
     macro_picker_open = false;
@@ -375,6 +392,9 @@
     filepick_open = false;
     const ta = text_area;
     if (path === null || !ta) {
+      // A cancel is a dismissal: stay closed on subsequent caret moves until the
+      // next typed character re-engages (cleared in auto_grow).
+      filepick_dismissed = true;
       ta?.focus();
       return;
     }
@@ -391,6 +411,81 @@
       true,
     );
     text_area?.focus();
+  }
+
+  // ---- "./" typing trigger --------------------------------------------
+  // The terminal's `./` + Tab completion, offered as the user types in the
+  // prompt bar.  On each keystroke we back up from the caret over the *path
+  // token* (a run of filename-safe characters) and open the picker seeded with
+  // that token — but only when (a) the token starts with `./` and (b) the
+  // character just typed was the `/ that closes the prefix (i.e. the token ends
+  // in `/`).  Test (b) is what keeps a following filename letter from re-firing
+  // it: as the user types `./src/mt`, only the two slashes qualify.  A `!`-
+  // prefixed token never starts with `./`, so the two pickers never contend.
+  //
+  // Called from auto_grow (typing) and onselect (caret moves); both clear the
+  // short-lived `filepick_dismissed` first (auto_grow) / respect it (here), so
+  // a cancel (Esc / backdrop / blur) won't re-pop on the next caret move.
+  function is_path_token_char(code: number): boolean {
+    return (
+      (code >= 48 && code <= 57) || // 0-9
+      (code >= 65 && code <= 90) || // A-Z
+      (code >= 97 && code <= 122) || // a-z
+      code === 46 || // .
+      code === 95 || // _
+      code === 45 || // -
+      code === 47 // /
+    );
+  }
+
+  // Is a token "path-like" — contains a `/` or starts with `./` / `/` (a
+  // relative-dot or an absolute path).  A bare filename or an ordinary word
+  // doesn't qualify, so ⌘F in plain text stays a free-form empty picker instead
+  // of seeding junk.
+  function is_path_like(token: string): boolean {
+    return (
+      token.includes("/") || token.startsWith("./") || token.startsWith("/")
+    );
+  }
+
+  // The full path token the caret sits on, scanned in *both* directions from
+  // the caret — back over the segments before it and forward over the segments
+  // after it.  Scanning forward is what makes ⌘F pressed in the *middle* of a
+  // path capture the whole token, so a pick replaces the entire path rather
+  // than only the part before the caret.  The `./` typing trigger is unaffected:
+  // there the caret is at the end of the just-typed text, so the forward scan
+  // finds nothing and the anchor is just the typed token.  Shared by both the
+  // `./` trigger and the ⌘F "use the path under the caret" open.
+  function path_token_at_caret(ta: HTMLTextAreaElement): {
+    start: number;
+    end: number;
+    token: string;
+  } {
+    // Read from the live element (the source of truth), not the input_text
+    // mirror.
+    const value = ta.value;
+    const caret = ta.selectionStart ?? value.length;
+    let start = caret;
+    while (start > 0 && is_path_token_char(value.charCodeAt(start - 1)))
+      start--;
+    let end = caret;
+    while (end < value.length && is_path_token_char(value.charCodeAt(end)))
+      end++;
+    return { start, end, token: value.slice(start, end) };
+  }
+
+  function recompute_file_picker() {
+    // Only engage on a fresh type; a dismissal and an already-open picker hold.
+    if (filepick_open || filepick_dismissed) return;
+    const ta = text_area;
+    if (!ta) return;
+    const { start, end, token } = path_token_at_caret(ta);
+    // Open only on a `./`-prefixed token that the just-typed `/` closed — so a
+    // following filename letter doesn't re-fire it and a `!` token never
+    // contends with the macro picker.
+    if (token.startsWith("./") && token.endsWith("/")) {
+      open_file_picker_inplace(start, end, token);
+    }
   }
 
   // When the textarea loses focus (Tab, click elsewhere, loading starts) we
@@ -468,7 +563,19 @@
       !event.shiftKey
     ) {
       event.preventDefault();
-      open_file_picker();
+      // Seed the picker with the path already under the caret (scanned both
+      // directions, so a mid-path ⌘F captures the whole token).  On a path, a
+      // pick splices over the *entire* token; off a path, start empty and
+      // insert at the caret (a zero-width anchor, so the surrounding text is
+      // untouched).
+      const { start, end, token } = path_token_at_caret(textarea);
+      const on_path = is_path_like(token);
+      const caret = textarea.selectionStart ?? textarea.value.length;
+      open_file_picker_inplace(
+        on_path ? start : caret,
+        on_path ? end : caret,
+        on_path ? token : "",
+      );
       return;
     }
 
@@ -602,7 +709,7 @@
         if (e.target === e.currentTarget) on_file_select(null);
       }}
     >
-      <FilePicker onselect={on_file_select} />
+      <FilePicker seed={filepick_seed} onselect={on_file_select} />
     </div>
   {/if}
   <form
@@ -652,7 +759,10 @@
         bind:this={text_area}
         onkeydown={handle_key_event}
         oninput={auto_grow}
-        onselect={() => recompute_macro_picker()}
+        onselect={() => {
+          recompute_macro_picker();
+          recompute_file_picker();
+        }}
         onblur={on_textarea_blur}
         rows="1"
         class="flex-1 bg-transparent text-base-content placeholder:text-base-content/30 focus:outline-none resize-none text-base leading-relaxed"
