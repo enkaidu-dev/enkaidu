@@ -14,12 +14,14 @@ module Enkaidu::Console
     property? streaming = true
     property? quiet = false
 
-    @term_scroll_region = Termify::ScrollRegion.new(Termify.terminal, 5)
+    private getter progress : Progress = Progress.new("Engaging")
+
+    private getter term_scroll_region = Termify::ScrollRegion.new(Termify.terminal, 5)
 
     # Call when exiting Enkaidu, especially on interrupts, to clean
     # up interim terminal state
     def reset
-      @term_scroll_region.stop if @term_scroll_region.active?
+      term_scroll_region.stop if term_scroll_region.active?
     end
 
     # Internal input for prompt args
@@ -290,12 +292,30 @@ module Enkaidu::Console
       end
     end
 
-    @md_renderer = Termify::Markdown::Renderer.new(STDOUT, MDR_STYLESHEET)
+    private def md_renderer
+      @md_renderer ||= Termify::Markdown::Renderer.new(
+        STDOUT,
+        MDR_STYLESHEET,
+        on_gather: ->(event : Termify::Markdown::GatherEvent) {
+          case event.phase
+          when .started?
+            puts "<#{event.phase}>"
+            progress.label = case event.kind
+                             in .table?      then "Receiving table"
+                             in .code_block? then "Receiving code"
+                             end
+            progress.start
+          when .finished?
+            progress.stop
+          end
+        }
+      )
+    end
 
     private def render_streaming_markdown(text, _starting : Bool, ending : Bool)
-      @md_renderer << text
+      md_renderer << text
       if ending
-        @md_renderer.reset
+        md_renderer.reset
       end
     end
 
@@ -306,14 +326,14 @@ module Enkaidu::Console
             # Use a mini-scroll region in quiet mode, and then erase it.
             if starting
               puts fmt(:thinking_content, REASONING_START)
-              @term_scroll_region.start
+              term_scroll_region.start
             end
             print fmt(:thinking_content, text)
             if ending
               puts "", fmt(:thinking_content, REASONING_FINISH)
               STDOUT.flush
               sleep 100.milliseconds
-              @term_scroll_region.stop(top: true)
+              term_scroll_region.stop(top: true)
               print Termify::ANSI::Cursor.up(1)
               print Termify::ANSI::Clear.screen(Termify::ANSI::Erase::After)
               STDOUT.flush

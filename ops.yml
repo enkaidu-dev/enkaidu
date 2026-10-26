@@ -12,7 +12,7 @@ hooks:
     - mkdir -p bin/release bin/debug
 actions:
   build-webui:
-    command: cd webui && npm run build && cd ..
+    command: cd webui && rm -rf dist && npm run build && cd ..
     description: Build the Svelte-based web UI
     alias: bwui
   build-release:

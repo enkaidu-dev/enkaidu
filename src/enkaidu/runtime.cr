@@ -118,22 +118,45 @@ module Enkaidu
         end
 
         if using_ruby = ws.using_ruby
-          ruby_policy = cordon_ruby_policy(using_ruby, using_brew)
-          if ruby_policy
+          if ruby_policy = cordon_ruby_policy(using_ruby, using_brew)
             policy = policy.merge(ruby_policy)
           end
         end
 
         if using_python = ws.using_python
-          py_policy = cordon_python_policy(using_python, using_brew)
-          if py_policy
+          if py_policy = cordon_python_policy(using_python, using_brew)
             policy = policy.merge(py_policy)
+          end
+        end
+
+        if using_crystal = ws.using_crystal
+          if cr_policy = cordon_cr_policy(using_crystal, using_brew)
+            policy = policy.merge(cr_policy)
           end
         end
       end
 
       # Done
       policy
+    end
+
+    private def create_temp_dir(prefix) : String
+      dir = File.tempname(prefix, nil)
+      Dir.mkdir(dir, 0o700)
+      dir
+    end
+
+    private def cordon_cr_policy(using_crystal, using_brew)
+      case using_crystal
+      when true
+        Cordon::Preset::Crystal.build(
+          cache_dir: Cordon::Preset::Crystal.shared_cache_dir,
+          temp_dir: create_temp_dir("enkcrytmp"))
+      when Config::Cordon::Workspace::UsingCrystal
+        Cordon::Preset::Crystal.build(
+          cache_dir: using_crystal.shared_cache_path,
+          temp_dir: create_temp_dir("enkcrytmp"))
+      end
     end
 
     private def cordon_ruby_policy(using_ruby, using_brew)
@@ -301,7 +324,7 @@ module Enkaidu
       when .starts_with?("/")
         _execute_slash_command_
       else
-        session.ask(query: q,
+        session.ask_sync(query: q,
           attach: commander.take_inclusions!,
           response_json_schema: commander.take_response_schema!)
         yield Event::Prompt

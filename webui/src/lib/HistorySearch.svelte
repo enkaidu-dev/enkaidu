@@ -1,10 +1,13 @@
 <script lang="ts">
   import type { PromptHistoryEntry } from "./prompt_history";
 
-  let { entries, onselect } = $props<{
+  let {
+    entries,
+    onselect,
+  }: {
     entries: readonly PromptHistoryEntry[];
     onselect: (text: string | null) => void;
-  }>();
+  } = $props();
 
   const MAX_RESULTS = 12;
 
@@ -145,11 +148,8 @@
       title="Matched / total entries"
     >
       {matches.length} / {entries.length}
-      <span class="hidden sm:inline"
-        >
-        · Esc to close
-        · ↑↓ to choose
-        · Enter to select
+      <span class="hidden sm:inline">
+        · Esc to close · ↑↓ to choose · Enter to select
       </span>
     </span>
   </div>
@@ -162,14 +162,14 @@
             title={entry.text}
             onpointerdown={() => select(entry)}
             class="w-full text-left px-2.5 py-1.5 rounded-lg truncate text-sm transition-colors {i ===
-              sel
+            sel
               ? 'bg-accent/15 text-base-content'
               : 'text-base-content/75'}"
           >
             {#each segments(entry.text, q) as seg}
               {#if seg.hit}
-                <mark
-                  class="bg-warning/25 text-inherit rounded-[2px]">{seg.text}</mark
+                <mark class="bg-warning/25 text-inherit rounded-xs"
+                  >{seg.text}</mark
                 >
               {:else}
                 {seg.text}

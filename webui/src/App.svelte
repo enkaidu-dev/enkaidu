@@ -15,6 +15,10 @@
   let started = false;
   let handling_request = $state(false);
   let has_content = $state(false);
+  // Latched true when Enkaidu shuts its backend down (e.g. after /bye, signalled
+  // by a "session_shutdown" event). It blocks the prompt bar from further input
+  // and shows the user they may safely close the tab.
+  let closed = $state(false);
 
   // ---- File side panel -----------------------------------------------------
   // The path currently shown in the panel (null = closed), plus the fetched
@@ -282,6 +286,13 @@
               content: msg.args,
             });
             break;
+          case "help_response":
+            session.add_event({
+              type: "help_response",
+              subject: msg.title,
+              content: msg.body,
+            });
+            break;
           case "security_confirmation":
             session.show_security_confirmation(
               msg.description,
@@ -301,6 +312,12 @@
           case "session_reset":
             session.reset();
             has_content = false;
+            break;
+          case "session_shutdown":
+            // The runtime is done and the backend is shutting down: lock the
+            // prompt bar so no further input can be sent. The event rides the
+            // /bye stream, so it lands before handling_request clears.
+            closed = true;
             break;
 
           default:
@@ -426,6 +443,7 @@
             bind:this={prompt}
             onask={on_prompt_ask}
             loading={handling_request}
+            closed={closed}
           />
         </div>
       </div>

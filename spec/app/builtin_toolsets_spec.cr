@@ -8,7 +8,7 @@ KNOWN_TOOLSETS = [
   "DateAndTime",
   "ImageEditing",
   "AudioEditing",
-  "Experimental",
+  # "Experimental",
 ]
 
 Spectator.describe Tools do

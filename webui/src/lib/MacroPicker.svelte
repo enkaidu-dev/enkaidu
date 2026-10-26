@@ -1,12 +1,17 @@
 <script lang="ts">
   type Macro = { name: string; description: string; category: string };
 
-  let { matches, sel, filter, onselect } = $props<{
+  let {
+    matches,
+    sel,
+    filter,
+    onselect,
+  }: {
     matches: Macro[];
     sel: number;
     filter: string;
     onselect: (macro: Macro) => void;
-  }>();
+  } = $props();
 
   let items = $state<(HTMLLIElement | null)[]>([]);
 
@@ -77,7 +82,7 @@
                 >!
                 {#each segments(macro.name, q) as seg}
                   {#if seg.hit}
-                    <mark class="bg-warning/25 text-inherit rounded-[2px]"
+                    <mark class="bg-warning/25 text-inherit rounded-xs"
                       >{seg.text}</mark
                     >
                   {:else}

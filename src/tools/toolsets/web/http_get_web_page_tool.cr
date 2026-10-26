@@ -75,7 +75,7 @@ module Tools::Web
       # Setup the HTTP request and process content if appropriate,
       # returning error or success JSON.
       private def fetch(url, headers, preserve_source)
-        HTTP::Client.get(url, headers) do |response|
+        http_get(url, headers) do |response|
           if response.status_code == 200
             if (ctype = response.content_type) && Web.text?(ctype)
               content = gather_content(response)

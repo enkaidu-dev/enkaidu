@@ -13,42 +13,82 @@
   import ClarionCard from "./ClarionCard.svelte";
   import InputsDialog from "./InputsDialog.svelte";
   import ToolCallCard from "./ToolCallCard.svelte";
+  import HelpCard from "./HelpCard.svelte";
   import ActivityGroup from "./ActivityGroup.svelte";
 
-  // Tolerance band (px) for "close enough to the bottom" so sub-pixel /
-  // rounded scroll values don't flip the flag spuriously.
-  const SCROLL_TOLERANCE = 50;
+  // Tolerance band (px) for "close enough to the bottom."  A generous value
+  // so sub-pixel rounding and brief layout transients (group form / collapse)
+  // don't spuriously break the pin.
+  const SCROLL_TOLERANCE = 80;
+
+  // The user's *own* submissions: a prompt, a slash/! command, an image, or
+  // any of those surfaced from the query queue. Each lands at the tail of the
+  // transcript as a new entry. When one becomes the tail, we force a scroll to
+  // the bottom and re-pin the follow, so the user's new message and its
+  // response come into view even after the transcript was scrolled up to read
+  // history. (Ordinary streaming appends an llm_text/llm_think tail instead,
+  // which must NOT re-pin — that is the "read at your own pace" behavior, so a
+  // scrolled-up transcript keeps its place while old output keeps streaming.)
+  const USER_PROMPT_TYPES = new Set([
+    "query",
+    "command",
+    "query_via_query_queue",
+    "command_via_query_queue",
+    "query_image_url",
+  ]);
 
   const scrollToBottom = (node: HTMLElement, _list: Event[]) => {
-    // Assume the user starts at the bottom on a fresh session. The flag is
-    // ONLY updated by real scroll events (never by content growth), so the
-    // "new content pushed me off the bottom" edge case in the plan cannot
-    // falsely suppress the next auto-scroll: a user who was at the bottom
-    // keeps the flag true until they actually scroll.
-    let at_bottom = true;
+    // `stuck` tracks whether the user is "pinned to the bottom."
+    // Starts true (a fresh session starts at the bottom). Only a
+    // user-initiated scroll away from the bottom breaks the pin;
+    // scrolling back down (including our own programmatic scroll)
+    // re-pins.
+    let stuck = true;
 
     const isAtBottom = () =>
       node.scrollTop + node.clientHeight >=
       node.scrollHeight - SCROLL_TOLERANCE;
 
+    // On any scroll event (user or programmatic) update the sticky flag.
+    // A scroll to near-bottom sets stuck = true; a scroll up away
+    // from the bottom sets it false.
     const handleScroll = () => {
-      at_bottom = isAtBottom();
+      stuck = isAtBottom();
     };
+
+    // Coalesce rapid `update` calls (streaming fragments, group churn)
+    // into a single rAF per frame so we scroll at most once per paint,
+    // after the browser has reflowed the new DOM.
+    let rafId = 0;
 
     const maybeScroll = () => {
-      // Only auto-scroll to the bottom when the user is already there.
-      // Suppress the scroll while they have scrolled up; once they return
-      // to the bottom edge the flag flips back and auto-scroll resumes.
-      if (!at_bottom) return;
-      node.scroll({ top: node.scrollHeight, behavior: "smooth" });
+      // A newly submitted prompt re-engages the bottom pin: even if the user
+      // scrolled up to read earlier output, their own new message is a reason
+      // to follow the conversation downward again.
+      const last = entries.at(-1);
+      if (last && USER_PROMPT_TYPES.has(last.type)) stuck = true;
+
+      if (!stuck) return;
+      cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(() => {
+        // Re-check both conditions inside the frame: the user may have
+        // scrolled up between the update and the paint, or layout may
+        // have shifted so we are already at the bottom.
+        if (stuck && !isAtBottom()) {
+          node.scrollTop = node.scrollHeight;
+        }
+      });
     };
 
-    node.addEventListener("scroll", handleScroll);
+    node.addEventListener("scroll", handleScroll, { passive: true });
     maybeScroll();
 
     return {
       update: maybeScroll,
-      destroy: () => node.removeEventListener("scroll", handleScroll),
+      destroy: () => {
+        cancelAnimationFrame(rafId);
+        node.removeEventListener("scroll", handleScroll);
+      },
     };
   };
 
@@ -208,17 +248,29 @@
 
     let last = entries.at(-1);
     let ev_data = { subject: ev.subject, content: ev.content };
+    // Streaming LLM/think text coalesces into the last entry's single
+    // record; other same-type events append to its data[] (e.g.
+    // message_* — MsgCard renders every record). Consecutive tool_call
+    // events deliberately do NOT coalesce: each call is its own
+    // transcript step (grouping, "N steps", and the group title all
+    // count entries), and the tool-call cards show only data[0] —
+    // merging a run of calls into one entry would hide every call
+    // after the first.
+    let coalesced = false;
     if (last && last.type == ev.type) {
       if (last.type == "llm_text" || last.type == "llm_think") {
         // append text if it's LLM or THINK text
         // this allows us to show streaming text
         let content = (last.data[0].content || "") + ev_data.content;
         last.data[0].content = content;
-      } else {
+        coalesced = true;
+      } else if (ev.type != "tool_call") {
         // append to data[] otherwise
         last.data.push(ev_data);
+        coalesced = true;
       }
-    } else {
+    }
+    if (!coalesced) {
       check_and_trim_last_entry();
       // Append the new event type
       const entry: SessionEntry = { type: ev.type, data: [ev_data] };
@@ -380,9 +432,20 @@
         {:else if g.entry.type == "clarion"}
           <ClarionCard subject={g.entry.data[0].content || "???"} />
         {:else if g.entry.type == "tool_call"}
-          <ToolCallCard
-            name={g.entry.data[0].subject as string}
-            args={g.entry.data[0].content as string}
+          <!-- One card per record: add_event keeps each tool call in its
+               own entry, but render every record so a coalesced entry can
+               never silently hide a call. -->
+          {#each g.entry.data as d, di (di)}
+            <ToolCallCard
+              name={d.subject as string}
+              args={d.content as string}
+            />
+          {/each}
+        {:else if g.entry.type == "help_response"}
+          <HelpCard
+            title={g.entry.data[0].subject || "Help"}
+            body={g.entry.data[0].content || ""}
+            active={g.entry === entries.at(-1)}
           />
         {:else if g.entry.type.startsWith("message_")}
           <MsgCard
