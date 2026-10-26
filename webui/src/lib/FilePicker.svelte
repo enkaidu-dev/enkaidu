@@ -1,5 +1,8 @@
 <script lang="ts">
-  // Spotlight-style file browser for the Promptbar's ⌘F/Ctrl+F overlay.
+  // Spotlight-style file browser for the Promptbar. Opened either by
+  // ⌘F/Ctrl+F (a free open, an empty query) or by the user typing a `./` path
+  // in the prompt bar (the query is seeded with that token so the picker
+  // continues it — see Promptbar's `recompute_file_picker`).
   // The user types a path fragment: the *directory* part (everything up
   // to and including the last "/") is listed from the server via
   // GET /fs/list?path=… (relative paths resolve against the server's
@@ -18,8 +21,13 @@
   // keyboard/input, and reports results back through `onselect`.)
   let {
     onselect,
+    seed = "",
   }: {
     onselect: (path: string | null) => void;
+    // Pre-fills the query on open: "" for a bare ⌘F, or the `./` path token
+    // for the typing trigger.  Captured once at mount — the overlay remounts
+    // on every open, so each open starts from a fresh seed.
+    seed?: string;
   } = $props();
 
   const MAX_RESULTS = 50;
@@ -57,6 +65,15 @@
     return ix === -1 ? "" : query.slice(0, ix + 1);
   });
   let frag = $derived(query.slice(dir.length));
+
+  // Seed the query from the `seed` prop on mount — read inside the effect rather
+  // than the initializer so the reactive prop stays a real dependency and the
+  // `state_referenced_locally` lint doesn't flag an initial-value capture.
+  // Declared before the listing effect below so the first fetch uses the seeded
+  // directory; the overlay remounts on every open, so this sets query once.
+  $effect(() => {
+    query = seed;
+  });
 
   // Fetch only when the *directory* changes; the fragment filters
   // locally. Dropping the stale listing up front keeps the previous
