@@ -1,15 +1,15 @@
 require "http"
 
-require "../chat"
-require "./chat/content"
-require "./chat/message"
-require "./chat/history"
+require "../../chat"
+require "../../content/content"
+require "../../message/message"
+require "../../history"
 
 require "./converters"
 require "./function_call"
 
-module LLM::OpenAI
-  private class Chat < LLM::Chat
+module LLM::Protocol::ChatCompletions
+  class Chat < LLM::Chat
     include Converters
 
     @conn : Connection

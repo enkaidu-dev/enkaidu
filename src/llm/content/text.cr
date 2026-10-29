@@ -1,6 +1,6 @@
-require "../content"
+require "./content"
 
-module LLM::OpenAI
+module LLM
   # Represents text `content` within a message to the LLM
   class Content::Text < Content
     property text : String

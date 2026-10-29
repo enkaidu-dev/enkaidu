@@ -1,6 +1,6 @@
-require "../content"
+require "./content"
 
-module LLM::OpenAI
+module LLM
   # Represents image `content` within a message to the LLM
   class Content::ImageUrl < Content
     property image_url = {} of String => String

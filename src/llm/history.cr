@@ -1,9 +1,10 @@
 require "json"
 
-require "./message"
+require "./chat"
+require "./message/message"
 require "./usage"
 
-module LLM::OpenAI
+module LLM
   # The serializable chat history keeps all wrapped messages to save
   # the additional information when saving the session.
   class History

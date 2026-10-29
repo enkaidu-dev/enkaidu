@@ -1,6 +1,6 @@
-require "../content.cr"
+require "./content"
 
-module LLM::OpenAI
+module LLM
   # Represents file `content` within a message to the LLM
   class Content::FileData < Content
     property file = {} of String => String

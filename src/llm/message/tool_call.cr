@@ -1,6 +1,6 @@
-require "../message"
+require "./message"
 
-module LLM::OpenAI
+module LLM
   # Represents a tool-call result message in a request to the LLM
   class Message::ToolCall < Message
     ROLE = "tool"

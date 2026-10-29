@@ -1,10 +1,10 @@
 require "json"
 
 require "./function_call"
-require "../function"
-require "../response_schema"
+require "../../function"
+require "../../response_schema"
 
-module LLM::OpenAI
+module LLM::Protocol::ChatCompletions
   private module Converters
     protected def function_call_to_json(f : FunctionCall, json : JSON::Builder)
       json.object do

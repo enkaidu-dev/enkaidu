@@ -1,6 +1,6 @@
 require "json"
 
-module LLM::OpenAI
+module LLM
   class Usage
     include JSON::Serializable
     include JSON::Serializable::Unmapped
