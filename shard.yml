@@ -14,6 +14,9 @@ development_dependencies:
     github: crystal-ameba/ameba
   spectator:
     gitlab: arctic-fox/spectator
+  wiretap:
+    github: nogginly/wiretap.cr
+    version: ">= 0.4.2"
 
 dependencies:
   socket_connect_fix:
