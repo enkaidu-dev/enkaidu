@@ -2,10 +2,10 @@ require "socket_connect_fix"
 
 require "./llm/local_function"
 require "./llm/connection"
-require "./llm/azure_openai"
-require "./llm/azure_foundry"
-require "./llm/google_ai_studio"
-require "./llm/ollama"
+require "./llm/providers/azure_openai"
+require "./llm/providers/azure_foundry"
+require "./llm/providers/google_ai_studio"
+require "./llm/providers/ollama"
 
 module LLM
   class Error < Exception; end

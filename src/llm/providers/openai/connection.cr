@@ -1,5 +1,5 @@
-require "../connection"
-require "../protocol/chat_completions/chat"
+require "../../connection"
+require "../../protocol/chat_completions/chat"
 
 module LLM::OpenAI
   # `Connection` is a class extending `LLM::Connection` to implement specific behaviors
