@@ -16,7 +16,7 @@ development_dependencies:
     gitlab: arctic-fox/spectator
   wiretap:
     github: nogginly/wiretap.cr
-    version: ">= 0.4.2"
+    version: ">= 0.5.0"
 
 dependencies:
   socket_connect_fix:
