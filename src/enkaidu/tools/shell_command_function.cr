@@ -1,10 +1,14 @@
 require "json"
 require "cordon"
 require "./session_built_in_function"
+require "../../tools/file_helper"
 
 module Enkaidu
   # This is the Enkaidu shell command function with session-levelc configuration.
   class ShellCommandFunction < SessionBuiltInFunction
+    MAX_STDOUT = 16*1024
+    MAX_STDERR = 16*1024
+
     # The `PermissionError` class is raised when user permission is required and denied for executing a command.
     class PermissionError < Exception; end
 
@@ -118,7 +122,9 @@ module Enkaidu
 
     COMMON_DESCRIPTION = "Executes one of the allowed shell commands from within the " \
                          "current project's directory and returns the shell command's output." \
-                         "Commands with restricted terms always require approval."
+                         "Commands with restricted terms always require approval. " \
+                         "If `stdout` and `stderr` exceed #{MAX_STDOUT} and #{MAX_STDERR} bytes respectively," \
+                         "the output is truncated and a flag indicates `true`."
     # Provide a description for the tool
     static_description <<-DESC
       #{COMMON_DESCRIPTION}
@@ -141,6 +147,16 @@ module Enkaidu
     param "command", type: Param::Type::Str, required: true,
       description: "The shell command to execute."
 
+    param "save_as_file_path_prefix", type: Param::Type::Str,
+      description: <<-DESCR
+        Optionally specify a file path prefix to save the output and error streams.
+        If specified, two files will be written: `{path_prefix}.stdout.txt` and `{path_prefix}.stderr.txt`.
+        Use the `tmp/` folder for temporary saves.
+        DESCR
+
+    param "overwrite", type: Param::Type::Bool, required: false,
+      description: "Optional. Set to true to overwrite existing files when saving output as files. Default is false."
+
     # Replace `runner` macro to create with self
     def new_runner : Runner
       Runner.new(self)
@@ -148,6 +164,8 @@ module Enkaidu
 
     # The Runner class executes the function
     class Runner < LLM::Function::Runner
+      include Tools::FileHelper
+
       private getter func : ShellCommandFunction
 
       def initialize(@func); end
@@ -157,6 +175,18 @@ module Enkaidu
         command = args["command"]?.try(&.as_s?) || return error_response("The required 'command' was not specified.")
         command = command.strip
         return error_response("The required 'command' was empty.") if command.empty?
+
+        save_stdout_path = nil
+        save_stderr_path = nil
+        if save_as_file_prefix = args["save_as_file_path_prefix"]?.try(&.as_s?)
+          begin
+            overwrite = args["overwrite"]?.try(&.as_bool?) || false
+            save_stdout_path = confirm_save_path("#{save_as_file_prefix}_stdout.txt", overwrite)
+            save_stderr_path = confirm_save_path("#{save_as_file_prefix}_stderr.txt", overwrite)
+          rescue ex
+            return error_response(ex.to_s)
+          end
+        end
 
         begin
           # Split multiple commands if any so we can check each
@@ -197,7 +227,7 @@ module Enkaidu
                    else
                      run_cordoned_command(command)
                    end
-          success_response(command, result) # output)
+          success_response(command, result, save_stdout_path, save_stderr_path) # output)
         rescue e
           error_response("An error occurred while executing the command: #{e.message}")
         end
@@ -308,10 +338,48 @@ module Enkaidu
       end
 
       # Create a success response as a JSON string
-      def success_response(command, output)
+      def success_response(command, result, stdout_path : String?, stderr_path : String?)
+        save_as_error = nil
+
+        if stdout_path && stderr_path
+          # Try and save and return paths on success
+          begin
+            File.write(stdout_path, result[:stdout])
+            File.write(stderr_path, result[:stderr])
+            return {command: command,
+                    output:  {
+                      exit_code:   result[:exit_code],
+                      stdout_file: stdout_path,
+                      stderr_file: stderr_path,
+                    },
+            }.to_json
+          rescue ex
+            # If writing failes then warn user and proceed to return content (truncated if needed)
+            # with a message explaining
+            func.runtime.renderer.warning_with("Unable to save as file, ignoring: #{ex}")
+            save_as_error = ex
+          end
+        end
+
+        # return outputs instead, truncated if necessary
+        sout = result[:stdout][0, MAX_STDOUT]
+        serr = result[:stderr][0, MAX_STDERR]
+        trunc_sout = sout.size < result[:stdout].size
+        trunc_serr = serr.size < result[:stderr].size
         {
           command: command,
-          output:  output,
+          output:  {
+            exit_code: result[:exit_code],
+            stdout:    {
+              content:   sout,
+              truncated: trunc_sout,
+            },
+            stderr: {
+              content:   serr,
+              truncated: trunc_serr,
+            },
+          },
+          message: save_as_error ? "Unable to save as files, sorry: #{save_as_error}" : "OK",
         }.to_json
       end
 
