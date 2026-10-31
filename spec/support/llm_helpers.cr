@@ -1,5 +1,6 @@
 require "http"
 require "json"
+require "io/memory"
 
 # Shared scaffolding for the LLM specs.
 #
@@ -19,6 +20,11 @@ module LLMSpecHelpers
 
   # The local Ollama OpenAI-compatible endpoint.
   OLLAMA_ENDPOINT = "http://localhost:11434"
+
+  # Transcript and prompt shared by the history round-trip specs, so they can
+  # reuse the already-recorded non-streaming ask instead of making live calls.
+  NON_STREAMING_ASK_TRANSCRIPT = "ollama_ask_non_streaming"
+  POPULATE_PROMPT              = "Say hello, world. Reply in one short sentence."
 
   # Run a block with the Ollama provider's environment forced so the specs
   # are deterministic regardless of the host's real environment.
@@ -65,6 +71,36 @@ module LLMSpecHelpers
   def recorded_request_body(transcript_name : String) : JSON::Any
     transcript = Wiretap::Transcript.load_or_create(transcript_name, :once)
     JSON.parse(transcript.interactions.first.request.body.not_nil!)
+  end
+
+  # Serialize a chat's history to a JSON string via the `save` path.
+  def save_chat_json(chat : LLM::Chat) : String
+    mem = IO::Memory.new
+    chat.save(mem)
+    mem.rewind
+    mem.gets_to_end
+  end
+
+  # Load a chat's history from a JSON string via the `load` path.
+  def restore_chat(chat : LLM::Chat, json : String) : Nil
+    chat.load(json)
+  end
+
+  # The JSON of a chat's last full conversation, for comparing round-trips.
+  def last_conversation_json(chat : LLM::Chat) : String
+    chat.extract_conversations(LLM::Conversation::LatestFull).not_nil!
+  end
+
+  # Build an Ollama chat and populate its history by *replaying* the recorded
+  # non-streaming ask transcript (no live network). The returned chat's history
+  # then holds a user prompt plus an assistant response, which the history specs
+  # use to exercise fork / save / load without issuing any new requests.
+  def populated_ollama_chat : LLM::Chat
+    chat = build_ollama_chat
+    Wiretap.intercept(NON_STREAMING_ASK_TRANSCRIPT) do
+      ask_events(chat, POPULATE_PROMPT)
+    end
+    chat
   end
 end
 
