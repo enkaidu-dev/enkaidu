@@ -13,33 +13,34 @@ Spectator.describe LLM::Protocol::ChatCompletions::Chat do
 
   describe "tool-call round-trip" do
     it "runs a requested tool and returns a final answer" do
-      chat = build_ollama_chat
-      chat.with_tool TestEchoTool.new
+      [true, false].each do |streaming|
+        chat = build_ollama_chat
+        chat.with_tool TestEchoTool.new
+        chat.with_streaming if streaming == true
+        first_events = uninitialized Array(LLM::ChatEvent)
+        tool_events = [] of LLM::ChatEvent
+        final_events = uninitialized Array(LLM::ChatEvent)
+        Wiretap.intercept(streaming ? "ollama_streaming_tool_call" : "ollama_tool_call") do
+          # First ask: the model should request the `echo` tool.
+          first_events = ask_events(chat, "Please echo the word hello using the echo tool. Do not answer in plain text.")
 
-      first_events = uninitialized Array(LLM::ChatEvent)
-      tool_events  = [] of LLM::ChatEvent
-      final_events = uninitialized Array(LLM::ChatEvent)
-      Wiretap.intercept("ollama_tool_call") do
-        # First ask: the model should request the `echo` tool.
-        first_events = ask_events(chat, "Please echo the word hello using the echo tool. Do not answer in plain text.")
+          # It requested a tool call for `echo`.
+          call_event = first_events.find { |e| e["type"] == LLM::Event::ToolCallRequested }
+          expect(call_event).not_to be_nil
+          expect(call_event.not_nil!["content"].dig("name").as_s).to eq("echo")
 
-        # It requested a tool call for `echo`.
-        call_event = first_events.find { |e| e["type"] == "tool_call_requested" }
-        expect(call_event).not_to be_nil
-        expect(call_event.not_nil!["content"].dig("function", "name").as_s).to eq("echo")
+          # Run the requested tool (returns the number of calls made).
+          ncalls = chat.call_tools_and_setup_ask([LLM::FunctionCall.from_json(call_event.not_nil!["content"])]) do |ev|
+            tool_events << ev
+          end
+          expect(ncalls).to eq(1)
+          expect(tool_events.any? { |e| e["type"] == LLM::Event::CallingTool }).to be_true
 
-        # Run the requested tool (returns the number of calls made).
-        ncalls = chat.call_tools_and_setup_ask([call_event.not_nil!["content"]]) do |ev|
-          tool_events << ev
+          # Hand the tool result back and get the final answer.
+          final_events = re_ask_events(chat)
         end
-        expect(ncalls).to eq(1)
-        expect(tool_events.any? { |e| e["type"] == "calling_tool" }).to be_true
-
-        # Hand the tool result back and get the final answer.
-        final_events = re_ask_events(chat)
+        expect(reply_text(final_events)).not_to be_empty
       end
-
-      expect(reply_text(final_events)).not_to be_empty
     end
   end
 end
