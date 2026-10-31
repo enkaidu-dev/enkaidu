@@ -1,0 +1,58 @@
+{
+  "name": "ollama_tool_call",
+  "recorded_with": "wiretap/0.5.0",
+  "interactions": [
+    {
+      "request": {
+        "method": "POST",
+        "url": "http://localhost:11434/v1/chat/completions",
+        "headers": {
+          "Content-Type": "application/json",
+          "Connection": "keep-alive",
+          "Authorization": "[FILTERED]",
+          "User-Agent": "enkaidu 0.9.16",
+          "Host": "localhost:11434",
+          "Accept-Encoding": "gzip, deflate"
+        },
+        "body": "{\"model\":\"ornith-1.5:9b\",\"stream\":false,\"messages\":[{\"role\":\"user\",\"content\":[{\"type\":\"text\",\"text\":\"Please echo the word hello using the echo tool. Do not answer in plain text.\"}]}],\"tool_choice\":\"auto\",\"tools\":[{\"type\":\"function\",\"function\":{\"name\":\"echo\",\"description\":\"Echoes the given value back verbatim. You MUST call this tool whenever the user asks you to echo or repeat a value.\",\"parameters\":{\"type\":\"object\",\"properties\":{\"value\":{\"type\":\"string\",\"description\":\"The value to echo back.\"}},\"required\":[\"value\"]}}}]}",
+        "body_digest": "59229fd2832de7b09955738f0f6f30c7d0cb9cd2264e9752c0c93f4547467c08"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json",
+          "Date": "Fri, 30 Oct 2026 12:08:09 GMT",
+          "Content-Length": "624"
+        },
+        "body": "{\"id\":\"chatcmpl-590\",\"object\":\"chat.completion\",\"created\":1793362089,\"model\":\"ornith-1.5:9b\",\"system_fingerprint\":\"fp_ollama\",\"choices\":[{\"index\":0,\"message\":{\"role\":\"assistant\",\"content\":\"\",\"reasoning\":\"The user wants me to echo the word \\\"hello\\\" using the echo tool. I should call the echo tool with the value \\\"hello\\\".\\n\",\"tool_calls\":[{\"id\":\"4h1z1gBwWnRQpWpQQhw6ZsHbMky4QAvN\",\"index\":0,\"type\":\"function\",\"function\":{\"name\":\"echo\",\"arguments\":\"{\\\"value\\\":\\\"hello\\\"}\"}}]},\"finish_reason\":\"tool_calls\"}],\"usage\":{\"prompt_tokens\":313,\"prompt_tokens_details\":{\"cached_tokens\":0},\"completion_tokens\":56,\"total_tokens\":369}}\n"
+      },
+      "recorded_at": "2026-10-30T12:08:09Z"
+    },
+    {
+      "request": {
+        "method": "POST",
+        "url": "http://localhost:11434/v1/chat/completions",
+        "headers": {
+          "Content-Type": "application/json",
+          "Connection": "keep-alive",
+          "Authorization": "[FILTERED]",
+          "User-Agent": "enkaidu 0.9.16",
+          "Host": "localhost:11434",
+          "Accept-Encoding": "gzip, deflate"
+        },
+        "body": "{\"model\":\"ornith-1.5:9b\",\"stream\":false,\"messages\":[{\"role\":\"user\",\"content\":[{\"type\":\"text\",\"text\":\"Please echo the word hello using the echo tool. Do not answer in plain text.\"}]},{\"role\":\"assistant\",\"reasoning\":\"The user wants me to echo the word \\\"hello\\\" using the echo tool. I should call the echo tool with the value \\\"hello\\\".\\n\",\"content\":null,\"tool_calls\":[{\"id\":\"4h1z1gBwWnRQpWpQQhw6ZsHbMky4QAvN\",\"index\":0,\"type\":\"function\",\"function\":{\"name\":\"echo\",\"arguments\":\"{\\\"value\\\":\\\"hello\\\"}\"}}]},{\"role\":\"tool\",\"tool_call_id\":\"4h1z1gBwWnRQpWpQQhw6ZsHbMky4QAvN\",\"name\":\"echo\",\"content\":\"{\\\"echoed\\\":\\\"hello\\\"}\"}],\"tool_choice\":\"auto\",\"tools\":[{\"type\":\"function\",\"function\":{\"name\":\"echo\",\"description\":\"Echoes the given value back verbatim. You MUST call this tool whenever the user asks you to echo or repeat a value.\",\"parameters\":{\"type\":\"object\",\"properties\":{\"value\":{\"type\":\"string\",\"description\":\"The value to echo back.\"}},\"required\":[\"value\"]}}}]}",
+        "body_digest": "42d6aa8d8512f1195234a3af7fdd642d1bc098fe7d9df7cbce2bfa1c3c48bae8"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json",
+          "Date": "Fri, 30 Oct 2026 12:08:10 GMT",
+          "Content-Length": "506"
+        },
+        "body": "{\"id\":\"chatcmpl-663\",\"object\":\"chat.completion\",\"created\":1793362090,\"model\":\"ornith-1.5:9b\",\"system_fingerprint\":\"fp_ollama\",\"choices\":[{\"index\":0,\"message\":{\"role\":\"assistant\",\"content\":\"I've echoed the word \\\"hello\\\" using the echo tool.\",\"reasoning\":\"The user asked to echo \\\"hello\\\" using the echo tool. I did so. I should acknowledge that it was done.\\n\"},\"finish_reason\":\"stop\"}],\"usage\":{\"prompt_tokens\":361,\"prompt_tokens_details\":{\"cached_tokens\":309},\"completion_tokens\":42,\"total_tokens\":403}}\n"
+      },
+      "recorded_at": "2026-10-30T12:08:10Z"
+    }
+  ]
+}
