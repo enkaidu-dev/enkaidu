@@ -1,6 +1,8 @@
 require "json"
 
-module LLM::OpenAI
+require "../chat"
+
+module LLM
   # Represents `content` within a message to the LLM
   abstract class Content
     include JSON::Serializable
@@ -16,4 +18,7 @@ module LLM::OpenAI
   end
 end
 
-require "./content/*"
+require "./text"
+require "./image_url"
+require "./file_data"
+require "./input_audio"

@@ -82,28 +82,6 @@ module Tools::Web
         error_response(ex)
       end
 
-      private def confirm_save_path(save_as_file : String?, overwrite : Bool) : String?
-        return unless save_as_file
-
-        full = resolve_path(save_as_file)
-
-        unless within_current_directory?(full)
-          raise ArgumentError.new("Access to the specified path '#{save_as_file}' is not allowed.")
-        end
-
-        if file_exists?(full)
-          if overwrite
-            if path_in_deleted_files_folder?(full)
-              raise ArgumentError.new("Cannot overwrite files in the `#{DELETED_FILES_PATH}` folder.")
-            end
-          else
-            raise ArgumentError.new("The file '#{save_as_file}' already exists.")
-          end
-        end
-
-        full
-      end
-
       # Ensure directory-sub-tree for file exists
       private def write_to_file(save_path : String, &)
         parent = Path.new(save_path).parent

@@ -1,7 +1,7 @@
-require "../message"
+require "./message"
 require "../usage"
 
-module LLM::OpenAI
+module LLM
   # Represents a response message from the LLM
   class Message::Response < Message
     ROLE = "assistant"

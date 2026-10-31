@@ -1,6 +1,6 @@
-require "../content.cr"
+require "./content"
 
-module LLM::OpenAI
+module LLM
   # Represents file `content` within a message to the LLM
   class Content::InputAudio < Content
     property input_audio = {} of String => String

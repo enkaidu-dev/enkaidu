@@ -1,0 +1,27 @@
+{
+  "name": "ollama_list_models",
+  "recorded_with": "wiretap/0.5.0",
+  "interactions": [
+    {
+      "request": {
+        "method": "GET",
+        "url": "http://localhost:11434/v1/models",
+        "headers": {
+          "Host": "localhost:11434",
+          "User-Agent": "Crystal",
+          "Accept-Encoding": "gzip, deflate"
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json",
+          "Date": "Fri, 30 Oct 2026 03:34:36 GMT",
+          "Content-Length": "1964"
+        },
+        "body": "{\"object\":\"list\",\"data\":[{\"id\":\"bonsai-2:27b\",\"object\":\"model\",\"created\":1792381635,\"owned_by\":\"library\"},{\"id\":\"bonsai-2:9b\",\"object\":\"model\",\"created\":1792381620,\"owned_by\":\"library\"},{\"id\":\"muse-glimmer:30b-nvfp4-dflash\",\"object\":\"model\",\"created\":1791580608,\"owned_by\":\"library\"},{\"id\":\"embeddinggemma-2:270m\",\"object\":\"model\",\"created\":1791580050,\"owned_by\":\"library\"},{\"id\":\"embeddinggemma-2:latest\",\"object\":\"model\",\"created\":1791578988,\"owned_by\":\"library\"},{\"id\":\"ornith-1.5:9b\",\"object\":\"model\",\"created\":1790139904,\"owned_by\":\"library\"},{\"id\":\"ornith-1.5:35b\",\"object\":\"model\",\"created\":1789326341,\"owned_by\":\"library\"},{\"id\":\"qwen3.8:27b-nvfp4\",\"object\":\"model\",\"created\":1788296707,\"owned_by\":\"library\"},{\"id\":\"qwen3.8:27b-mxfp8\",\"object\":\"model\",\"created\":1786768453,\"owned_by\":\"library\"},{\"id\":\"nemotron-3.5-lightning:30b-a3b-mxfp8\",\"object\":\"model\",\"created\":1786559707,\"owned_by\":\"library\"},{\"id\":\"muse-glimmer:30b-mxfp8-dflash\",\"object\":\"model\",\"created\":1786557704,\"owned_by\":\"library\"},{\"id\":\"muse-glimmer:30b-mxfp8\",\"object\":\"model\",\"created\":1786538616,\"owned_by\":\"library\"},{\"id\":\"nemotron3:33b-q8\",\"object\":\"model\",\"created\":1784165848,\"owned_by\":\"library\"},{\"id\":\"glm-ocr:bf16\",\"object\":\"model\",\"created\":1784165791,\"owned_by\":\"library\"},{\"id\":\"gpt-oss:latest\",\"object\":\"model\",\"created\":1784165583,\"owned_by\":\"library\"},{\"id\":\"qwen3.5:0.8b-mxfp8\",\"object\":\"model\",\"created\":1784164561,\"owned_by\":\"library\"},{\"id\":\"gemma4:31b-mxfp8\",\"object\":\"model\",\"created\":1784163077,\"owned_by\":\"library\"},{\"id\":\"gemma4:26b-mxfp8\",\"object\":\"model\",\"created\":1784163076,\"owned_by\":\"library\"},{\"id\":\"laguna-xs-2.1:q8_0\",\"object\":\"model\",\"created\":1783367761,\"owned_by\":\"library\"},{\"id\":\"embeddinggemma:latest\",\"object\":\"model\",\"created\":1774750308,\"owned_by\":\"library\"},{\"id\":\"nomic-embed-text-v2-moe:latest\",\"object\":\"model\",\"created\":1774750205,\"owned_by\":\"library\"},{\"id\":\"glm-ocr:latest\",\"object\":\"model\",\"created\":1771556726,\"owned_by\":\"library\"}]}\n"
+      },
+      "recorded_at": "2026-10-30T03:34:36Z"
+    }
+  ]
+}

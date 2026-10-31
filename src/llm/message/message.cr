@@ -1,6 +1,7 @@
-require "./content"
+require "../chat"
+require "../content/content"
 
-module LLM::OpenAI
+module LLM
   # Represents a message in a request to the LLM
   abstract class Message
     include JSON::Serializable
@@ -32,4 +33,6 @@ module LLM::OpenAI
   end
 end
 
-require "./message/*"
+require "./multi_content"
+require "./response"
+require "./tool_call"

@@ -1,0 +1,32 @@
+{
+  "name": "ollama_ask_non_streaming",
+  "recorded_with": "wiretap/0.5.0",
+  "interactions": [
+    {
+      "request": {
+        "method": "POST",
+        "url": "http://localhost:11434/v1/chat/completions",
+        "headers": {
+          "Content-Type": "application/json",
+          "Connection": "keep-alive",
+          "Authorization": "[FILTERED]",
+          "User-Agent": "enkaidu 0.9.16",
+          "Host": "localhost:11434",
+          "Accept-Encoding": "gzip, deflate"
+        },
+        "body": "{\"model\":\"ornith-1.5:9b\",\"stream\":false,\"messages\":[{\"role\":\"user\",\"content\":[{\"type\":\"text\",\"text\":\"Say hello, world. Reply in one short sentence.\"}]}],\"tool_choice\":\"auto\",\"tools\":[]}",
+        "body_digest": "1b012299188375194f0580621764b0c1bc4f40886eacd80de0c46b8006d71e73"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json",
+          "Date": "Fri, 30 Oct 2026 11:46:21 GMT",
+          "Content-Length": "475"
+        },
+        "body": "{\"id\":\"chatcmpl-844\",\"object\":\"chat.completion\",\"created\":1793360781,\"model\":\"ornith-1.5:9b\",\"system_fingerprint\":\"fp_ollama\",\"choices\":[{\"index\":0,\"message\":{\"role\":\"assistant\",\"content\":\"Hello, world!\",\"reasoning\":\"The user is asking me to say hello, world with a reply in one short sentence. This is simple and straightforward.\\n\"},\"finish_reason\":\"stop\"}],\"usage\":{\"prompt_tokens\":21,\"prompt_tokens_details\":{\"cached_tokens\":0},\"completion_tokens\":32,\"total_tokens\":53}}\n"
+      },
+      "recorded_at": "2026-10-30T11:46:21Z"
+    }
+  ]
+}

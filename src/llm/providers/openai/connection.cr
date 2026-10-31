@@ -1,12 +1,12 @@
-require "./chat"
-require "../connection"
+require "../../connection"
+require "../../protocol/chat_completions/chat"
 
 module LLM::OpenAI
   # `Connection` is a class extending `LLM::Connection` to implement specific behaviors
   # for OpenAI's chat services.
   class Connection < LLM::Connection
     def new_chat(&) : LLM::Chat
-      chat = Chat.new(self)
+      chat = Protocol::ChatCompletions::Chat.new(self)
       with chat yield
       chat
     end

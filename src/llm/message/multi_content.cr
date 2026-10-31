@@ -1,6 +1,7 @@
-require "../message"
+require "../chat_inclusions"
+require "./message"
 
-module LLM::OpenAI
+module LLM
   # Represents a multi-content message in a request to the LLM
   class Message::MultiContent < Message
     ROLE = "user"
