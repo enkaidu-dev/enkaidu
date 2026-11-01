@@ -6,7 +6,7 @@ require "../../message/message"
 require "../../history"
 
 require "./converters"
-require "./function_call"
+require "./function_call_builder"
 
 module LLM::Protocol::ChatCompletions
   class Chat < LLM::Chat
@@ -119,11 +119,10 @@ module LLM::Protocol::ChatCompletions
     end
 
     private def call_tool(tool : LLM::Function,
-                          tool_call : JSON::Any,
+                          tool_call : LLM::FunctionCall,
                           attachments : Message::MultiContent?)
-      id = tool_call.dig("id").as_s
-      args = if args_str = tool_call.dig("function", "arguments").as_s?
-               JSON.parse(args_str)
+      args = if tool_call.arguments.present?
+               JSON.parse(tool_call.arguments)
              else
                JSON::Any.new(nil)
              end
@@ -145,31 +144,30 @@ module LLM::Protocol::ChatCompletions
         end
       end
       {
-        tool_call_response: Message::ToolCall.new(tool_call_id: id, name: tool.name, content: reply.content),
+        tool_call_response: Message::ToolCall.new(tool_call_id: tool_call.id, name: tool.name, content: reply.content),
         attachments:        attachments,
       }
     end
 
     # Invoke tool calls and return number of calls made; if positive call `re_ask` to
     # hand call results to the models to process
-    def call_tools_and_setup_ask(tool_calls : Array(JSON::Any), & : LLM::ChatEvent ->) : Int32
+    def call_tools_and_setup_ask(tool_calls : Array(LLM::FunctionCall), & : LLM::ChatEvent ->) : Int32
       attachments = nil.as(Message::MultiContent?)
       calls = 0
       tool_calls.each do |call|
-        name = call.dig("function", "name").as_s
-        if tool = find_tool? name
-          yield({type: "calling_tool", content: call})
+        if tool = find_tool?(call.name)
+          yield({type: LLM::Event::CallingTool, content: call.json})
           result = call_tool(tool, call, attachments)
           append_message(result[:tool_call_response])
           attachments = result[:attachments]
         else
           yield unknown_tool_call(call)
           append_message error_calling_tool(
-            call.dig("id").as_s,
-            name,
-            error: case name
+            call.id,
+            call.name,
+            error: case call.name
             when .blank? then "The tool name cannot be empty string."
-            else              "The tool #{name} is not installed. Consider installing it first."
+            else              "The tool #{call.name} is not installed. Consider installing it first."
             end
           )
         end
@@ -182,8 +180,8 @@ module LLM::Protocol::ChatCompletions
       calls
     end
 
-    private def unknown_tool_call(tool_call : JSON::Any)
-      {type: "error/unknown_tool_call", content: tool_call}
+    private def unknown_tool_call(tool_call : LLM::FunctionCall)
+      {type: LLM::Event::ErrorUnknownToolCall, content: tool_call.json}
     end
 
     def import(prompt : MCP::PromptResult, emit = false, & : ChatEvent ->) : Nil
@@ -224,7 +222,7 @@ module LLM::Protocol::ChatCompletions
       @history.exclude_past_reasoning(skip_turns: exclude_reasoning_skip) if exclude_reasoning_in_history
       body = to_body(response_schema)
 
-      yield({type: "debug/request", content: JSON.parse(body)}) if debug?
+      yield({type: LLM::Event::DebugRequest, content: JSON.parse(body)}) if debug?
 
       STDERR.puts ">>> #{body}" if TRACE
       @conn.post_and_stream(body, session_id) do |resp|
@@ -256,25 +254,27 @@ module LLM::Protocol::ChatCompletions
         data = JSON.parse(body)
         if data["error"]?
           STDERR.puts "~~~ #{data}" if TRACE
-          yield({type: "error/server", content: data})
+          yield({type: LLM::Event::ErrorServer, content: data})
         else
           content = nil
           reasoning = nil
-          tool_calls = [] of JSON::Any
           usage = nil
           process_data(data) do |msg|
             case msg["type"]
-            when "text"
+            when LLM::Event::Text
               content = msg["content"].to_s
-            when "reasoning"
+            when LLM::Event::ReasoningEvent
               reasoning = msg["content"].to_s
-            when "tool_call_requested"
-              tool_calls << msg["content"]
-            when "usage"
+            when LLM::Event::Usage
               usage = Usage.from_json(msg["content"].to_json)
             end
             yield msg
           end
+          # The CC-wire tool calls (for history / next request encoding) are
+          # kept separate from the canonical events yielded to the app.
+          tool_calls = if tc = data.dig?("choices", 0, "message", "tool_calls")
+                         tc.as_a
+                       end
           msg = Message::Response.new(
             content: content, reasoning: reasoning, tool_calls: tool_calls)
           msg.usage = usage if usage
@@ -286,7 +286,7 @@ module LLM::Protocol::ChatCompletions
     end
 
     private def unexpected_response(resp)
-      {type: "error/unexpected", content: JSON::Any.new(Hash{
+      {type: LLM::Event::ErrorUnexpected, content: JSON::Any.new(Hash{
         "headers" => JSON.parse(resp.headers.to_h.to_json),
         "body"    => JSON::Any.new(resp.body_io.gets_to_end),
       })}
@@ -307,15 +307,12 @@ module LLM::Protocol::ChatCompletions
       msg
     end
 
-    private def extract_tool_call_from_message(msg)
-      # AWFUL?
-      # This FunctionCall object is used to aggregate the
-      # tool call when streaming, after which it is
-      # retrograded back to its JSON::Any representation
-      # as if it had been parsed from a whole incoming
-      # tool call.
+    private def extract_tool_call_from_message(msg) : FunctionCallBuilder
+      # This FunctionCallBuilder object is used to aggregate the
+      # tool call when streaming; a canonical LLM::FunctionCall is
+      # built from it when complete (in wrap_up_tool_call).
       tool_call = msg["content"]
-      FunctionCall.new(
+      FunctionCallBuilder.new(
         name: tool_call.dig("function", "name").as_s,
         id: tool_call["id"].as_s,
         # vLLM doesn't include empty `arguments:`, so if not present fill with empty string to append to.
@@ -324,21 +321,24 @@ module LLM::Protocol::ChatCompletions
       )
     end
 
-    private def merge_with_recent_tool_call(msg, recent_tool_call) : Nil
+    private def merge_with_recent_tool_call(msg, recent_tool_call : FunctionCallBuilder) : Nil
       tool_call = msg["content"]
       return unless args = tool_call.dig?("function", "arguments")
       recent_tool_call.append_args_json(args.as_s)
     end
 
-    private def wrap_up_tool_call(recent_tool_call, tool_calls)
-      # close up recent tool call
-      call = jsonify_function_call(recent_tool_call)
-      tool_calls << call
-      {type: "tool_call_requested", content: call}
+    private def wrap_up_tool_call(recent_tool_call : FunctionCallBuilder, tool_calls)
+      # Close up the recent tool call: retain the CC wire form for history /
+      # request encoding, but emit the canonical shape as the event content.
+      tool_calls << jsonify_function_call(recent_tool_call)
+      {
+        type:    LLM::Event::ToolCallRequested,
+        content: LLM::FunctionCall.new(recent_tool_call.id, recent_tool_call.name, recent_tool_call.args_json).json,
+      }
     end
 
-    private def receiving_tool_call(starting_tool_call)
-      {type: "receiving_tool_call", content: JSON::Any.new(starting_tool_call.name)}
+    private def receiving_tool_call(starting_tool_call : FunctionCallBuilder)
+      {type: LLM::Event::ReceivingToolCall, content: JSON::Any.new(starting_tool_call.name)}
     end
 
     # ameba:disable Metrics/CyclomaticComplexity: It's too messy if I split this up more.
@@ -354,32 +354,32 @@ module LLM::Protocol::ChatCompletions
             next if line.empty?
 
             if line.ends_with? "[DONE]"
-              yield({type: "done", content: JSON::Any.new(nil)})
+              yield({type: LLM::Event::Done, content: JSON::Any.new(nil)})
             else
               STDERR.puts "*** #{line}" if TRACE
               data = JSON.parse(line.lchop("data: "))
               process_data(data, from_stream: true) do |msg|
                 # gather up the stream chunks
                 case msg["type"]
-                when "text"
+                when LLM::Event::Text
                   text_io << msg["content"]
                   yield msg
-                when "reasoning"
+                when LLM::Event::ReasoningEvent
                   think_io << msg["content"]
                   yield msg
-                when "tool_call_requested"
+                when LLM::Event::ToolCallRequested
                   yield(wrap_up_tool_call(recent_tool_call, tool_calls)) if recent_tool_call
                   # and start a new one
                   recent_tool_call = extract_tool_call_from_message(msg)
                   yield(receiving_tool_call(recent_tool_call))
-                when "tool_call_merge"
+                when LLM::Event::ToolCallMerge
                   merge_with_recent_tool_call(msg, recent_tool_call) if recent_tool_call
-                when "finish_reason"
+                when LLM::Event::FinishReason
                   if recent_tool_call
                     yield wrap_up_tool_call(recent_tool_call, tool_calls)
                     recent_tool_call = nil
                   end
-                when "usage"
+                when LLM::Event::Usage
                   usage = Usage.from_json(msg["content"].to_json)
                 else
                   yield msg
@@ -397,7 +397,7 @@ module LLM::Protocol::ChatCompletions
       msg
     end
 
-    private def jsonify_function_call(f : FunctionCall)
+    private def jsonify_function_call(f : FunctionCallBuilder)
       f.append_args_json(nil, complete: true)
       JSON.parse(JSON.build do |json|
         function_call_to_json(f, json)
@@ -406,29 +406,40 @@ module LLM::Protocol::ChatCompletions
 
     private def process_content(content, &) : Nil
       if content && content.raw && content.raw != "" # in case property exists with null value
-        yield({type: "text", content: content})
+        yield({type: LLM::Event::Text, content: content})
       end
     end
 
     private def process_reasoning(text, &) : Nil
       if text && text.raw && text.raw != "" # in case property exists with null value
-        yield({type: "reasoning", content: text})
+        yield({type: LLM::Event::ReasoningEvent, content: text})
       end
     end
 
-    private def process_tool_calls(tool_calls, &) : Nil
+    private def cc_tool_call_to_function_call(call : JSON::Any)
+      LLM::FunctionCall.new(
+        call.dig("id").as_s,
+        call.dig("function", "name").as_s,
+        call.dig("function", "arguments").as_s? || "",
+      )
+    end
+
+    private def process_tool_calls(tool_calls, from_stream : Bool, &) : Nil
       tool_calls.as_a.each do |call|
         if call.dig?("function", "name") # in case function block is a dud
-          yield({type: "tool_call_requested", content: call})
+          yield({
+            type:    LLM::Event::ToolCallRequested,
+            content: from_stream ? call : cc_tool_call_to_function_call(call).json,
+          })
         else
           # chunks to merge with last tool_call with name
-          yield({type: "tool_call_merge", content: call})
+          yield({type: LLM::Event::ToolCallMerge, content: call})
         end
       end
     end
 
     private def process_data(data : JSON::Any, from_stream = false, &) : Nil
-      yield({type: "debug/data", content: data}) if debug?
+      yield({type: LLM::Event::DebugData, content: data}) if debug?
 
       selector = from_stream ? "delta" : "message"
 
@@ -448,19 +459,19 @@ module LLM::Protocol::ChatCompletions
 
         # check for tool calling
         if tool_calls = data_selector["tool_calls"]?
-          process_tool_calls(tool_calls) { |msg| yield msg }
+          process_tool_calls(tool_calls, from_stream) { |msg| yield msg }
         end
       end
 
       # check for usage chunk
       if (usage = data["usage"]?) && usage.raw
-        yield({type: "usage", content: usage})
+        yield({type: LLM::Event::Usage, content: usage})
       end
 
       # check if we have a finish reason
       return unless fini = data.dig?("choices", 0, "finish_reason")
       return if fini.raw.nil?
-      yield({type: "finish_reason", content: fini})
+      yield({type: LLM::Event::FinishReason, content: fini})
     end
 
     private def to_body(response_schema : ResponseSchema? = nil)

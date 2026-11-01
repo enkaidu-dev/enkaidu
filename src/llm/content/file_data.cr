@@ -13,7 +13,7 @@ module LLM
 
     # Emit this content as one or more `ChatEvent` objects
     def emit(& : ChatEvent ->) : Nil
-      yield({type: "query/file_data", content: JSON::Any.new(file["filename"])})
+      yield({type: LLM::Event::QueryFileData, content: JSON::Any.new(file["filename"])})
     end
   end
 end

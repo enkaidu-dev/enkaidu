@@ -329,7 +329,7 @@ module Enkaidu
         io.puts {{ event }}.to_json
       end
       case type = {{ event }}["type"]
-      when "done"
+      when LLM::Event::Done
         detect_text_ending(type, prev_event)
       else
         ix += 1
@@ -348,9 +348,9 @@ module Enkaidu
       # When starting to handle a new event, check if the last event is something
       # we need to close off; in particular, text and reasoning events when streaming.
       case prev_type
-      when "reasoning"
+      when LLM::Event::ReasoningEvent
         renderer.llm_text("", reasoning: true, ending: true)
-      when "text"
+      when LLM::Event::Text
         renderer.llm_text("", reasoning: false, ending: true)
       end
     end
@@ -358,36 +358,36 @@ module Enkaidu
     # Process the given event and yield tool call if any
     private def process_event(event, prev_event, &) : Nil
       type = event["type"]
-      return if type.starts_with?("debug")
+      return if type.debug_event?
 
       # Handle text/reasoning ending detection first
       detect_text_ending(type, prev_event)
 
       case type
-      when "tool_call_requested"
-        yield event["content"] # tool call
-      when "calling_tool"
+      when LLM::Event::ToolCallRequested
+        yield LLM::FunctionCall.from_json(event["content"])
+      when LLM::Event::CallingTool
         renderer.llm_tool_call(
-          name: event["content"].dig("function", "name").as_s,
-          args: event["content"].dig("function", "arguments"))
-      when "reasoning"
+          name: event["content"].dig("name").as_s,
+          args: event["content"].dig("arguments"))
+      when LLM::Event::ReasoningEvent
         if streaming?
           renderer.llm_text(event["content"].as_s,
             reasoning: true, starting: prev_event.try(&.["type"]) != type)
         else
           renderer.llm_text_block(event["content"].as_s, reasoning: true)
         end
-      when "text"
+      when LLM::Event::Text
         if streaming?
           renderer.llm_text(event["content"].as_s,
             reasoning: false, starting: prev_event.try(&.["type"]) != type)
         else
           renderer.llm_text_block(event["content"].as_s, reasoning: false)
         end
-      when .starts_with? "error"
+      when .error_event?
         case type
-        when .ends_with? "/unknown_tool_call"
-          tool_name = event["content"].dig("function", "name").as_s
+        when LLM::Event::ErrorUnknownToolCall
+          tool_name = event["content"].dig("name").as_s
           renderer.llm_error(event, message: "The tool `#{tool_name}` is not installed.")
         else
           renderer.llm_error(event)
@@ -406,18 +406,18 @@ module Enkaidu
 
     # Perform tool calls and subsequent events repeatedly until
     # no more tool calls remain
-    private def consume_tool_calls_sync(tools, progress)
+    private def consume_tool_calls_sync(tools : Array(LLM::FunctionCall), progress)
       prev_event = nil
       begin
         until tools.empty?
           calls = tools
-          tools = [] of JSON::Any
+          tools = [] of LLM::FunctionCall
           ix = 0
           # Invoke the tool calls first since we
           # cannot do this concurrently since tool calls can prompt user for input
           ncalls = chat.call_tools_and_setup_ask(calls) do |event|
             m_process_and_record_ask_event(event, prev_event)
-            prev_event = event unless event["type"].starts_with?("debug")
+            prev_event = event unless event["type"].debug_event?
           ensure
             detect_text_ending(nil, prev_event)
           end
@@ -429,8 +429,11 @@ module Enkaidu
             begin
               chat.re_ask do |event|
                 case event[:type]
-                when "receiving_tool_call" then progress.start
-                else                            progress.stop
+                when LLM::Event::ReceivingToolCall
+                  progress.label = "Receiving #{event[:content]}(...)"
+                  progress.start
+                else
+                  progress.stop
                 end
                 m_process_and_record_ask_event(event, prev_event)
                 prev_event = event
@@ -469,7 +472,7 @@ module Enkaidu
 
           STDERR.print "\r\e[K" unless streaming?
           m_process_and_record_ask_event(event, prev_event)
-          prev_event = event unless event["type"].starts_with?("debug")
+          prev_event = event unless event["type"].debug_event?
         else
           if streaming?
             sleep(10.milliseconds)
@@ -498,15 +501,18 @@ module Enkaidu
       recorder << "["
       # ask and handle the initial query and its events
       track_and_time("Engaging") do |progress|
-        tools = [] of JSON::Any
+        tools = [] of LLM::FunctionCall
         ix = 0
         prev_event = nil
         begin
           chat.re_ask(response_schema: response_json_schema,
             exclude_reasoning_in_history: exclude_past_reasoning?) do |event|
             case event[:type]
-            when "receiving_tool_call" then progress.start
-            else                            progress.stop
+            when LLM::Event::ReceivingToolCall
+              progress.label = "Receiving #{event[:content]}(...)"
+              progress.start
+            else
+              progress.stop
             end
             m_process_and_record_ask_event(event, prev_event)
             prev_event = event
@@ -538,7 +544,7 @@ module Enkaidu
                  render_query = false)
       recorder << "["
       track_and_time("Engaging") do |progress|
-        tools = [] of JSON::Any
+        tools = [] of LLM::FunctionCall
         ix = 0
         prev_event = nil
         # ask and handle the initial query and its events
@@ -551,8 +557,11 @@ module Enkaidu
             exclude_reasoning_in_history: exclude_past_reasoning?,
             exclude_reasoning_skip: exclude_past_reasoning_from) do |event|
             case event[:type]
-            when "receiving_tool_call" then progress.start
-            else                            progress.stop
+            when LLM::Event::ReceivingToolCall
+              progress.label = "Receiving #{event[:content]}(...)"
+              progress.start
+            else
+              progress.stop
             end
             m_process_and_record_ask_event(event, prev_event)
             prev_event = event

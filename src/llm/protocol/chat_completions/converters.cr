@@ -1,12 +1,12 @@
 require "json"
 
-require "./function_call"
+require "./function_call_builder"
 require "../../function"
 require "../../response_schema"
 
 module LLM::Protocol::ChatCompletions
   private module Converters
-    protected def function_call_to_json(f : FunctionCall, json : JSON::Builder)
+    protected def function_call_to_json(f : FunctionCallBuilder, json : JSON::Builder)
       json.object do
         json.field "type", "function"
         json.field "id", f.id

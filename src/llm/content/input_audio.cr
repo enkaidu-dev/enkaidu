@@ -13,7 +13,7 @@ module LLM
 
     # Emit this content as one or more `ChatEvent` objects
     def emit(& : ChatEvent ->) : Nil
-      yield({type: "query/input_audio", content: JSON::Any.new(input_audio["format"])})
+      yield({type: LLM::Event::QueryAudio, content: JSON::Any.new(input_audio["format"])})
     end
   end
 end

@@ -1,10 +1,11 @@
 require "./function"
 require "./response_schema"
 require "./chat_inclusions"
+require "./function_call"
 require "../sucre/mcp_types"
 
 module LLM
-  alias ChatEvent = NamedTuple(type: String, content: JSON::Any)
+  alias ChatEvent = NamedTuple(type: Event, content: JSON::Any)
 
   enum Conversation
     LatestFull
@@ -134,7 +135,7 @@ module LLM
 
     # Invoke tool calls and return number of calls made; if positive call `re_ask` to
     # hand call results to the models to process
-    abstract def call_tools_and_setup_ask(tool_calls : Array(JSON::Any), & : LLM::ChatEvent ->) : Int32
+    abstract def call_tools_and_setup_ask(tool_calls : Array(FunctionCall), & : ChatEvent ->) : Int32
 
     # Resubmit current session as a query to get another answer
     abstract def re_ask(response_schema : ResponseSchema? = nil, exclude_reasoning_in_history = false, & : ChatEvent ->) : Nil

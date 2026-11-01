@@ -65,23 +65,23 @@ module Enkaidu
 
       private def render_session_event(chat_ev, text_count)
         case chat_ev["type"]
-        when "text"
+        when LLM::Event::Text
           renderer.llm_text_block(chat_ev["content"].as_s, reasoning: false)
           text_count += 1
-        when "reasoning"
+        when LLM::Event::ReasoningEvent
           renderer.llm_text_block(chat_ev["content"].as_s, reasoning: true)
           text_count += 1
-        when "tool_call_requested"
+        when LLM::Event::ToolCallRequested
           text_count = 0
           renderer.llm_tool_call(
-            name: chat_ev["content"].dig("function", "name").as_s,
-            args: chat_ev["content"].dig("function", "arguments"))
-        when "query/text"
+            name: chat_ev["content"].dig("name").as_s,
+            args: chat_ev["content"].dig("arguments"))
+        when .query_text?
           renderer.user_query_text(chat_ev["content"].as_s)
           text_count += 1
-        when "query/image_url"
+        when .query_image_url?
           renderer.user_query_image_url(chat_ev["content"].as_s)
-        when "query/file_data"
+        when .query_file_data?
           renderer.info_with("INCLUDE file: #{chat_ev["content"].as_s}")
         end
         text_count

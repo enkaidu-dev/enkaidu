@@ -15,17 +15,13 @@ module LLM
 
     # Emit this message as one or more `ChatEvent` objects
     def emit(& : ChatEvent ->) : Nil
-      body = <<-EMIT
-        {
-          "function" : {
-            "name" : #{name.to_json},
-            "content" : #{content.to_json}
-          }
-        }
-        EMIT
       yield({
-        type:    "tool_call/done",
-        content: JSON.parse(body),
+        type:    LLM::Event::ToolCallDone,
+        content: JSON.parse({
+          "id"     => tool_call_id,
+          "name"   => name,
+          "output" => content,
+        }.to_json),
       })
     end
 

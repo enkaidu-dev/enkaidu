@@ -10,7 +10,7 @@ Spectator.describe LLM::Protocol::ChatCompletions::Chat do
 
   describe "#ask (non-streaming)" do
     it "sends a chat/completions request and yields the reply text and usage" do
-      chat   = build_ollama_chat
+      chat = build_ollama_chat
       events = uninitialized Array(LLM::ChatEvent)
       Wiretap.intercept("ollama_ask_non_streaming") do
         events = ask_events(chat, "Say hello, world. Reply in one short sentence.")
@@ -18,7 +18,7 @@ Spectator.describe LLM::Protocol::ChatCompletions::Chat do
 
       # A non-empty reply was emitted and a usage event was reported.
       expect(reply_text(events)).not_to be_empty
-      expect(events.any? { |e| e["type"] == "usage" }).to be_true
+      expect(events.any? { |e| e["type"].usage? }).to be_true
 
       # The recorded request is a chat/completions call using our model,
       # non-streaming, ending in the user's prompt.
@@ -42,7 +42,7 @@ Spectator.describe LLM::Protocol::ChatCompletions::Chat do
       # The reply is assembled from streamed text deltas and is non-empty.
       expect(reply_text(events)).not_to be_empty
       # The stream completed with a `done` marker.
-      expect(events.any? { |e| e["type"] == "done" }).to be_true
+      expect(events.any? { |e| e["type"].done? }).to be_true
       # The streamed usage chunk is parsed and stored on the chat. (Note the
       # streaming path captures usage onto the response rather than forwarding
       # a `usage` event to the caller, unlike the non-streaming path.)

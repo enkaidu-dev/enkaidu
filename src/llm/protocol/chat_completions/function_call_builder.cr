@@ -1,8 +1,9 @@
 module LLM::Protocol::ChatCompletions
-  # Defines a function (tool) call, with ability to build up the
-  # args from chunks when streaming. USED AS AN INTERIM object; maybe one day
-  # the whole system won't be hung on JSON::Any scaffolding.
-  private class FunctionCall
+  # Accumulates a (possibly streaming) Chat-Completions tool call. Protocol-
+  # specific: it retains `extra_content` for dialect tolerance and knows the
+  # CC wire layout. Distinct from the canonical core `LLM::FunctionCall`,
+  # which is built from it (via id/name/args_json) when complete.
+  private class FunctionCallBuilder
     getter name : String
     getter id : String
     getter args_json : String

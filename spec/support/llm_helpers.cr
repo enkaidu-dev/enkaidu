@@ -30,7 +30,7 @@ module LLMSpecHelpers
   # are deterministic regardless of the host's real environment.
   def with_ollama_envs(&)
     ENV["OLLAMA_ENDPOINT"] = OLLAMA_ENDPOINT
-    ENV["OLLAMA_API_KEY"]  = "ollama"
+    ENV["OLLAMA_API_KEY"] = "ollama"
     yield
   ensure
     ENV.delete("OLLAMA_ENDPOINT")
@@ -64,7 +64,7 @@ module LLMSpecHelpers
 
   # Concatenate the `text` events' contents into the full reply text.
   def reply_text(events) : String
-    events.select { |e| e["type"] == "text" }.map { |e| e["content"].as_s }.join
+    events.select { |e| e["type"].text? }.map { |e| e["content"].as_s }.join
   end
 
   # The JSON request body of the first interaction in a recorded transcript.

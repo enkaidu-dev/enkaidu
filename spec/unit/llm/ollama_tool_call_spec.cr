@@ -25,7 +25,7 @@ Spectator.describe LLM::Protocol::ChatCompletions::Chat do
           first_events = ask_events(chat, "Please echo the word hello using the echo tool. Do not answer in plain text.")
 
           # It requested a tool call for `echo`.
-          call_event = first_events.find { |e| e["type"] == LLM::Event::ToolCallRequested }
+          call_event = first_events.find { |e| e["type"].tool_call_requested? }
           expect(call_event).not_to be_nil
           expect(call_event.not_nil!["content"].dig("name").as_s).to eq("echo")
 
@@ -34,7 +34,7 @@ Spectator.describe LLM::Protocol::ChatCompletions::Chat do
             tool_events << ev
           end
           expect(ncalls).to eq(1)
-          expect(tool_events.any? { |e| e["type"] == LLM::Event::CallingTool }).to be_true
+          expect(tool_events.any? { |e| e["type"].calling_tool? }).to be_true
 
           # Hand the tool result back and get the final answer.
           final_events = re_ask_events(chat)

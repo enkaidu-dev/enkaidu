@@ -30,15 +30,21 @@ module LLM
     # Emit this message as one or more `ChatEvent` objects
     def emit(& : ChatEvent ->) : Nil
       if text = reasoning
-        yield({type: "reasoning", content: JSON::Any.new(text)})
+        yield({type: LLM::Event::ReasoningEvent, content: JSON::Any.new(text)})
       end
       if text = content
-        yield({type: "text", content: JSON::Any.new(text)})
+        yield({type: LLM::Event::Text, content: JSON::Any.new(text)})
       end
       tool_calls.try &.each do |call|
+        # `call` is the CC-wire tool call {id, function:{name, arguments}, …};
+        # emit it in the canonical shape (the wire form is only for history).
         yield({
-          type:    "tool_call_requested",
-          content: call,
+          type:    LLM::Event::ToolCallRequested,
+          content: LLM::FunctionCall.new(
+            call.dig("id").as_s,
+            call.dig("function", "name").as_s,
+            call.dig("function", "arguments").as_s? || "",
+          ).json,
         })
       end
     end
