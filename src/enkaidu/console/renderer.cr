@@ -11,7 +11,6 @@ module Enkaidu::Console
   class Renderer < SessionRenderer
     include StyleApplicator
 
-    property? streaming = true
     property? quiet = false
 
     private getter progress : Progress = Progress.new("Engaging")
