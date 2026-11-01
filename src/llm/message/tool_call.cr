@@ -24,12 +24,5 @@ module LLM
         }.to_json),
       })
     end
-
-    protected def protocol_fields_to_json(json : JSON::Builder)
-      super
-      json.field "tool_call_id", tool_call_id
-      json.field "name", name
-      json.field "content", content
-    end
   end
 end

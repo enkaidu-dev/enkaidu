@@ -1,7 +1,6 @@
 require "http"
 
 require "../../chat"
-require "../../content/content"
 require "../../message/message"
 require "../../history"
 
@@ -13,97 +12,10 @@ module LLM::Protocol::ChatCompletions
     include Converters
 
     @conn : Connection
-    @history : History
-
-    # Usage report in most recent response from LLM.
-    getter usage : Usage? = nil
 
     def initialize(@conn)
       super()
-      @history = History.new
       @model = @conn.model
-      @usage = nil
-    end
-
-    def erase_history : Nil
-      @history = History.new
-      @usage = nil
-    end
-
-    def save(io : IO | JSON::Builder) : Nil
-      @history.to_json(io)
-    end
-
-    def load(io : IO | String) : Nil
-      @history = History.from_json(io)
-      @usage = @history.last_usage
-    end
-
-    def tail(num_responses = 1, & : ChatEvent ->) : Nil
-      @history.tail_chats(num_responses) { |chat_ev| yield chat_ev }
-    end
-
-    def send_tail(to : Chat, num_responses = 1, filter_by_role : String? = nil) : Nil
-      @history.transfer_tail_chats(to: to.@history,
-        num: num_responses, filter_by_role: filter_by_role)
-    end
-
-    def append_conversations(to : Chat, which : Conversation) : Bool
-      case which
-      when .latest_full?
-        @history.append_last_conversation(to: to.@history)
-      when .latest_outer?
-        @history.append_last_conversation(to: to.@history, outer: true)
-      when .session_full?
-        @history.append_session_conversation(to: to.@history)
-      when .session_outer?
-        @history.append_session_conversation(to: to.@history, outer: true)
-      end
-      true
-    end
-
-    # Extract last response from `assistant` and yield it to caller to
-    # process and return a named tuple with a `prompt` and `response` to return
-    # as a message array that caller can inject into a session. Returns `nil` if
-    # no response in the current history.
-    def append_last_response_as_prompt(to : Chat, prompt_prefix : String, new_response : String) : Bool
-      @history.append_transformed_last_response?(to: to.@history) do |content|
-        {
-          response: new_response,
-          prompt:   String.build { |str| str << prompt_prefix << content },
-        }
-      end
-    end
-
-    # Extract conversations and return as a JSON string
-    def extract_conversations(which : Conversation) : String?
-      extract = case which
-                when .latest_full?
-                  @history.extract_last_conversation
-                when .latest_outer?
-                  @history.extract_last_conversation(outer: true)
-                when .session_full?
-                  @history.extract_session_conversation
-                when .session_outer?
-                  @history.extract_session_conversation(outer: true)
-                end
-      extract.try(&.to_json)
-    end
-
-    # Replace current session with a "fork" of the session from the given
-    # `Chat` instance; may fail if `self` is not compatible.
-    # Optionally, exclude the last "turn" (last user prompt and subsequent responses).
-    def fork(from : Chat, exclude_last_turn = false) : Nil
-      @history.branch(from.@history, exclude_last_turn)
-      @usage = @history.last_usage
-    end
-
-    def append_message(msg)
-      usage = nil
-      if msg.is_a? Message::Response
-        @usage = usage = msg.usage
-      end
-      @history.append_message msg, usage
     end
 
     def with_model(model : String)
@@ -111,114 +23,13 @@ module LLM::Protocol::ChatCompletions
       @conn.model = model
     end
 
-    private def error_calling_tool(call_id, tool_name, error, instruction = nil.as(String?))
-      Message::ToolCall.new(
-        tool_call_id: call_id,
-        name: tool_name,
-        content: (instruction ? {error: error, instruction: instruction} : {error: error}).to_json)
-    end
-
-    private def call_tool(tool : LLM::Function,
-                          tool_call : LLM::FunctionCall,
-                          attachments : Message::MultiContent?)
-      args = if tool_call.arguments.blank?
-               JSON::Any.new(nil)
-             else
-               JSON.parse(tool_call.arguments)
-             end
-      reply = tool.run(args)
-      # Detect attachments and start gathering up to send after the tool call
-      # responses. We need to do this to make sure we conform to the message ordering
-      # enforced by many model servers.
-      if reply.has_attachments?
-        if attachments.nil?
-          attachments = Message::MultiContent.new("Additional content related to prior tool calls.")
-        end
-        reply.each_attachment do |att|
-          case att
-          when Function::Reply::Text  then attachments.text(att.data)
-          when Function::Reply::File  then attachments.file_data(att.base64_data, att.file_name)
-          when Function::Reply::Image then attachments.image_url(att.image_url.to_s)
-          when Function::Reply::Audio then attachments.input_audio(att.base64_data, att.format)
-          end
-        end
-      end
-      {
-        tool_call_response: Message::ToolCall.new(tool_call_id: tool_call.id, name: tool.name, content: reply.content),
-        attachments:        attachments,
-      }
-    end
-
-    # Invoke tool calls and return number of calls made; if positive call `re_ask` to
-    # hand call results to the models to process
-    def call_tools_and_setup_ask(tool_calls : Array(LLM::FunctionCall), & : LLM::ChatEvent ->) : Int32
-      attachments = nil.as(Message::MultiContent?)
-      calls = 0
-      tool_calls.each do |call|
-        if tool = find_tool?(call.name)
-          yield({type: LLM::Event::CallingTool, content: call.json})
-          result = call_tool(tool, call, attachments)
-          append_message(result[:tool_call_response])
-          attachments = result[:attachments]
-        else
-          yield unknown_tool_call(call)
-          append_message error_calling_tool(
-            call.id,
-            call.name,
-            error: case call.name
-            when .blank? then "The tool name cannot be empty string."
-            else              "The tool #{call.name} is not installed. Consider installing it first."
-            end
-          )
-        end
-        calls += 1
-      end
-      unless attachments.nil?
-        # Append the attachments after all the tool call responses
-        append_message(attachments)
-      end
-      calls
-    end
-
-    private def unknown_tool_call(tool_call : LLM::FunctionCall)
-      {type: LLM::Event::ErrorUnknownToolCall, content: tool_call.json}
-    end
-
-    def import(prompt : MCP::PromptResult, emit = false, & : ChatEvent ->) : Nil
-      @history.import(prompt, emit) { |event| yield event }
-    end
-
-    def re_ask(response_schema : ResponseSchema? = nil,
-               exclude_reasoning_in_history = false,
-               exclude_reasoning_skip = 0,
-               & : ChatEvent ->) : Nil
-      ask_post(response_schema, exclude_reasoning_in_history, exclude_reasoning_skip) do |msg|
-        yield msg
-      end
-    end
-
-    def squish
-      @history = @history.squish_turns
-      @usage = nil
-    end
-
-    def ask(content : String,
-            attach : ChatInclusions? = nil,
-            response_schema : ResponseSchema? = nil,
-            exclude_reasoning_in_history = false,
-            exclude_reasoning_skip = 0,
-            & : ChatEvent ->) : Nil
-      append_message Message::MultiContent.new(prompt: content, attach: attach)
-
-      ask_post(response_schema, exclude_reasoning_in_history, exclude_reasoning_skip) do |msg|
-        yield msg
-      end
-    end
-
-    private def ask_post(response_schema : ResponseSchema? = nil,
-                         exclude_reasoning_in_history = false,
-                         exclude_reasoning_skip = 0,
-                         & : LLM::ChatEvent ->) : Nil
+    # The one protocol contract: encode the current session, POST it (SSE or JSON),
+    # yield canonical `ChatEvent`s, and append the resulting `Message::Response` to
+    # history. Session management and the tool loop live on the base `LLM::Chat`.
+    def post_session(response_schema : ResponseSchema? = nil,
+                     exclude_reasoning_in_history = false,
+                     exclude_reasoning_skip = 0,
+                     & : LLM::ChatEvent ->) : Nil
       @history.exclude_past_reasoning(skip_turns: exclude_reasoning_skip) if exclude_reasoning_in_history
       body = to_body(response_schema)
 

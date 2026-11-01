@@ -1,5 +1,6 @@
 require "json"
 
+require "../../message/message"
 require "./function_call_builder"
 require "../../function"
 require "../../response_schema"
@@ -75,8 +76,7 @@ module LLM::Protocol::ChatCompletions
               end
             end
             session.each_message(reverse: false) do |msg|
-              # msg.to_json(json)
-              msg.to_protocol_json(json)
+              encode_message(msg, json)
             end
           end
         end
@@ -86,6 +86,44 @@ module LLM::Protocol::ChatCompletions
             tools.each do |tool|
               function_to_json(tool, json)
             end
+          end
+        end
+      end
+    end
+
+    # Encode one canonical Message as a Chat-Completions wire entry. The wire
+    # shape is owned by this protocol encoder (not by the canonical model), so
+    # `Message` no longer carries a `to_protocol_json` bridge. Field order and
+    # conditionals mirror the old bridge exactly:
+    #   - MultiContent: role, content[]
+    #   - ToolCall:     role, tool_call_id, name, content
+    #   - Response:     role, reasoning (only when present AND include_reasoning?),
+    #                   content, tool_calls (only when non-empty)
+    private def encode_message(message : Message, json : JSON::Builder)
+      json.object do
+        case message
+        when Message::MultiContent
+          json.field "role", message.role
+          json.field "content" do
+            json.array do
+              message.content.each do |item|
+                item.to_json(json)
+              end
+            end
+          end
+        when Message::ToolCall
+          json.field "role", message.role
+          json.field "tool_call_id", message.tool_call_id
+          json.field "name", message.name
+          json.field "content", message.content
+        when Message::Response
+          json.field "role", message.role
+          if thoughts = message.reasoning
+            json.field "reasoning", thoughts if thoughts.presence && message.include_reasoning?
+          end
+          json.field "content", message.content
+          if calls = message.tool_calls
+            json.field "tool_calls", calls unless calls.empty?
           end
         end
       end

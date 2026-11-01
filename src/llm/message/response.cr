@@ -53,18 +53,5 @@ module LLM
     protected def dup_without_tool_calls
       self.class.new(content, reasoning)
     end
-
-    protected def protocol_fields_to_json(json : JSON::Builder)
-      super
-      if thoughts = @reasoning
-        if thoughts.presence && include_reasoning?
-          json.field "reasoning", thoughts
-        end
-      end
-      json.field "content", content
-      if (calls = @tool_calls) && !calls.empty?
-        json.field "tool_calls", calls
-      end
-    end
   end
 end
