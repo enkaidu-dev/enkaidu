@@ -296,22 +296,46 @@ Spectator.describe "LLM::Protocol::ChatCompletions::Chat streaming parse" do
       expect(msg.reasoning).to eq("after")
     end
 
-    it "characterizes a tool call left in flight with no finish_reason (dropped today)" do
+    it "finalizes an in-flight tool call when the stream ends without a finish_reason" do
       chat = build_parse_chat
-      # No finish_reason chunk and no [DONE]: the in-flight call is never
-      # wrap-up'd, so it is neither emitted nor appended to history. Pinned as a
-      # characterization of current behavior — revisit before relying on truncated
-      # streams (DESIGN.md §4.6; the canonical `tool_call_requested` for a finished
-      # call is what the app consumes next).
+      # No finish_reason chunk and no [DONE]: historically the in-flight call was
+      # dropped (neither emitted nor appended). It must now be finalized at
+      # end-of-stream so it still reaches the emitted events and history.
       body = sse_body([
         chunk(tchunk_delta(id: "call_z", name: "echo", arguments: "{}")),
       ], done: false)
       events, msg = chat.parse_streamed(body)
 
       expect(events_of(events, LLM::Event::ReceivingToolCall).size).to eq(1)
-      expect(events_of(events, LLM::Event::ToolCallRequested).size).to eq(0)
+      req = events_of(events, LLM::Event::ToolCallRequested)
+      expect(req.size).to eq(1)
+      expect(req.first["content"]["id"].as_s).to eq("call_z")
+      expect(req.first["content"]["name"].as_s).to eq("echo")
+      expect(req.first["content"]["arguments"].as_s).to eq("{}")
+      # No [DONE] was sent, so no Done event is fabricated.
       expect(events_of(events, LLM::Event::Done).size).to eq(0)
-      expect(msg.tool_calls.not_nil!.size).to eq(0)
+      # The call was appended to history as well.
+      expect(msg.tool_calls.not_nil!.size).to eq(1)
+    end
+
+    it "tolerates a start chunk that omits `id` (some vLLM builds) without dropping the call" do
+      chat = build_parse_chat
+      # No `id` on the start chunk. Pre-hardening this crashed the line into the
+      # per-line rescue and dropped the call; it is now extracted with an empty
+      # id so the call still flows through and is finalized.
+      body = sse_body [
+        chunk(tchunk_delta(name: "echo", arguments: "{}")),
+        chunk(empty_delta, finish: "tool_calls"),
+      ]
+      events, msg = chat.parse_streamed(body)
+
+      expect(events_of(events, LLM::Event::ReceivingToolCall).size).to eq(1)
+      req = events_of(events, LLM::Event::ToolCallRequested)
+      expect(req.size).to eq(1)
+      expect(req.first["content"]["name"].as_s).to eq("echo")
+      expect(req.first["content"]["arguments"].as_s).to eq("{}")
+      expect(req.first["content"]["id"].as_s).to eq("")
+      expect(msg.tool_calls.not_nil!.size).to eq(1)
     end
   end
 

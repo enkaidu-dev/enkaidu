@@ -314,7 +314,10 @@ module LLM::Protocol::ChatCompletions
       tool_call = msg["content"]
       FunctionCallBuilder.new(
         name: tool_call.dig("function", "name").as_s,
-        id: tool_call["id"].as_s,
+        # Some servers (certain vLLM builds) omit `id` on the first chunk;
+        # tolerate with the empty string rather than crashing the line into the
+        # per-line rescue (which would silently drop the whole call).
+        id: tool_call.dig?("id").try(&.as_s) || "",
         # vLLM doesn't include empty `arguments:`, so if not present fill with empty string to append to.
         args_json: tool_call.dig?("function", "arguments").try(&.as_s) || "",
         extra_content: tool_call.dig?("extra_content")
@@ -389,6 +392,12 @@ module LLM::Protocol::ChatCompletions
           rescue ex
             LLM.show_error_trace(ex, data_label: "line", data: line)
           end
+          # A stream can end with a tool call still in flight — no trailing
+          # finish_reason chunk, or a truncated stream. Finalize it so it is
+          # appended to `tool_calls` and emitted as a canonical event. A stream
+          # that finished normally has already cleared `recent_tool_call` via the
+          # FinishReason case, making this a no-op there.
+          yield(wrap_up_tool_call(recent_tool_call, tool_calls)) if recent_tool_call
         end
       end
       msg = Message::Response.new(
