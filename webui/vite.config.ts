@@ -9,4 +9,7 @@ export default defineConfig({
     compiler: 'svelte',
   }),
   ],
+  build: {
+    chunkSizeWarningLimit: 1000 // Set the limit to 1000 kB
+  }
 })
