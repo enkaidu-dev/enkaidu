@@ -3,6 +3,7 @@
   import * as Acp from "./acp_schema_types";
 
   import { enkaidu_post_request, enkaidu_get_request } from "./utilities";
+import { read_line_by_line as ndjson_read_line_by_line } from "./lib/ndjson";
 
   import Promptbar from "./lib/Promptbar.svelte";
   import Session from "./lib/Session.svelte";
@@ -141,30 +142,7 @@
     return () => window.removeEventListener("beforeunload", handler);
   });
 
-  async function read_line_by_line(
-    response: Response,
-    handler: (line: string | null) => void,
-  ) {
-    const reader = response.body?.getReader();
-    if (!reader) return;
-
-    const decoder = new TextDecoder();
-    let buffer = "";
-
-    while (true) {
-      let { done, value } = await reader.read();
-      if (done) {
-        // Process any remaining buffer
-        if (buffer) handler(buffer);
-        handler(null); // null to indicate no more lines
-        break;
-      }
-      buffer += decoder.decode(value, { stream: true });
-      let lines = buffer.split("\n");
-      buffer = lines.pop() || ""; // Keep the last incomplete line in the buffer
-      lines.forEach((line) => handler(line));
-    }
-  }
+  const read_line_by_line = ndjson_read_line_by_line;
 
   function new_prompt_request(prompt: string): Acp.PromptRequest {
     return {
