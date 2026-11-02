@@ -180,10 +180,10 @@ module LLM
     private def call_tool(tool : Function,
                           tool_call : FunctionCall,
                           attachments : Message::MultiContent?)
-      args = if tool_call.arguments.present?
-               JSON.parse(tool_call.arguments)
-             else
+      args = if tool_call.arguments.blank?
                JSON::Any.new(nil)
+             else
+               JSON.parse(tool_call.arguments)
              end
       reply = tool.run(args)
       # Detect attachments and start gathering up to send after the tool call
