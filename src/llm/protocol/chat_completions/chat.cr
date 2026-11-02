@@ -4,12 +4,12 @@ require "../../chat"
 require "../../message/message"
 require "../../history"
 
-require "./converters"
+require "./encoder"
 require "./function_call_builder"
 
 module LLM::Protocol::ChatCompletions
   class Chat < LLM::Chat
-    include Converters
+    include Encoder
 
     @conn : Connection
 

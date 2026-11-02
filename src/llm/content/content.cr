@@ -1,6 +1,6 @@
 require "json"
 
-require "../chat"
+require "../events"
 
 module LLM
   # Represents `content` within a message to the LLM

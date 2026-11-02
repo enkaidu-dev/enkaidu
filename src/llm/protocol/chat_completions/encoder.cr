@@ -6,7 +6,7 @@ require "../../function"
 require "../../response_schema"
 
 module LLM::Protocol::ChatCompletions
-  private module Converters
+  private module Encoder
     protected def function_call_to_json(f : FunctionCallBuilder, json : JSON::Builder)
       json.object do
         json.field "type", "function"

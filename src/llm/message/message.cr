@@ -1,4 +1,4 @@
-require "../chat"
+require "../events"
 require "../content/content"
 
 module LLM

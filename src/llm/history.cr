@@ -1,6 +1,7 @@
 require "json"
 
-require "./chat"
+require "./events"
+require "../sucre/mcp_types"
 require "./message/message"
 require "./usage"
 

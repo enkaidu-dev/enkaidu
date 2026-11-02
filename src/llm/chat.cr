@@ -1,4 +1,5 @@
 require "./function"
+require "./events"
 require "./response_schema"
 require "./chat_inclusions"
 require "./function_call"
@@ -7,8 +8,6 @@ require "./usage"
 require "../sucre/mcp_types"
 
 module LLM
-  alias ChatEvent = NamedTuple(type: Event, content: JSON::Any)
-
   enum Conversation
     LatestFull
     LatestOuter
