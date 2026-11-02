@@ -5,6 +5,7 @@
   import { enkaidu_post_request, enkaidu_get_request } from "./utilities";
 import { classify_llm_text, classify_llm_text_fragment, classify_query } from "./lib/stream_protocol";
 import { read_line_by_line as ndjson_read_line_by_line } from "./lib/ndjson";
+import { run_prompt_session } from "./lib/prompt_flow";
 
   import Promptbar from "./lib/Promptbar.svelte";
   import Session from "./lib/Session.svelte";
@@ -343,32 +344,24 @@ case "llm_image_url":
     return success;
   }
 
-  const MAX_TRIES = 3;
 
   // Handle the user's prompt query request, by sending a query and
   // requesting further events in case of connection error.
   async function on_prompt_ask(query: string) {
     try {
       handling_request = true;
-      await check_if_started();
-
-      if (!(await ask_enkaidu(query))) {
-        // There was an error, so try and drain events in case Enkaidu
-        // is continuing to do work. This
-        // re-establises connection with Enkaidu (if possible).
-        let tries = 0;
-        while (tries < MAX_TRIES) {
-          if (await drain_events_from_enkaidu()) break;
-          tries += 1;
-        }
-        if (tries >= MAX_TRIES) {
-          // Failed after MAX_TRIES
+      await run_prompt_session({
+        query,
+        ensure_started: check_if_started,
+        ask: ask_enkaidu,
+        drain: drain_events_from_enkaidu,
+        on_reconnect_failed: () => {
           session.add_event({
             type: "clarion",
             content: "FAILED to re-connect with Enkaidu.",
           });
-        }
-      }
+        },
+      });
     } finally {
       handling_request = false;
       setTimeout(() => {
@@ -376,6 +369,8 @@ case "llm_image_url":
       }, 10);
     }
   }
+
+
 </script>
 
 <main>

@@ -21,7 +21,7 @@ export type SecurityPermissionDialogConfig = {
 }
 
 export type SecurityConfirmSubmit = (id: string, approved: boolean) => void
-export type SecurityPermssionSubmit = (id: string, approved: boolean, remember: boolean) => void
+export type SecurityPermissionSubmit = (id: string, approved: boolean, remember: boolean) => void
 
 // for InputDialog
 export type InputArg = {

@@ -10,7 +10,7 @@
     id,
     show = true,
   }: Common.SecurityPermissionDialogConfig & {
-    onconfirm: Common.SecurityPermssionSubmit;
+    onconfirm: Common.SecurityPermissionSubmit;
   } = $props();
 
   let remember = $state(false);
