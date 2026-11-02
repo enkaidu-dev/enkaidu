@@ -4,24 +4,33 @@ export type SecurityBanner = {
   message: string;
 };
 
-export type SecurityConfirmDialogConfig = {
+// Base config for the single unified security dialog. It carries every
+// field both former dialog variants needed; `rememberable` only affects
+// whether the "Remember" checkbox is offered.
+export type SecurityDialogConfig = {
   description: string;
   subjects: string[];
   banner: SecurityBanner | null;
   id: string;
   show: boolean;
+  rememberable?: boolean;
 }
 
-export type SecurityPermissionDialogConfig = {
-  description: string;
-  subjects: string[];
-  banner: SecurityBanner | null;
-  id: string;
-  show: boolean;
-}
+// Backwards-compatible aliases for the now-merged dialog types.
+export type SecurityConfirmDialogConfig = SecurityDialogConfig;
+export type SecurityPermissionDialogConfig = SecurityDialogConfig;
 
-export type SecurityConfirmSubmit = (id: string, approved: boolean) => void
-export type SecurityPermissionSubmit = (id: string, approved: boolean, remember: boolean) => void
+
+
+// The unified dialog always offers the third argument; confirm-style
+// callers simply ignore it.
+export type SecurityDialogSubmit = (
+  id: string,
+  approved: boolean,
+  remember?: boolean,
+) => void
+export type SecurityConfirmSubmit = SecurityDialogSubmit;
+export type SecurityPermissionSubmit = SecurityDialogSubmit;
 
 // for InputDialog
 export type InputArg = {

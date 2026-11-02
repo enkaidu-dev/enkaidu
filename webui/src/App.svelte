@@ -27,9 +27,6 @@ import { run_prompt_session } from "./lib/prompt_flow";
   // The path currently shown in the panel (null = closed), plus the fetched
   // content / loading / error state for it.
   let open_file: string | null = $state(null);
-  let file_body = $state("");
-  let file_loading = $state(false);
-  let file_error = $state("");
 
   // The split-view panel width the user can drag to resize (pixels). It starts
   // at half the window and is remembered across open/close cycles.
@@ -94,31 +91,12 @@ import { run_prompt_session } from "./lib/prompt_flow";
   // Toggle a file's panel: clicking the file already being shown closes the
   // panel; clicking any other file (open or closed) opens it (refreshing
   // the content if it was already open).
-  async function toggle_file(path: string) {
+  function toggle_file(path: string) {
     if (open_file === path) {
       open_file = null;
       return;
     }
     open_file = path;
-    file_body = "";
-    file_error = "";
-    file_loading = true;
-    try {
-      const url = new URL("/fs/read", window.location.href);
-      url.searchParams.set("path", path);
-      const resp = await fetch(url);
-      const data: any = await resp.json().catch(() => null);
-      if (!resp.ok || data == null || typeof data.body !== "string") {
-        file_error =
-          (data && data.error ? data.error : "") + ` (HTTP ${resp.status})`;
-      } else {
-        file_body = data.body;
-      }
-    } catch (error) {
-      file_error = error as string;
-    } finally {
-      file_loading = false;
-    }
   }
 
   function close_file() {
@@ -425,9 +403,6 @@ case "llm_image_url":
       ></div>
       <FilePanel
         path={open_file}
-        body={file_body}
-        loading={file_loading}
-        error={file_error}
         onclose={close_file}
         width={file_panel_width}
       />

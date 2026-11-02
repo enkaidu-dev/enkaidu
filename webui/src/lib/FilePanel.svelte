@@ -5,20 +5,49 @@
   import SourceView from "./blocks/SourceView.svelte";
 
   let {
-    path,
-    body,
-    loading = false,
-    error = "",
-    onclose,
-    width,
-  }: {
-    path: string;
-    body: string;
-    loading?: boolean;
-    error?: string;
-    onclose?: () => void;
-    width?: number;
-   } = $props();
+  path,
+  onclose,
+  width,
+}: {
+  path: string;
+  onclose?: () => void;
+  width?: number;
+} = $props();
+
+let body = $state("");
+let loading = $state(false);
+let error = $state("");
+
+$effect(() => {
+  const current = path;
+  body = "";
+  loading = true;
+  error = "";
+  let cancelled = false;
+  (async () => {
+    try {
+      const url = new URL("/fs/read", window.location.href);
+      url.searchParams.set("path", current);
+      const resp = await fetch(url);
+      const data: any = await resp.json().catch(() => null);
+      if (cancelled) return;
+      if (!resp.ok || data == null || typeof data.body !== "string") {
+        error =
+          (data && data.error ? data.error : "") + ` (HTTP ${resp.status})`;
+      } else {
+        body = data.body;
+      }
+    } catch (e) {
+      if (!cancelled) error = String(e);
+    } finally {
+      if (!cancelled) loading = false;
+    }
+  })();
+  return () => {
+    cancelled = true;
+  };
+});
+
 
   function file_name(): string {
    const parts = path.split("/").filter(Boolean);

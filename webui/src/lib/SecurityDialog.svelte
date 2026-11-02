@@ -9,8 +9,9 @@
     banner,
     id,
     show = true,
-  }: Common.SecurityPermissionDialogConfig & {
-    onconfirm: Common.SecurityPermissionSubmit;
+    rememberable = false,
+  }: Common.SecurityDialogConfig & {
+    onconfirm: Common.SecurityDialogSubmit;
   } = $props();
 
   let remember = $state(false);
@@ -40,11 +41,7 @@
       </h3>
       <div class="py-4">
         {#if banner}
-          <p
-            class="mb-3 font-medium {banner.safe
-              ? 'text-success'
-              : 'text-error'}"
-          >
+          <p class="mb-3 font-medium {banner.safe ? 'text-success' : 'text-error'}">
             {banner.message}
           </p>
         {/if}
@@ -100,12 +97,14 @@
           Allow
         </button>
       </div>
-      <div class="modal-action">
-        <label class="label">
-          <input type="checkbox" bind:checked={remember} class="checkbox" />
-          Remember
-        </label>
-      </div>
+      {#if rememberable}
+        <div class="modal-action">
+          <label class="label">
+            <input type="checkbox" bind:checked={remember} class="checkbox" />
+            Remember
+          </label>
+        </div>
+      {/if}
     </div>
     <div class="modal-backdrop opacity-50"></div>
   </div>

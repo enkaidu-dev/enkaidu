@@ -18,10 +18,12 @@
   let history_version = $state(0);
 
   // Load history from server once on mount
-  $effect(() => {
-    history.loadFromServer().then(() => {
+  onMount(() => {
+    const unsubscribe = history.on_change(() => {
       history_version++;
     });
+    void history.loadFromServer();
+    return unsubscribe;
   });
 
   let live_entries = $derived.by(() => {
@@ -307,7 +309,6 @@
     history.push(text);
     // sync to server asynchronously, fire-and-forget
     history.syncToServer([text]).catch(() => {});
-    history_version++;
   }
 
   // ---- Prompt-history search (Spotlight-style) ----------------------

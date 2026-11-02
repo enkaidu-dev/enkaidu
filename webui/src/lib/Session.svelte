@@ -6,8 +6,8 @@
   import AsstTextCard from "./AsstTextCard.svelte";
   import AsstImageCard from "./AsstImageCard.svelte";
   import AsstThinkCard from "./AsstThinkCard.svelte";
-  import SecurityConfirmDialog from "./SecurityConfirmDialog.svelte";
-  import SecurityPermissionDialog from "./SecurityPermissionDialog.svelte";
+  import SecurityDialog from "./SecurityDialog.svelte";
+  
   import UserTextCard from "./UserTextCard.svelte";
   import UserImageCard from "./UserImageCard.svelte";
   import ClarionCard from "./ClarionCard.svelte";
@@ -123,25 +123,16 @@
   // User queries, assistant text, alerts, and images stay standalone.
   let grouped = $derived(group_entries(entries));
 
-  let security_permission_dialog_config: Common.SecurityPermissionDialogConfig =
-    $state({
-      show: false,
-      description: "",
-      subjects: [],
-      banner: null,
-      id: "",
-    });
+  let security_dialog_config: Common.SecurityDialogConfig = $state({
+    show: false,
+    description: "",
+    subjects: [],
+    banner: null,
+    id: "",
+    rememberable: false,
+  });
 
-  let security_confirm_dialog_config: Common.SecurityConfirmDialogConfig =
-    $state({
-      show: false,
-      description: "",
-      subjects: [],
-      banner: null,
-      id: "",
-    });
-
-  let inputs_dialog: InputsDialog;
+    let inputs_dialog: InputsDialog;
 
   let inputs_dialog_config: Common.InputDialogConfig = $state({
     show: false,
@@ -184,24 +175,12 @@
     id: string,
     banner: Common.SecurityBanner | null,
   ) {
-    security_confirm_dialog_config.show = true;
-    security_confirm_dialog_config.description = description;
-    security_confirm_dialog_config.subjects = subjects;
-    security_confirm_dialog_config.banner = banner;
-    security_confirm_dialog_config.id = id;
-  }
-
-  async function send_confirmation_response(id: string, approved: boolean) {
-    try {
-      await enkaidu_post_request("confirmation", { id, approved });
-    } catch (error) {
-      console.error("Failed to send confirmation response:", error);
-    }
-  }
-
-  function handle_security_confirmation(id: string, approved: boolean) {
-    security_confirm_dialog_config.show = false;
-    send_confirmation_response(id, approved);
+    security_dialog_config.show = true;
+    security_dialog_config.description = description;
+    security_dialog_config.subjects = subjects;
+    security_dialog_config.banner = banner;
+    security_dialog_config.id = id;
+    security_dialog_config.rememberable = false;
   }
 
   export function show_security_permission(
@@ -210,32 +189,39 @@
     id: string,
     banner: Common.SecurityBanner | null,
   ) {
-    security_permission_dialog_config.show = true;
-    security_permission_dialog_config.description = description;
-    security_permission_dialog_config.subjects = subjects;
-    security_permission_dialog_config.banner = banner;
-    security_permission_dialog_config.id = id;
+    security_dialog_config.show = true;
+    security_dialog_config.description = description;
+    security_dialog_config.subjects = subjects;
+    security_dialog_config.banner = banner;
+    security_dialog_config.id = id;
+    security_dialog_config.rememberable = true;
   }
 
-  async function send_permission_response(
+  async function send_security_response(
     id: string,
     approved: boolean,
-    remember: boolean,
+    remember: boolean = false,
+    permission: boolean = false,
   ) {
     try {
-      await enkaidu_post_request("permission", { id, approved, remember });
+      if (permission) {
+        await enkaidu_post_request("permission", { id, approved, remember });
+      } else {
+        await enkaidu_post_request("confirmation", { id, approved });
+      }
     } catch (error) {
-      console.error("Failed to send permission response:", error);
+      console.error("Failed to send security response:", error);
     }
   }
 
-  function handle_security_permission(
+  function handle_security_dialog(
     id: string,
     approved: boolean,
-    remember: boolean,
+    remember: boolean = false,
   ) {
-    security_permission_dialog_config.show = false;
-    send_permission_response(id, approved, remember);
+    const permission = security_dialog_config.rememberable === true;
+    security_dialog_config.show = false;
+    send_security_response(id, approved, remember, permission);
   }
 
   export function ask_for_inputs(
@@ -347,23 +333,16 @@
   </div>
 </div>
 
-<SecurityConfirmDialog
-  subjects={security_confirm_dialog_config.subjects}
-  banner={security_confirm_dialog_config.banner}
-  description={security_confirm_dialog_config.description}
-  id={security_confirm_dialog_config.id}
-  show={security_confirm_dialog_config.show}
-  onconfirm={handle_security_confirmation}
+<SecurityDialog
+  subjects={security_dialog_config.subjects}
+  banner={security_dialog_config.banner}
+  description={security_dialog_config.description}
+  id={security_dialog_config.id}
+  show={security_dialog_config.show}
+  rememberable={security_dialog_config.rememberable === true}
+  onconfirm={handle_security_dialog}
 />
 
-<SecurityPermissionDialog
-  subjects={security_permission_dialog_config.subjects}
-  banner={security_permission_dialog_config.banner}
-  description={security_permission_dialog_config.description}
-  id={security_permission_dialog_config.id}
-  show={security_permission_dialog_config.show}
-  onconfirm={handle_security_permission}
-/>
 
 <InputsDialog
   bind:this={inputs_dialog}
