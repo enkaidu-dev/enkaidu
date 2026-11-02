@@ -84,6 +84,12 @@ actions:
     description: Just run the release build; assume `ops br` was run already.
     command: bin/release/$APP
     load_secrets: true
+  npm:
+    param_expansion: true
+    command: |-
+      cd webui
+      npm ${1} ${2} ${3}
+      cd ..
 options:
   environment:
     APP: enkaidu
