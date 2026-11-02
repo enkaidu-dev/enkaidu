@@ -3,8 +3,7 @@
   import * as Acp from "./acp_schema_types";
 
   import { enkaidu_post_request, enkaidu_get_request } from "./utilities";
-import { classify_llm_text, classify_llm_text_fragment, classify_query } from "./lib/stream_protocol";
-import { read_line_by_line as ndjson_read_line_by_line } from "./lib/ndjson";
+import { handle_enkaidu_response } from "./lib/response_handler";
 import { run_prompt_session } from "./lib/prompt_flow";
 
   import Promptbar from "./lib/Promptbar.svelte";
@@ -122,8 +121,6 @@ import { run_prompt_session } from "./lib/prompt_flow";
     return () => window.removeEventListener("beforeunload", handler);
   });
 
-  const read_line_by_line = ndjson_read_line_by_line;
-
   function new_prompt_request(prompt: string): Acp.PromptRequest {
     return {
       sessionId: session.get_id(),
@@ -137,138 +134,15 @@ import { run_prompt_session } from "./lib/prompt_flow";
   }
 
   async function handle_response(resp: Response) {
-    // Use to track when in think mode while gathering text fragments.
-    let text_thinking = false;
-
-    await read_line_by_line(resp, function (line) {
-      if (line != null && line.length > 0) {
-        let msg = JSON.parse(line);
-        switch (msg.type) {
-          case "system_info":
-            prompt.update_system(msg.host, msg.cwd, msg.macros);
-            break;
-          case "session_info":
-            prompt.update_session(msg.model);
-            break;
-          case "ask_for_inputs":
-            session.ask_for_inputs(
-              msg.id,
-              msg.title,
-              msg.arguments,
-              msg.description,
-              msg.pre_filled,
-            );
-            break;
-          case "message":
-            session.add_event({
-              type: `message_${msg.level}`,
-              subject: msg.message,
-              content: msg.details,
-            });
-            break;
-          case "query":
-            switch (msg.content_type) {
-              case "text":
-                session.add_event({
-                  type: classify_query(
-                    msg.content,
-                    msg.via_query_queue === true,
-                  ),
-                  content: msg.content,
-                });
-                break;
-              case "image_url":
-                session.add_event({
-                  type: "query_image_url",
-                  content: msg.content,
-                });
-                break;
-              default:
-                console.log(`clarion: ${line}`);
-                session.add_event({
-                  type: "clarion",
-                  subject: `Unexpected query: ${line}`,
-                });
-            }
-            break;
-                    case "llm_text":
-            for (const ev of classify_llm_text({
-              content: msg.content,
-              reasoning: msg.reasoning,
-            })) {
-              session.add_event(ev);
-            }
-            break;
-
-          case "llm_text_fragment":
-            const fragment_classification = classify_llm_text_fragment(
-              {
-                fragment: msg.fragment,
-                reasoning: msg.reasoning,
-              },
-              text_thinking,
-            );
-            text_thinking = fragment_classification.nextThink;
-            for (const ev of fragment_classification.events) {
-              session.add_event(ev);
-            }
-            break;
-
-case "llm_image_url":
-            session.add_event({
-              type: "llm_image_url",
-              content: msg.content,
-            });
-            break;
-          case "llm_tool_call":
-            session.add_event({
-              type: `tool_call`,
-              subject: msg.name,
-              content: msg.args,
-            });
-            break;
-          case "help_response":
-            session.add_event({
-              type: "help_response",
-              subject: msg.title,
-              content: msg.body,
-            });
-            break;
-          case "security_confirmation":
-            session.show_security_confirmation(
-              msg.description,
-              msg.subjects,
-              msg.id,
-              msg.banner,
-            );
-            break;
-          case "security_permission":
-            session.show_security_permission(
-              msg.description,
-              msg.subjects,
-              msg.id,
-              msg.banner,
-            );
-            break;
-          case "session_reset":
-            session.reset();
-            has_content = false;
-            break;
-          case "session_shutdown":
-            // The runtime is done and the backend is shutting down: lock the
-            // prompt bar so no further input can be sent. The event rides the
-            // /bye stream, so it lands before handling_request clears.
-            closed = true;
-            break;
-
-          default:
-            console.log(`clarion: ${line}`);
-            session.add_event({
-              type: "clarion",
-              content: `Unexpected message: ${line}`,
-            });
-        }
-      }
+    await handle_enkaidu_response(resp, {
+      session,
+      prompt,
+      set_has_content: (value) => {
+        has_content = value;
+      },
+      set_closed: (value) => {
+        closed = value;
+      },
     });
   }
 
