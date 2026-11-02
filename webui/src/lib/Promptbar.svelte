@@ -1,6 +1,15 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { PromptHistory } from "./prompt_history";
+  import {
+    macro_filter_text,
+    macro_picker_state,
+    is_path_token_char,
+    path_token_at_caret,
+    is_path_like,
+    filter_macros,
+    type PromptMacro as Macro,
+  } from "./prompt_tokens";
   import HistorySearch from "./HistorySearch.svelte";
   import MacroPicker from "./MacroPicker.svelte";
   import FilePicker from "./FilePicker.svelte";
@@ -51,7 +60,6 @@
     return () => ro.disconnect();
   });
 
-  type Macro = { name: string; description: string; category: string };
   type AllMacros = Macro[];
 
   let host = $state("(host)");
@@ -108,13 +116,7 @@
   // whitespace (args live past it).  Empty filter shows the top macros.
   // Keeping it name-only stops an arg edit from reshuffling the filtered list
   // / jumping the highlighted row.
-  let macro_filter = $derived.by(() => {
-    const t = input_text;
-    if (!t.startsWith("!")) return "";
-    const rest = t.slice(1);
-    const ws = rest.search(/[ \t\n]/);
-    return ws === -1 ? rest : rest.slice(0, ws);
-  });
+  let macro_filter = $derived(macro_filter_text(input_text));
 
   // Decide open/close from the caret's position relative to the name token.
   // Open while the caret is on or within the name; closed once it lands in the
@@ -127,31 +129,21 @@
       macro_dismissed = false;
       return;
     }
-    if (macro_dismissed) {
-      macro_picker_open = false;
-      return;
-    }
     const ta = text_area;
     const caret = ta ? (ta.selectionStart ?? 0) : input_text.length;
-    const rest = input_text.slice(1);
-    const ws = rest.search(/[ \t\n]/);
-    const nameEnd = ws === -1 ? input_text.length : 1 + ws;
-    macro_picker_open = caret <= nameEnd;
+    const state = macro_picker_state(
+      input_text,
+      macros.length,
+      macro_dismissed,
+      caret,
+    );
+    macro_picker_open = state.open;
+    macro_dismissed = state.dismissed;
   }
 
-  let macro_matches = $derived.by(() => {
-    if (!macro_picker_open || macros.length === 0) return [] as Macro[];
-    const q = macro_filter.trim().toLowerCase();
-    if (!q) return macros.slice(0, 20);
-    return macros
-      .filter(
-        (m) =>
-          m.name.toLowerCase().includes(q) ||
-          m.description.toLowerCase().includes(q) ||
-          m.category.toLowerCase().includes(q),
-      )
-      .slice(0, 20);
-  });
+  let macro_matches = $derived(
+    filter_macros(macros, macro_filter, macro_picker_open),
+  );
 
   // Reset to the top of the filtered list whenever the filter text
   // changes so a narrowing query doesn't leave a stale highlight.
@@ -427,60 +419,14 @@
   // Called from auto_grow (typing) and onselect (caret moves); both clear the
   // short-lived `filepick_dismissed` first (auto_grow) / respect it (here), so
   // a cancel (Esc / backdrop / blur) won't re-pop on the next caret move.
-  function is_path_token_char(code: number): boolean {
-    return (
-      (code >= 48 && code <= 57) || // 0-9
-      (code >= 65 && code <= 90) || // A-Z
-      (code >= 97 && code <= 122) || // a-z
-      code === 46 || // .
-      code === 95 || // _
-      code === 45 || // -
-      code === 47 // /
-    );
-  }
-
-  // Is a token "path-like" — contains a `/` or starts with `./` / `/` (a
-  // relative-dot or an absolute path).  A bare filename or an ordinary word
-  // doesn't qualify, so ⌘F in plain text stays a free-form empty picker instead
-  // of seeding junk.
-  function is_path_like(token: string): boolean {
-    return (
-      token.includes("/") || token.startsWith("./") || token.startsWith("/")
-    );
-  }
-
-  // The full path token the caret sits on, scanned in *both* directions from
-  // the caret — back over the segments before it and forward over the segments
-  // after it.  Scanning forward is what makes ⌘F pressed in the *middle* of a
-  // path capture the whole token, so a pick replaces the entire path rather
-  // than only the part before the caret.  The `./` typing trigger is unaffected:
-  // there the caret is at the end of the just-typed text, so the forward scan
-  // finds nothing and the anchor is just the typed token.  Shared by both the
-  // `./` trigger and the ⌘F "use the path under the caret" open.
-  function path_token_at_caret(ta: HTMLTextAreaElement): {
-    start: number;
-    end: number;
-    token: string;
-  } {
-    // Read from the live element (the source of truth), not the input_text
-    // mirror.
-    const value = ta.value;
-    const caret = ta.selectionStart ?? value.length;
-    let start = caret;
-    while (start > 0 && is_path_token_char(value.charCodeAt(start - 1)))
-      start--;
-    let end = caret;
-    while (end < value.length && is_path_token_char(value.charCodeAt(end)))
-      end++;
-    return { start, end, token: value.slice(start, end) };
-  }
 
   function recompute_file_picker() {
     // Only engage on a fresh type; a dismissal and an already-open picker hold.
     if (filepick_open || filepick_dismissed) return;
     const ta = text_area;
     if (!ta) return;
-    const { start, end, token } = path_token_at_caret(ta);
+    const caret = ta.selectionStart ?? ta.value.length;
+    const { start, end, token } = path_token_at_caret(ta.value, caret);
     // Open only on a `./`-prefixed token that the just-typed `/` closed — so a
     // following filename letter doesn't re-fire it and a `!` token never
     // contends with the macro picker.
@@ -569,9 +515,9 @@
       // pick splices over the *entire* token; off a path, start empty and
       // insert at the caret (a zero-width anchor, so the surrounding text is
       // untouched).
-      const { start, end, token } = path_token_at_caret(textarea);
-      const on_path = is_path_like(token);
       const caret = textarea.selectionStart ?? textarea.value.length;
+      const { start, end, token } = path_token_at_caret(textarea.value, caret);
+      const on_path = is_path_like(token);
       open_file_picker_inplace(
         on_path ? start : caret,
         on_path ? end : caret,
