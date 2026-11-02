@@ -37,6 +37,7 @@
   let panel_root = $state<HTMLDivElement | undefined>(undefined);
   let query = $state("");
   let sel = $state(0);
+  let navigated = $state(false);
   let items = $state<(HTMLLIElement | null)[]>([]);
 
   // A directory entry (descendable) or a file entry (the backend's
@@ -140,10 +141,10 @@
     if (sel >= matches.length) sel = Math.max(0, matches.length - 1);
   });
 
-  // Like Spotlight, each keystroke re-anchors to the best (top) match.
   $effect(() => {
     void frag;
     sel = 0;
+    navigated = false;
   });
 
   // Keep the highlighted row visible while navigating the capped list.
@@ -213,13 +214,25 @@
     }
     if (event.key === "Enter") {
       event.preventDefault(); // pick, do NOT submit a prompt
-      select(matches[sel] ?? null);
+      if (!navigated) {
+        // Focus is in the query input: take the typed path as-is and close.
+        if (query.trim() !== "") onselect(query);
+        else onselect(null);
+      } else {
+        select(matches[sel] ?? null);
+      }
     } else if (event.key === "ArrowDown") {
       event.preventDefault();
-      if (matches.length) sel = (sel + 1) % matches.length;
+      if (matches.length) {
+        sel = (sel + 1) % matches.length;
+        navigated = true;
+      }
     } else if (event.key === "ArrowUp") {
       event.preventDefault();
-      if (matches.length) sel = (sel - 1 + matches.length) % matches.length;
+      if (matches.length) {
+        sel = (sel - 1 + matches.length) % matches.length;
+        navigated = true;
+      }
     } else if (event.key === "Escape") {
       event.preventDefault();
       onselect(null);

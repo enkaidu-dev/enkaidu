@@ -360,6 +360,24 @@
   // a cancel doesn't re-pop the picker on the next caret move.
   let filepick_dismissed = $state(false);
 
+  // While any overlay is open, keep Tab from leaving it: without a real
+  // browser dialog's focus lock, Tab would walk out of the card into the
+  // prompt textarea behind it, and subsequent keystrokes would be
+  // interpreted as prompt commands.  Esc/backdrop/click still dismiss.
+  $effect(() => {
+    const modal_open =
+      hsearch_open || macro_picker_open || filepick_open;
+    if (!modal_open) return;
+    function guard(event: KeyboardEvent) {
+      if (event.key === "Tab") {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+    }
+    window.addEventListener("keydown", guard, true);
+    return () => window.removeEventListener("keydown", guard, true);
+  });
+
   // Open the picker with an explicit anchor + seed.  The `anchor` is the span
   // in the textarea that a *file* pick replaces; the `seed` pre-fills the
   // picker's query.  Used by the `./` typing trigger, which anchors on the typed
@@ -615,7 +633,7 @@
   {#if hsearch_open && !loading && !closed}
     <div
       class="fixed inset-0 z-50 flex items-end justify-center px-4 pb-[calc(var(--promptbar-h)+12px)] bg-base-100/40 backdrop-blur-[2px]"
-      role="presentation"
+      role="dialog" aria-modal="true" tabindex="-1"
       onpointerdown={(e) => {
         if (e.target === e.currentTarget) on_history_select(null);
       }}
@@ -629,7 +647,7 @@
   {#if macro_picker_open && !loading && !closed && !hsearch_open && !filepick_open}
     <div
       class="fixed inset-0 z-50 flex items-end justify-center px-4 pb-[calc(var(--promptbar-h)+12px)] bg-base-100/40 backdrop-blur-[2px]"
-      role="presentation"
+      role="dialog" aria-modal="true" tabindex="-1"
       onpointerdown={(e) => {
         if (e.target === e.currentTarget) {
           close_macro_picker();
@@ -651,7 +669,7 @@
   {#if filepick_open && !loading && !closed}
     <div
       class="fixed inset-0 z-50 flex items-end justify-center px-4 pb-[calc(var(--promptbar-h)+12px)] bg-base-100/40 backdrop-blur-[2px]"
-      role="presentation"
+      role="dialog" aria-modal="true" tabindex="-1"
       onpointerdown={(e) => {
         if (e.target === e.currentTarget) on_file_select(null);
       }}
