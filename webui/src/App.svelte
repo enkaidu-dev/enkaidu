@@ -3,6 +3,7 @@
   import * as Acp from "./acp_schema_types";
 
   import { enkaidu_post_request, enkaidu_get_request } from "./utilities";
+import { classify_llm_text, classify_llm_text_fragment, classify_query } from "./lib/stream_protocol";
 import { read_line_by_line as ndjson_read_line_by_line } from "./lib/ndjson";
 
   import Promptbar from "./lib/Promptbar.svelte";
@@ -189,15 +190,11 @@ import { read_line_by_line as ndjson_read_line_by_line } from "./lib/ndjson";
           case "query":
             switch (msg.content_type) {
               case "text":
-                let type =
-                  msg.content.startsWith("/") || msg.content.startsWith("!")
-                    ? "command"
-                    : "query";
-                if (msg.via_query_queue) {
-                  type = type + "_via_query_queue";
-                }
                 session.add_event({
-                  type: type,
+                  type: classify_query(
+                    msg.content,
+                    msg.via_query_queue === true,
+                  ),
                   content: msg.content,
                 });
                 break;
@@ -215,43 +212,30 @@ import { read_line_by_line as ndjson_read_line_by_line } from "./lib/ndjson";
                 });
             }
             break;
-          case "llm_text":
-            if (msg.reasoning) {
-              session.add_event({ type: "llm_think", content: msg.content });
-              break;
-            }
-            // else, check for <think> just in case
-            let content = msg.content.trim();
-            let think_ix = content.indexOf("</think>");
-            // Split think block if present
-            if (think_ix > 0) {
-              let think = content.substring(0, think_ix + 8).trim();
-              if (think.length > 0) {
-                session.add_event({ type: "llm_think", content: think });
-              }
-              content = content.substring(think_ix + 8).trim();
-            }
-            if (content.length > 0) {
-              session.add_event({ type: "llm_text", content: content });
+                    case "llm_text":
+            for (const ev of classify_llm_text({
+              content: msg.content,
+              reasoning: msg.reasoning,
+            })) {
+              session.add_event(ev);
             }
             break;
+
           case "llm_text_fragment":
-            if (msg.reasoning) {
-              session.add_event({ type: "llm_think", content: msg.fragment });
-              break;
+            const fragment_classification = classify_llm_text_fragment(
+              {
+                fragment: msg.fragment,
+                reasoning: msg.reasoning,
+              },
+              text_thinking,
+            );
+            text_thinking = fragment_classification.nextThink;
+            for (const ev of fragment_classification.events) {
+              session.add_event(ev);
             }
-            // else, check for <think> just in case
-            let fragment = msg.fragment.trim();
-            if (fragment == "<think>") text_thinking = true;
-            // if (fragment.length > 0 || msg.fragment.includes("\n")) {
-            session.add_event({
-              type: text_thinking ? "llm_think" : "llm_text",
-              content: msg.fragment,
-            });
-            // }
-            if (fragment == "</think>") text_thinking = false;
             break;
-          case "llm_image_url":
+
+case "llm_image_url":
             session.add_event({
               type: "llm_image_url",
               content: msg.content,
