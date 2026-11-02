@@ -298,7 +298,6 @@ module Enkaidu::Console
         on_gather: ->(event : Termify::Markdown::GatherEvent) {
           case event.phase
           when .started?
-            puts "<#{event.phase}>"
             progress.label = case event.kind
                              in .table?      then "Receiving table"
                              in .code_block? then "Receiving code"
