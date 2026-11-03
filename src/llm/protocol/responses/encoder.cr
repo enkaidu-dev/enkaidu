@@ -107,48 +107,7 @@ module LLM::Protocol::Responses
           end
         end
       when LLM::Message::Response
-        # Resend reasoning item (when enabled). If encrypted_content and id are
-        # present (e.g. OpenAI/Azure), include them for stateless reasoning state
-        # continuity across turns.
-        if thoughts = message.reasoning
-          if thoughts.presence && message.include_reasoning?
-            json.object do
-              json.field "type", "reasoning"
-              json.field "id", message.reasoning_id if message.reasoning_id
-              json.field "encrypted_content", message.encrypted_content if message.encrypted_content
-              json.field "summary" do
-                json.array do
-                  json.object do
-                    json.field "type", "summary_text"
-                    json.field "text", thoughts
-                  end
-                end
-              end
-            end
-          end
-        end
-
-        if text = message.content
-          unless text.blank?
-            json.object do
-              json.field "role", "assistant"
-              json.field "content", text
-            end
-          end
-        end
-
-        # Tool calls are stored in the canonical history in CC-wire form;
-        # extract the canonical fields for the flat `function_call` items.
-        if calls = message.tool_calls
-          calls.each do |call|
-            json.object do
-              json.field "type", "function_call"
-              json.field "call_id", call.dig("id").as_s
-              json.field "name", call.dig("function", "name").as_s
-              json.field "arguments", call.dig("function", "arguments").as_s? || ""
-            end
-          end
-        end
+        encode_response_input_items(message, json)
       when LLM::Message::ToolCall
         # A tool result is a `function_call_output` item; the `name` is dropped
         # on the wire since the `call_id` already links it to its request.
@@ -156,6 +115,51 @@ module LLM::Protocol::Responses
           json.field "type", "function_call_output"
           json.field "call_id", message.tool_call_id
           json.field "output", message.content
+        end
+      end
+    end
+
+    private def encode_response_input_items(message : LLM::Message::Response, json : JSON::Builder) : Nil
+      # Resend reasoning item (when enabled). If encrypted_content and id are
+      # present (e.g. OpenAI/Azure), include them for stateless reasoning state
+      # continuity across turns.
+      if thoughts = message.reasoning
+        if thoughts.presence && message.include_reasoning?
+          json.object do
+            json.field "type", "reasoning"
+            json.field "id", message.reasoning_id if message.reasoning_id
+            json.field "encrypted_content", message.encrypted_content if message.encrypted_content
+            json.field "summary" do
+              json.array do
+                json.object do
+                  json.field "type", "summary_text"
+                  json.field "text", thoughts
+                end
+              end
+            end
+          end
+        end
+      end
+
+      if text = message.content
+        unless text.blank?
+          json.object do
+            json.field "role", "assistant"
+            json.field "content", text
+          end
+        end
+      end
+
+      # Tool calls are stored in the canonical history in CC-wire form;
+      # extract the canonical fields for the flat `function_call` items.
+      if calls = message.tool_calls
+        calls.each do |call|
+          json.object do
+            json.field "type", "function_call"
+            json.field "call_id", call.dig("id").as_s
+            json.field "name", call.dig("function", "name").as_s
+            json.field "arguments", call.dig("function", "arguments").as_s? || ""
+          end
         end
       end
     end
