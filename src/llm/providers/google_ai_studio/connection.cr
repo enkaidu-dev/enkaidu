@@ -12,8 +12,10 @@ module LLM::GoogleAIStudio
       super(ProtocolKind::ChatCompletions)
     end
 
-    def api_key
-      ENV["GOOGLE_AI_API_KEY"]
+    private API_KEY_ENV_NAME = "GOOGLE_AI_API_KEY"
+
+    def api_key : String
+      ENV.fetch(API_KEY_ENV_NAME, nil) || raise MissingAPIKey.new("Google AI Studio requires an API key, Missing env var: #{API_KEY_ENV_NAME}")
     end
 
     protected def url : String

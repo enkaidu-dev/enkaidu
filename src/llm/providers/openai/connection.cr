@@ -14,8 +14,10 @@ module LLM::OpenAI
       ENV.fetch("OPENAI_ENDPOINT", "https://api.openai.com")
     end
 
+    private API_KEY_ENV_NAME = "OPENAI_API_KEY"
+
     def api_key : String
-      ENV.fetch("OPENAI_API_KEY", nil) || raise MissingAPIKey.new("OpenAI connections require an API key.")
+      ENV.fetch(API_KEY_ENV_NAME, nil) || raise MissingAPIKey.new("OpenAI requires an API key, Missing env var: #{API_KEY_ENV_NAME}")
     end
 
     def model

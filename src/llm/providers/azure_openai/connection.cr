@@ -16,8 +16,10 @@ module LLM::AzureOpenAI
       ENV["AZURE_OPENAI_API_VER"]
     end
 
+    private API_KEY_ENV_NAME = "AZURE_OPENAI_API_KEY"
+
     def api_key : String
-      ENV.fetch("AZURE_OPENAI_API_KEY", nil) || raise MissingAPIKey.new("Azure OpenAI connections require an API key.")
+      ENV.fetch(API_KEY_ENV_NAME, nil) || raise MissingAPIKey.new("Azure OpenAI requires an API key, Missing env var: #{API_KEY_ENV_NAME}")
     end
 
     def model
