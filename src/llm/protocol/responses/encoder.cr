@@ -19,6 +19,10 @@ module LLM::Protocol::Responses
                                     response_schema : LLM::ResponseSchema? = nil) : Nil
       json.object do
         json.field "model", model if model
+
+        # Stateless, do not store session on server
+        json.field "store", false
+
         # The system prompt is a top-level field, not a `messages[]` entry.
         json.field "instructions", system_message if system_message
         json.field "stream", stream
