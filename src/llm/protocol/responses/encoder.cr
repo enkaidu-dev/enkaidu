@@ -27,12 +27,19 @@ module LLM::Protocol::Responses
         json.field "instructions", system_message if system_message
         json.field "stream", stream
 
-        # Omit the reasoning field when it is Default/None; otherwise request
-        # the configured effort. (o-series reasoning is `reasoning:{effort}`.)
-        unless reasoning.default?
+        # Configure reasoning behavior based on the Reasoning enum.
+        case reasoning
+        when LLM::Reasoning::None
           json.field "reasoning" do
             json.object do
-              json.field "effort", reasoning.to_s.downcase
+              json.field "effort", "none"
+            end
+          end
+        else
+          json.field "reasoning" do
+            json.object do
+              json.field "effort", reasoning.to_s.downcase unless reasoning.default?
+              json.field "summary", "auto"
             end
           end
           json.field "include" do

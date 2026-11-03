@@ -96,7 +96,9 @@ module LLM::Protocol::Responses
           text_io << d
           yield({type: LLM::Event::Text, content: JSON::Any.new(d)})
         end
-      when "response.reasoning_summary_text.delta", "response.reasoning_summary_part.delta"
+      when "response.reasoning_summary_text.delta", "response.reasoning_summary_part.delta",
+           "response.reasoning_text.delta", "response.reasoning_content.delta",
+           "response.reasoning_part.delta", "response.reasoning.delta"
         if d = dig_string(data, "delta")
           think_io << d
           yield({type: LLM::Event::ReasoningEvent, content: JSON::Any.new(d)})
@@ -213,6 +215,16 @@ module LLM::Protocol::Responses
               summary.each do |part|
                 texts << (dig_string(part, "text") || "") if dig_string(part, "type") == "summary_text"
               end
+            end
+            if content_parts = item["content"]?.try(&.as_a)
+              content_parts.each do |part|
+                part_type = dig_string(part, "type")
+                if part_type == "reasoning_text" || part_type == "text" || part_type == "summary_text"
+                  texts << (dig_string(part, "text") || "")
+                end
+              end
+            elsif text = dig_string(item, "text")
+              texts << text
             end
             unless texts.empty?
               joined = texts.join
