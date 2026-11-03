@@ -26,9 +26,11 @@ module Enkaidu
       end
     end
 
-    # This defines the runner for implementations of `SessionBuildInFunction`.
-    abstract class Runner < LLM::Function::Runner
-      protected getter func : SessionBuiltInFunction
+    # This defines the runner for implementations of `SessionBuiltInFunction`,
+    # defined with `F` so subclasses can specify their respective
+    # `SessionBuiltInFunction` subclass.
+    abstract class Runner(F) < LLM::Function::Runner
+      protected getter func : F
 
       def initialize(@func); end
 
