@@ -1,10 +1,9 @@
 require "json"
 
+require "./inbound_stream_state"
+
 require "../../events"
 require "../../message/message"
-require "../../function_call"
-require "../../usage"
-require "./function_call_builder"
 
 module LLM::Protocol::Responses
   # Decodes the Responses wire (a streaming SSE event stream, or a single JSON
@@ -16,27 +15,13 @@ module LLM::Protocol::Responses
   # wire form (the canonical model's historical representation); the events
   # yielded to the app are the canonical shapes.
   module Decoder
-    # Mutable per-stream state: the in-flight tool call and the usage captured
-    # off `response.completed`. A class (reference type, not a struct/value
-    # type) so field mutations made through the handler closure are seen by the
-    # aggregator across the nested streaming closures.
-    class StreamState
-      # ameba:disable Naming/QueryBoolMethods
-      property finished : Bool = false
-      property recent : FunctionCallBuilder? = nil
-      property usage : LLM::Usage? = nil
-      property reasoning_id : String? = nil
-      property encrypted_content : String? = nil
-      # ameba:enable Naming/QueryBoolMethods
-    end
-
     # Parse a whole Responses event stream (SSE), yielding canonical events and
     # returning the aggregated `Message::Response`. Text/reasoning deltas are
     # concatenated into the response body; tool calls are finalized from
     # `output_item.added` / `function_call_arguments.*`; usage is captured (not
     # emitted) off `response.completed`, mirroring the ChatCompletions stream.
     private def prepare_message_from_streamed_data(stream_io, & : LLM::ChatEvent ->) : LLM::Message::Response
-      state = StreamState.new
+      state = InboundStreamState.new
       tool_calls = [] of JSON::Any
       content = ""
 
@@ -73,10 +58,9 @@ module LLM::Protocol::Responses
 
           # A stream can end with a tool call still in flight (no trailing
           # `...done` / `response.completed`). Finalize it so it still reaches
-          # the yielded events and the history. A normally-finished stream has
-          # already cleared `recent`, making this a no-op.
-          if recent = state.recent
-            yield finalize_tool_call(recent, tool_calls)
+          # the yielded events and the history.
+          state.finalize_all_tool_calls(tool_calls) do |event|
+            yield event
           end
         end
       end
@@ -107,16 +91,11 @@ module LLM::Protocol::Responses
         if item = data["item"]?
           case dig_string(item, "type")
           when "function_call"
-            # Finalize any in-flight call before starting a new one, so
-            # parallel tool calls each reach the events and the history.
-            if previous = state.recent
-              yield finalize_tool_call(previous, tool_calls)
-              state.recent = nil
-            end
             name = dig_string(item, "name") || ""
             id = dig_string(item, "call_id") || dig_string(item, "id") || ""
             args = dig_string(item, "arguments") || ""
-            state.recent = FunctionCallBuilder.new(name, id, args)
+            builder = FunctionCallBuilder.new(name, id, args)
+            state.register_builder(data, builder)
             yield({type: LLM::Event::ReceivingToolCall, content: JSON::Any.new(name)})
           when "reasoning"
             state.reasoning_id ||= dig_string(item, "id")
@@ -124,33 +103,32 @@ module LLM::Protocol::Responses
           end
         end
       when "response.function_call_arguments.delta"
-        if recent = state.recent
-          recent.append_args_json(dig_string(data, "delta"))
+        if builder = state.find_builder(data)
+          builder.append_args_json(dig_string(data, "delta"))
         end
       when "response.function_call_arguments.done", "response.output_item.done"
         if (item = data["item"]?) && dig_string(item, "type") == "reasoning"
           state.reasoning_id ||= dig_string(item, "id")
           state.encrypted_content ||= dig_string(item, "encrypted_content")
         end
-        if recent = state.recent
+        if builder = state.find_builder(data)
           # A later event may carry the complete argument string even when no
           # incremental deltas were seen; use it when the accumulator is empty.
           if args = dig_string(data, "arguments")
-            recent.replace_args_json(args)
+            builder.replace_args_json(args)
           end
           if (item = data["item"]?) && dig_string(item, "type") == "function_call"
             if args = dig_string(item, "arguments")
-              recent.replace_args_json(args)
+              builder.replace_args_json(args)
             end
           end
-          yield finalize_tool_call(recent, tool_calls)
-          state.recent = nil
+          yield finalize_tool_call(builder, tool_calls)
+          state.remove_builder(builder)
         end
       when "response.completed"
         # Finalize any in-flight tool call before the terminal event.
-        if recent = state.recent
-          yield finalize_tool_call(recent, tool_calls)
-          state.recent = nil
+        state.finalize_all_tool_calls(tool_calls) do |event|
+          yield event
         end
         if resp = data["response"]?
           if usage = extract_usage(resp)
