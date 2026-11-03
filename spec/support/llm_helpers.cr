@@ -92,6 +92,12 @@ module LLMSpecHelpers
     chat.extract_conversations(LLM::Conversation::LatestFull).not_nil!
   end
 
+  # Safely pull a string key off a JSON item (returns nil when absent or not a string).
+  def jstr(item : JSON::Any, key : String) : String?
+    raw = item.dig?(key).try(&.raw)
+    raw.is_a?(String) ? raw : nil
+  end
+
   # Build an Ollama chat and populate its history by *replaying* the recorded
   # non-streaming ask transcript (no live network). The returned chat's history
   # then holds a user prompt plus an assistant response, which the history specs

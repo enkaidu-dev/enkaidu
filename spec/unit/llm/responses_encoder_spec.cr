@@ -39,12 +39,6 @@ Spectator.describe LLM::Protocol::Responses::Chat do
     JSON.parse(%({ "id": #{id.dump}, "function": { "name": #{name.dump}, "arguments": #{arguments.dump} } }))
   end
 
-  # Safely pull a string key off an input item (nil when absent / non-string).
-  private def jstr(item, key : String) : String?
-    raw = item.dig?(key).try(&.raw)
-    raw.is_a?(String) ? raw : nil
-  end
-
   describe "request encoding (canonical Message -> Responses wire)" do
     it "encodes instructions, user input, an assistant + tool round-trip, and flat tools" do
       chat = build_responses_encoder_chat
@@ -119,6 +113,33 @@ Spectator.describe LLM::Protocol::Responses::Chat do
       expect(body.dig("text", "format", "type").as_s).to eq("json_schema")
       expect(body.dig("text", "format", "strict")).to eq(true)
       expect(body.dig("text", "format", "name").as_s).to eq("Answer")
+    end
+
+    it "encodes reasoning effort settings and include fields" do
+      chat = build_responses_encoder_chat
+      chat.with_reasoning(LLM::Reasoning::Low)
+      body = chat.request_body
+      expect(body.dig("reasoning", "effort").as_s).to eq("low")
+      expect(body.dig("reasoning", "summary").as_s).to eq("auto")
+      expect(body.dig("include", 0).as_s).to eq("reasoning.encrypted_content")
+
+      chat_none = build_responses_encoder_chat
+      chat_none.with_reasoning(LLM::Reasoning::None)
+      body_none = chat_none.request_body
+      expect(body_none.dig("reasoning", "effort").as_s).to eq("none")
+      expect(body_none.as_h.has_key?("include")).to eq(false)
+    end
+
+    it "encodes historical reasoning with reasoning_id and encrypted_content" do
+      chat = build_responses_encoder_chat
+      asst = LLM::Message::Response.new("done", "thinking", reasoning_id: "rs_123", encrypted_content: "encrypted_blob")
+      chat.append_message asst
+
+      input = chat.request_body["input"].as_a
+      reasoning = input.find { |i| jstr(i, "type") == "reasoning" }.not_nil!
+      expect(reasoning.dig("id").as_s).to eq("rs_123")
+      expect(reasoning.dig("encrypted_content").as_s).to eq("encrypted_blob")
+      expect(reasoning.dig("summary", 0, "text").as_s).to eq("thinking")
     end
   end
 end

@@ -67,10 +67,11 @@ end
 
 # A `response.output_item.added` for a function call, with its initial arguments
 # (empty unless the server pre-fills them — as Ollama's single-chunk style does).
-def rsp_added_function_call(item_id : String, name : String, arguments = "") : String
+def rsp_added_function_call(item_id : String, name : String, arguments = "", output_index : Int32? = nil) : String
   JSON.build do |j|
     j.object do
       j.field "type", "response.output_item.added"
+      j.field "output_index", output_index if output_index
       j.field "item" do
         j.object do
           j.field "type", "function_call"
@@ -83,20 +84,23 @@ def rsp_added_function_call(item_id : String, name : String, arguments = "") : S
   end
 end
 
-def rsp_args_delta(fragment : String) : String
+def rsp_args_delta(fragment : String, item_id : String? = nil, output_index : Int32? = nil) : String
   JSON.build do |j|
     j.object do
       j.field "type", "response.function_call_arguments.delta"
+      j.field "item_id", item_id if item_id
+      j.field "output_index", output_index if output_index
       j.field "delta", fragment
     end
   end
 end
 
-def rsp_args_done(item_id : String) : String
+def rsp_args_done(item_id : String, output_index : Int32? = nil) : String
   JSON.build do |j|
     j.object do
       j.field "type", "response.function_call_arguments.done"
       j.field "item_id", item_id
+      j.field "output_index", output_index if output_index
     end
   end
 end
@@ -241,6 +245,48 @@ Spectator.describe "LLM::Protocol::Responses streaming parse" do
 
       expect(rsp_events_of(events, LLM::Event::Text).map { |e| e["content"].as_s }).to eq(["hi", " there"])
       expect(msg.content).to eq("hi there")
+    end
+
+    it "assembles interleaved parallel tool calls keyed by output_index" do
+      chat = rsp_build_parse_chat
+      body = rsp_sse_body [
+        rsp_added_function_call("call_1", "echo", "", output_index: 0),
+        rsp_added_function_call("call_2", "read", "", output_index: 1),
+        rsp_args_delta(%q|{"val": |, output_index: 0),
+        rsp_args_delta(%q|{"path": |, output_index: 1),
+        rsp_args_delta(%q|"first"}|, output_index: 0),
+        rsp_args_delta(%q|"file.txt"}|, output_index: 1),
+        rsp_args_done("call_1", output_index: 0),
+        rsp_args_done("call_2", output_index: 1),
+        rsp_completed,
+      ]
+      events, msg = chat.parse_streamed(body)
+
+      reqs = rsp_events_of(events, LLM::Event::ToolCallRequested)
+      expect(reqs.size).to eq(2)
+      expect(reqs[0]["content"].dig("name").as_s).to eq("echo")
+      expect(reqs[0]["content"].dig("arguments").as_s).to eq(%q|{"val": "first"}|)
+      expect(reqs[1]["content"].dig("name").as_s).to eq("read")
+      expect(reqs[1]["content"].dig("arguments").as_s).to eq(%q|{"path": "file.txt"}|)
+
+      wire = msg.tool_calls.not_nil!
+      expect(wire.size).to eq(2)
+      expect(wire[0].dig("function", "arguments").as_s).to eq(%q|{"val": "first"}|)
+      expect(wire[1].dig("function", "arguments").as_s).to eq(%q|{"path": "file.txt"}|)
+    end
+
+    it "emits finish reason for response.incomplete status" do
+      chat = rsp_build_parse_chat
+      body = rsp_sse_body [
+        rsp_delta_text("partial text"),
+        rsp_completed("incomplete"),
+      ]
+      events, msg = chat.parse_streamed(body)
+
+      expect(msg.content).to eq("partial text")
+      finish_events = rsp_events_of(events, LLM::Event::FinishReason)
+      expect(finish_events.size).to eq(1)
+      expect(finish_events.first["content"].as_s).to eq("incomplete")
     end
   end
 end
