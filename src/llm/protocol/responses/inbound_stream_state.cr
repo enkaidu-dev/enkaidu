@@ -75,7 +75,10 @@ module LLM::Protocol::Responses
     end
 
     private def dig_string(json, key) : String?
-      raw = json[key]?.try(&.raw)
+      return unless json
+      hash = json.as_h?
+      return unless hash
+      raw = hash[key]?.try(&.raw)
       raw.is_a?(String) ? raw : nil
     end
   end

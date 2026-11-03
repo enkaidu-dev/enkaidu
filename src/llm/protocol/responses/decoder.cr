@@ -125,7 +125,7 @@ module LLM::Protocol::Responses
           yield finalize_tool_call(builder, tool_calls)
           state.remove_builder(builder)
         end
-      when "response.completed"
+      when "response.completed", "response.incomplete"
         # Finalize any in-flight tool call before the terminal event.
         state.finalize_all_tool_calls(tool_calls) do |event|
           yield event
@@ -134,15 +134,17 @@ module LLM::Protocol::Responses
           if usage = extract_usage(resp)
             state.usage = usage
           end
-          if finish = dig_string(resp, "status")
-            yield({type: LLM::Event::FinishReason, content: JSON::Any.new(finish)})
-          end
+          incomplete_reason = resp["incomplete_details"]? ? dig_string(resp["incomplete_details"], "reason") : nil
+          finish = incomplete_reason || dig_string(resp, "status") || "incomplete"
+          yield({type: LLM::Event::FinishReason, content: JSON::Any.new(finish)})
+        else
+          yield({type: LLM::Event::FinishReason, content: JSON::Any.new("incomplete")})
         end
         unless state.finished
           state.finished = true
           yield({type: LLM::Event::Done, content: JSON::Any.new(nil)})
         end
-      when "response.failed", "response.incomplete", "error"
+      when "response.failed", "error"
         yield({type: LLM::Event::ErrorServer, content: data})
       else
         # Unknown / ignorable event (`response.created`, `content_part.*`,
@@ -235,7 +237,8 @@ module LLM::Protocol::Responses
         yield({type: LLM::Event::Usage, content: u})
         usage = LLM::Usage.from_responses(u)
       end
-      if finish = dig_string(data, "status")
+      incomplete_reason = data["incomplete_details"]? ? dig_string(data["incomplete_details"], "reason") : nil
+      if finish = incomplete_reason || dig_string(data, "status")
         yield({type: LLM::Event::FinishReason, content: JSON::Any.new(finish)})
       end
       yield({type: LLM::Event::Done, content: JSON::Any.new(nil)})
@@ -256,7 +259,10 @@ module LLM::Protocol::Responses
     end
 
     private def dig_string(json, key) : String?
-      raw = json[key]?.try(&.raw)
+      return unless json
+      hash = json.as_h?
+      return unless hash
+      raw = hash[key]?.try(&.raw)
       raw.is_a?(String) ? raw : nil
     end
   end
