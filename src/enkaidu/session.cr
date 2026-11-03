@@ -59,6 +59,9 @@ module Enkaidu
     getter id = UUID.v7.to_s
     getter unique_model_name : String?
 
+    # Be aware when forked from a parent session.
+    getter parent : Session? = nil
+
     delegate streaming?, usage, to: @chat
     delegate debug?, to: @opts
     delegate readonly?, to: @opts
@@ -135,6 +138,7 @@ module Enkaidu
                    keep_tools = true, keep_prompts = true, keep_history = true,
                    system_prompt_name = nil,
                    exclude_last_turn = false)
+      @parent = fork_from
       @recorder = fork_from.recorder
       @opts = fork_from.opts
       @renderer = fork_from.renderer
@@ -217,6 +221,11 @@ module Enkaidu
       end
     end
 
+    # Return true if this is a nested session
+    def sub_session?
+      parent != nil
+    end
+
     # Return based on model settings, if any. Nil means
     # default for server.
     def temperature : Float32?
@@ -255,10 +264,7 @@ module Enkaidu
       </empowered>
       EMPOWERED
 
-    private SYSPROMPT_SUB_AGENT_V3 = <<-AGENTIC3
-      <agentic>
-      You have a small context window. Guard it: offload work volume to sub-agents, keep only conclusions.
-
+    private SYSPROMPT_SUB_AGENT_COMMON = <<-AGENTCOMMON
       Spawn when:
       - Task is self-contained (prompt + paths/URLs/tools suffice) -> CLEAN sub-agent, no history.
       - Task needs prior session context -> distill 2-4 key facts into the prompt first; attach full history only if that fails.
@@ -272,7 +278,24 @@ module Enkaidu
       - Sub-agent returns only a conclusion (summary, verdict, or file path) - never raw dumps.
       - One sub-agent, one scoped task.
       </agentic>
+      AGENTCOMMON
+
+    private SYSPROMPT_SUB_AGENT_ALLOWED_V3 = <<-AGENTIC3
+      <agentic>
+      You have a small context window. Guard it: offload work volume to sub-agents, keep only conclusions.
+
+      #{SYSPROMPT_SUB_AGENT_COMMON}
       AGENTIC3
+
+    private SYSPROMPT_YOU_ARE_SUB_AGENT_V1 = <<-SUBAGENTIC1
+      <agentic>
+      You are a sub-agent running with a separate session.
+
+      Do not spawn further sub-agents UNLESS you determine after investigation that you need to
+      break down your work into smaller tasks to avoid overrunning your context window.
+
+      #{SYSPROMPT_SUB_AGENT_COMMON}
+      SUBAGENTIC1
 
     private SYSPROMPT_GLOBAL_STATE = <<-STATEFUL
       <stateful>
@@ -310,7 +333,11 @@ module Enkaidu
         * After thinking through a problem present your conclusion briefly so the user stays connected.
         </cooperative>
         #{if allow_sub_agents?
-            SYSPROMPT_SUB_AGENT_V3
+            if sub_session?
+              SYSPROMPT_YOU_ARE_SUB_AGENT_V1
+            else
+              SYSPROMPT_SUB_AGENT_ALLOWED_V3
+            end
           end}#{if allow_global_state?
                   SYSPROMPT_GLOBAL_STATE
                 end}#{if allow_tool_discovery?
