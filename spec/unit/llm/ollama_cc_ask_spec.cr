@@ -10,7 +10,7 @@ Spectator.describe LLM::Protocol::ChatCompletions::Chat do
 
   describe "#ask (non-streaming)" do
     it "sends a chat/completions request and yields the reply text and usage" do
-      chat = build_ollama_chat
+      chat = build_ollama_chat(LLM::ProtocolKind::ChatCompletions)
       events = uninitialized Array(LLM::ChatEvent)
       Wiretap.intercept("ollama_ask_non_streaming") do
         events = ask_events(chat, "Say hello, world. Reply in one short sentence.")
@@ -32,7 +32,7 @@ Spectator.describe LLM::Protocol::ChatCompletions::Chat do
 
   describe "#ask (streaming)" do
     it "streams the reply via SSE and reports usage and a done marker" do
-      chat = build_ollama_chat
+      chat = build_ollama_chat(LLM::ProtocolKind::ChatCompletions)
       chat.with_streaming
       events = uninitialized Array(LLM::ChatEvent)
       Wiretap.intercept("ollama_ask_streaming") do

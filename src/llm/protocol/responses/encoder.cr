@@ -1,0 +1,190 @@
+require "json"
+
+require "../../message/message"
+require "../../content/content"
+require "../../function"
+require "../../response_schema"
+require "./function_call_builder"
+
+module LLM::Protocol::Responses
+  # Encodes the canonical model (`Message`/`Content`/`Function`/`ResponseSchema`)
+  # into the OpenAI Responses request body. The wire shape is owned entirely by
+  # this protocol encoder, so the canonical `Message` carries no bridge to it.
+  private module Encoder
+    protected def responses_to_json(json : JSON::Builder, model,
+                                    system_message, stream,
+                                    session, tools,
+                                    reasoning,
+                                    temperature : Float32? = nil,
+                                    response_schema : LLM::ResponseSchema? = nil) : Nil
+      json.object do
+        json.field "model", model if model
+        # The system prompt is a top-level field, not a `messages[]` entry.
+        json.field "instructions", system_message if system_message
+        json.field "stream", stream
+
+        # Omit the reasoning field when it is Default/None; otherwise request
+        # the configured effort. (o-series reasoning is `reasoning:{effort}`.)
+        unless reasoning.default?
+          json.field "reasoning" do
+            json.object do
+              json.field "effort", reasoning.to_s.downcase
+            end
+          end
+        end
+
+        unless temperature.nil?
+          json.field "temperature", temperature
+        end
+
+        # Structured output on Responses is `text:{format:{... json_schema}}`.
+        if response_schema
+          json.field "text" do
+            json.object do
+              json.field "format" do
+                json.object do
+                  json.field "type", "json_schema"
+                  json.field "name", response_schema.name
+                  json.field "strict", response_schema.strict?
+                  json.field "schema", response_schema.schema
+                end
+              end
+            end
+          end
+        end
+
+        # The conversation is a flat array of input items; a single canonical
+        # `Message` may expand into several items (e.g. an assistant turn with
+        # text, reasoning, and tool calls).
+        json.field "input" do
+          json.array do
+            session.each_message(reverse: false) do |msg|
+              encode_input_items(msg, json)
+            end
+          end
+        end
+
+        json.field "tool_choice", "auto"
+        json.field "tools" do
+          json.array do
+            tools.each do |tool|
+              responses_function_to_json(tool, json)
+            end
+          end
+        end
+      end
+    end
+
+    # Append the input item(s) for one canonical `Message` to the given
+    # `input` array.
+    private def encode_input_items(message : LLM::Message, json : JSON::Builder) : Nil
+      case message
+      when LLM::Message::MultiContent
+        # A user message: `{type:"message", role:"user", content:[...]}`.
+        json.object do
+          json.field "type", "message"
+          json.field "role", "user"
+          json.field "content" do
+            json.array do
+              message.content.each { |item| encode_input_content(item, json) }
+            end
+          end
+        end
+      when LLM::Message::Response
+        # Resend reasoning as a plaintext `summary` item (when enabled), then a
+        # `message` item for the text, then one `function_call` item per tool
+        # call. v1 omits `encrypted_content` round-trip
+        if thoughts = message.reasoning
+          if thoughts.presence && message.include_reasoning?
+            json.object do
+              json.field "type", "reasoning"
+              json.field "summary" do
+                json.array do
+                  json.object do
+                    json.field "type", "summary_text"
+                    json.field "text", thoughts
+                  end
+                end
+              end
+            end
+          end
+        end
+
+        if text = message.content
+          unless text.blank?
+            json.object do
+              json.field "role", "assistant"
+              json.field "content", text
+            end
+          end
+        end
+
+        # Tool calls are stored in the canonical history in CC-wire form;
+        # extract the canonical fields for the flat `function_call` items.
+        if calls = message.tool_calls
+          calls.each do |call|
+            json.object do
+              json.field "type", "function_call"
+              json.field "call_id", call.dig("id").as_s
+              json.field "name", call.dig("function", "name").as_s
+              json.field "arguments", call.dig("function", "arguments").as_s? || ""
+            end
+          end
+        end
+      when LLM::Message::ToolCall
+        # A tool result is a `function_call_output` item; the `name` is dropped
+        # on the wire since the `call_id` already links it to its request.
+        json.object do
+          json.field "type", "function_call_output"
+          json.field "call_id", message.tool_call_id
+          json.field "output", message.content
+        end
+      end
+    end
+
+    # Map a canonical `Content` part onto a Responses input part.
+    private def encode_input_content(item, json : JSON::Builder) : Nil
+      case item
+      when LLM::Content::Text
+        json.object do
+          json.field "type", "input_text"
+          json.field "text", item.text
+        end
+      when LLM::Content::ImageUrl
+        json.object do
+          json.field "type", "input_image"
+          json.field "image_url", item.image_url["url"]
+        end
+      when LLM::Content::FileData
+        json.object do
+          json.field "type", "input_file"
+          json.field "file_data", item.file["file_data"]
+          json.field "filename", item.file["filename"]
+        end
+      when LLM::Content::InputAudio
+        json.object do
+          json.field "type", "input_audio"
+          json.field "input_audio" do
+            json.object do
+              json.field "data", item.input_audio["data"]
+              json.field "format", item.input_audio["format"]
+            end
+          end
+        end
+      end
+    end
+
+    # A tool definition is flat on the Responses wire:
+    # `{type:"function", name, description, parameters}` (no nested `function`).
+    protected def responses_function_to_json(f : LLM::Function, json : JSON::Builder)
+      json.object do
+        json.field "type", "function"
+        json.field "name", f.name
+        json.field "description", f.description
+        json.field "parameters" do
+          f.input_json_schema(json)
+        end
+      end
+    end
+  end
+end

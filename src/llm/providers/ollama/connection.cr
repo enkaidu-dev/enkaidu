@@ -18,9 +18,5 @@ module LLM::Ollama
     def api_key : String
       ENV.fetch("OLLAMA_API_KEY", "ollama")
     end
-
-    protected def path : String
-      "/v1/chat/completions"
-    end
   end
 end

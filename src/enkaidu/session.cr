@@ -173,7 +173,7 @@ module Enkaidu
       connection.new_chat do
         unless (m = override_model_name || opts.model_name).nil?
           with_model m
-          renderer.info_with("Using model #{m}")
+          renderer.info_with("Using model #{m} over #{connection.protocol} protocol")
 
           @model_config = opts.config.find_llm_model_by_actual?(connection_provider_type, m)
         end

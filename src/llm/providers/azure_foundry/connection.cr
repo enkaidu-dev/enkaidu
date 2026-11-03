@@ -20,7 +20,7 @@ module LLM::AzureFoundry
     end
 
     protected def path : String
-      "/openai/v1/chat/completions"
+      "/openai#{super}"
     end
   end
 end

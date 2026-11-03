@@ -7,6 +7,11 @@ module LLM::GoogleAIStudio
   # `Connection` is a class that extends from `OpenAI::Connection` to provide
   # specialized connection handling for Azure OpenAI services.
   class Connection < OpenAI::Connection
+    def initialize
+      # Does not support Responses protocol
+      super(ProtocolKind::ChatCompletions)
+    end
+
     def api_key
       ENV["GOOGLE_AI_API_KEY"]
     end

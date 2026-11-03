@@ -23,8 +23,9 @@ module LLMSpecHelpers
 
   # Transcript and prompt shared by the history round-trip specs, so they can
   # reuse the already-recorded non-streaming ask instead of making live calls.
-  NON_STREAMING_ASK_TRANSCRIPT = "ollama_ask_non_streaming"
-  POPULATE_PROMPT              = "Say hello, world. Reply in one short sentence."
+  NON_STREAMING_ASK_TRANSCRIPT           = "ollama_ask_non_streaming"
+  NON_STREAMING_RESPONSES_ASK_TRANSCRIPT = "ollama_responses_ask_non_streaming"
+  POPULATE_PROMPT                        = "Say hello, world. Reply in one short sentence."
 
   # Run a block with the Ollama provider's environment forced so the specs
   # are deterministic regardless of the host's real environment.
@@ -39,9 +40,9 @@ module LLMSpecHelpers
 
   # Build a fresh Ollama-backed `LLM::Chat` with the shared model set, and
   # return it so the caller can drive it (`ask`, `re_ask`, ...).
-  def build_ollama_chat(model_name : String = LLMSpecHelpers::MODEL) : LLM::Chat
+  def build_ollama_chat(kind : LLM::ProtocolKind, model_name : String = LLMSpecHelpers::MODEL) : LLM::Chat
     with_ollama_envs do
-      connection = LLM::Ollama::Connection.new
+      connection = LLM::Ollama::Connection.new(kind)
       connection.new_chat do
         with_model model_name
       end
@@ -95,9 +96,13 @@ module LLMSpecHelpers
   # non-streaming ask transcript (no live network). The returned chat's history
   # then holds a user prompt plus an assistant response, which the history specs
   # use to exercise fork / save / load without issuing any new requests.
-  def populated_ollama_chat : LLM::Chat
-    chat = build_ollama_chat
-    Wiretap.intercept(NON_STREAMING_ASK_TRANSCRIPT) do
+  def populated_ollama_chat(kind : LLM::ProtocolKind) : LLM::Chat
+    chat = build_ollama_chat(kind)
+    transcript_name = case kind
+                      when .responses? then NON_STREAMING_RESPONSES_ASK_TRANSCRIPT
+                      else                  NON_STREAMING_ASK_TRANSCRIPT
+                      end
+    Wiretap.intercept(transcript_name) do
       ask_events(chat, POPULATE_PROMPT)
     end
     chat

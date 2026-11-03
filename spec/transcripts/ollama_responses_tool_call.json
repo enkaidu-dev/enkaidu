@@ -1,0 +1,58 @@
+{
+  "name": "ollama_responses_tool_call",
+  "recorded_with": "wiretap/0.5.0",
+  "interactions": [
+    {
+      "request": {
+        "method": "POST",
+        "url": "http://localhost:11434/v1/responses",
+        "headers": {
+          "Content-Type": "application/json",
+          "Connection": "keep-alive",
+          "Authorization": "[FILTERED]",
+          "User-Agent": "enkaidu 0.9.17-pre",
+          "Host": "localhost:11434",
+          "Accept-Encoding": "gzip, deflate"
+        },
+        "body": "{\"model\":\"ornith-1.5:9b\",\"stream\":false,\"input\":[{\"type\":\"message\",\"role\":\"user\",\"content\":[{\"type\":\"input_text\",\"text\":\"Please echo the word hello using the echo tool. Do not answer in plain text.\"}]}],\"tool_choice\":\"auto\",\"tools\":[{\"type\":\"function\",\"name\":\"echo\",\"description\":\"Echoes the given value back verbatim. You MUST call this tool whenever the user asks you to echo or repeat a value.\",\"parameters\":{\"type\":\"object\",\"properties\":{\"value\":{\"type\":\"string\",\"description\":\"The value to echo back.\"}},\"required\":[\"value\"]}}]}",
+        "body_digest": "2cce3daa7ce9720a640b65c8a887d381521d4431ef339a93af2e2f77758bca48"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json",
+          "Date": "Tue, 03 Nov 2026 05:54:14 GMT",
+          "Content-Length": "1674"
+        },
+        "body": "{\"id\":\"resp_981727\",\"object\":\"response\",\"created_at\":1793685254,\"completed_at\":1793685254,\"status\":\"completed\",\"incomplete_details\":null,\"model\":\"ornith-1.5:9b\",\"previous_response_id\":null,\"instructions\":null,\"output\":[{\"id\":\"rs_resp_981727\",\"type\":\"reasoning\",\"summary\":[{\"type\":\"summary_text\",\"text\":\"The user wants me to echo the word \\\"hello\\\" using the echo tool. I should call the echo function with the value \\\"hello\\\". I should not respond in plain text.\"}],\"encrypted_content\":\"The user wants me to echo the word \\\"hello\\\" using the echo tool. I should call the echo function with the value \\\"hello\\\". I should not respond in plain text.\"},{\"id\":\"fc_resp_981727_0\",\"type\":\"function_call\",\"status\":\"completed\",\"call_id\":\"7ojzc70QxOVliHnBWOsH0IK65nj8mwPd\",\"name\":\"echo\",\"arguments\":\"{\\\"value\\\":\\\"hello\\\"}\"}],\"error\":null,\"tools\":[{\"type\":\"function\",\"name\":\"echo\",\"description\":\"Echoes the given value back verbatim. You MUST call this tool whenever the user asks you to echo or repeat a value.\",\"parameters\":{\"properties\":{\"value\":{\"description\":\"The value to echo back.\",\"type\":\"string\"}},\"required\":[\"value\"],\"type\":\"object\"}}],\"tool_choice\":\"auto\",\"truncation\":\"disabled\",\"parallel_tool_calls\":true,\"text\":{\"format\":{\"type\":\"text\"}},\"top_p\":1,\"presence_penalty\":0,\"frequency_penalty\":0,\"top_logprobs\":0,\"temperature\":1,\"reasoning\":null,\"usage\":{\"input_tokens\":313,\"output_tokens\":64,\"total_tokens\":377,\"input_tokens_details\":{\"cached_tokens\":309},\"output_tokens_details\":{\"reasoning_tokens\":0}},\"max_output_tokens\":null,\"max_tool_calls\":null,\"store\":false,\"background\":false,\"service_tier\":\"default\",\"metadata\":{},\"safety_identifier\":null,\"prompt_cache_key\":null}\n"
+      },
+      "recorded_at": "2026-11-03T05:54:14Z"
+    },
+    {
+      "request": {
+        "method": "POST",
+        "url": "http://localhost:11434/v1/responses",
+        "headers": {
+          "Content-Type": "application/json",
+          "Connection": "keep-alive",
+          "Authorization": "[FILTERED]",
+          "User-Agent": "enkaidu 0.9.17-pre",
+          "Host": "localhost:11434",
+          "Accept-Encoding": "gzip, deflate"
+        },
+        "body": "{\"model\":\"ornith-1.5:9b\",\"stream\":false,\"input\":[{\"type\":\"message\",\"role\":\"user\",\"content\":[{\"type\":\"input_text\",\"text\":\"Please echo the word hello using the echo tool. Do not answer in plain text.\"}]},{\"type\":\"reasoning\",\"summary\":[{\"type\":\"summary_text\",\"text\":\"The user wants me to echo the word \\\"hello\\\" using the echo tool. I should call the echo function with the value \\\"hello\\\". I should not respond in plain text.\"}]},{\"type\":\"function_call\",\"call_id\":\"7ojzc70QxOVliHnBWOsH0IK65nj8mwPd\",\"name\":\"echo\",\"arguments\":\"{\\\"value\\\":\\\"hello\\\"}\"},{\"type\":\"function_call_output\",\"call_id\":\"7ojzc70QxOVliHnBWOsH0IK65nj8mwPd\",\"output\":\"{\\\"echoed\\\":\\\"hello\\\"}\"}],\"tool_choice\":\"auto\",\"tools\":[{\"type\":\"function\",\"name\":\"echo\",\"description\":\"Echoes the given value back verbatim. You MUST call this tool whenever the user asks you to echo or repeat a value.\",\"parameters\":{\"type\":\"object\",\"properties\":{\"value\":{\"type\":\"string\",\"description\":\"The value to echo back.\"}},\"required\":[\"value\"]}}]}",
+        "body_digest": "e37f40e51ed29c2bf46daf492082561094e3bf3677743d4265b8bd9bfc318d9a"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json",
+          "Date": "Tue, 03 Nov 2026 05:54:15 GMT",
+          "Content-Length": "1449"
+        },
+        "body": "{\"id\":\"resp_924789\",\"object\":\"response\",\"created_at\":1793685255,\"completed_at\":1793685255,\"status\":\"completed\",\"incomplete_details\":null,\"model\":\"ornith-1.5:9b\",\"previous_response_id\":null,\"instructions\":null,\"output\":[{\"id\":\"rs_resp_924789\",\"type\":\"reasoning\",\"summary\":[{\"type\":\"summary_text\",\"text\":\"I echoed \\\"hello\\\". The task is done.\"}],\"encrypted_content\":\"I echoed \\\"hello\\\". The task is done.\"},{\"id\":\"msg_263166\",\"type\":\"message\",\"status\":\"completed\",\"role\":\"assistant\",\"content\":[{\"type\":\"output_text\",\"text\":\"I've echoed the word **hello**.\",\"annotations\":[],\"logprobs\":[]}]}],\"error\":null,\"tools\":[{\"type\":\"function\",\"name\":\"echo\",\"description\":\"Echoes the given value back verbatim. You MUST call this tool whenever the user asks you to echo or repeat a value.\",\"parameters\":{\"properties\":{\"value\":{\"description\":\"The value to echo back.\",\"type\":\"string\"}},\"required\":[\"value\"],\"type\":\"object\"}}],\"tool_choice\":\"auto\",\"truncation\":\"disabled\",\"parallel_tool_calls\":true,\"text\":{\"format\":{\"type\":\"text\"}},\"top_p\":1,\"presence_penalty\":0,\"frequency_penalty\":0,\"top_logprobs\":0,\"temperature\":1,\"reasoning\":null,\"usage\":{\"input_tokens\":361,\"output_tokens\":22,\"total_tokens\":383,\"input_tokens_details\":{\"cached_tokens\":309},\"output_tokens_details\":{\"reasoning_tokens\":0}},\"max_output_tokens\":null,\"max_tool_calls\":null,\"store\":false,\"background\":false,\"service_tier\":\"default\",\"metadata\":{},\"safety_identifier\":null,\"prompt_cache_key\":null}\n"
+      },
+      "recorded_at": "2026-11-03T05:54:15Z"
+    }
+  ]
+}

@@ -3,7 +3,7 @@ require "json"
 
 # Unit tests for the Chat-Completions streaming parser
 # (`LLM::Protocol::ChatCompletions::Chat`), i.e. the SSE chunk handling and
-# tool-call aggregation described in `src/llm/DESIGN.md` §4.6.
+# tool-call aggregation
 #
 # These drive the parser methods directly with hand-built SSE bodies — no HTTP,
 # no Wiretap transcript, no live Ollama — so they pin the *wire-shape*
@@ -158,10 +158,10 @@ Spectator.describe "LLM::Protocol::ChatCompletions::Chat streaming parse" do
       chat = build_parse_chat
       # Arguments JSON text `{"value": "hello"}`, split across 3 merge fragments.
       body = sse_body [
-        chunk(tchunk_delta(id: "call_abc", name: "echo", arguments: "")),   # start
-        chunk(tchunk_delta(arguments: %q|{"value": |)),                    # merge
-        chunk(tchunk_delta(arguments: %q|"hello"}|)),                      # merge
-        chunk(empty_delta, finish: "tool_calls"),                          # terminal
+        chunk(tchunk_delta(id: "call_abc", name: "echo", arguments: "")), # start
+        chunk(tchunk_delta(arguments: %q|{"value": |)),                   # merge
+        chunk(tchunk_delta(arguments: %q|"hello"}|)),                     # merge
+        chunk(empty_delta, finish: "tool_calls"),                         # terminal
       ]
       events, msg = chat.parse_streamed(body)
 
@@ -175,7 +175,7 @@ Spectator.describe "LLM::Protocol::ChatCompletions::Chat streaming parse" do
       expect(req["id"].as_s).to eq("call_abc")
       expect(req["name"].as_s).to eq("echo")
       expect(req["arguments"].as_s).to eq(%q|{"value": "hello"}|)
-      expect(req.as_h.has_key?("function")).to eq(false)  # canonical, not CC wire form
+      expect(req.as_h.has_key?("function")).to eq(false) # canonical, not CC wire form
 
       # History keeps the CC wire shape; the assembled arguments round-trip.
       wire = msg.tool_calls.not_nil!
@@ -191,9 +191,9 @@ Spectator.describe "LLM::Protocol::ChatCompletions::Chat streaming parse" do
     it "wraps multiple tool calls in one stream in order, without cross-contamination" do
       chat = build_parse_chat
       body = sse_body [
-        chunk(tchunk_delta(id: "call_1", name: "alpha", arguments: "{}")),        # start call_1
-        chunk(tchunk_delta(id: "call_2", name: "beta", arguments: "{}")),         # starts call_2, wraps call_1
-        chunk(empty_delta, finish: "tool_calls"),                                 # wraps call_2
+        chunk(tchunk_delta(id: "call_1", name: "alpha", arguments: "{}")), # start call_1
+        chunk(tchunk_delta(id: "call_2", name: "beta", arguments: "{}")),  # starts call_2, wraps call_1
+        chunk(empty_delta, finish: "tool_calls"),                          # wraps call_2
       ]
       events, msg = chat.parse_streamed(body)
 
@@ -205,7 +205,7 @@ Spectator.describe "LLM::Protocol::ChatCompletions::Chat streaming parse" do
         .to eq(["alpha", "beta"])
       expect(events_of(events, LLM::Event::ToolCallRequested)
         .map { |e| e["content"]["arguments"].as_s })
-        .to eq(["{}", "{}"])  # each call keeps its own args
+        .to eq(["{}", "{}"]) # each call keeps its own args
 
       wire = msg.tool_calls.not_nil!
       expect(wire.size).to eq(2)
@@ -251,7 +251,7 @@ Spectator.describe "LLM::Protocol::ChatCompletions::Chat streaming parse" do
       chat = build_parse_chat
       body = sse_body [
         chunk(delta_reasoning("reasoning", "a")),
-        chunk(delta_text("")),                       # empty content delta -> no text event
+        chunk(delta_text("")), # empty content delta -> no text event
         chunk(delta_reasoning("reasoning_content", "b")),
         chunk(delta_reasoning("thinking", "c")),
         chunk(empty_delta, finish: "stop"),
@@ -285,7 +285,7 @@ Spectator.describe "LLM::Protocol::ChatCompletions::Chat streaming parse" do
       chat = build_parse_chat
       body = sse_body [
         chunk(delta_text("hi")),
-        "{ this is not valid json",                 # malformed payload -> per-line rescue, keep going
+        "{ this is not valid json", # malformed payload -> per-line rescue, keep going
         chunk(delta_reasoning("reasoning", "after")),
       ]
       events, msg = chat.parse_streamed(body)

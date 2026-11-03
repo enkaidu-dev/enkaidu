@@ -2,6 +2,7 @@ require "http/client"
 require "uri"
 require "sync/exclusive"
 require "./chat"
+require "./protocol_kind"
 
 module LLM
   # Error raised by connection when protocol needs an API key
@@ -25,8 +26,9 @@ module LLM
       @sync ||= connect
     end
 
-    private def attempt_post_and_stream(body, session_id : String? = nil, &)
+    private def attempt_post_and_stream(body, session_id : String? = nil, path : String? = nil, &)
       sync.lock do |client|
+        resolved_path = path || self.path
         h = headers
         if sid = session_id
           h[Connection.http_session_id_key] = sid
@@ -35,10 +37,10 @@ module LLM
           h["User-Agent"] = ua
         end
         if TRACE
-          STDERR.puts ">>> POST #{path}"
+          STDERR.puts ">>> POST #{resolved_path}"
           STDERR.puts ">>> #{h}"
         end
-        client.post(path, headers: h, body: body) do |resp|
+        client.post(resolved_path, headers: h, body: body) do |resp|
           yield resp
           resp # Always return the response at end of streaming handler block
         end
@@ -49,11 +51,11 @@ module LLM
       end
     end
 
-    protected def post_and_stream(body, session_id : String? = nil, &)
+    protected def post_and_stream(body, session_id : String? = nil, path : String? = nil, &)
       STDERR.puts ">>> --- first try" if TRACE
       retry = false
       begin
-        attempt_post_and_stream(body, session_id) { |resp| yield resp }
+        attempt_post_and_stream(body, session_id, path) { |resp| yield resp }
       rescue
         retry = true
       end
@@ -64,9 +66,11 @@ module LLM
       #   by retrying at least once.
       if retry
         STDERR.puts ">>> --- the one and only retry".colorize(:red) if TRACE
-        attempt_post_and_stream(body, session_id) { |resp| yield resp }
+        attempt_post_and_stream(body, session_id, path) { |resp| yield resp }
       end
     end
+
+    abstract def protocol : ProtocolKind
 
     protected abstract def url : String
 
@@ -74,7 +78,27 @@ module LLM
 
     protected abstract def headers : HTTP::Headers
 
-    abstract def new_chat(&) : Chat
+    # The concrete `Chat` implementation to instantiate for the given protocol.
+    # `protocol` may be passed explicitly (compatibility override, e.g. forcing
+    # ChatCompletions on an OpenAI-compatible backend); `nil` selects the
+    # connection's declared (highest-fidelity) protocol.
+    def new_chat(&) : LLM::Chat
+      chat = case protocol
+             when .responses? then LLM::Protocol::Responses::Chat.new(self)
+             else                  LLM::Protocol::ChatCompletions::Chat.new(self)
+             end
+      with chat yield
+      chat
+    end
+
+    # The wire path the given protocol speaks for *this* connection. By
+    # convention the Responses protocol lives at `/v1/responses` on the same
+    # host, while ChatCompletions uses this connection's default `path`. A
+    # provider may override to keep the path decision local (e.g. Azure's
+    # deployment-scoped paths).
+    protected def protocol_path(kind : LLM::ProtocolKind) : String
+      kind.responses? ? "/v1/responses" : path
+    end
 
     # -------
 

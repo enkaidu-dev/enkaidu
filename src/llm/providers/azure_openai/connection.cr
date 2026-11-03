@@ -7,6 +7,11 @@ module LLM::AzureOpenAI
   # `Connection` is a class that extends from `OpenAI::Connection` to provide
   # specialized connection handling for Azure OpenAI services.
   class Connection < OpenAI::Connection
+    def initialize
+      # Does not support Responses protocol
+      super(ProtocolKind::ChatCompletions)
+    end
+
     def api_ver
       ENV["AZURE_OPENAI_API_VER"]
     end

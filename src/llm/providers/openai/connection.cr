@@ -1,15 +1,14 @@
 require "../../connection"
 require "../../protocol/chat_completions/chat"
+require "../../protocol/responses/chat"
 
 module LLM::OpenAI
   # `Connection` is a class extending `LLM::Connection` to implement specific behaviors
   # for OpenAI's chat services.
   class Connection < LLM::Connection
-    def new_chat(&) : LLM::Chat
-      chat = Protocol::ChatCompletions::Chat.new(self)
-      with chat yield
-      chat
-    end
+    getter protocol : ProtocolKind
+
+    def initialize(@protocol = ProtocolKind::ChatCompletions); end
 
     def url : String
       ENV.fetch("OPENAI_ENDPOINT", "https://api.openai.com")
@@ -24,6 +23,8 @@ module LLM::OpenAI
     end
 
     protected def path : String
+      return "/v1/responses" if protocol.responses?
+
       "/v1/chat/completions"
     end
 

@@ -12,13 +12,13 @@ Spectator.describe LLM::Protocol::ChatCompletions::Chat do
   describe "#save / #load" do
     it "round-trips a populated history through JSON into a new chat" do
       # History now holds a user prompt + an assistant response.
-      chat = populated_ollama_chat
+      chat = populated_ollama_chat(LLM::ProtocolKind::ChatCompletions)
 
       json = save_chat_json(chat)
       expect(json).not_to be_empty
 
       # Load into a brand-new chat of the same protocol.
-      restored = build_ollama_chat
+      restored = build_ollama_chat(LLM::ProtocolKind::ChatCompletions)
       restore_chat(restored, json)
 
       # The conversation survived the round-trip unchanged...
