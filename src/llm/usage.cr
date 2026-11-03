@@ -14,12 +14,12 @@ module LLM
     # `prompt_tokens`/`completion_tokens`); `total_tokens` is kept as-is.
     def self.from_responses(json : JSON::Any) : Usage
       h = json.as_h.dup
-      if (v = h["input_tokens"]?)
+      if v = h["input_tokens"]?
         h["prompt_tokens"] = v
       else
         h["prompt_tokens"] = JSON::Any.new(0) unless h.has_key?("prompt_tokens")
       end
-      if (v = h["output_tokens"]?)
+      if v = h["output_tokens"]?
         h["completion_tokens"] = v
       else
         h["completion_tokens"] = JSON::Any.new(0) unless h.has_key?("completion_tokens")
