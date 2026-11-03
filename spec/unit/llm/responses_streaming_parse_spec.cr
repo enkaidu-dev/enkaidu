@@ -36,7 +36,7 @@ class ResponsesParseTestChat < LLM::Protocol::Responses::Chat
 end
 
 def rsp_build_parse_chat : ResponsesParseTestChat
-  ResponsesParseTestChat.new(LLM::Ollama::Connection.new)
+  ResponsesParseTestChat.new(LLM::Ollama::Connection.new(LLM::ProtocolKind::Responses))
 end
 
 def rsp_events_of(events, type : LLM::Event) : Array(LLM::ChatEvent)

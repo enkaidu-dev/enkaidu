@@ -24,7 +24,7 @@ Spectator.describe LLM::Protocol::Responses::Chat do
   private def build_responses_encoder_chat : EncoderChat
     chat = uninitialized EncoderChat
     with_ollama_envs do
-      chat = EncoderChat.new(LLM::Ollama::Connection.new)
+      chat = EncoderChat.new(LLM::Ollama::Connection.new(LLM::ProtocolKind::Responses))
       chat.with_model("ollama-test")
       chat.with_tool(TestEchoTool.new)
     end
