@@ -16,9 +16,8 @@ require "./function_call_builder"
 module LLM::Protocol::Responses
   # The Responses-protocol `Chat` adapter. It implements the single abstract
   # contract `post_session` (encode → POST → decode → append); session
-  # management and the tool loop live on the base `LLM::Chat`. The request is
-  # POSTed to the Responses path (`protocol_path`), which for a compatible
-  # OpenAI/`OLLAMA_ADAPTER=responses` endpoint is `/v1/responses`.
+  # management and the tool loop live on the base `LLM::Chat`.
+  # The request is posted to connection's path.
   class Chat < LLM::Chat
     include Encoder
     include Decoder
@@ -28,6 +27,9 @@ module LLM::Protocol::Responses
     def initialize(@conn)
       super()
       @model = @conn.model
+      unless @conn.protocol.responses?
+        raise ArgumentError.new("Connection's protocol must be Responses, not: #{@conn.protocol}")
+      end
     end
 
     def with_model(model : String)
@@ -48,7 +50,7 @@ module LLM::Protocol::Responses
       yield({type: LLM::Event::DebugRequest, content: JSON.parse(body)}) if debug?
 
       STDERR.puts ">>> #{body}" if TRACE
-      @conn.post_and_stream(body, session_id, path: @conn.protocol_path(LLM::ProtocolKind::Responses)) do |resp|
+      @conn.post_and_stream(body, session_id, path: @conn.path) do |resp|
         STDERR.puts "<<< #{resp.headers}" if TRACE
         case resp.content_type
         when "text/event-stream" then handle_text_event_stream(resp) { |msg| yield msg }

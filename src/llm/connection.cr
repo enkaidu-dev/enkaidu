@@ -91,15 +91,6 @@ module LLM
       chat
     end
 
-    # The wire path the given protocol speaks for *this* connection. By
-    # convention the Responses protocol lives at `/v1/responses` on the same
-    # host, while ChatCompletions uses this connection's default `path`. A
-    # provider may override to keep the path decision local (e.g. Azure's
-    # deployment-scoped paths).
-    protected def protocol_path(kind : LLM::ProtocolKind) : String
-      kind.responses? ? "/v1/responses" : path
-    end
-
     # -------
 
     @@http_session_id_key = "x-session-id"

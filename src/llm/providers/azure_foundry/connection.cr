@@ -20,6 +20,7 @@ module LLM::AzureFoundry
     end
 
     protected def path : String
+      # Prepend `/openai` to the standard Open AI path
       "/openai#{super}"
     end
   end
