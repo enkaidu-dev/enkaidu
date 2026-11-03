@@ -25,6 +25,8 @@ module LLM::Protocol::Responses
       property finished : Bool = false
       property recent : FunctionCallBuilder? = nil
       property usage : LLM::Usage? = nil
+      property reasoning_id : String? = nil
+      property encrypted_content : String? = nil
       # ameba:enable Naming/QueryBoolMethods
     end
 
@@ -79,7 +81,7 @@ module LLM::Protocol::Responses
         end
       end
 
-      msg = LLM::Message::Response.new(content, reasoning, tool_calls.empty? ? nil : tool_calls)
+      msg = LLM::Message::Response.new(content, reasoning, tool_calls.empty? ? nil : tool_calls, state.reasoning_id, state.encrypted_content)
       msg.usage = state.usage if state.usage
       msg
     end
@@ -100,24 +102,34 @@ module LLM::Protocol::Responses
           yield({type: LLM::Event::ReasoningEvent, content: JSON::Any.new(d)})
         end
       when "response.output_item.added"
-        if (item = data["item"]?) && dig_string(item, "type") == "function_call"
-          # Finalize any in-flight call before starting a new one, so
-          # parallel tool calls each reach the events and the history.
-          if previous = state.recent
-            yield finalize_tool_call(previous, tool_calls)
-            state.recent = nil
+        if item = data["item"]?
+          case dig_string(item, "type")
+          when "function_call"
+            # Finalize any in-flight call before starting a new one, so
+            # parallel tool calls each reach the events and the history.
+            if previous = state.recent
+              yield finalize_tool_call(previous, tool_calls)
+              state.recent = nil
+            end
+            name = dig_string(item, "name") || ""
+            id = dig_string(item, "call_id") || dig_string(item, "id") || ""
+            args = dig_string(item, "arguments") || ""
+            state.recent = FunctionCallBuilder.new(name, id, args)
+            yield({type: LLM::Event::ReceivingToolCall, content: JSON::Any.new(name)})
+          when "reasoning"
+            state.reasoning_id ||= dig_string(item, "id")
+            state.encrypted_content ||= dig_string(item, "encrypted_content")
           end
-          name = dig_string(item, "name") || ""
-          id = dig_string(item, "call_id") || dig_string(item, "id") || ""
-          args = dig_string(item, "arguments") || ""
-          state.recent = FunctionCallBuilder.new(name, id, args)
-          yield({type: LLM::Event::ReceivingToolCall, content: JSON::Any.new(name)})
         end
       when "response.function_call_arguments.delta"
         if recent = state.recent
           recent.append_args_json(dig_string(data, "delta"))
         end
       when "response.function_call_arguments.done", "response.output_item.done"
+        if (item = data["item"]?) && dig_string(item, "type") == "reasoning"
+          state.reasoning_id ||= dig_string(item, "id")
+          state.encrypted_content ||= dig_string(item, "encrypted_content")
+        end
         if recent = state.recent
           # A later event may carry the complete argument string even when no
           # incremental deltas were seen; use it when the accumulator is empty.
@@ -176,6 +188,8 @@ module LLM::Protocol::Responses
       tool_calls = [] of JSON::Any
       content = nil.as String?
       reasoning = nil.as String?
+      reasoning_id = nil.as String?
+      encrypted_content = nil.as String?
 
       if out = data["output"]?.try(&.as_a)
         out.each do |item|
@@ -192,6 +206,8 @@ module LLM::Protocol::Responses
               yield({type: LLM::Event::Text, content: JSON::Any.new(content)})
             end
           when "reasoning"
+            reasoning_id ||= dig_string(item, "id")
+            encrypted_content ||= dig_string(item, "encrypted_content")
             texts = [] of String
             if summary = item["summary"]?.try(&.as_a)
               summary.each do |part|
@@ -234,7 +250,7 @@ module LLM::Protocol::Responses
       end
       yield({type: LLM::Event::Done, content: JSON::Any.new(nil)})
 
-      msg = LLM::Message::Response.new(content, reasoning, tool_calls.empty? ? nil : tool_calls)
+      msg = LLM::Message::Response.new(content, reasoning, tool_calls.empty? ? nil : tool_calls, reasoning_id, encrypted_content)
       msg.usage = usage if usage
       msg
     end

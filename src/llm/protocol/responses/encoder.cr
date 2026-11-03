@@ -35,6 +35,11 @@ module LLM::Protocol::Responses
               json.field "effort", reasoning.to_s.downcase
             end
           end
+          json.field "include" do
+            json.array do
+              json.string "reasoning.encrypted_content"
+            end
+          end
         end
 
         unless temperature.nil?
@@ -95,13 +100,15 @@ module LLM::Protocol::Responses
           end
         end
       when LLM::Message::Response
-        # Resend reasoning as a plaintext `summary` item (when enabled), then a
-        # `message` item for the text, then one `function_call` item per tool
-        # call. v1 omits `encrypted_content` round-trip
+        # Resend reasoning item (when enabled). If encrypted_content and id are
+        # present (e.g. OpenAI/Azure), include them for stateless reasoning state
+        # continuity across turns.
         if thoughts = message.reasoning
           if thoughts.presence && message.include_reasoning?
             json.object do
               json.field "type", "reasoning"
+              json.field "id", message.reasoning_id if message.reasoning_id
+              json.field "encrypted_content", message.encrypted_content if message.encrypted_content
               json.field "summary" do
                 json.array do
                   json.object do

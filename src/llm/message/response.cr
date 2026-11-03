@@ -11,6 +11,10 @@ module LLM
     @[JSON::Field(ignore_serialize: ((reasoning = @reasoning).nil? || reasoning.empty?))]
     property reasoning : String?
 
+    # Optional metadata for Responses protocol stateless reasoning continuity
+    property reasoning_id : String? = nil
+    property encrypted_content : String? = nil
+
     # If `false` don't include reasoning when resending this message to the model
     property? include_reasoning = true
 
@@ -23,7 +27,7 @@ module LLM
     @[JSON::Field(ignore: true)]
     property usage : Usage? = nil
 
-    def initialize(@content, @reasoning, @tool_calls = nil)
+    def initialize(@content, @reasoning, @tool_calls = nil, @reasoning_id : String? = nil, @encrypted_content : String? = nil)
       @role = "assistant"
     end
 
@@ -51,7 +55,7 @@ module LLM
 
     # Return a copy with just the content.
     protected def dup_without_tool_calls
-      self.class.new(content, reasoning)
+      self.class.new(content, reasoning, reasoning_id: reasoning_id, encrypted_content: encrypted_content)
     end
   end
 end
