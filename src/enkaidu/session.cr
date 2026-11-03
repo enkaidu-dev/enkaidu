@@ -61,6 +61,8 @@ module Enkaidu
 
     # Be aware when forked from a parent session.
     getter parent : Session? = nil
+    # Track if this is a sub-agent session
+    getter? sub_agent = false
 
     delegate streaming?, usage, to: @chat
     delegate debug?, to: @opts
@@ -136,8 +138,7 @@ module Enkaidu
     # Create a new session "forked" from a given `Session` to create a duplicate session.
     def initialize(fork_from : Session,
                    keep_tools = true, keep_prompts = true, keep_history = true,
-                   system_prompt_name = nil,
-                   exclude_last_turn = false)
+                   system_prompt_name = nil, exclude_last_turn = false, @sub_agent = false)
       @parent = fork_from
       @recorder = fork_from.recorder
       @opts = fork_from.opts
@@ -221,9 +222,16 @@ module Enkaidu
       end
     end
 
-    # Return true if this is a nested session
-    def sub_session?
-      parent != nil
+    # Return depth of sub-agents; in effect returns the number of
+    # sub agents in the parent chain, including self
+    def sub_agent_depth
+      depth = 0
+      session = self
+      while session
+        depth += 1 if session.sub_agent?
+        session = session.parent
+      end
+      depth
     end
 
     # Return based on model settings, if any. Nil means
@@ -333,7 +341,7 @@ module Enkaidu
         * After thinking through a problem present your conclusion briefly so the user stays connected.
         </cooperative>
         #{if allow_sub_agents?
-            if sub_session?
+            if sub_agent?
               SYSPROMPT_YOU_ARE_SUB_AGENT_V1
             else
               SYSPROMPT_SUB_AGENT_ALLOWED_V3
