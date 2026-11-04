@@ -76,6 +76,7 @@ module LLM::Protocol::Responses
     # per-stream `state` / accumulation buffers as needed.
     # ameba:disable Metrics/CyclomaticComplexity: one branch per Responses event type; splitting would obscure the event mapping.
     private def handle_stream_event(data, state, text_io, think_io, tool_calls, & : LLM::ChatEvent ->) : Nil
+      STDERR.puts "<<-<-<  #{data}" if TRACE
       case dig_string(data, "type")
       when "response.output_text.delta", "response.output_text.done"
         if d = dig_string(data, "delta")
@@ -100,8 +101,8 @@ module LLM::Protocol::Responses
             state.register_builder(data, builder)
             yield({type: LLM::Event::ReceivingToolCall, content: JSON::Any.new(name)})
           when "reasoning"
-            state.reasoning_id ||= dig_string(item, "id")
-            state.encrypted_content ||= dig_string(item, "encrypted_content")
+            state.reasoning_id ||= dig_string(item, "id").try(&.presence)
+            state.encrypted_content ||= dig_string(item, "encrypted_content").try(&.presence)
           end
         end
       when "response.function_call_arguments.delta"
@@ -111,8 +112,8 @@ module LLM::Protocol::Responses
       when "response.function_call_arguments.done", "response.output_item.done"
         if (item = data["item"]?) && (item_type = dig_string(item, "type"))
           if item_type == "reasoning"
-            state.reasoning_id ||= dig_string(item, "id")
-            state.encrypted_content ||= dig_string(item, "encrypted_content")
+            state.reasoning_id ||= dig_string(item, "id").try(&.presence)
+            state.encrypted_content ||= dig_string(item, "encrypted_content").try(&.presence)
           end
           # Output item completion also covers messages and reasoning. Even a
           # matching index must not cause those items to finalize a tool call.

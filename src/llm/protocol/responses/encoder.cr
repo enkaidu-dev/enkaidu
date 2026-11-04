@@ -120,17 +120,17 @@ module LLM::Protocol::Responses
     end
 
     private def encode_response_input_items(message : LLM::Message::Response, json : JSON::Builder) : Nil
-      # Resend reasoning item (when enabled). If encrypted_content and id are
-      # present (e.g. OpenAI/Azure), include them for stateless reasoning state
-      # continuity across turns.
-      if thoughts = message.reasoning
-        if thoughts.presence && message.include_reasoning?
-          json.object do
-            json.field "type", "reasoning"
-            json.field "id", message.reasoning_id if message.reasoning_id
-            json.field "encrypted_content", message.encrypted_content if message.encrypted_content
-            json.field "summary" do
-              json.array do
+      # Encrypted reasoning must also be replayed when no summary was returned.
+      thoughts = message.reasoning.try(&.presence)
+      encrypted = message.encrypted_content.try(&.presence)
+      if message.include_reasoning? && (thoughts || encrypted)
+        json.object do
+          json.field "type", "reasoning"
+          json.field "id", message.reasoning_id if message.reasoning_id
+          json.field "encrypted_content", message.encrypted_content if message.encrypted_content
+          json.field "summary" do
+            json.array do
+              if thoughts
                 json.object do
                   json.field "type", "summary_text"
                   json.field "text", thoughts

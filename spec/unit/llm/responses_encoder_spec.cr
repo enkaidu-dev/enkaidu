@@ -19,6 +19,14 @@ Spectator.describe LLM::Protocol::Responses::Chat do
     def request_body(response_schema : LLM::ResponseSchema? = nil) : JSON::Any
       JSON.parse(to_body(response_schema))
     end
+
+    def decode_response(body : String) : LLM::Message::Response
+      process_responses_json(JSON.parse(body)) { |_| }
+    end
+
+    def decode_stream(body : String) : LLM::Message::Response
+      prepare_message_from_streamed_data(IO::Memory.new(body)) { |_| }.not_nil!
+    end
   end
 
   private def build_responses_encoder_chat : EncoderChat
@@ -94,7 +102,7 @@ Spectator.describe LLM::Protocol::Responses::Chat do
 
     it "omits the reasoning item when a response is excluded from future requests" do
       chat = build_responses_encoder_chat
-      asst = LLM::Message::Response.new("only content", "hidden reasoning")
+      asst = LLM::Message::Response.new("only content", "hidden reasoning", reasoning_id: "rs_hidden", encrypted_content: "hidden_blob")
       asst.include_reasoning = false
       chat.append_message asst
 
@@ -128,6 +136,62 @@ Spectator.describe LLM::Protocol::Responses::Chat do
       body_none = chat_none.request_body
       expect(body_none.dig("reasoning", "effort").as_s).to eq("none")
       expect(body_none.as_h.has_key?("include")).to eq(false)
+    end
+
+    it "replays encrypted reasoning decoded from JSON with empty or absent summaries" do
+      [
+        %q|{"type":"reasoning","id":"rs_empty","encrypted_content":"blob_empty","summary":[]}|,
+        %q|{"type":"reasoning","id":"rs_absent","encrypted_content":"blob_absent"}|,
+      ].each do |item|
+        chat = build_responses_encoder_chat
+        decoded = chat.decode_response(%|{"status":"completed","output":[#{item}]}|)
+        source = JSON.parse(item)
+        expect(decoded.reasoning).to be_nil
+        expect(decoded.reasoning_id).to eq(source["id"].as_s)
+        expect(decoded.encrypted_content).to eq(source["encrypted_content"].as_s)
+        chat.append_message decoded
+
+        input = chat.request_body["input"].as_a
+        replay = input.find { |i| jstr(i, "type") == "reasoning" }
+        expect(replay).not_to be_nil
+        if replay
+          expect(replay["id"].as_s).to eq(source["id"].as_s)
+          expect(replay["encrypted_content"].as_s).to eq(source["encrypted_content"].as_s)
+          expect(replay["summary"].as_a).to be_empty
+        end
+
+        decoded.include_reasoning = false
+        expect(chat.request_body["input"].as_a.find { |i| jstr(i, "type") == "reasoning" }).to be_nil
+      end
+    end
+
+    it "replays encrypted reasoning decoded from a stream without summary deltas" do
+      chat = build_responses_encoder_chat
+      stream = %(data: {"type":"response.output_item.done","item":{"type":"reasoning","id":"rs_stream","encrypted_content":"blob_stream","summary":[]}}\n\ndata: {"type":"response.completed","response":{"status":"completed"}}\n\n)
+      decoded = chat.decode_stream(stream)
+      expect(decoded.reasoning).to eq("")
+      expect(decoded.reasoning_id).to eq("rs_stream")
+      expect(decoded.encrypted_content).to eq("blob_stream")
+      chat.append_message decoded
+
+      replay = chat.request_body["input"].as_a.find { |i| jstr(i, "type") == "reasoning" }
+      expect(replay).not_to be_nil
+      if replay
+        expect(replay["id"].as_s).to eq("rs_stream")
+        expect(replay["encrypted_content"].as_s).to eq("blob_stream")
+        expect(replay["summary"].as_a).to be_empty
+      end
+
+      decoded.include_reasoning = false
+      expect(chat.request_body["input"].as_a.find { |i| jstr(i, "type") == "reasoning" }).to be_nil
+    end
+
+    it "does not replay empty reasoning without encrypted content" do
+      [nil, "", "  "].each do |thoughts|
+        chat = build_responses_encoder_chat
+        chat.append_message LLM::Message::Response.new("answer", thoughts, reasoning_id: "rs_only")
+        expect(chat.request_body["input"].as_a.find { |i| jstr(i, "type") == "reasoning" }).to be_nil
+      end
     end
 
     it "encodes historical reasoning with reasoning_id and encrypted_content" do
