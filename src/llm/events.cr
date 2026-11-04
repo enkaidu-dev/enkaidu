@@ -21,6 +21,7 @@ module LLM
     QueryText
     Usage
     Done
+    WarnTooManyRequestsDelay
     ErrorServer
     ErrorUnexpected
     ErrorUnknownToolCall

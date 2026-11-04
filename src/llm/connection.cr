@@ -8,6 +8,12 @@ module LLM
   # Error raised by connection when protocol needs an API key
   class MissingAPIKey < Exception; end
 
+  # Error raised when we get a 429
+  class TooManyRequests < Exception; end
+
+  # Default to 30s, overridable via env var
+  RATE_CONTROL_DELAY = (ENV.fetch("ENKAIDU_RATE_CONTROL_DELAY", nil).try(&.to_i?) || 30).seconds
+
   # `Connection` is an abstract class that defines the basic structure
   # for chat connection implementations.
   abstract class Connection
@@ -54,10 +60,16 @@ module LLM
     protected def post_and_stream(body, session_id : String? = nil, path : String? = nil, &)
       STDERR.puts ">>> --- first try" if TRACE
       retry = false
+      rate_control_delays = 0
       begin
         attempt_post_and_stream(body, session_id, path) { |resp| yield resp }
-      rescue
+      rescue ex
         retry = true
+        if ex.is_a? TooManyRequests
+          rate_control_delays = 1
+          STDERR.puts ">~< Too many requests, sleeping for 30s before retry" if TRACE
+          sleep RATE_CONTROL_DELAY
+        end
       end
       # One retry allowed when an IO error occurs.
       # Usually IO errors cannot be retried away.
@@ -65,7 +77,22 @@ module LLM
       #   keep-alive for connections which can only be overcome
       #   by retrying at least once.
       if retry
-        STDERR.puts ">>> --- the one and only retry".colorize(:red) if TRACE
+        retry = false
+        begin
+          STDERR.puts ">>> --- the one and only retry".colorize(:red) if TRACE
+          attempt_post_and_stream(body, session_id, path) { |resp| yield resp }
+        rescue TooManyRequests
+          rate_control_delays += 1
+          retry = true
+          STDERR.puts ">~< Too many requests, sleeping for 30s before retry" if TRACE
+          sleep RATE_CONTROL_DELAY
+        end
+      end
+
+      # This is a weird second retry IFF `TooManyRequests` occurs on the
+      # the second retry but not the
+      if retry && rate_control_delays == 1
+        STDERR.puts ">>> --- ok, ok, the last one, rate-control-delay retry".colorize(:red) if TRACE
         attempt_post_and_stream(body, session_id, path) { |resp| yield resp }
       end
     end

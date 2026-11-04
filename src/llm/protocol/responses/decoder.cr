@@ -53,16 +53,16 @@ module LLM::Protocol::Responses
             rescue ex : JSON::ParseException
               LLM.show_error_trace(ex, data_label: "line", data: line)
             end
-            break if state.finished
+            break if state.finished?
           end
         end
       end
 
-      unless state.successful
-        unless state.finished
+      unless state.successful?
+        unless state.finished?
           yield({type: LLM::Event::ErrorUnexpected, content: JSON::Any.new("Responses stream ended without a successful terminal event")})
         end
-        return nil
+        return
       end
 
       pending_calls.each { |event| yield event }
@@ -140,7 +140,9 @@ module LLM::Protocol::Responses
           state.finalize_all_tool_calls(tool_calls) { |event| yield event }
           state.usage = extract_usage(resp)
         end
-        incomplete_reason = resp.try { |r| dig_string(r["incomplete_details"]?, "reason") }
+        incomplete_reason = if resp
+                              dig_string(resp["incomplete_details"]?, "reason")
+                            end
         finish = incomplete_reason || status || "incomplete"
         yield({type: LLM::Event::FinishReason, content: JSON::Any.new(finish)})
         state.finished = true
@@ -148,6 +150,13 @@ module LLM::Protocol::Responses
         yield({type: LLM::Event::ErrorServer, content: data}) unless successful
       when "response.failed", "error"
         state.finished = true
+
+        # Azure AI sends rate control error as an SSE event
+        if data.dig?("error", "type").try(&.as_s?.try(&.starts_with?("too_many_request")))
+          yield warn_too_many_requests_delay(data)
+          raise TooManyRequests.new(data.to_s)
+        end
+
         yield({type: LLM::Event::ErrorServer, content: data})
       else
         # Unknown / ignorable event (`response.created`, `content_part.*`,

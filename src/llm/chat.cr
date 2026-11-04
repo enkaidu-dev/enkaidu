@@ -330,6 +330,10 @@ module LLM
       extract.try(&.to_json)
     end
 
+    protected def warn_too_many_requests_delay(err : JSON::Any)
+      {type: LLM::Event::WarnTooManyRequestsDelay, content: err}
+    end
+
     # The one protocol contract: encode the current session, POST it, and yield
     # the canonical `ChatEvent`s (which the app consumes; the adapter appends the
     # resulting `Message::Response` with its `Usage` back to history).

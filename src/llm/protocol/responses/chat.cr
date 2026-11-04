@@ -52,13 +52,22 @@ module LLM::Protocol::Responses
       STDERR.puts ">>> #{body}" if TRACE
       @conn.post_and_stream(body, session_id, path: @conn.path) do |resp|
         STDERR.puts "<<< #{resp.headers}" if TRACE
-        case resp.content_type
-        when "text/event-stream" then handle_text_event_stream(resp) { |msg| yield msg }
-        when "application/json"  then handle_app_json(resp) { |msg| yield msg }
-        else
-          # We don't know what to do if it's neither SSE nor JSON.
-          yield unexpected_response(resp)
+        resp_unexp = false
+        case resp.status
+        when .too_many_requests?
+          # If we get the 429
+          yield warn_too_many_requests_delay(JSON::Any.new("#{resp.status_code} #{resp.status_message}"))
+          raise TooManyRequests.new(@conn.path)
+        when .ok?
+          case resp.content_type
+          when "text/event-stream" then handle_text_event_stream(resp) { |msg| yield msg }
+          when "application/json"  then handle_app_json(resp) { |msg| yield msg }
+          else                          resp_unexp = true
+          end
+        else resp_unexp = true
         end
+        # We don't know what to do if it's neither SSE nor JSON.
+        yield unexpected_response(resp) if resp_unexp
       end
     end
 
@@ -68,7 +77,7 @@ module LLM::Protocol::Responses
         yield msg
       end
       STDERR.puts "+++ #{aggr_msg.to_json}" if TRACE
-      append_message aggr_msg
+      append_message aggr_msg if aggr_msg
     end
 
     private def handle_app_json(resp, &) : Nil
@@ -79,7 +88,10 @@ module LLM::Protocol::Responses
         # A present-but-null `error` field is *not* an error: `response`
         # objects (e.g. Ollama's) carry `"error": null` on success.
         if (err = data["error"]?) && !err.raw.nil?
-          STDERR.puts "~~~ #{data}" if TRACE
+          # If we get here but error says too many requests:
+          yield warn_too_many_requests_delay(data)
+          raise TooManyRequests.new(body) if body.includes?("too_many_request")
+
           yield({type: LLM::Event::ErrorServer, content: data})
         elsif dig_string(data, "object") == "response.error"
           yield({type: LLM::Event::ErrorServer, content: data})

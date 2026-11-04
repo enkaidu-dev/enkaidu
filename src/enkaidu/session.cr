@@ -427,6 +427,8 @@ module Enkaidu
         else
           renderer.llm_error(event)
         end
+      when .warn_too_many_requests_delay?
+        renderer.warning_with("All our AIs are busy helping other humans, please hold.")
       end
     end
 
@@ -463,13 +465,7 @@ module Enkaidu
             progress.start
             begin
               chat.re_ask do |event|
-                case event[:type]
-                when LLM::Event::ReceivingToolCall
-                  progress.label = "Receiving #{event[:content]}(...)"
-                  progress.start
-                else
-                  progress.stop
-                end
+                check_and_show_progress(event, progress)
                 m_process_and_record_ask_event(event, prev_event)
                 prev_event = event
               end
@@ -481,52 +477,25 @@ module Enkaidu
       end
     end
 
-    private def queue_chat_request(&) : TS::Queue(LLM::ChatEvent)
-      queue = TS::Queue(LLM::ChatEvent).new
-      yield queue
-      # Wait for events in a timed loop
-      spin_count = 0
-      while queue.empty?
-        STDERR.print "\r  Engaging #{spinner(spin_count)}".colorize(:dark_gray).italic
-        sleep(100.milliseconds)
-        spin_count += 1
-      end
-      STDERR.print "\r\e[K"
-      # Return with queue to caller
-      queue
-    end
-
-    private def gather_and_handle(queue, tools) : Nil
-      # Process events in queue
-      ix = 0
-      spin_count = 0
-      prev_event = nil
-      loop do
-        if event = queue.shift?
-          break if event == SPAWN_DONE
-
-          STDERR.print "\r\e[K" unless streaming?
-          m_process_and_record_ask_event(event, prev_event)
-          prev_event = event unless event["type"].debug_event?
-        else
-          if streaming?
-            sleep(10.milliseconds)
-          else
-            STDERR.print "\r  Receiving #{spinner(spin_count)}".colorize(:dark_gray).italic
-            sleep(100.milliseconds)
-            spin_count += 1
-          end
-        end
-      end
-      detect_text_ending(nil, prev_event)
-    end
-
     private def track_and_time(label, &)
       progress = Progress.new(label)
       report_time_taken(prefix: "Total ") do
         progress.start
         yield progress
       ensure
+        progress.stop
+      end
+    end
+
+    private def check_and_show_progress(event, progress)
+      case event[:type]
+      when .receiving_tool_call?
+        progress.label = "Receiving #{event[:content]}(~)"
+        progress.start
+      when .warn_too_many_requests_delay?
+        progress.label = "Waiting"
+        progress.start
+      else
         progress.stop
       end
     end
@@ -542,13 +511,7 @@ module Enkaidu
         begin
           chat.re_ask(response_schema: response_json_schema,
             exclude_reasoning_in_history: exclude_past_reasoning?) do |event|
-            case event[:type]
-            when LLM::Event::ReceivingToolCall
-              progress.label = "Receiving #{event[:content]}(...)"
-              progress.start
-            else
-              progress.stop
-            end
+            check_and_show_progress(event, progress)
             m_process_and_record_ask_event(event, prev_event)
             prev_event = event
           end
@@ -591,13 +554,7 @@ module Enkaidu
             response_schema: response_json_schema,
             exclude_reasoning_in_history: exclude_past_reasoning?,
             exclude_reasoning_skip: exclude_past_reasoning_from) do |event|
-            case event[:type]
-            when LLM::Event::ReceivingToolCall
-              progress.label = "Receiving #{event[:content]}(...)"
-              progress.start
-            else
-              progress.stop
-            end
+            check_and_show_progress(event, progress)
             m_process_and_record_ask_event(event, prev_event)
             prev_event = event
           end
