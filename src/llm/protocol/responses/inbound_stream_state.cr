@@ -8,13 +8,11 @@ module LLM::Protocol::Responses
   # type) so field mutations made through the handler closure are seen by the
   # aggregator across the nested streaming closures.
   class InboundStreamState
-    # ameba:disable Naming/QueryBoolMethods
-    property finished : Bool = false
-    property successful : Bool = false
+    property? finished : Bool = false
+    property? successful : Bool = false
     property usage : LLM::Usage? = nil
     property reasoning_id : String? = nil
     property encrypted_content : String? = nil
-    # ameba:enable Naming/QueryBoolMethods
 
     # Keep all builders, even those without identifiers, for EOF finalization.
     @builders = [] of FunctionCallBuilder
