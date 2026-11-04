@@ -31,7 +31,7 @@ class ResponsesParseTestChat < LLM::Protocol::Responses::Chat
     msg = prepare_message_from_streamed_data(io) do |ev|
       events << ev
     end
-    {events, msg}
+    {events, msg.not_nil!}
   end
 end
 
@@ -174,6 +174,7 @@ Spectator.describe "LLM::Protocol::Responses streaming parse" do
         rsp_args_delta(%q|{"value": |),                  # merge
         rsp_args_delta(%q|"hello"}|),                    # merge
         rsp_args_done("call_abc"),
+        rsp_completed,
       ]
       events, msg = chat.parse_streamed(body)
 
@@ -212,35 +213,13 @@ Spectator.describe "LLM::Protocol::Responses streaming parse" do
       expect(msg.content).to eq("hi")
     end
 
-    it "finalizes an in-flight tool call when the stream ends without a done marker" do
-      chat = rsp_build_parse_chat
-      # No `function_call_arguments.done` and no `response.completed`:
-      # historically the in-flight call would be dropped. It must now be
-      # finalized at end-of-stream.
-      body = rsp_sse_body([
-        rsp_added_function_call("call_z", "echo", "{}"),
-      ], done: false)
-
-      events, msg = chat.parse_streamed(body)
-
-      expect(rsp_events_of(events, LLM::Event::ReceivingToolCall).size).to eq(1)
-      req = rsp_events_of(events, LLM::Event::ToolCallRequested)
-      expect(req.size).to eq(1)
-      expect(req.first["content"].dig("id").as_s).to eq("call_z")
-      expect(req.first["content"].dig("name").as_s).to eq("echo")
-      expect(req.first["content"].dig("arguments").as_s).to eq("{}")
-      # No completion event was sent, so no Done event is fabricated.
-      expect(rsp_events_of(events, LLM::Event::Done).size).to eq(0)
-      # The call was appended to history as well.
-      expect(msg.tool_calls.not_nil!.size).to eq(1)
-    end
-
     it "recovers from a malformed data line and continues the stream" do
       chat = rsp_build_parse_chat
       body = rsp_sse_body [
         rsp_delta_text("hi"),
         "this is not valid json", # malformed payload -> per-line rescue, keep going
         rsp_delta_text(" there"),
+        rsp_completed,
       ]
       events, msg = chat.parse_streamed(body)
 
@@ -318,6 +297,7 @@ Spectator.describe "LLM::Protocol::Responses streaming parse" do
         rsp_args_delta("B", item_id: "item_b"),
         rsp_args_done("item_a"),
         rsp_args_done("item_b"),
+        rsp_completed,
       ]
       events, msg = rsp_build_parse_chat.parse_streamed(body)
       reqs = rsp_events_of(events, LLM::Event::ToolCallRequested).map { |e| e["content"] }
@@ -335,6 +315,7 @@ Spectator.describe "LLM::Protocol::Responses streaming parse" do
         %q|{"type":"response.output_item.done","output_index":1,"item":{"type":"function_call","id":"item_a","call_id":"call_a","arguments":"wrong"}}|,
         rsp_args_delta("B", item_id: "item_b"),
         rsp_args_done("item_b"),
+        rsp_completed,
       ]
       events, _ = rsp_build_parse_chat.parse_streamed(body)
       reqs = rsp_events_of(events, LLM::Event::ToolCallRequested).map { |e| e["content"] }
@@ -346,6 +327,7 @@ Spectator.describe "LLM::Protocol::Responses streaming parse" do
         rsp_added_function_call("call_one", "echo"),
         rsp_args_delta("partial"),
         %q|{"type":"response.output_item.done","item":{"type":"function_call","arguments":"complete"}}|,
+        rsp_completed,
       ]
       events, msg = rsp_build_parse_chat.parse_streamed(body)
       reqs = rsp_events_of(events, LLM::Event::ToolCallRequested)
@@ -366,29 +348,12 @@ Spectator.describe "LLM::Protocol::Responses streaming parse" do
         rsp_args_done("new_item", output_index: 1),
         rsp_args_delta("C", item_id: "call_two"),
         rsp_args_done("call_two"),
+        rsp_completed,
       ]
       events, msg = rsp_build_parse_chat.parse_streamed(body)
       reqs = rsp_events_of(events, LLM::Event::ToolCallRequested).map { |e| e["content"] }
       expect(reqs.map { |r| [r["id"].as_s, r["arguments"].as_s] }).to eq([["call_one", "AB"], ["call_two", "C"]])
       expect(msg.tool_calls.not_nil!.map { |c| c.dig("function", "arguments").as_s }).to eq(["AB", "C"])
-    end
-
-    it "retires learned aliases on response completion and allows explicit reuse on a new item" do
-      body = rsp_sse_body [
-        rsp_added_function_call("call_a", "echo", output_index: 0),
-        rsp_args_delta("A", item_id: "late_item", output_index: 0),
-        rsp_completed,
-        rsp_added_function_call("call_b", "read", output_index: 1),
-        rsp_args_delta("wrong", item_id: "late_item", output_index: 1),
-        rsp_args_delta("B", item_id: "call_b"),
-        rsp_args_done("call_b"),
-        rsp_added_function_call("call_c", "echo", output_index: 2, wire_id: "late_item"),
-        rsp_args_delta("C", item_id: "late_item"),
-        rsp_args_done("late_item"),
-      ]
-      events, _ = rsp_build_parse_chat.parse_streamed(body)
-      reqs = rsp_events_of(events, LLM::Event::ToolCallRequested).map { |e| e["content"] }
-      expect(reqs.map { |r| [r["id"].as_s, r["arguments"].as_s] }).to eq([["call_a", "A"], ["call_b", "B"], ["call_c", "C"]])
     end
 
     it "does not learn aliases from conflicting or retired identifiers" do
@@ -403,6 +368,7 @@ Spectator.describe "LLM::Protocol::Responses streaming parse" do
         rsp_args_delta("wrong", item_id: "unknown_retired"),
         rsp_args_delta("B", item_id: "item_b"),
         rsp_args_done("item_b"),
+        rsp_completed,
       ]
       events, _ = rsp_build_parse_chat.parse_streamed(body)
       reqs = rsp_events_of(events, LLM::Event::ToolCallRequested).map { |e| e["content"] }
@@ -436,18 +402,5 @@ Spectator.describe "LLM::Protocol::Responses streaming parse" do
       expect(reqs.map { |r| [r["id"].as_s, r["arguments"].as_s] }).to eq([["call_a", "A"], ["call_b", "B"]])
     end
 
-    it "emits finish reason for response.incomplete status" do
-      chat = rsp_build_parse_chat
-      body = rsp_sse_body [
-        rsp_delta_text("partial text"),
-        rsp_completed("incomplete"),
-      ]
-      events, msg = chat.parse_streamed(body)
-
-      expect(msg.content).to eq("partial text")
-      finish_events = rsp_events_of(events, LLM::Event::FinishReason)
-      expect(finish_events.size).to eq(1)
-      expect(finish_events.first["content"].as_s).to eq("incomplete")
-    end
   end
 end

@@ -10,6 +10,7 @@ module LLM::Protocol::Responses
   class InboundStreamState
     # ameba:disable Naming/QueryBoolMethods
     property finished : Bool = false
+    property successful : Bool = false
     property usage : LLM::Usage? = nil
     property reasoning_id : String? = nil
     property encrypted_content : String? = nil

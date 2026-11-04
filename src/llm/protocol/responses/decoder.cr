@@ -20,9 +20,10 @@ module LLM::Protocol::Responses
     # concatenated into the response body; tool calls are finalized from
     # `output_item.added` / `function_call_arguments.*`; usage is captured (not
     # emitted) off `response.completed`, mirroring the ChatCompletions stream.
-    private def prepare_message_from_streamed_data(stream_io, & : LLM::ChatEvent ->) : LLM::Message::Response
+    private def prepare_message_from_streamed_data(stream_io, & : LLM::ChatEvent ->) : LLM::Message::Response?
       state = InboundStreamState.new
       tool_calls = [] of JSON::Any
+      pending_calls = [] of LLM::ChatEvent
       content = ""
 
       reasoning = String.build do |think_io|
@@ -38,33 +39,34 @@ module LLM::Protocol::Responses
             next unless line.starts_with?("data:")
 
             payload = line.lchop("data:").lstrip
-            if payload == "[DONE]"
-              unless state.finished
-                state.finished = true
-                yield({type: LLM::Event::Done, content: JSON::Any.new(nil)})
-              end
-              next
-            end
+            break if payload == "[DONE]"
 
             begin
               data = JSON.parse(payload)
               handle_stream_event(data, state, text_io, think_io, tool_calls) do |event|
-                yield event
+                if event[:type].tool_call_requested?
+                  pending_calls << event
+                else
+                  yield event
+                end
               end
-            rescue ex
+            rescue ex : JSON::ParseException
               LLM.show_error_trace(ex, data_label: "line", data: line)
             end
-          end
-
-          # A stream can end with a tool call still in flight (no trailing
-          # `...done` / `response.completed`). Finalize it so it still reaches
-          # the yielded events and the history.
-          state.finalize_all_tool_calls(tool_calls) do |event|
-            yield event
+            break if state.finished
           end
         end
       end
 
+      unless state.successful
+        unless state.finished
+          yield({type: LLM::Event::ErrorUnexpected, content: JSON::Any.new("Responses stream ended without a successful terminal event")})
+        end
+        return nil
+      end
+
+      pending_calls.each { |event| yield event }
+      yield({type: LLM::Event::Done, content: JSON::Any.new(nil)})
       msg = LLM::Message::Response.new(content, reasoning, tool_calls.empty? ? nil : tool_calls, state.reasoning_id, state.encrypted_content)
       msg.usage = state.usage if state.usage
       msg
@@ -130,25 +132,21 @@ module LLM::Protocol::Responses
           state.remove_builder(builder)
         end
       when "response.completed", "response.incomplete"
-        # Finalize any in-flight tool call before the terminal event.
-        state.finalize_all_tool_calls(tool_calls) do |event|
-          yield event
+        resp = data["response"]?
+        status = dig_string(resp, "status")
+        successful = dig_string(data, "type") == "response.completed" && status == "completed"
+        if successful
+          state.finalize_all_tool_calls(tool_calls) { |event| yield event }
+          state.usage = extract_usage(resp)
         end
-        if resp = data["response"]?
-          if usage = extract_usage(resp)
-            state.usage = usage
-          end
-          incomplete_reason = resp["incomplete_details"]? ? dig_string(resp["incomplete_details"], "reason") : nil
-          finish = incomplete_reason || dig_string(resp, "status") || "incomplete"
-          yield({type: LLM::Event::FinishReason, content: JSON::Any.new(finish)})
-        else
-          yield({type: LLM::Event::FinishReason, content: JSON::Any.new("incomplete")})
-        end
-        unless state.finished
-          state.finished = true
-          yield({type: LLM::Event::Done, content: JSON::Any.new(nil)})
-        end
+        incomplete_reason = resp.try { |r| dig_string(r["incomplete_details"]?, "reason") }
+        finish = incomplete_reason || status || "incomplete"
+        yield({type: LLM::Event::FinishReason, content: JSON::Any.new(finish)})
+        state.finished = true
+        state.successful = successful
+        yield({type: LLM::Event::ErrorServer, content: data}) unless successful
       when "response.failed", "error"
+        state.finished = true
         yield({type: LLM::Event::ErrorServer, content: data})
       else
         # Unknown / ignorable event (`response.created`, `content_part.*`,
