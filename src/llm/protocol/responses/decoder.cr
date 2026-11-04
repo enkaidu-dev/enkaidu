@@ -107,13 +107,17 @@ module LLM::Protocol::Responses
           builder.append_args_json(dig_string(data, "delta"))
         end
       when "response.function_call_arguments.done", "response.output_item.done"
-        if (item = data["item"]?) && dig_string(item, "type") == "reasoning"
-          state.reasoning_id ||= dig_string(item, "id")
-          state.encrypted_content ||= dig_string(item, "encrypted_content")
+        if (item = data["item"]?) && (item_type = dig_string(item, "type"))
+          if item_type == "reasoning"
+            state.reasoning_id ||= dig_string(item, "id")
+            state.encrypted_content ||= dig_string(item, "encrypted_content")
+          end
+          # Output item completion also covers messages and reasoning. Even a
+          # matching index must not cause those items to finalize a tool call.
+          return if dig_string(data, "type") == "response.output_item.done" && item_type != "function_call"
         end
         if builder = state.find_builder(data)
-          # A later event may carry the complete argument string even when no
-          # incremental deltas were seen; use it when the accumulator is empty.
+          # Complete arguments on a done event supersede accumulated deltas.
           if args = dig_string(data, "arguments")
             builder.replace_args_json(args)
           end

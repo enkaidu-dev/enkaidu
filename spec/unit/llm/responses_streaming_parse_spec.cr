@@ -67,7 +67,7 @@ end
 
 # A `response.output_item.added` for a function call, with its initial arguments
 # (empty unless the server pre-fills them — as Ollama's single-chunk style does).
-def rsp_added_function_call(item_id : String, name : String, arguments = "", output_index : Int32? = nil) : String
+def rsp_added_function_call(item_id : String, name : String, arguments = "", output_index : Int32? = nil, wire_id : String? = nil) : String
   JSON.build do |j|
     j.object do
       j.field "type", "response.output_item.added"
@@ -76,6 +76,7 @@ def rsp_added_function_call(item_id : String, name : String, arguments = "", out
         j.object do
           j.field "type", "function_call"
           j.field "call_id", item_id
+          j.field "id", wire_id if wire_id
           j.field "name", name
           j.field "arguments", arguments
         end
@@ -273,6 +274,166 @@ Spectator.describe "LLM::Protocol::Responses streaming parse" do
       expect(wire.size).to eq(2)
       expect(wire[0].dig("function", "arguments").as_s).to eq(%q|{"val": "first"}|)
       expect(wire[1].dig("function", "arguments").as_s).to eq(%q|{"path": "file.txt"}|)
+    end
+
+    it "keeps parallel calls separate across both kinds of done events" do
+      body = rsp_sse_body [
+        rsp_added_function_call("call_a", "echo", output_index: 0, wire_id: "item_a"),
+        rsp_added_function_call("call_b", "read", output_index: 1, wire_id: "item_b"),
+        rsp_args_delta(%q|{"value":|, item_id: "item_a"),
+        rsp_args_delta(%q|{"path":|, item_id: "item_b"),
+        rsp_args_delta(%q|"hello"}|, item_id: "item_a"),
+        %q|{"type":"response.function_call_arguments.done","item_id":"item_a","arguments":"{\"value\":\"hello\"}"}|,
+        %q|{"type":"response.output_item.done","output_index":0,"item":{"type":"function_call","id":"item_a","call_id":"call_a","arguments":"{\"value\":\"hello\"}"}}|,
+        %q|{"type":"response.output_item.done","output_index":1,"item":{"type":"reasoning","id":"reasoning_x","encrypted_content":"secret"}}|,
+        %q|{"type":"response.output_item.done","item":{"type":"message","id":"msg_x"}}|,
+        rsp_args_delta(%q|"file.txt"}|, item_id: "item_b"),
+        rsp_args_done("item_b"),
+        rsp_completed,
+      ]
+      events, msg = rsp_build_parse_chat.parse_streamed(body)
+      reqs = rsp_events_of(events, LLM::Event::ToolCallRequested).map { |e| e["content"] }
+      expect(reqs.size).to eq(2)
+      expect(reqs.map { |r| [r["id"].as_s, r["name"].as_s, r["arguments"].as_s] }).to eq([
+        ["call_a", "echo", %q|{"value":"hello"}|],
+        ["call_b", "read", %q|{"path":"file.txt"}|],
+      ])
+      wire = msg.tool_calls.not_nil!
+      expect(wire.map { |c| [c["id"].as_s, c.dig("function", "arguments").as_s] }).to eq([
+        ["call_a", %q|{"value":"hello"}|],
+        ["call_b", %q|{"path":"file.txt"}|],
+      ])
+      expect(msg.reasoning_id).to eq("reasoning_x")
+      expect(msg.encrypted_content).to eq("secret")
+    end
+
+    it "ignores unknown identified events instead of assigning them to the latest call" do
+      body = rsp_sse_body [
+        rsp_added_function_call("call_a", "echo", wire_id: "item_a"),
+        rsp_added_function_call("call_b", "read", wire_id: "item_b"),
+        rsp_args_delta("wrong", item_id: "unknown"),
+        rsp_args_done("unknown"),
+        rsp_args_delta("wrong", output_index: 99),
+        rsp_args_delta("A", item_id: "item_a"),
+        rsp_args_delta("B", item_id: "item_b"),
+        rsp_args_done("item_a"),
+        rsp_args_done("item_b"),
+      ]
+      events, msg = rsp_build_parse_chat.parse_streamed(body)
+      reqs = rsp_events_of(events, LLM::Event::ToolCallRequested).map { |e| e["content"] }
+      expect(reqs.map { |r| [r["id"].as_s, r["arguments"].as_s] }).to eq([["call_a", "A"], ["call_b", "B"]])
+      expect(msg.tool_calls.not_nil!.map { |c| c.dig("function", "arguments").as_s }).to eq(["A", "B"])
+    end
+
+    it "rejects conflicting or retired identifiers without assigning another call" do
+      body = rsp_sse_body [
+        rsp_added_function_call("call_a", "echo", output_index: 0, wire_id: "item_a"),
+        rsp_added_function_call("call_b", "read", output_index: 1, wire_id: "item_b"),
+        rsp_args_delta("wrong", item_id: "item_a", output_index: 1),
+        rsp_args_delta("A", item_id: "item_a"),
+        rsp_args_done("item_a"),
+        %q|{"type":"response.output_item.done","output_index":1,"item":{"type":"function_call","id":"item_a","call_id":"call_a","arguments":"wrong"}}|,
+        rsp_args_delta("B", item_id: "item_b"),
+        rsp_args_done("item_b"),
+      ]
+      events, _ = rsp_build_parse_chat.parse_streamed(body)
+      reqs = rsp_events_of(events, LLM::Event::ToolCallRequested).map { |e| e["content"] }
+      expect(reqs.map { |r| [r["id"].as_s, r["arguments"].as_s] }).to eq([["call_a", "A"], ["call_b", "B"]])
+    end
+
+    it "accepts unkeyed single-call events and function item completion" do
+      body = rsp_sse_body [
+        rsp_added_function_call("call_one", "echo"),
+        rsp_args_delta("partial"),
+        %q|{"type":"response.output_item.done","item":{"type":"function_call","arguments":"complete"}}|,
+      ]
+      events, msg = rsp_build_parse_chat.parse_streamed(body)
+      reqs = rsp_events_of(events, LLM::Event::ToolCallRequested)
+      expect(reqs.size).to eq(1)
+      expect(reqs.first["content"]["arguments"].as_s).to eq("complete")
+      expect(msg.tool_calls.not_nil!.first.dig("function", "arguments").as_s).to eq("complete")
+    end
+
+    it "learns and retires a late item identifier for a parallel call" do
+      body = rsp_sse_body [
+        rsp_added_function_call("call_one", "echo", output_index: 0),
+        rsp_added_function_call("call_two", "read", output_index: 1),
+        rsp_args_delta("A", item_id: "new_item", output_index: 0),
+        rsp_args_delta("B", item_id: "new_item"),
+        rsp_args_done("new_item"),
+        # A duplicate must not redirect to the still-active second call.
+        rsp_args_delta("wrong", item_id: "new_item", output_index: 1),
+        rsp_args_done("new_item", output_index: 1),
+        rsp_args_delta("C", item_id: "call_two"),
+        rsp_args_done("call_two"),
+      ]
+      events, msg = rsp_build_parse_chat.parse_streamed(body)
+      reqs = rsp_events_of(events, LLM::Event::ToolCallRequested).map { |e| e["content"] }
+      expect(reqs.map { |r| [r["id"].as_s, r["arguments"].as_s] }).to eq([["call_one", "AB"], ["call_two", "C"]])
+      expect(msg.tool_calls.not_nil!.map { |c| c.dig("function", "arguments").as_s }).to eq(["AB", "C"])
+    end
+
+    it "retires learned aliases on response completion and allows explicit reuse on a new item" do
+      body = rsp_sse_body [
+        rsp_added_function_call("call_a", "echo", output_index: 0),
+        rsp_args_delta("A", item_id: "late_item", output_index: 0),
+        rsp_completed,
+        rsp_added_function_call("call_b", "read", output_index: 1),
+        rsp_args_delta("wrong", item_id: "late_item", output_index: 1),
+        rsp_args_delta("B", item_id: "call_b"),
+        rsp_args_done("call_b"),
+        rsp_added_function_call("call_c", "echo", output_index: 2, wire_id: "late_item"),
+        rsp_args_delta("C", item_id: "late_item"),
+        rsp_args_done("late_item"),
+      ]
+      events, _ = rsp_build_parse_chat.parse_streamed(body)
+      reqs = rsp_events_of(events, LLM::Event::ToolCallRequested).map { |e| e["content"] }
+      expect(reqs.map { |r| [r["id"].as_s, r["arguments"].as_s] }).to eq([["call_a", "A"], ["call_b", "B"], ["call_c", "C"]])
+    end
+
+    it "does not learn aliases from conflicting or retired identifiers" do
+      body = rsp_sse_body [
+        rsp_added_function_call("call_a", "echo", output_index: 0, wire_id: "item_a"),
+        rsp_added_function_call("call_b", "read", output_index: 1, wire_id: "item_b"),
+        %q|{"type":"response.function_call_arguments.delta","output_index":0,"item_id":"item_b","call_id":"unknown_conflict","delta":"wrong"}|,
+        rsp_args_delta("wrong", item_id: "unknown_conflict"),
+        rsp_args_delta("A", item_id: "item_a"),
+        rsp_args_done("item_a"),
+        %q|{"type":"response.function_call_arguments.delta","output_index":1,"item_id":"item_a","call_id":"unknown_retired","delta":"wrong"}|,
+        rsp_args_delta("wrong", item_id: "unknown_retired"),
+        rsp_args_delta("B", item_id: "item_b"),
+        rsp_args_done("item_b"),
+      ]
+      events, _ = rsp_build_parse_chat.parse_streamed(body)
+      reqs = rsp_events_of(events, LLM::Event::ToolCallRequested).map { |e| e["content"] }
+      expect(reqs.map { |r| [r["id"].as_s, r["arguments"].as_s] }).to eq([["call_a", "A"], ["call_b", "B"]])
+    end
+
+    it "retains all identifier-free calls until terminal finalization" do
+      body = rsp_sse_body [
+        rsp_added_function_call("", "echo", "A"),
+        rsp_added_function_call("", "read", "B"),
+        rsp_completed,
+      ]
+      events, msg = rsp_build_parse_chat.parse_streamed(body)
+      reqs = rsp_events_of(events, LLM::Event::ToolCallRequested).map { |e| e["content"] }
+      expect(reqs.map { |r| [r["name"].as_s, r["arguments"].as_s] }).to eq([["echo", "A"], ["read", "B"]])
+      expect(msg.tool_calls.not_nil!.size).to eq(2)
+    end
+
+    it "does not guess for unkeyed events while multiple calls are active" do
+      body = rsp_sse_body [
+        rsp_added_function_call("call_a", "echo"),
+        rsp_added_function_call("call_b", "read"),
+        rsp_args_delta("wrong"),
+        %q|{"type":"response.function_call_arguments.done","arguments":"wrong"}|,
+        rsp_args_delta("A", item_id: "call_a"),
+        rsp_args_delta("B", item_id: "call_b"),
+        rsp_completed,
+      ]
+      events, _ = rsp_build_parse_chat.parse_streamed(body)
+      reqs = rsp_events_of(events, LLM::Event::ToolCallRequested).map { |e| e["content"] }
+      expect(reqs.map { |r| [r["id"].as_s, r["arguments"].as_s] }).to eq([["call_a", "A"], ["call_b", "B"]])
     end
 
     it "emits finish reason for response.incomplete status" do

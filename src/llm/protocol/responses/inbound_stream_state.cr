@@ -3,7 +3,7 @@ require "../../usage"
 require "./function_call_builder"
 
 module LLM::Protocol::Responses
-  # Mutable per-stream state: the in-flight tool call and the usage captured
+  # Mutable per-stream state: the in-flight tool calls and the usage captured
   # off `response.completed`. A class (reference type, not a struct/value
   # type) so field mutations made through the handler closure are seen by the
   # aggregator across the nested streaming closures.
@@ -15,54 +15,69 @@ module LLM::Protocol::Responses
     property encrypted_content : String? = nil
     # ameba:enable Naming/QueryBoolMethods
 
-    # In-flight tool call builders keyed by output_index or call_id
-    getter tool_builders = Hash(Int32 | String, FunctionCallBuilder).new
-    property recent_builder : FunctionCallBuilder? = nil
+    # Keep all builders, even those without identifiers, for EOF finalization.
+    @builders = [] of FunctionCallBuilder
+    @tool_builders = Hash(Int32 | String, FunctionCallBuilder).new
+    @retired_keys = Set(Int32 | String).new
 
     def register_builder(data : JSON::Any, builder : FunctionCallBuilder) : Nil
+      @builders << builder
       if idx = data["output_index"]?.try(&.as_i?)
+        @retired_keys.delete(idx)
         @tool_builders[idx] = builder
       end
-      if (item = data["item"]?) && (call_id = dig_string(item, "call_id") || dig_string(item, "id"))
-        @tool_builders[call_id] = builder
+      if item = data["item"]?
+        [dig_string(item, "call_id"), dig_string(item, "id")].each do |id|
+          if id && !id.empty?
+            @retired_keys.delete(id)
+            @tool_builders[id] = builder
+          end
+        end
       end
-      unless builder.id.empty?
-        @tool_builders[builder.id] = builder
-      end
-      @recent_builder = builder
     end
 
     def find_builder(data : JSON::Any) : FunctionCallBuilder?
+      # Some providers omit identifiers. Only fall back when none were supplied
+      # and exactly one call is in flight; an unknown identifier must never
+      # redirect an event to an unrelated call.
+      keys = [] of Int32 | String
       if idx = data["output_index"]?.try(&.as_i?)
-        if b = @tool_builders[idx]?
-          return b
-        end
+        keys << idx
       end
-      if id = dig_string(data, "call_id") || dig_string(data, "item_id")
-        if b = @tool_builders[id]?
-          return b
-        end
+      item = data["item"]?
+      [dig_string(data, "call_id"), dig_string(data, "item_id"),
+       dig_string(item, "call_id"), dig_string(item, "id")].each do |id|
+        keys << id if id && !id.empty?
       end
-      if (item = data["item"]?) && (id = dig_string(item, "call_id") || dig_string(item, "id"))
-        if b = @tool_builders[id]?
-          return b
-        end
-      end
-      @recent_builder
+      return @builders.first? if keys.empty? && @builders.size == 1
+      return if keys.any? { |key| @retired_keys.includes?(key) }
+
+      # Learn new aliases only when every known identifier agrees on one active
+      # builder and no identifier is retired. Never learn from an ambiguous or
+      # wholly unknown event, or overwrite another builder's association.
+      matched = keys.compact_map { |key| @tool_builders[key]? }
+      matched.uniq!
+      return unless matched.size == 1
+
+      builder = matched.first
+      keys.each { |key| @tool_builders[key] = builder }
+      builder
     end
 
     def remove_builder(builder : FunctionCallBuilder) : Nil
-      @tool_builders.reject! { |_, b| b == builder }
-      @recent_builder = nil if @recent_builder == builder
+      @tool_builders.reject! do |key, b|
+        if b == builder
+          @retired_keys.add(key)
+          true
+        else
+          false
+        end
+      end
+      @builders.delete(builder)
     end
 
     def finalize_all_tool_calls(tool_calls, & : LLM::ChatEvent ->) : Nil
-      builders = @tool_builders.values
-      if recent = @recent_builder
-        builders << recent
-      end
-      builders.uniq!
-      builders.each do |builder|
+      @builders.each do |builder|
         unless builder.ready?
           builder.append_args_json(nil, complete: true)
           canonical = builder.to_function_call
@@ -70,8 +85,9 @@ module LLM::Protocol::Responses
           yield({type: LLM::Event::ToolCallRequested, content: canonical.json})
         end
       end
+      @tool_builders.each_key { |key| @retired_keys.add(key) }
       @tool_builders.clear
-      @recent_builder = nil
+      @builders.clear
     end
 
     private def dig_string(json, key) : String?
