@@ -9,6 +9,8 @@ class EnkaiduWiretapTestOptions < Enkaidu::SessionOptions
   getter? quiet = true
   getter? webui = false
   getter? readonly = false
+  getter? trace_mcp = false
+
   getter? cordon_confirmed : Bool? = nil
   getter recorder_file : IO? = nil
   getter config_for_llm : Enkaidu::Config::LLM? = nil
