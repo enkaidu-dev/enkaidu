@@ -17,3 +17,7 @@ CLAUDE.md
 
 # Ignore temp files created by test suite
 spec/tmp*
+
+# Ignore temp files by agent
+*_stdout.txt
+*_stderr.txt
