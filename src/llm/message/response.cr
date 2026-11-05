@@ -8,6 +8,9 @@ module LLM
 
     property content : String?
 
+    @[JSON::Field(key: "is_refusal")]
+    property? refusal = false
+
     @[JSON::Field(ignore_serialize: ((reasoning = @reasoning).nil? || reasoning.empty?))]
     property reasoning : String?
 
@@ -61,6 +64,7 @@ module LLM
     protected def dup_without_tool_calls
       copy = self.class.new(content, reasoning, reasoning_id: reasoning_id, encrypted_content: encrypted_content)
       copy.responses_output = responses_output.try(&.reject { |item| item["type"]?.try(&.as_s?) == "function_call" })
+      copy.refusal = refusal?
       copy
     end
   end

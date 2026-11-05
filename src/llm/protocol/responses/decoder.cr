@@ -68,6 +68,7 @@ module LLM::Protocol::Responses
       pending_calls.each { |event| yield event }
       yield({type: LLM::Event::Done, content: JSON::Any.new(nil)})
       msg = LLM::Message::Response.new(content, reasoning, tool_calls.empty? ? nil : tool_calls, state.reasoning_id, state.encrypted_content)
+      msg.refusal = state.refusal?
       msg.responses_output = state.responses_output unless state.responses_output.nil?
       msg.usage = state.usage if state.usage
       msg
@@ -79,10 +80,23 @@ module LLM::Protocol::Responses
     private def handle_stream_event(data, state, text_io, think_io, tool_calls, & : LLM::ChatEvent ->) : Nil
       STDERR.puts "<<-<-<  #{data}" if TRACE
       case dig_string(data, "type")
-      when "response.output_text.delta", "response.output_text.done"
+      when "response.output_text.delta", "response.output_text.done", "response.refusal.delta"
         if d = dig_string(data, "delta")
+          if dig_string(data, "type") == "response.refusal.delta"
+            state.refusal = true
+            state.refusal_text_received = true
+          end
           text_io << d
           yield({type: LLM::Event::Text, content: JSON::Any.new(d)})
+        end
+      when "response.refusal.done"
+        state.refusal = true
+        unless state.refusal_text_received?
+          if refusal = dig_string(data, "refusal")
+            text_io << refusal
+            yield({type: LLM::Event::Text, content: JSON::Any.new(refusal)})
+            state.refusal_text_received = true
+          end
         end
       when "response.reasoning_summary_text.delta", "response.reasoning_summary_part.delta",
            "response.reasoning_text.delta", "response.reasoning_content.delta",
@@ -185,6 +199,7 @@ module LLM::Protocol::Responses
       tool_calls = [] of JSON::Any
       content = nil.as String?
       reasoning = nil.as String?
+      refusal = false
       responses_output = data["output"]?.try(&.as_a?)
       reasoning_id = nil.as String?
       encrypted_content = nil.as String?
@@ -196,7 +211,13 @@ module LLM::Protocol::Responses
             parts = [] of String
             if parts_json = item["content"]?.try(&.as_a)
               parts_json.each do |part|
-                parts << (dig_string(part, "text") || "") if dig_string(part, "type") == "output_text"
+                case dig_string(part, "type")
+                when "output_text"
+                  parts << (dig_string(part, "text") || "")
+                when "refusal"
+                  parts << (dig_string(part, "refusal") || dig_string(part, "text") || "")
+                  refusal = true
+                end
               end
             end
             unless parts.empty?
@@ -261,6 +282,7 @@ module LLM::Protocol::Responses
       yield({type: LLM::Event::Done, content: JSON::Any.new(nil)})
 
       msg = LLM::Message::Response.new(content, reasoning, tool_calls.empty? ? nil : tool_calls, reasoning_id, encrypted_content)
+      msg.refusal = refusal
       msg.responses_output = responses_output unless responses_output.nil?
       msg.usage = usage if usage
       msg

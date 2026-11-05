@@ -231,6 +231,20 @@ Spectator.describe "LLM::Protocol::ChatCompletions::Chat streaming parse" do
       expect(msg.usage.not_nil!.completion_tokens).to eq(8)
     end
 
+    it "assembles streamed refusal text and marks the response" do
+      chat = build_parse_chat
+      body = sse_body [
+        chunk(%|{"refusal":"I can't help with that."}|),
+        chunk(empty_delta, finish: "stop"),
+      ]
+      events, msg = chat.parse_streamed(body)
+
+      expect(events_of(events, LLM::Event::Text).map { |event| event["content"].as_s }).to eq(["I can't help with that."])
+      expect(msg.content).to eq("I can't help with that.")
+      expect(msg.refusal?).to be_true
+      expect(LLM::Message::Response.from_json(msg.to_json).refusal?).to be_true
+    end
+
     it "assembles a single-chunk complete tool call (Ollama shape)" do
       chat = build_parse_chat
       body = sse_body [
@@ -353,6 +367,14 @@ Spectator.describe "LLM::Protocol::ChatCompletions::Chat streaming parse" do
       expect(c["name"].as_s).to eq("echo")
       expect(c["arguments"].as_s).to eq("{}")
       expect(c.as_h.has_key?("function")).to eq(false)
+    end
+
+    it "emits refusal text as a normal text event" do
+      chat = build_parse_chat
+      data = JSON.parse(%|{"choices":[{"message":{"content":null,"refusal":"I can't help with that."}}]}|)
+      events = chat.parse_chunk(data, from_stream: false)
+
+      expect(events_of(events, LLM::Event::Text).map { |event| event["content"].as_s }).to eq(["I can't help with that."])
     end
 
     it "emits no events for null content and no finish_reason" do

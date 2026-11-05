@@ -14,6 +14,8 @@ module LLM::Protocol::Responses
     property reasoning_id : String? = nil
     property encrypted_content : String? = nil
     property responses_output : Array(JSON::Any)? = nil
+    property? refusal : Bool = false
+    property? refusal_text_received : Bool = false
 
     @completed_output_by_index = Hash(Int32, JSON::Any).new
     @completed_output_unindexed = [] of JSON::Any

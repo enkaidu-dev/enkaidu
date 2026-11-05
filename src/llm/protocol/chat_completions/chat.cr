@@ -67,13 +67,14 @@ module LLM::Protocol::ChatCompletions
           STDERR.puts "~~~ #{data}" if TRACE
           yield({type: LLM::Event::ErrorServer, content: data})
         else
-          content = nil
-          reasoning = nil
-          usage = nil
+          content = nil.as(String?)
+          reasoning = nil.as(String?)
+          refusal = data.dig?("choices", 0, "message", "refusal").try(&.as_s?)
+          usage = nil.as(Usage?)
           process_data(data) do |msg|
             case msg["type"]
             when LLM::Event::Text
-              content = msg["content"].to_s
+              content = content.to_s + (msg["content"].as_s? || "")
             when LLM::Event::ReasoningEvent
               reasoning = msg["content"].to_s
             when LLM::Event::Usage
@@ -88,6 +89,7 @@ module LLM::Protocol::ChatCompletions
                        end
           msg = Message::Response.new(
             content: content, reasoning: reasoning, tool_calls: tool_calls)
+          msg.refusal = !refusal.nil?
           msg.usage = usage if usage
           append_message(msg)
         end
@@ -159,6 +161,7 @@ module LLM::Protocol::ChatCompletions
     private def prepare_message_from_streamed_data(stream_io, &)
       tool_calls = [] of JSON::Any
       usage = nil
+      refusal = false
       content = ""
       reasoning = String.build do |think_io|
         content = String.build do |text_io|
@@ -172,6 +175,9 @@ module LLM::Protocol::ChatCompletions
             else
               STDERR.puts "*** #{line}" if TRACE
               data = JSON.parse(line.lchop("data: "))
+              if refused = data.dig?("choices", 0, "delta", "refusal")
+                refusal ||= !refused.raw.nil?
+              end
               process_data(data, from_stream: true) do |msg|
                 # gather up the stream chunks
                 case msg["type"]
@@ -213,6 +219,7 @@ module LLM::Protocol::ChatCompletions
       end
       msg = Message::Response.new(
         content: content, reasoning: reasoning, tool_calls: tool_calls)
+      msg.refusal = refusal
       msg.usage = usage if usage
       msg
     end
@@ -233,6 +240,12 @@ module LLM::Protocol::ChatCompletions
     private def process_reasoning(text, &) : Nil
       if text && text.raw && text.raw != "" # in case property exists with null value
         yield({type: LLM::Event::ReasoningEvent, content: text})
+      end
+    end
+
+    private def process_refusal(data_selector, &) : Nil
+      if refusal = data_selector["refusal"]?
+        process_content(refusal) { |msg| yield msg } unless refusal.raw.nil?
       end
     end
 
@@ -272,6 +285,10 @@ module LLM::Protocol::ChatCompletions
                      data_selector["thinking"]?
           process_reasoning(content) { |msg| yield msg }
         end
+
+        # Refusal text is exposed as canonical text; the caller separately
+        # records the protocol-neutral refusal flag on the response.
+        process_refusal(data_selector) { |msg| yield msg }
 
         # check for text content
         content = data_selector["content"]?

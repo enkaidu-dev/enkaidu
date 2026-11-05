@@ -115,6 +115,37 @@ Spectator.describe LLM::Protocol::Responses::Chat do
       expect(input[3].dig("content", 0, "text").as_s).to eq("answer")
     end
 
+    it "decodes refusal output parts into content and a canonical refusal flag" do
+      chat = build_responses_encoder_chat
+      decoded = chat.decode_response(%q|{"status":"completed","output":[{"type":"message","role":"assistant","content":[{"type":"refusal","refusal":"I can't help with that."}]}]}|)
+
+      expect(decoded.content).to eq("I can't help with that.")
+      expect(decoded.refusal?).to be_true
+      expect(LLM::Message::Response.from_json(decoded.to_json).refusal?).to be_true
+    end
+
+    it "decodes streamed refusal deltas into content and a canonical refusal flag" do
+      chat = build_responses_encoder_chat
+      stream = %(data: {"type":"response.refusal.delta","delta":"I can't help"}\n\ndata: {"type":"response.refusal.delta","delta":" with that."}\n\ndata: {"type":"response.refusal.done","refusal":"I can't help with that."}\n\ndata: {"type":"response.completed","response":{"status":"completed","output":[{"type":"message","role":"assistant","content":[{"type":"refusal","refusal":"I can't help with that."}]}]}}\n\n)
+      decoded = chat.decode_stream(stream)
+
+      expect(decoded.content).to eq("I can't help with that.")
+      expect(decoded.refusal?).to be_true
+      chat.append_message decoded
+      replay = chat.request_body["input"].as_a.first
+      expect(replay.dig("content", 0, "type").as_s).to eq("refusal")
+      expect(replay.dig("content", 0, "refusal").as_s).to eq("I can't help with that.")
+    end
+
+    it "uses refusal.done text when no refusal deltas were sent" do
+      chat = build_responses_encoder_chat
+      stream = %(data: {"type":"response.refusal.done","refusal":"I can't help with that."}\n\ndata: {"type":"response.completed","response":{"status":"completed"}}\n\n)
+
+      decoded = chat.decode_stream(stream)
+      expect(decoded.content).to eq("I can't help with that.")
+      expect(decoded.refusal?).to be_true
+    end
+
     it "orders completed streaming items by output_index, not arrival order" do
       chat = build_responses_encoder_chat
       stream = %(data: {"type":"response.output_item.done","output_index":1,"item":{"type":"message","content":[{"type":"output_text","text":"answer"}]}}\n\ndata: {"type":"response.output_item.done","output_index":0,"item":{"type":"reasoning","id":"rs_first","encrypted_content":"blob_first","summary":[]}}\n\ndata: {"type":"response.completed","response":{"status":"completed"}}\n\n)
