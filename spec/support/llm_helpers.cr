@@ -16,7 +16,7 @@ require "io/memory"
 
 module LLMSpecHelpers
   # The model the specs use. Kept in one place so it's trivial to change.
-  MODEL = "ornith-1.5:9b"
+  MODEL = "gpt-oss"
 
   # The local Ollama OpenAI-compatible endpoint.
   OLLAMA_ENDPOINT = "http://localhost:11434"
