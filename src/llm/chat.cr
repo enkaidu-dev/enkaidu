@@ -183,7 +183,19 @@ module LLM
       args = if tool_call.arguments.blank?
                JSON::Any.new(nil)
              else
-               JSON.parse(tool_call.arguments)
+               begin
+                 JSON.parse(tool_call.arguments)
+               rescue ex : JSON::ParseException
+                 return {
+                   tool_call_response: error_calling_tool(
+                     tool_call.id,
+                     tool.name,
+                     error: "Invalid JSON arguments for tool #{tool.name}: #{ex.message}",
+                     instruction: "Return with valid JSON arguments and retry the tool call."
+                   ),
+                   attachments: attachments,
+                 }
+               end
              end
       reply = tool.run(args)
       # Detect attachments and start gathering up to send after the tool call
