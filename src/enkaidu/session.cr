@@ -445,7 +445,8 @@ module Enkaidu
 
     # Perform tool calls and subsequent events repeatedly until
     # no more tool calls remain
-    private def consume_tool_calls_sync(tools : Array(LLM::FunctionCall), progress)
+    private def consume_tool_calls_sync(tools : Array(LLM::FunctionCall), progress,
+                                        response_json_schema : LLM::ResponseSchema? = nil)
       prev_event = nil
       begin
         until tools.empty?
@@ -466,7 +467,7 @@ module Enkaidu
             progress.label = "Processing"
             progress.start
             begin
-              chat.re_ask do |event|
+              chat.re_ask(response_schema: response_json_schema) do |event|
                 check_and_show_progress(event, progress)
                 m_process_and_record_ask_event(event, prev_event)
                 prev_event = event
@@ -520,7 +521,7 @@ module Enkaidu
         ensure
           detect_text_ending(nil, prev_event)
         end
-        consume_tool_calls_sync(tools, progress)
+        consume_tool_calls_sync(tools, progress, response_json_schema)
       rescue ex
         notify_unexpected_connection_error(ex)
       end
@@ -563,7 +564,7 @@ module Enkaidu
         ensure
           detect_text_ending(nil, prev_event)
         end
-        consume_tool_calls_sync(tools, progress)
+        consume_tool_calls_sync(tools, progress, response_json_schema)
       end
     rescue ex
       notify_unexpected_connection_error(ex)
