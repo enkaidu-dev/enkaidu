@@ -6,6 +6,7 @@ require "../llm"
 require "../tools"
 require "../sucre/thread_safe"
 
+require "./waiting"
 require "./about"
 require "./tools/*"
 require "./recorder"
@@ -428,7 +429,8 @@ module Enkaidu
           renderer.llm_error(event)
         end
       when .warn_too_many_requests_delay?
-        renderer.warning_with("All our AIs are busy helping other humans, please hold.")
+        renderer.warning_with(Waiting::QUOTES.sample)
+        # renderer.warning_with("All our AIs are busy helping other humans, please hold.")
       end
     end
 
