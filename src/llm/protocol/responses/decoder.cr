@@ -68,6 +68,7 @@ module LLM::Protocol::Responses
       pending_calls.each { |event| yield event }
       yield({type: LLM::Event::Done, content: JSON::Any.new(nil)})
       msg = LLM::Message::Response.new(content, reasoning, tool_calls.empty? ? nil : tool_calls, state.reasoning_id, state.encrypted_content)
+      msg.responses_output = state.responses_output unless state.responses_output.nil?
       msg.usage = state.usage if state.usage
       msg
     end
@@ -110,6 +111,7 @@ module LLM::Protocol::Responses
           builder.append_args_json(dig_string(data, "delta"))
         end
       when "response.function_call_arguments.done", "response.output_item.done"
+        state.record_output_item(data) if dig_string(data, "type") == "response.output_item.done"
         if (item = data["item"]?) && (item_type = dig_string(item, "type"))
           if item_type == "reasoning"
             state.reasoning_id ||= dig_string(item, "id").try(&.presence)
@@ -134,6 +136,7 @@ module LLM::Protocol::Responses
         end
       when "response.completed", "response.incomplete"
         resp = data["response"]?
+        state.finalize_responses_output(resp)
         status = dig_string(resp, "status")
         successful = dig_string(data, "type") == "response.completed" && status == "completed"
         if successful
@@ -182,6 +185,7 @@ module LLM::Protocol::Responses
       tool_calls = [] of JSON::Any
       content = nil.as String?
       reasoning = nil.as String?
+      responses_output = data["output"]?.try(&.as_a?)
       reasoning_id = nil.as String?
       encrypted_content = nil.as String?
 
@@ -196,8 +200,9 @@ module LLM::Protocol::Responses
               end
             end
             unless parts.empty?
-              content = parts.join
-              yield({type: LLM::Event::Text, content: JSON::Any.new(content)})
+              message_text = parts.join
+              content = content.to_s + message_text
+              yield({type: LLM::Event::Text, content: JSON::Any.new(message_text)})
             end
           when "reasoning"
             reasoning_id ||= dig_string(item, "id")
@@ -220,7 +225,7 @@ module LLM::Protocol::Responses
             end
             unless texts.empty?
               joined = texts.join
-              reasoning = joined
+              reasoning = reasoning.to_s + joined
               yield({type: LLM::Event::ReasoningEvent, content: JSON::Any.new(joined)})
             end
           when "function_call"
@@ -256,6 +261,7 @@ module LLM::Protocol::Responses
       yield({type: LLM::Event::Done, content: JSON::Any.new(nil)})
 
       msg = LLM::Message::Response.new(content, reasoning, tool_calls.empty? ? nil : tool_calls, reasoning_id, encrypted_content)
+      msg.responses_output = responses_output unless responses_output.nil?
       msg.usage = usage if usage
       msg
     end

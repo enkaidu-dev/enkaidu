@@ -13,6 +13,33 @@ module LLM::Protocol::Responses
     property usage : LLM::Usage? = nil
     property reasoning_id : String? = nil
     property encrypted_content : String? = nil
+    property responses_output : Array(JSON::Any)? = nil
+
+    @completed_output_by_index = Hash(Int32, JSON::Any).new
+    @completed_output_unindexed = [] of JSON::Any
+
+    def record_output_item(data : JSON::Any) : Nil
+      item = data["item"]?
+      return unless item
+      if index = data["output_index"]?.try(&.as_i?)
+        @completed_output_by_index[index] = item
+      else
+        @completed_output_unindexed << item
+      end
+    end
+
+    def finalize_responses_output(response : JSON::Any?) : Nil
+      if output = response.try(&.["output"]?).try(&.as_a?)
+        @responses_output = output
+      elsif @completed_output_by_index.empty? && @completed_output_unindexed.size == 1
+        @responses_output = @completed_output_unindexed
+      elsif @completed_output_unindexed.empty?
+        indexes = @completed_output_by_index.keys.sort!
+        if indexes == (0...indexes.size).to_a
+          @responses_output = indexes.map { |index| @completed_output_by_index[index] }
+        end
+      end
+    end
 
     # Keep all builders, even those without identifiers, for EOF finalization.
     @builders = [] of FunctionCallBuilder

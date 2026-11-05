@@ -120,6 +120,14 @@ module LLM::Protocol::Responses
     end
 
     private def encode_response_input_items(message : LLM::Message::Response, json : JSON::Builder) : Nil
+      if output = message.responses_output
+        output.each do |item|
+          encode_responses_output_item(item, message.include_reasoning?, json)
+        end
+        return
+      end
+
+      # Legacy or cross-protocol response: reconstruct from canonical fields.
       # Encrypted reasoning must also be replayed when no summary was returned.
       thoughts = message.reasoning.try(&.presence)
       encrypted = message.encrypted_content.try(&.presence)
@@ -161,6 +169,74 @@ module LLM::Protocol::Responses
             json.field "arguments", call.dig("function", "arguments").as_s? || ""
           end
         end
+      end
+    end
+
+    # Convert one output item to its input form without disturbing the captured
+    # order. Output-only identifiers and status fields are intentionally omitted.
+    private def encode_responses_output_item(item : JSON::Any, include_reasoning : Bool, json : JSON::Builder) : Nil
+      case item["type"]?.try(&.as_s?)
+      when "message"
+        encode_responses_message(item, json)
+      when "reasoning"
+        encode_responses_reasoning(item, include_reasoning, json)
+      when "function_call"
+        encode_responses_function_call(item, json)
+      else
+        raise ArgumentError.new("Cannot replay unsupported Responses output item type: #{item["type"]?.try(&.as_s?) || "missing"}")
+      end
+    end
+
+    private def encode_responses_message(item : JSON::Any, json : JSON::Builder) : Nil
+      parts = item["content"]?.try(&.as_a?)
+      return unless parts
+      json.object do
+        json.field "role", "assistant"
+        json.field "content" do
+          json.array do
+            parts.each { |part| encode_responses_message_part(part, json) }
+          end
+        end
+      end
+    end
+
+    private def encode_responses_message_part(part : JSON::Any, json : JSON::Builder) : Nil
+      part_type = part["type"]?.try(&.as_s?)
+      return unless part_type == "output_text" || part_type == "refusal"
+      json.object do
+        json.field "type", part_type
+        json.field "text", part["text"]? if part["text"]?
+        json.field "refusal", part["refusal"]? if part["refusal"]?
+      end
+    end
+
+    private def encode_responses_reasoning(item : JSON::Any, include_reasoning : Bool, json : JSON::Builder) : Nil
+      return unless include_reasoning
+      json.object do
+        json.field "type", "reasoning"
+        json.field "id", item["id"]? if item["id"]?
+        json.field "encrypted_content", item["encrypted_content"]? if item["encrypted_content"]?
+        json.field "summary" do
+          json.array do
+            if summary = item["summary"]?.try(&.as_a?)
+              summary.each do |part|
+                json.object do
+                  json.field "type", (part["type"]? || JSON::Any.new("summary_text"))
+                  json.field "text", part["text"]? if part["text"]?
+                end
+              end
+            end
+          end
+        end
+      end
+    end
+
+    private def encode_responses_function_call(item : JSON::Any, json : JSON::Builder) : Nil
+      json.object do
+        json.field "type", "function_call"
+        json.field "call_id", (item["call_id"]? || item["id"]?)
+        json.field "name", (item["name"]? || JSON::Any.new(""))
+        json.field "arguments", (item["arguments"]? || JSON::Any.new(""))
       end
     end
 

@@ -100,6 +100,56 @@ Spectator.describe LLM::Protocol::Responses::Chat do
       expect(tools.first.as_h.has_key?("function")).to eq(false)
     end
 
+    it "replays captured output items in their original order" do
+      chat = build_responses_encoder_chat
+      decoded = chat.decode_response(%q|{"status":"completed","output":[{"type":"reasoning","id":"rs_1","encrypted_content":"blob_1","summary":[{"type":"summary_text","text":"think one"}]},{"type":"function_call","id":"fc_1","call_id":"call_1","name":"echo","arguments":"{}"},{"type":"reasoning","id":"rs_2","encrypted_content":"blob_2","summary":[{"type":"summary_text","text":"think two"}]},{"type":"message","id":"msg_1","role":"assistant","content":[{"type":"output_text","text":"answer"}]}]}|)
+      chat.append_message decoded
+
+      input = chat.request_body["input"].as_a
+      expect(input.map { |item| item["type"]?.try(&.as_s?) || item["role"].as_s }).to eq([
+        "reasoning", "function_call", "reasoning", "assistant",
+      ])
+      expect(input[0]["id"].as_s).to eq("rs_1")
+      expect(input[1]["call_id"].as_s).to eq("call_1")
+      expect(input[2]["id"].as_s).to eq("rs_2")
+      expect(input[3].dig("content", 0, "text").as_s).to eq("answer")
+    end
+
+    it "orders completed streaming items by output_index, not arrival order" do
+      chat = build_responses_encoder_chat
+      stream = %(data: {"type":"response.output_item.done","output_index":1,"item":{"type":"message","content":[{"type":"output_text","text":"answer"}]}}\n\ndata: {"type":"response.output_item.done","output_index":0,"item":{"type":"reasoning","id":"rs_first","encrypted_content":"blob_first","summary":[]}}\n\ndata: {"type":"response.completed","response":{"status":"completed"}}\n\n)
+      decoded = chat.decode_stream(stream)
+      chat.append_message decoded
+
+      input = chat.request_body["input"].as_a
+      expect(input.map { |item| item["type"]?.try(&.as_s?) || item["role"].as_s }).to eq(["reasoning", "assistant"])
+      expect(input.first["id"].as_s).to eq("rs_first")
+      expect(input.last.dig("content", 0, "text").as_s).to eq("answer")
+    end
+
+    it "persists the Responses sidecar in serialized message history" do
+      chat = build_responses_encoder_chat
+      decoded = chat.decode_response(%q|{"status":"completed","output":[{"type":"function_call","call_id":"call_1","name":"echo","arguments":"{}"},{"type":"message","content":[{"type":"output_text","text":"done"}]}]}|)
+      restored = LLM::Message::Response.from_json(decoded.to_json)
+      chat.erase_history
+      chat.append_message restored
+
+      input = chat.request_body["input"].as_a
+      expect(input.map { |item| item["type"]?.try(&.as_s?) || item["role"].as_s }).to eq(["function_call", "assistant"])
+    end
+
+    it "uses canonical projections when no Responses sidecar exists" do
+      chat = build_responses_encoder_chat
+      chat.append_message LLM::Message::Response.new("legacy answer", "legacy thought", [rsp_tool_call_json])
+
+      input = chat.request_body["input"].as_a
+      expect(input.map { |item| item["type"]?.try(&.as_s?) || item["role"].as_s }).to eq([
+        "reasoning", "assistant", "function_call",
+      ])
+      expect(input[1].dig("content").as_s).to eq("legacy answer")
+      expect(input[2]["call_id"].as_s).to eq("call_1")
+    end
+
     it "omits the reasoning item when a response is excluded from future requests" do
       chat = build_responses_encoder_chat
       asst = LLM::Message::Response.new("only content", "hidden reasoning", reasoning_id: "rs_hidden", encrypted_content: "hidden_blob")

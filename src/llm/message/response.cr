@@ -15,6 +15,10 @@ module LLM
     property reasoning_id : String? = nil
     property encrypted_content : String? = nil
 
+    # Ordered Responses output items, retained for lossless stateless replay.
+    # Nil means the response came from another protocol or a legacy session.
+    property responses_output : Array(JSON::Any)? = nil
+
     # If `false` don't include reasoning when resending this message to the model
     property? include_reasoning = true
 
@@ -55,7 +59,9 @@ module LLM
 
     # Return a copy with just the content.
     protected def dup_without_tool_calls
-      self.class.new(content, reasoning, reasoning_id: reasoning_id, encrypted_content: encrypted_content)
+      copy = self.class.new(content, reasoning, reasoning_id: reasoning_id, encrypted_content: encrypted_content)
+      copy.responses_output = responses_output.try(&.reject { |item| item["type"]?.try(&.as_s?) == "function_call" })
+      copy
     end
   end
 end
