@@ -43,6 +43,14 @@ module Tools
       matches
     end
 
+    def mkdir_and_write_file(resolved_path, content)
+      # Ensure directory-sub-tree for file exists
+      parent = Path.new(resolved_path).parent
+      Dir.mkdir_p(parent) unless Dir.exists?(parent)
+      # Create file
+      File.write(resolved_path, content)
+    end
+
     def find_files(glob_pattern : String, max = MAX_FIND_FILE_MATCHES, &)
       count = 0
       Dir.glob(glob_pattern) do |path|
