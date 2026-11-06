@@ -1,0 +1,17 @@
+require "./content"
+
+module LLM
+  # Represents text `content` within a message to the LLM
+  class Content::Text < Content
+    property text : String
+
+    def initialize(@text)
+      @type = "text"
+    end
+
+    # Emit this content as one or more `ChatEvent` objects
+    def emit(& : ChatEvent ->) : Nil
+      yield({type: LLM::Event::QueryText, content: JSON::Any.new(text)})
+    end
+  end
+end

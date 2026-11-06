@@ -3,6 +3,8 @@
   import * as Acp from "./acp_schema_types";
 
   import { enkaidu_post_request, enkaidu_get_request } from "./utilities";
+import { handle_enkaidu_response } from "./lib/response_handler";
+import { run_prompt_session } from "./lib/prompt_flow";
 
   import Promptbar from "./lib/Promptbar.svelte";
   import Session from "./lib/Session.svelte";
@@ -24,9 +26,6 @@
   // The path currently shown in the panel (null = closed), plus the fetched
   // content / loading / error state for it.
   let open_file: string | null = $state(null);
-  let file_body = $state("");
-  let file_loading = $state(false);
-  let file_error = $state("");
 
   // The split-view panel width the user can drag to resize (pixels). It starts
   // at half the window and is remembered across open/close cycles.
@@ -91,31 +90,12 @@
   // Toggle a file's panel: clicking the file already being shown closes the
   // panel; clicking any other file (open or closed) opens it (refreshing
   // the content if it was already open).
-  async function toggle_file(path: string) {
+  function toggle_file(path: string) {
     if (open_file === path) {
       open_file = null;
       return;
     }
     open_file = path;
-    file_body = "";
-    file_error = "";
-    file_loading = true;
-    try {
-      const url = new URL("/fs/read", window.location.href);
-      url.searchParams.set("path", path);
-      const resp = await fetch(url);
-      const data: any = await resp.json().catch(() => null);
-      if (!resp.ok || data == null || typeof data.body !== "string") {
-        file_error =
-          (data && data.error ? data.error : "") + ` (HTTP ${resp.status})`;
-      } else {
-        file_body = data.body;
-      }
-    } catch (error) {
-      file_error = error as string;
-    } finally {
-      file_loading = false;
-    }
   }
 
   function close_file() {
@@ -141,31 +121,6 @@
     return () => window.removeEventListener("beforeunload", handler);
   });
 
-  async function read_line_by_line(
-    response: Response,
-    handler: (line: string | null) => void,
-  ) {
-    const reader = response.body?.getReader();
-    if (!reader) return;
-
-    const decoder = new TextDecoder();
-    let buffer = "";
-
-    while (true) {
-      let { done, value } = await reader.read();
-      if (done) {
-        // Process any remaining buffer
-        if (buffer) handler(buffer);
-        handler(null); // null to indicate no more lines
-        break;
-      }
-      buffer += decoder.decode(value, { stream: true });
-      let lines = buffer.split("\n");
-      buffer = lines.pop() || ""; // Keep the last incomplete line in the buffer
-      lines.forEach((line) => handler(line));
-    }
-  }
-
   function new_prompt_request(prompt: string): Acp.PromptRequest {
     return {
       sessionId: session.get_id(),
@@ -179,155 +134,15 @@
   }
 
   async function handle_response(resp: Response) {
-    // Use to track when in think mode while gathering text fragments.
-    let text_thinking = false;
-
-    await read_line_by_line(resp, function (line) {
-      if (line != null && line.length > 0) {
-        let msg = JSON.parse(line);
-        switch (msg.type) {
-          case "system_info":
-            prompt.update_system(msg.host, msg.cwd, msg.macros);
-            break;
-          case "session_info":
-            prompt.update_session(msg.model);
-            break;
-          case "ask_for_inputs":
-            session.ask_for_inputs(
-              msg.id,
-              msg.title,
-              msg.arguments,
-              msg.description,
-              msg.pre_filled,
-            );
-            break;
-          case "message":
-            session.add_event({
-              type: `message_${msg.level}`,
-              subject: msg.message,
-              content: msg.details,
-            });
-            break;
-          case "query":
-            switch (msg.content_type) {
-              case "text":
-                let type =
-                  msg.content.startsWith("/") || msg.content.startsWith("!")
-                    ? "command"
-                    : "query";
-                if (msg.via_query_queue) {
-                  type = type + "_via_query_queue";
-                }
-                session.add_event({
-                  type: type,
-                  content: msg.content,
-                });
-                break;
-              case "image_url":
-                session.add_event({
-                  type: "query_image_url",
-                  content: msg.content,
-                });
-                break;
-              default:
-                console.log(`clarion: ${line}`);
-                session.add_event({
-                  type: "clarion",
-                  subject: `Unexpected query: ${line}`,
-                });
-            }
-            break;
-          case "llm_text":
-            if (msg.reasoning) {
-              session.add_event({ type: "llm_think", content: msg.content });
-              break;
-            }
-            // else, check for <think> just in case
-            let content = msg.content.trim();
-            let think_ix = content.indexOf("</think>");
-            // Split think block if present
-            if (think_ix > 0) {
-              let think = content.substring(0, think_ix + 8).trim();
-              if (think.length > 0) {
-                session.add_event({ type: "llm_think", content: think });
-              }
-              content = content.substring(think_ix + 8).trim();
-            }
-            if (content.length > 0) {
-              session.add_event({ type: "llm_text", content: content });
-            }
-            break;
-          case "llm_text_fragment":
-            if (msg.reasoning) {
-              session.add_event({ type: "llm_think", content: msg.fragment });
-              break;
-            }
-            // else, check for <think> just in case
-            let fragment = msg.fragment.trim();
-            if (fragment == "<think>") text_thinking = true;
-            // if (fragment.length > 0 || msg.fragment.includes("\n")) {
-            session.add_event({
-              type: text_thinking ? "llm_think" : "llm_text",
-              content: msg.fragment,
-            });
-            // }
-            if (fragment == "</think>") text_thinking = false;
-            break;
-          case "llm_image_url":
-            session.add_event({
-              type: "llm_image_url",
-              content: msg.content,
-            });
-            break;
-          case "llm_tool_call":
-            session.add_event({
-              type: `tool_call`,
-              subject: msg.name,
-              content: msg.args,
-            });
-            break;
-          case "help_response":
-            session.add_event({
-              type: "help_response",
-              subject: msg.title,
-              content: msg.body,
-            });
-            break;
-          case "security_confirmation":
-            session.show_security_confirmation(
-              msg.description,
-              msg.subjects,
-              msg.id,
-              msg.banner,
-            );
-            break;
-          case "security_permission":
-            session.show_security_permission(
-              msg.description,
-              msg.subjects,
-              msg.id,
-              msg.banner,
-            );
-            break;
-          case "session_reset":
-            session.reset();
-            has_content = false;
-            break;
-          case "session_shutdown":
-            // The runtime is done and the backend is shutting down: lock the
-            // prompt bar so no further input can be sent. The event rides the
-            // /bye stream, so it lands before handling_request clears.
-            closed = true;
-            break;
-
-          default:
-            console.log(`clarion: ${line}`);
-            session.add_event({
-              type: "clarion",
-              content: `Unexpected message: ${line}`,
-            });
-        }
-      }
+    await handle_enkaidu_response(resp, {
+      session,
+      prompt,
+      set_has_content: (value) => {
+        has_content = value;
+      },
+      set_closed: (value) => {
+        closed = value;
+      },
     });
   }
 
@@ -381,32 +196,24 @@
     return success;
   }
 
-  const MAX_TRIES = 3;
 
   // Handle the user's prompt query request, by sending a query and
   // requesting further events in case of connection error.
   async function on_prompt_ask(query: string) {
     try {
       handling_request = true;
-      await check_if_started();
-
-      if (!(await ask_enkaidu(query))) {
-        // There was an error, so try and drain events in case Enkaidu
-        // is continuing to do work. This
-        // re-establises connection with Enkaidu (if possible).
-        let tries = 0;
-        while (tries < MAX_TRIES) {
-          if (await drain_events_from_enkaidu()) break;
-          tries += 1;
-        }
-        if (tries >= MAX_TRIES) {
-          // Failed after MAX_TRIES
+      await run_prompt_session({
+        query,
+        ensure_started: check_if_started,
+        ask: ask_enkaidu,
+        drain: drain_events_from_enkaidu,
+        on_reconnect_failed: () => {
           session.add_event({
             type: "clarion",
             content: "FAILED to re-connect with Enkaidu.",
           });
-        }
-      }
+        },
+      });
     } finally {
       handling_request = false;
       setTimeout(() => {
@@ -414,6 +221,8 @@
       }, 10);
     }
   }
+
+
 </script>
 
 <main>
@@ -468,9 +277,6 @@
       ></div>
       <FilePanel
         path={open_file}
-        body={file_body}
-        loading={file_loading}
-        error={file_error}
         onclose={close_file}
         width={file_panel_width}
       />

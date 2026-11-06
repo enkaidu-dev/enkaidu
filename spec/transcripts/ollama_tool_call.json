@@ -1,0 +1,58 @@
+{
+  "name": "ollama_tool_call",
+  "recorded_with": "wiretap/0.5.0",
+  "interactions": [
+    {
+      "request": {
+        "method": "POST",
+        "url": "http://localhost:11434/v1/chat/completions",
+        "headers": {
+          "Content-Type": "application/json",
+          "Connection": "keep-alive",
+          "Authorization": "[FILTERED]",
+          "User-Agent": "enkaidu 0.9.17-pre",
+          "Host": "localhost:11434",
+          "Accept-Encoding": "gzip, deflate"
+        },
+        "body": "{\"model\":\"gpt-oss\",\"stream\":false,\"messages\":[{\"role\":\"user\",\"content\":[{\"type\":\"text\",\"text\":\"Please echo the word hello using the echo tool. Do not answer in plain text.\"}]}],\"tool_choice\":\"auto\",\"tools\":[{\"type\":\"function\",\"function\":{\"name\":\"echo\",\"description\":\"Echoes the given value back verbatim. You MUST call this tool whenever the user asks you to echo or repeat a value.\",\"parameters\":{\"type\":\"object\",\"properties\":{\"value\":{\"type\":\"string\",\"description\":\"The value to echo back.\"}},\"required\":[\"value\"]}}}]}",
+        "body_digest": "50900393eae789e05c31f49a40a5005f75ad6eae3840f71c062eb6e0fad4a735"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json",
+          "Date": "Thu, 05 Nov 2026 21:45:47 GMT",
+          "Content-Length": "635"
+        },
+        "body": "{\"id\":\"chatcmpl-712\",\"object\":\"chat.completion\",\"created\":1793915147,\"model\":\"gpt-oss\",\"system_fingerprint\":\"fp_ollama\",\"choices\":[{\"index\":0,\"message\":{\"role\":\"assistant\",\"content\":\"\",\"reasoning\":\"User explicitly requests: \\\"Please echo the word hello using the echo tool. Do not answer in plain text.\\\" So must call echo function with value \\\"hello\\\".\",\"tool_calls\":[{\"id\":\"call_hjwrcqz3\",\"index\":0,\"type\":\"function\",\"function\":{\"name\":\"echo\",\"arguments\":\"{\\\"value\\\":\\\"hello\\\"}\"}}]},\"finish_reason\":\"tool_calls\"}],\"usage\":{\"prompt_tokens\":164,\"prompt_tokens_details\":{\"cached_tokens\":163},\"completion_tokens\":55,\"total_tokens\":219}}\n"
+      },
+      "recorded_at": "2026-11-05T21:45:47Z"
+    },
+    {
+      "request": {
+        "method": "POST",
+        "url": "http://localhost:11434/v1/chat/completions",
+        "headers": {
+          "Content-Type": "application/json",
+          "Connection": "keep-alive",
+          "Authorization": "[FILTERED]",
+          "User-Agent": "enkaidu 0.9.17-pre",
+          "Host": "localhost:11434",
+          "Accept-Encoding": "gzip, deflate"
+        },
+        "body": "{\"model\":\"gpt-oss\",\"stream\":false,\"messages\":[{\"role\":\"user\",\"content\":[{\"type\":\"text\",\"text\":\"Please echo the word hello using the echo tool. Do not answer in plain text.\"}]},{\"role\":\"assistant\",\"reasoning\":\"User explicitly requests: \\\"Please echo the word hello using the echo tool. Do not answer in plain text.\\\" So must call echo function with value \\\"hello\\\".\",\"content\":null,\"tool_calls\":[{\"id\":\"call_hjwrcqz3\",\"index\":0,\"type\":\"function\",\"function\":{\"name\":\"echo\",\"arguments\":\"{\\\"value\\\":\\\"hello\\\"}\"}}]},{\"role\":\"tool\",\"tool_call_id\":\"call_hjwrcqz3\",\"name\":\"echo\",\"content\":\"{\\\"echoed\\\":\\\"hello\\\"}\"}],\"tool_choice\":\"auto\",\"tools\":[{\"type\":\"function\",\"function\":{\"name\":\"echo\",\"description\":\"Echoes the given value back verbatim. You MUST call this tool whenever the user asks you to echo or repeat a value.\",\"parameters\":{\"type\":\"object\",\"properties\":{\"value\":{\"type\":\"string\",\"description\":\"The value to echo back.\"}},\"required\":[\"value\"]}}}]}",
+        "body_digest": "905dcac2435de4d2fc25bc3cc4bb9687e4e6d0009e037f53950c76989337710c"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json",
+          "Date": "Thu, 05 Nov 2026 21:45:47 GMT",
+          "Content-Length": "352"
+        },
+        "body": "{\"id\":\"chatcmpl-274\",\"object\":\"chat.completion\",\"created\":1793915147,\"model\":\"gpt-oss\",\"system_fingerprint\":\"fp_ollama\",\"choices\":[{\"index\":0,\"message\":{\"role\":\"assistant\",\"content\":\"{\\\"echoed\\\":\\\"hello\\\"}\"},\"finish_reason\":\"stop\"}],\"usage\":{\"prompt_tokens\":235,\"prompt_tokens_details\":{\"cached_tokens\":218},\"completion_tokens\":10,\"total_tokens\":245}}\n"
+      },
+      "recorded_at": "2026-11-05T21:45:47Z"
+    }
+  ]
+}

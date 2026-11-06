@@ -1,0 +1,58 @@
+{
+  "name": "repro_parallel_responses",
+  "recorded_with": "wiretap/0.5.0",
+  "interactions": [
+    {
+      "request": {
+        "method": "POST",
+        "url": "http://localhost:11434/v1/responses",
+        "headers": {
+          "Content-Type": "application/json",
+          "Connection": "keep-alive",
+          "Authorization": "[FILTERED]",
+          "User-Agent": "enkaidu 0.9.17-pre",
+          "Host": "localhost:11434",
+          "Accept-Encoding": "gzip, deflate"
+        },
+        "body": "{\"model\":\"gpt-oss\",\"store\":false,\"stream\":false,\"reasoning\":{\"summary\":\"auto\"},\"include\":[\"reasoning.encrypted_content\"],\"input\":[{\"type\":\"message\",\"role\":\"user\",\"content\":[{\"type\":\"input_text\",\"text\":\"Echo the word hello and then echo the word world using the echo tool. Do not answer in plain text.\"}]}],\"tool_choice\":\"auto\",\"tools\":[{\"type\":\"function\",\"name\":\"echo\",\"description\":\"Echoes the given value back verbatim. You MUST call this tool whenever the user asks you to echo or repeat a value.\",\"parameters\":{\"type\":\"object\",\"properties\":{\"value\":{\"type\":\"string\",\"description\":\"The value to echo back.\"}},\"required\":[\"value\"]}}]}",
+        "body_digest": "04901d56666044e8064f42094b6526ab679e666b2a7d1bcfb8179ed04e627bb9"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json",
+          "Date": "Thu, 05 Nov 2026 21:45:51 GMT",
+          "Content-Length": "1639"
+        },
+        "body": "{\"id\":\"resp_451315\",\"object\":\"response\",\"created_at\":1793915151,\"completed_at\":1793915151,\"status\":\"completed\",\"incomplete_details\":null,\"model\":\"gpt-oss\",\"previous_response_id\":null,\"instructions\":null,\"output\":[{\"id\":\"rs_resp_451315\",\"type\":\"reasoning\",\"summary\":[{\"type\":\"summary_text\",\"text\":\"User wants us to echo \\\"hello\\\" then \\\"world\\\" using echo tool, not answer in plain text. So we must call functions.echo twice. We should use tool.\"}],\"encrypted_content\":\"User wants us to echo \\\"hello\\\" then \\\"world\\\" using echo tool, not answer in plain text. So we must call functions.echo twice. We should use tool.\"},{\"id\":\"fc_resp_451315_0\",\"type\":\"function_call\",\"status\":\"completed\",\"call_id\":\"call_0fooacj1\",\"name\":\"echo\",\"arguments\":\"{\\\"value\\\":\\\"hello\\\"}\"}],\"error\":null,\"tools\":[{\"type\":\"function\",\"name\":\"echo\",\"description\":\"Echoes the given value back verbatim. You MUST call this tool whenever the user asks you to echo or repeat a value.\",\"parameters\":{\"properties\":{\"value\":{\"description\":\"The value to echo back.\",\"type\":\"string\"}},\"required\":[\"value\"],\"type\":\"object\"}}],\"tool_choice\":\"auto\",\"truncation\":\"disabled\",\"parallel_tool_calls\":true,\"text\":{\"format\":{\"type\":\"text\"}},\"top_p\":1,\"presence_penalty\":0,\"frequency_penalty\":0,\"top_logprobs\":0,\"temperature\":1,\"reasoning\":{\"summary\":\"auto\"},\"usage\":{\"input_tokens\":169,\"output_tokens\":58,\"total_tokens\":227,\"input_tokens_details\":{\"cached_tokens\":139},\"output_tokens_details\":{\"reasoning_tokens\":0}},\"max_output_tokens\":null,\"max_tool_calls\":null,\"store\":false,\"background\":false,\"service_tier\":\"default\",\"metadata\":{},\"safety_identifier\":null,\"prompt_cache_key\":null}\n"
+      },
+      "recorded_at": "2026-11-05T21:45:51Z"
+    },
+    {
+      "request": {
+        "method": "POST",
+        "url": "http://localhost:11434/v1/responses",
+        "headers": {
+          "Content-Type": "application/json",
+          "Connection": "keep-alive",
+          "Authorization": "[FILTERED]",
+          "User-Agent": "enkaidu 0.9.17-pre",
+          "Host": "localhost:11434",
+          "Accept-Encoding": "gzip, deflate"
+        },
+        "body": "{\"model\":\"gpt-oss\",\"store\":false,\"stream\":false,\"reasoning\":{\"summary\":\"auto\"},\"include\":[\"reasoning.encrypted_content\"],\"input\":[{\"type\":\"message\",\"role\":\"user\",\"content\":[{\"type\":\"input_text\",\"text\":\"Echo the word hello and then echo the word world using the echo tool. Do not answer in plain text.\"}]},{\"type\":\"reasoning\",\"id\":\"rs_resp_451315\",\"encrypted_content\":\"User wants us to echo \\\"hello\\\" then \\\"world\\\" using echo tool, not answer in plain text. So we must call functions.echo twice. We should use tool.\",\"summary\":[{\"type\":\"summary_text\",\"text\":\"User wants us to echo \\\"hello\\\" then \\\"world\\\" using echo tool, not answer in plain text. So we must call functions.echo twice. We should use tool.\"}]},{\"type\":\"function_call\",\"call_id\":\"call_0fooacj1\",\"name\":\"echo\",\"arguments\":\"{\\\"value\\\":\\\"hello\\\"}\"},{\"type\":\"function_call_output\",\"call_id\":\"call_0fooacj1\",\"output\":\"{\\\"echoed\\\":\\\"hello\\\"}\"}],\"tool_choice\":\"auto\",\"tools\":[{\"type\":\"function\",\"name\":\"echo\",\"description\":\"Echoes the given value back verbatim. You MUST call this tool whenever the user asks you to echo or repeat a value.\",\"parameters\":{\"type\":\"object\",\"properties\":{\"value\":{\"type\":\"string\",\"description\":\"The value to echo back.\"}},\"required\":[\"value\"]}}]}",
+        "body_digest": "8f103e6c1fe7e2e8852c92fc00d1d28035fc4b6326fd9dcd56a6d097f7f8de9f"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json",
+          "Date": "Thu, 05 Nov 2026 21:45:51 GMT",
+          "Content-Length": "1233"
+        },
+        "body": "{\"id\":\"resp_805701\",\"object\":\"response\",\"created_at\":1793915151,\"completed_at\":1793915151,\"status\":\"completed\",\"incomplete_details\":null,\"model\":\"gpt-oss\",\"previous_response_id\":null,\"instructions\":null,\"output\":[{\"id\":\"fc_resp_805701_0\",\"type\":\"function_call\",\"status\":\"completed\",\"call_id\":\"call_7sunln3k\",\"name\":\"echo\",\"arguments\":\"{\\\"value\\\":\\\"world\\\"}\"}],\"error\":null,\"tools\":[{\"type\":\"function\",\"name\":\"echo\",\"description\":\"Echoes the given value back verbatim. You MUST call this tool whenever the user asks you to echo or repeat a value.\",\"parameters\":{\"properties\":{\"value\":{\"description\":\"The value to echo back.\",\"type\":\"string\"}},\"required\":[\"value\"],\"type\":\"object\"}}],\"tool_choice\":\"auto\",\"truncation\":\"disabled\",\"parallel_tool_calls\":true,\"text\":{\"format\":{\"type\":\"text\"}},\"top_p\":1,\"presence_penalty\":0,\"frequency_penalty\":0,\"top_logprobs\":0,\"temperature\":1,\"reasoning\":{\"summary\":\"auto\"},\"usage\":{\"input_tokens\":243,\"output_tokens\":17,\"total_tokens\":260,\"input_tokens_details\":{\"cached_tokens\":226},\"output_tokens_details\":{\"reasoning_tokens\":0}},\"max_output_tokens\":null,\"max_tool_calls\":null,\"store\":false,\"background\":false,\"service_tier\":\"default\",\"metadata\":{},\"safety_identifier\":null,\"prompt_cache_key\":null}\n"
+      },
+      "recorded_at": "2026-11-05T21:45:51Z"
+    }
+  ]
+}

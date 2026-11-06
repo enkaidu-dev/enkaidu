@@ -6,6 +6,7 @@ require "../llm"
 require "../tools"
 require "../sucre/thread_safe"
 
+require "./waiting"
 require "./about"
 require "./tools/*"
 require "./recorder"
@@ -58,6 +59,11 @@ module Enkaidu
 
     getter id = UUID.v7.to_s
     getter unique_model_name : String?
+
+    # Be aware when forked from a parent session.
+    getter parent : Session? = nil
+    # Track if this is a sub-agent session
+    getter? sub_agent = false
 
     delegate streaming?, usage, to: @chat
     delegate debug?, to: @opts
@@ -133,8 +139,8 @@ module Enkaidu
     # Create a new session "forked" from a given `Session` to create a duplicate session.
     def initialize(fork_from : Session,
                    keep_tools = true, keep_prompts = true, keep_history = true,
-                   system_prompt_name = nil,
-                   exclude_last_turn = false)
+                   system_prompt_name = nil, exclude_last_turn = false, @sub_agent = false)
+      @parent = fork_from
       @recorder = fork_from.recorder
       @opts = fork_from.opts
       @renderer = fork_from.renderer
@@ -173,7 +179,7 @@ module Enkaidu
       connection.new_chat do
         unless (m = override_model_name || opts.model_name).nil?
           with_model m
-          renderer.info_with("Using model #{m}")
+          renderer.info_with("Using model #{m} over #{connection.protocol} protocol")
 
           @model_config = opts.config.find_llm_model_by_actual?(connection_provider_type, m)
         end
@@ -217,6 +223,18 @@ module Enkaidu
       end
     end
 
+    # Return depth of sub-agents; in effect returns the number of
+    # sub agents in the parent chain, including self
+    def sub_agent_depth
+      depth = 0
+      session = self
+      while session
+        depth += 1 if session.sub_agent?
+        session = session.parent
+      end
+      depth
+    end
+
     # Return based on model settings, if any. Nil means
     # default for server.
     def temperature : Float32?
@@ -255,10 +273,7 @@ module Enkaidu
       </empowered>
       EMPOWERED
 
-    private SYSPROMPT_SUB_AGENT_V3 = <<-AGENTIC3
-      <agentic>
-      You have a small context window. Guard it: offload work volume to sub-agents, keep only conclusions.
-
+    private SYSPROMPT_SUB_AGENT_COMMON = <<-AGENTCOMMON
       Spawn when:
       - Task is self-contained (prompt + paths/URLs/tools suffice) -> CLEAN sub-agent, no history.
       - Task needs prior session context -> distill 2-4 key facts into the prompt first; attach full history only if that fails.
@@ -272,7 +287,24 @@ module Enkaidu
       - Sub-agent returns only a conclusion (summary, verdict, or file path) - never raw dumps.
       - One sub-agent, one scoped task.
       </agentic>
+      AGENTCOMMON
+
+    private SYSPROMPT_SUB_AGENT_ALLOWED_V3 = <<-AGENTIC3
+      <agentic>
+      You have a small context window. Guard it: offload work volume to sub-agents, keep only conclusions.
+
+      #{SYSPROMPT_SUB_AGENT_COMMON}
       AGENTIC3
+
+    private SYSPROMPT_YOU_ARE_SUB_AGENT_V1 = <<-SUBAGENTIC1
+      <agentic>
+      You are a sub-agent running with a separate session.
+
+      Do not spawn further sub-agents UNLESS you determine after investigation that you need to
+      break down your work into smaller tasks to avoid overrunning your context window.
+
+      #{SYSPROMPT_SUB_AGENT_COMMON}
+      SUBAGENTIC1
 
     private SYSPROMPT_GLOBAL_STATE = <<-STATEFUL
       <stateful>
@@ -310,7 +342,11 @@ module Enkaidu
         * After thinking through a problem present your conclusion briefly so the user stays connected.
         </cooperative>
         #{if allow_sub_agents?
-            SYSPROMPT_SUB_AGENT_V3
+            if sub_agent?
+              SYSPROMPT_YOU_ARE_SUB_AGENT_V1
+            else
+              SYSPROMPT_SUB_AGENT_ALLOWED_V3
+            end
           end}#{if allow_global_state?
                   SYSPROMPT_GLOBAL_STATE
                 end}#{if allow_tool_discovery?
@@ -329,7 +365,7 @@ module Enkaidu
         io.puts {{ event }}.to_json
       end
       case type = {{ event }}["type"]
-      when "done"
+      when LLM::Event::Done
         detect_text_ending(type, prev_event)
       else
         ix += 1
@@ -348,9 +384,9 @@ module Enkaidu
       # When starting to handle a new event, check if the last event is something
       # we need to close off; in particular, text and reasoning events when streaming.
       case prev_type
-      when "reasoning"
+      when LLM::Event::ReasoningEvent
         renderer.llm_text("", reasoning: true, ending: true)
-      when "text"
+      when LLM::Event::Text
         renderer.llm_text("", reasoning: false, ending: true)
       end
     end
@@ -358,40 +394,43 @@ module Enkaidu
     # Process the given event and yield tool call if any
     private def process_event(event, prev_event, &) : Nil
       type = event["type"]
-      return if type.starts_with?("debug")
+      return if type.debug_event?
 
       # Handle text/reasoning ending detection first
       detect_text_ending(type, prev_event)
 
       case type
-      when "tool_call_requested"
-        yield event["content"] # tool call
-      when "calling_tool"
+      when LLM::Event::ToolCallRequested
+        yield LLM::FunctionCall.from_json(event["content"])
+      when LLM::Event::CallingTool
         renderer.llm_tool_call(
-          name: event["content"].dig("function", "name").as_s,
-          args: event["content"].dig("function", "arguments"))
-      when "reasoning"
+          name: event["content"].dig("name").as_s,
+          args: event["content"].dig("arguments"))
+      when LLM::Event::ReasoningEvent
         if streaming?
           renderer.llm_text(event["content"].as_s,
             reasoning: true, starting: prev_event.try(&.["type"]) != type)
         else
           renderer.llm_text_block(event["content"].as_s, reasoning: true)
         end
-      when "text"
+      when LLM::Event::Text
         if streaming?
           renderer.llm_text(event["content"].as_s,
             reasoning: false, starting: prev_event.try(&.["type"]) != type)
         else
           renderer.llm_text_block(event["content"].as_s, reasoning: false)
         end
-      when .starts_with? "error"
+      when .error_event?
         case type
-        when .ends_with? "/unknown_tool_call"
-          tool_name = event["content"].dig("function", "name").as_s
+        when LLM::Event::ErrorUnknownToolCall
+          tool_name = event["content"].dig("name").as_s
           renderer.llm_error(event, message: "The tool `#{tool_name}` is not installed.")
         else
           renderer.llm_error(event)
         end
+      when .warn_too_many_requests_delay?
+        renderer.warning_with(Waiting::QUOTES.sample)
+        # renderer.warning_with("All our AIs are busy helping other humans, please hold.")
       end
     end
 
@@ -406,18 +445,19 @@ module Enkaidu
 
     # Perform tool calls and subsequent events repeatedly until
     # no more tool calls remain
-    private def consume_tool_calls_sync(tools, progress)
+    private def consume_tool_calls_sync(tools : Array(LLM::FunctionCall), progress,
+                                        response_json_schema : LLM::ResponseSchema? = nil)
       prev_event = nil
       begin
         until tools.empty?
           calls = tools
-          tools = [] of JSON::Any
+          tools = [] of LLM::FunctionCall
           ix = 0
           # Invoke the tool calls first since we
           # cannot do this concurrently since tool calls can prompt user for input
           ncalls = chat.call_tools_and_setup_ask(calls) do |event|
             m_process_and_record_ask_event(event, prev_event)
-            prev_event = event unless event["type"].starts_with?("debug")
+            prev_event = event unless event["type"].debug_event?
           ensure
             detect_text_ending(nil, prev_event)
           end
@@ -427,11 +467,8 @@ module Enkaidu
             progress.label = "Processing"
             progress.start
             begin
-              chat.re_ask do |event|
-                case event[:type]
-                when "receiving_tool_call" then progress.start
-                else                            progress.stop
-                end
+              chat.re_ask(response_schema: response_json_schema) do |event|
+                check_and_show_progress(event, progress)
                 m_process_and_record_ask_event(event, prev_event)
                 prev_event = event
               end
@@ -441,46 +478,6 @@ module Enkaidu
           end
         end
       end
-    end
-
-    private def queue_chat_request(&) : TS::Queue(LLM::ChatEvent)
-      queue = TS::Queue(LLM::ChatEvent).new
-      yield queue
-      # Wait for events in a timed loop
-      spin_count = 0
-      while queue.empty?
-        STDERR.print "\r  Engaging #{spinner(spin_count)}".colorize(:dark_gray).italic
-        sleep(100.milliseconds)
-        spin_count += 1
-      end
-      STDERR.print "\r\e[K"
-      # Return with queue to caller
-      queue
-    end
-
-    private def gather_and_handle(queue, tools) : Nil
-      # Process events in queue
-      ix = 0
-      spin_count = 0
-      prev_event = nil
-      loop do
-        if event = queue.shift?
-          break if event == SPAWN_DONE
-
-          STDERR.print "\r\e[K" unless streaming?
-          m_process_and_record_ask_event(event, prev_event)
-          prev_event = event unless event["type"].starts_with?("debug")
-        else
-          if streaming?
-            sleep(10.milliseconds)
-          else
-            STDERR.print "\r  Receiving #{spinner(spin_count)}".colorize(:dark_gray).italic
-            sleep(100.milliseconds)
-            spin_count += 1
-          end
-        end
-      end
-      detect_text_ending(nil, prev_event)
     end
 
     private def track_and_time(label, &)
@@ -493,28 +490,38 @@ module Enkaidu
       end
     end
 
+    private def check_and_show_progress(event, progress)
+      case event[:type]
+      when .receiving_tool_call?
+        progress.label = "Receiving #{event[:content]}(~)"
+        progress.start
+      when .warn_too_many_requests_delay?
+        progress.label = "Waiting"
+        progress.start
+      else
+        progress.stop
+      end
+    end
+
     # Re-query LLM using current session history
     private def re_ask_sync(response_json_schema : LLM::ResponseSchema? = nil)
       recorder << "["
       # ask and handle the initial query and its events
       track_and_time("Engaging") do |progress|
-        tools = [] of JSON::Any
+        tools = [] of LLM::FunctionCall
         ix = 0
         prev_event = nil
         begin
           chat.re_ask(response_schema: response_json_schema,
             exclude_reasoning_in_history: exclude_past_reasoning?) do |event|
-            case event[:type]
-            when "receiving_tool_call" then progress.start
-            else                            progress.stop
-            end
+            check_and_show_progress(event, progress)
             m_process_and_record_ask_event(event, prev_event)
             prev_event = event
           end
         ensure
           detect_text_ending(nil, prev_event)
         end
-        consume_tool_calls_sync(tools, progress)
+        consume_tool_calls_sync(tools, progress, response_json_schema)
       rescue ex
         notify_unexpected_connection_error(ex)
       end
@@ -538,7 +545,7 @@ module Enkaidu
                  render_query = false)
       recorder << "["
       track_and_time("Engaging") do |progress|
-        tools = [] of JSON::Any
+        tools = [] of LLM::FunctionCall
         ix = 0
         prev_event = nil
         # ask and handle the initial query and its events
@@ -550,17 +557,14 @@ module Enkaidu
             response_schema: response_json_schema,
             exclude_reasoning_in_history: exclude_past_reasoning?,
             exclude_reasoning_skip: exclude_past_reasoning_from) do |event|
-            case event[:type]
-            when "receiving_tool_call" then progress.start
-            else                            progress.stop
-            end
+            check_and_show_progress(event, progress)
             m_process_and_record_ask_event(event, prev_event)
             prev_event = event
           end
         ensure
           detect_text_ending(nil, prev_event)
         end
-        consume_tool_calls_sync(tools, progress)
+        consume_tool_calls_sync(tools, progress, response_json_schema)
       end
     rescue ex
       notify_unexpected_connection_error(ex)

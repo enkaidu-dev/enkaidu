@@ -1,0 +1,360 @@
+require "json"
+
+require "./events"
+require "../sucre/mcp_types"
+require "./message/message"
+require "./usage"
+
+module LLM
+  # The serializable chat history keeps all wrapped messages to save
+  # the additional information when saving the session.
+  class History
+    # This wrapper is used to keep the `Message` and additional information
+    # that we want to save when available.
+    class MessageWrap
+      include JSON::Serializable
+
+      getter message : Message
+      getter usage : Usage?
+
+      def initialize(@message, @usage); end
+    end
+
+    # The history itself is serializable so we can save a chat's history
+    include JSON::Serializable
+    include JSON::Serializable::Unmapped
+
+    getter format : String
+
+    # Use this to identify a point in the history from which
+    # can perform some operations.
+    private getter branch_index = 0
+
+    def initialize
+      @format = self.class.name
+      @messages = [] of MessageWrap
+    end
+
+    # Returns a `History` where for each turn the new history keeps the user input and the last response,
+    # dropping everything in-between.
+    # MAYBE? Consider yielding the turn to give the caller option to do some processing and
+    # return an alternative response.
+    def squish_turns
+      squistory = self.class.new
+      prev_response = nil
+      each_message(reverse: false) do |msg|
+        case msg
+        when Message::MultiContent
+          # Keep the last response from previous turn
+          squistory.append_message(prev_response) if prev_response
+          # Keep the request for the next turn
+          squistory.append_message(msg)
+        when Message::Response
+          # Hold on to the response until we find end of turn
+          prev_response = msg
+        else
+          # Anything else is tool call responses which we don't want
+          # But that also means the last response asked for tool calls
+          prev_response = prev_response.dup_without_tool_calls if prev_response
+        end
+      end
+      STDERR.puts "~~ #squish_history: #{@messages.size} -> #{squistory.@messages.size} messages"
+      squistory
+    end
+
+    #
+    # Copy the messages from another session's history, optionally excluding the last "turn".
+    def branch(from : History, exclude_last_turn = false)
+      @messages = from.@messages.dup
+      if exclude_last_turn
+        # Find the most recent "user" message and drop all messages associated with that
+        # prompt: i.e. delete it and subsequent messages.
+        ex_user_index = @messages.rindex do |msg|
+          msg.message.is_a? Message::MultiContent
+        end
+        unless ex_user_index.nil?
+          # Position of last user message is the count of messages we
+          # want to retain
+          @messages = @messages[0, ex_user_index]
+        end
+      end
+      # Remember where we branched so we can detect what is new to this session history
+      @branch_index = @messages.size
+    end
+
+    def append_message(msg : Message, usage : Usage? = nil)
+      @messages << MessageWrap.new(msg, usage)
+    end
+
+    # This yields each `Message` in the history; reverse to start with most recent message
+    def each_message(reverse : Bool, &)
+      if reverse
+        @messages.reverse_each do |msgplus|
+          yield msgplus.message
+        end
+      else
+        @messages.each do |msgplus|
+          yield msgplus.message
+        end
+      end
+    end
+
+    # This yields each `Message` in the history
+    def each_message(kind : Message.class, reverse = false, &)
+      each_message(reverse: reverse) do |msg|
+        yield msg if msg === kind
+      end
+    end
+
+    # Returns the most recent usage information
+    def last_usage : Usage?
+      @messages.reverse_each do |msg|
+        if usage = msg.usage
+          return usage
+        end
+      end
+      nil
+    end
+
+    # Mark all historical responses to exclude reasoning from now on,
+    # after skipping specified most recent turns. 2 means skip most
+    # recent 2 turns before marking the responses to not include
+    # reasoning in future requests. A turn starts with user input (i.e. `MultiContent`)
+    # and includes all tool calls and responses until next user input
+    protected def exclude_past_reasoning(skip_turns = 0)
+      # Walk the messages in reverse, and break when we encounter
+      # message already excluding reasoning
+      turns = 0
+      @messages.reverse_each do |msg|
+        actual = msg.message
+        if actual.is_a? Message::MultiContent
+          # Each turn starts with a user prompt, sent via `MultiContent` message
+          turns += 1
+        elsif actual.is_a? Message::Response
+          # Responses arrive after prompt as well as after tool calls.
+          # Stop when we find a response already skipping reasoning, means
+          # earlier ones have been marked
+          break unless actual.include_reasoning?
+
+          # Only exclude after we skip specified turns
+          actual.include_reasoning = false if turns > skip_turns
+        end
+      end
+    end
+
+    private def tail_chat_messages(num = 1, &)
+      return if num.zero?
+
+      start_index = num < 0 ? 0 : @messages.size - 1
+      # Find last num'th user message
+      num.times do
+        break if start_index.nil? || start_index.zero?
+        start_index = @messages.rindex do |msg|
+          msg.message.is_a? Message::MultiContent
+        end
+      end
+      start_index = 0 if start_index.nil?
+
+      @messages.each(start: start_index, count: @messages.size - start_index) do |msgplus|
+        yield msgplus
+      end
+    end
+
+    def transfer_tail_chats(to : History, num = 1, filter_by_role : String? = nil)
+      tail_chat_messages(num) do |msgplus|
+        msg = msgplus.message
+        to.append_message(msg, msgplus.usage) if filter_by_role.nil? || filter_by_role == msg.role
+      end
+    end
+
+    # Extract last whole conversation, starting with most recent `user`
+    # message,
+    # - either all messages, or
+    # - user and assistant only
+    def extract_last_conversation(outer = false)
+      extract = [] of Message
+      # Find most recent "user" message
+      start_index = @messages.rindex do |msg|
+        msg.message.is_a? Message::MultiContent # role == "user"
+      end
+      unless start_index.nil?
+        if outer
+          # first user message, and last assistant message
+          if (first = @messages[start_index]?) && (last = @messages.last?)
+            first_msg = first.message
+            last_msg = last.message
+            extract << first_msg << last_msg
+          end
+        else
+          # Append rest of conversation
+          @messages.each(start: start_index, count: @messages.size - start_index) do |msgplus|
+            msg = msgplus.message
+            extract << msg
+          end
+        end
+      end
+      extract
+    end
+
+    # Extract last response from `assistant` and yield it to caller to
+    # transform into a named tuple with a `prompt` and `response`, which in turn
+    # is converted into two messages that are appended `to` the given history.
+    # Returns `true` on success, `false` if unable to extract.
+    def append_transformed_last_response?(to : History, & : String -> NamedTuple(prompt: String, response: String)) : Bool
+      extract = transform_last_response? do |content|
+        yield content
+      end
+      return false unless extract
+      extract.each do |msg|
+        to.append_message(msg)
+      end
+      true
+    end
+
+    # Extract last response from `assistant` and yield it to caller to
+    # transform into a named tuple with a `prompt` and `response`, which in turn
+    # is used to create a message array that caller can inject into a session.
+    # Returns `nil` if
+    # no response in the current history.
+    def transform_last_response?(& : String -> NamedTuple(prompt: String, response: String)) : Array(Message)?
+      response = nil.as(Message::Response?)
+
+      @messages.reverse_each do |msgplus|
+        msg = msgplus.message
+        if msg.is_a? Message::Response
+          response = msg
+          break
+        end
+      end
+
+      if response && (content = response.content)
+        transformed = yield content
+        extract = [] of Message
+        extract << Message::MultiContent.new(transformed[:prompt])
+        extract << Message::Response.new(transformed[:response], reasoning: nil)
+      end
+    end
+
+    # Append last whole conversation, starting with most recent `user`
+    # message,
+    # - either all messages, or
+    # - user and assistant only
+    def append_last_conversation(to : History, outer = false)
+      # Find most recent "user" message
+      start_index = @messages.rindex do |msg|
+        msg.message.is_a? Message::MultiContent # role == "user"
+      end
+      unless start_index.nil?
+        if outer
+          # first user message, and last assistant message
+          if (first = @messages[start_index]?) && (last = @messages.last?)
+            first_msg = first.message
+            last_msg = last.message
+            to.append_message(first_msg)
+            to.append_message(last_msg)
+          end
+        else
+          # Append rest of conversation
+          @messages.each(start: start_index, count: @messages.size - start_index) do |msgplus|
+            msg = msgplus.message
+            to.append_message(msg, msgplus.usage)
+          end
+        end
+      end
+      true # always, even if empty
+    end
+
+    # Extract conversation from the branch-point of this session, starting with most recent `user`
+    # message,
+    # - either all messages, or
+    # - user and assistant only
+    def extract_session_conversation(outer = false)
+      extract = [] of Message
+      if outer
+        # first user message, and last assistant message
+        if (first = @messages[branch_index]?) && (last = @messages.last?)
+          first_msg = first.message
+          last_msg = last.message
+          extract << first_msg << last_msg
+        end
+      else
+        # Append rest of conversation
+        @messages.each(start: branch_index, count: @messages.size - branch_index) do |msgplus|
+          msg = msgplus.message
+          extract << msg
+        end
+      end
+      extract
+    end
+
+    # Append conversation from the branch-point of this session, starting with most recent `user`
+    # message,
+    # - either all messages, or
+    # - user and assistant only
+    def append_session_conversation(to : History, outer = false)
+      if outer
+        # first user message, and last assistant message
+        if (first = @messages[branch_index]?) && (last = @messages.last?)
+          first_msg = first.message
+          last_msg = last.message
+          to.append_message(first_msg)
+          to.append_message(last_msg)
+        end
+      else
+        # Append rest of conversation
+        @messages.each(start: branch_index, count: @messages.size - branch_index) do |msgplus|
+          msg = msgplus.message
+          to.append_message(msg, msgplus.usage)
+        end
+      end
+      true # always, even if empty
+    end
+
+    # Emit the last N request responses. Always tries to emit the query before the response. May include
+    # tool calls as a result. Use N=-1 to list all
+    def tail_chats(num = -1, & : ChatEvent ->)
+      tail_chat_messages(num) do |msgplus|
+        msgplus.message.emit { |chat_ev| yield chat_ev }
+      end
+    end
+
+    private def convert_for_user(content : MCP::Content) : Message::MultiContent
+      case content
+      when MCP::Content::Text
+        Message::MultiContent.new(content.text)
+      when MCP::Content::Image
+        mc = Message::MultiContent.new
+        mc.image_url "data:#{content.mime_type};base64,#{content.data}"
+        mc
+      else
+        raise UnexpectedMCPPrompt.new("Unexpected MCP prompt \"user\" message content: #{content.to_json}")
+      end
+    end
+
+    private def convert_for_asst(content : MCP::Content) : Message::Response
+      case content
+      when MCP::Content::Text
+        Message::Response.new(content: content.text, reasoning: nil)
+      else
+        raise UnexpectedMCPPrompt.new("Unexpected MCP prompt \"assistant\" message content: #{content.to_json}")
+      end
+    end
+
+    def import(prompt : MCP::PromptResult, emit = false, & : ChatEvent ->) : Nil
+      prompt.each do |prompt_msg|
+        msg = case prompt_msg.role
+              when MCP::Role::Assistant
+                convert_for_asst(prompt_msg.content)
+              when MCP::Role::User
+                convert_for_user(prompt_msg.content)
+              end
+        if msg.nil?
+          STDERR.puts "~~~ WTF: prompt: #{prompt.to_json}"
+        else
+          append_message(msg)
+          msg.emit { |event| yield event } if emit
+        end
+      end
+    end
+  end
+end

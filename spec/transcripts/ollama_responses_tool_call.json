@@ -1,0 +1,58 @@
+{
+  "name": "ollama_responses_tool_call",
+  "recorded_with": "wiretap/0.5.0",
+  "interactions": [
+    {
+      "request": {
+        "method": "POST",
+        "url": "http://localhost:11434/v1/responses",
+        "headers": {
+          "Content-Type": "application/json",
+          "Connection": "keep-alive",
+          "Authorization": "[FILTERED]",
+          "User-Agent": "enkaidu 0.9.17-pre",
+          "Host": "localhost:11434",
+          "Accept-Encoding": "gzip, deflate"
+        },
+        "body": "{\"model\":\"gpt-oss\",\"store\":false,\"stream\":false,\"reasoning\":{\"summary\":\"auto\"},\"include\":[\"reasoning.encrypted_content\"],\"input\":[{\"type\":\"message\",\"role\":\"user\",\"content\":[{\"type\":\"input_text\",\"text\":\"Please echo the word hello using the echo tool. Do not answer in plain text.\"}]}],\"tool_choice\":\"auto\",\"tools\":[{\"type\":\"function\",\"name\":\"echo\",\"description\":\"Echoes the given value back verbatim. You MUST call this tool whenever the user asks you to echo or repeat a value.\",\"parameters\":{\"type\":\"object\",\"properties\":{\"value\":{\"type\":\"string\",\"description\":\"The value to echo back.\"}},\"required\":[\"value\"]}}]}",
+        "body_digest": "b3484355546cc9ef72a5bcc8ae2deaf7027ea3cc381529a57221368bc9ee08b3"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json",
+          "Date": "Thu, 05 Nov 2026 21:45:55 GMT",
+          "Content-Length": "1941"
+        },
+        "body": "{\"id\":\"resp_347219\",\"object\":\"response\",\"created_at\":1793915155,\"completed_at\":1793915155,\"status\":\"completed\",\"incomplete_details\":null,\"model\":\"gpt-oss\",\"previous_response_id\":null,\"instructions\":null,\"output\":[{\"id\":\"rs_resp_347219\",\"type\":\"reasoning\",\"summary\":[{\"type\":\"summary_text\",\"text\":\"The user asks to echo the word hello using the echo tool. They explicitly say \\\"Do not answer in plain text.\\\" So we must use the echo tool and not produce any other output. So we must call functions.echo with value: \\\"hello\\\". And not produce a normal answer. According to policy: we must do that.\"}],\"encrypted_content\":\"The user asks to echo the word hello using the echo tool. They explicitly say \\\"Do not answer in plain text.\\\" So we must use the echo tool and not produce any other output. So we must call functions.echo with value: \\\"hello\\\". And not produce a normal answer. According to policy: we must do that.\"},{\"id\":\"fc_resp_347219_0\",\"type\":\"function_call\",\"status\":\"completed\",\"call_id\":\"call_c9vmlmhl\",\"name\":\"echo\",\"arguments\":\"{\\\"value\\\":\\\"hello\\\"}\"}],\"error\":null,\"tools\":[{\"type\":\"function\",\"name\":\"echo\",\"description\":\"Echoes the given value back verbatim. You MUST call this tool whenever the user asks you to echo or repeat a value.\",\"parameters\":{\"properties\":{\"value\":{\"description\":\"The value to echo back.\",\"type\":\"string\"}},\"required\":[\"value\"],\"type\":\"object\"}}],\"tool_choice\":\"auto\",\"truncation\":\"disabled\",\"parallel_tool_calls\":true,\"text\":{\"format\":{\"type\":\"text\"}},\"top_p\":1,\"presence_penalty\":0,\"frequency_penalty\":0,\"top_logprobs\":0,\"temperature\":1,\"reasoning\":{\"summary\":\"auto\"},\"usage\":{\"input_tokens\":164,\"output_tokens\":89,\"total_tokens\":253,\"input_tokens_details\":{\"cached_tokens\":163},\"output_tokens_details\":{\"reasoning_tokens\":0}},\"max_output_tokens\":null,\"max_tool_calls\":null,\"store\":false,\"background\":false,\"service_tier\":\"default\",\"metadata\":{},\"safety_identifier\":null,\"prompt_cache_key\":null}\n"
+      },
+      "recorded_at": "2026-11-05T21:45:55Z"
+    },
+    {
+      "request": {
+        "method": "POST",
+        "url": "http://localhost:11434/v1/responses",
+        "headers": {
+          "Content-Type": "application/json",
+          "Connection": "keep-alive",
+          "Authorization": "[FILTERED]",
+          "User-Agent": "enkaidu 0.9.17-pre",
+          "Host": "localhost:11434",
+          "Accept-Encoding": "gzip, deflate"
+        },
+        "body": "{\"model\":\"gpt-oss\",\"store\":false,\"stream\":false,\"reasoning\":{\"summary\":\"auto\"},\"include\":[\"reasoning.encrypted_content\"],\"input\":[{\"type\":\"message\",\"role\":\"user\",\"content\":[{\"type\":\"input_text\",\"text\":\"Please echo the word hello using the echo tool. Do not answer in plain text.\"}]},{\"type\":\"reasoning\",\"id\":\"rs_resp_347219\",\"encrypted_content\":\"The user asks to echo the word hello using the echo tool. They explicitly say \\\"Do not answer in plain text.\\\" So we must use the echo tool and not produce any other output. So we must call functions.echo with value: \\\"hello\\\". And not produce a normal answer. According to policy: we must do that.\",\"summary\":[{\"type\":\"summary_text\",\"text\":\"The user asks to echo the word hello using the echo tool. They explicitly say \\\"Do not answer in plain text.\\\" So we must use the echo tool and not produce any other output. So we must call functions.echo with value: \\\"hello\\\". And not produce a normal answer. According to policy: we must do that.\"}]},{\"type\":\"function_call\",\"call_id\":\"call_c9vmlmhl\",\"name\":\"echo\",\"arguments\":\"{\\\"value\\\":\\\"hello\\\"}\"},{\"type\":\"function_call_output\",\"call_id\":\"call_c9vmlmhl\",\"output\":\"{\\\"echoed\\\":\\\"hello\\\"}\"}],\"tool_choice\":\"auto\",\"tools\":[{\"type\":\"function\",\"name\":\"echo\",\"description\":\"Echoes the given value back verbatim. You MUST call this tool whenever the user asks you to echo or repeat a value.\",\"parameters\":{\"type\":\"object\",\"properties\":{\"value\":{\"type\":\"string\",\"description\":\"The value to echo back.\"}},\"required\":[\"value\"]}}]}",
+        "body_digest": "4ace33d94631d96cda480b5308b2564393d4ce4b0185e89273ddfe5b3e198b11"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json",
+          "Date": "Thu, 05 Nov 2026 21:45:55 GMT",
+          "Content-Length": "1262"
+        },
+        "body": "{\"id\":\"resp_381121\",\"object\":\"response\",\"created_at\":1793915155,\"completed_at\":1793915155,\"status\":\"completed\",\"incomplete_details\":null,\"model\":\"gpt-oss\",\"previous_response_id\":null,\"instructions\":null,\"output\":[{\"id\":\"msg_685851\",\"type\":\"message\",\"status\":\"completed\",\"role\":\"assistant\",\"content\":[{\"type\":\"output_text\",\"text\":\"{\\\"echoed\\\":\\\"hello\\\"}\",\"annotations\":[],\"logprobs\":[]}]}],\"error\":null,\"tools\":[{\"type\":\"function\",\"name\":\"echo\",\"description\":\"Echoes the given value back verbatim. You MUST call this tool whenever the user asks you to echo or repeat a value.\",\"parameters\":{\"properties\":{\"value\":{\"description\":\"The value to echo back.\",\"type\":\"string\"}},\"required\":[\"value\"],\"type\":\"object\"}}],\"tool_choice\":\"auto\",\"truncation\":\"disabled\",\"parallel_tool_calls\":true,\"text\":{\"format\":{\"type\":\"text\"}},\"top_p\":1,\"presence_penalty\":0,\"frequency_penalty\":0,\"top_logprobs\":0,\"temperature\":1,\"reasoning\":{\"summary\":\"auto\"},\"usage\":{\"input_tokens\":269,\"output_tokens\":10,\"total_tokens\":279,\"input_tokens_details\":{\"cached_tokens\":252},\"output_tokens_details\":{\"reasoning_tokens\":0}},\"max_output_tokens\":null,\"max_tool_calls\":null,\"store\":false,\"background\":false,\"service_tier\":\"default\",\"metadata\":{},\"safety_identifier\":null,\"prompt_cache_key\":null}\n"
+      },
+      "recorded_at": "2026-11-05T21:45:55Z"
+    }
+  ]
+}

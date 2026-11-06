@@ -28,25 +28,39 @@ module Enkaidu
 
     runner Runner
 
+    protected def max_agent_depth
+      @max_agent_depth ||= case value = settings.try(&.["max_agent_depth"]?)
+                           when Number, String then Int32.new(value).clamp(0, 5)
+                           else                     2
+                           end
+    end
+
     # This defines the runner that is instantiated to
     # execute the function.
-    class Runner < SessionBuiltInFunction::Runner
+    class Runner < SessionBuiltInFunction::Runner(SubAgentPromptFunction)
       # Implement this method to handle the LLM function call, and return a
       # String with the JSON value.
       def execute(args : JSON::Any) : String
         keep_history = args["include_caller_history"]?.try(&.as_bool?) || false
         prompt = args["prompt"]?.try(&.as_s?) || return error_response("Required `prompt` was not specified")
         prompt = prompt.strip
+        session_manager = func.runtime.session_manager
 
         return error_response("Required `prompt` was empty") if prompt.empty?
+
+        if session_manager.current.session.sub_agent_depth >= func.max_agent_depth
+          return error_response("Agent depth limit reached. Solve the task yourself.")
+        end
 
         # Fork the session to process the prompt.
         # Since this is a tool call, exclude the last turn if keeping history
         # to (a) avoid an incomplete request in history, and (b) to avoid repeating the same
         # prompt that initiated this tool call.
+
         reply = func.runtime.session_manager.ask_forked_session(prompt,
           keep_history,
-          exclude_last_turn: true)
+          exclude_last_turn: true,
+          sub_agent: true)
 
         reply || error_response("Nil response")
       rescue ex

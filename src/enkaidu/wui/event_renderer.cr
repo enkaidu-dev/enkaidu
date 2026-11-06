@@ -23,7 +23,6 @@ module Enkaidu::WUI
     # Input requests made to the WUI
     private getter pending_inputs = Hash(String, InputsChannel).new
 
-    property? streaming = false
     private getter work_channel : Channel(Work)
 
     def initialize(@work_channel); end

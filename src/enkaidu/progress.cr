@@ -50,6 +50,8 @@ module Enkaidu
     end
 
     private def draw(frame : String, elapsed : Time::Span) : Nil
+      return if elapsed.total_seconds.to_i.zero?
+
       line = "#{frame} #{@label}#{" (#{lines} lines)" if lines.positive?}… #{elapsed.total_seconds.to_i}s"
       @io.print("\r#{line}".colorize.light_gray)
       @io.flush

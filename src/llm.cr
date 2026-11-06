@@ -2,10 +2,13 @@ require "socket_connect_fix"
 
 require "./llm/local_function"
 require "./llm/connection"
-require "./llm/azure_openai"
-require "./llm/azure_foundry"
-require "./llm/google_ai_studio"
-require "./llm/ollama"
+require "./llm/function_call"
+require "./llm/events"
+require "./llm/protocol_kind"
+require "./llm/providers/azure_openai"
+require "./llm/providers/azure_foundry"
+require "./llm/providers/google_ai_studio"
+require "./llm/providers/ollama"
 
 module LLM
   class Error < Exception; end
@@ -28,22 +31,26 @@ module LLM
   # `openai`, `ollama`, `azure_openai`, or `google_ai_studio`) or `nil` if unknown.
   def self.connection_by(provider : String) : Connection?
     case provider
-    when "openai"           then OpenAI::Connection.new
-    when "ollama"           then Ollama::Connection.new
-    when "azure_openai"     then AzureOpenAI::Connection.new
-    when "azure_foundry"    then AzureFoundry::Connection.new
-    when "google_ai_studio" then GoogleAIStudio::Connection.new
+    when "openai"                  then OpenAI::Connection.new
+    when "openai:responses"        then OpenAI::Connection.new(LLM::ProtocolKind::Responses)
+    when "ollama"                  then Ollama::Connection.new
+    when "ollama:responses"        then Ollama::Connection.new(LLM::ProtocolKind::Responses)
+    when "azure_foundry"           then AzureFoundry::Connection.new
+    when "azure_foundry:responses" then AzureFoundry::Connection.new(LLM::ProtocolKind::Responses)
+    when "azure_openai"            then AzureOpenAI::Connection.new
+    when "google_ai_studio"        then GoogleAIStudio::Connection.new
     end
   end
 
   # Returns the provider label for the given connection instance
   def self.connection_provider_label(connection : Connection) : String
+    protocol = ":responses" if connection.protocol.responses?
     case connection
-    when LLM::Ollama::Connection       then "ollama"
+    when LLM::OpenAI::Connection       then "openai#{protocol}"
+    when LLM::Ollama::Connection       then "ollama#{protocol}"
+    when LLM::AzureFoundry::Connection then "azure_foundry#{protocol}"
     when LLM::AzureOpenAI::Connection  then "azure_openai"
-    when LLM::AzureFoundry::Connection then "azure_foundry"
     when GoogleAIStudio::Connection    then "google_ai_studio"
-    when LLM::OpenAI::Connection       then "openai"
     else
       raise Error.new("Unknown connection implementation: #{connection.class}")
     end

@@ -6,8 +6,8 @@
   import AsstTextCard from "./AsstTextCard.svelte";
   import AsstImageCard from "./AsstImageCard.svelte";
   import AsstThinkCard from "./AsstThinkCard.svelte";
-  import SecurityConfirmDialog from "./SecurityConfirmDialog.svelte";
-  import SecurityPermissionDialog from "./SecurityPermissionDialog.svelte";
+  import SecurityDialog from "./SecurityDialog.svelte";
+  
   import UserTextCard from "./UserTextCard.svelte";
   import UserImageCard from "./UserImageCard.svelte";
   import ClarionCard from "./ClarionCard.svelte";
@@ -15,6 +15,14 @@
   import ToolCallCard from "./ToolCallCard.svelte";
   import HelpCard from "./HelpCard.svelte";
   import ActivityGroup from "./ActivityGroup.svelte";
+  import {
+    type SessionEntry,
+    type SessionData,
+    type TranscriptEvent,
+    add_event as add_transcript_event,
+    reset_transcript,
+    group_entries,
+  } from "./transcript";
 
   // Tolerance band (px) for "close enough to the bottom."  A generous value
   // so sub-pixel rounding and brief layout transients (group form / collapse)
@@ -92,24 +100,7 @@
     };
   };
 
-  type Event = {
-    type: string;
-    subject?: string | undefined;
-    content?: string | undefined;
-  };
-
-  type SessionData = {
-    subject?: string | undefined;
-    content?: string | undefined;
-  };
-
-  type SessionEntry = {
-    type: string;
-    data: SessionData[];
-    // File paths (referenced by file-writing tool calls) that this
-    // assistant text entry should offer as viewable files.
-    files?: string[];
-  };
+  type Event = TranscriptEvent;
 
   let entries: SessionEntry[] = $state([]);
 
@@ -117,8 +108,6 @@
   // be attached to the *next* assistant text entry (whose card renders the
   // file buttons).
   let pending_files: string[] = $state([]);
-
-  const FILE_TOOLS = new Set(["str_replace_in_text_file", "write_text_file"]);
 
   let {
     active_file = null,
@@ -132,69 +121,18 @@
   // Consecutive "agent working" entries (think blocks, tool calls, messages)
   // are collapsed into a single ActivityGroup to keep long runs compact.
   // User queries, assistant text, alerts, and images stay standalone.
-  const GROUPABLE = new Set(["llm_think", "tool_call"]);
+  let grouped = $derived(group_entries(entries));
 
-  function is_groupable(entry: SessionEntry): boolean {
-    if (GROUPABLE.has(entry.type)) return true;
-    return entry.type.startsWith("message_");
-  }
-
-  type GroupedEntry =
-    | { kind: "group"; items: SessionEntry[]; active: boolean }
-    | { kind: "standalone"; entry: SessionEntry };
-
-  let grouped: GroupedEntry[] = $derived.by(() => {
-    const result: GroupedEntry[] = [];
-    let current: SessionEntry[] = [];
-
-    const flush = (active: boolean) => {
-      if (current.length === 0) return;
-      if (current.length === 1) {
-        // Single item: no grouping chrome, render as a standalone card.
-        result.push({ kind: "standalone", entry: current[0] });
-      } else {
-        result.push({ kind: "group", items: current, active });
-      }
-      current = [];
-    };
-
-    for (const entry of entries) {
-      if (is_groupable(entry)) {
-        current.push(entry);
-      } else {
-        flush(false);
-        result.push({ kind: "standalone", entry });
-      }
-    }
-
-    // Flush trailing group — active if the last entry is still groupable
-    // (i.e. the agent is mid-run and no response has arrived yet).
-    const lastEntry = entries.at(-1);
-    const lastActive = lastEntry ? is_groupable(lastEntry) : false;
-    flush(lastActive);
-
-    return result;
+  let security_dialog_config: Common.SecurityDialogConfig = $state({
+    show: false,
+    description: "",
+    subjects: [],
+    banner: null,
+    id: "",
+    rememberable: false,
   });
 
-  let security_permission_dialog_config: Common.SecurityPermissionDialogConfig =
-    $state({
-      show: false,
-      description: "",
-      subjects: [],
-      banner: null,
-      id: "",
-    });
-
-  let security_confirm_dialog_config: Common.SecurityConfirmDialogConfig =
-    $state({
-      show: false,
-      description: "",
-      subjects: [],
-      banner: null,
-      id: "",
-    });
-
-  let inputs_dialog: InputsDialog;
+    let inputs_dialog: InputsDialog;
 
   let inputs_dialog_config: Common.InputDialogConfig = $state({
     show: false,
@@ -219,70 +157,12 @@
   }
 
   export function reset() {
-    entries.length = 0;
-    pending_files.length = 0;
+    reset_transcript(entries, pending_files);
   }
 
+  // Keep Session.svelte's public API intact; delegate the pure logic.
   export function add_event(ev: Event) {
-    // Harvest the file_path from file-modifying tool calls; it rides onto
-    // the next assistant text entry as a clickable file button.
-    if (
-      ev.type === "tool_call" &&
-      typeof ev.subject === "string" &&
-      FILE_TOOLS.has(ev.subject) &&
-      typeof ev.content === "string"
-    ) {
-      try {
-        const path: unknown = JSON.parse(ev.content)?.file_path;
-        if (
-          typeof path === "string" &&
-          path.length > 0 &&
-          !pending_files.includes(path)
-        ) {
-          pending_files.push(path);
-        }
-      } catch {
-        // args weren't valid JSON — nothing to harvest
-      }
-    }
-
-    let last = entries.at(-1);
-    let ev_data = { subject: ev.subject, content: ev.content };
-    // Streaming LLM/think text coalesces into the last entry's single
-    // record; other same-type events append to its data[] (e.g.
-    // message_* — MsgCard renders every record). Consecutive tool_call
-    // events deliberately do NOT coalesce: each call is its own
-    // transcript step (grouping, "N steps", and the group title all
-    // count entries), and the tool-call cards show only data[0] —
-    // merging a run of calls into one entry would hide every call
-    // after the first.
-    let coalesced = false;
-    if (last && last.type == ev.type) {
-      if (last.type == "llm_text" || last.type == "llm_think") {
-        // append text if it's LLM or THINK text
-        // this allows us to show streaming text
-        let content = (last.data[0].content || "") + ev_data.content;
-        last.data[0].content = content;
-        coalesced = true;
-      } else if (ev.type != "tool_call") {
-        // append to data[] otherwise
-        last.data.push(ev_data);
-        coalesced = true;
-      }
-    }
-    if (!coalesced) {
-      check_and_trim_last_entry();
-      // Append the new event type
-      const entry: SessionEntry = { type: ev.type, data: [ev_data] };
-      // Attach any harvested file paths to this assistant text entry.
-      if (ev.type === "llm_text" && pending_files.length > 0) {
-        // splice takes the items AND empties the pending list in one move;
-        // assigning the pending array directly (then clearing it) would
-        // leave the entry holding an empty array.
-        entry.files = pending_files.splice(0);
-      }
-      entries.push(entry);
-    }
+    add_transcript_event(entries, pending_files, ev);
   }
 
   export function get_id() {
@@ -295,24 +175,12 @@
     id: string,
     banner: Common.SecurityBanner | null,
   ) {
-    security_confirm_dialog_config.show = true;
-    security_confirm_dialog_config.description = description;
-    security_confirm_dialog_config.subjects = subjects;
-    security_confirm_dialog_config.banner = banner;
-    security_confirm_dialog_config.id = id;
-  }
-
-  async function send_confirmation_response(id: string, approved: boolean) {
-    try {
-      await enkaidu_post_request("confirmation", { id, approved });
-    } catch (error) {
-      console.error("Failed to send confirmation response:", error);
-    }
-  }
-
-  function handle_security_confirmation(id: string, approved: boolean) {
-    security_confirm_dialog_config.show = false;
-    send_confirmation_response(id, approved);
+    security_dialog_config.show = true;
+    security_dialog_config.description = description;
+    security_dialog_config.subjects = subjects;
+    security_dialog_config.banner = banner;
+    security_dialog_config.id = id;
+    security_dialog_config.rememberable = false;
   }
 
   export function show_security_permission(
@@ -321,32 +189,39 @@
     id: string,
     banner: Common.SecurityBanner | null,
   ) {
-    security_permission_dialog_config.show = true;
-    security_permission_dialog_config.description = description;
-    security_permission_dialog_config.subjects = subjects;
-    security_permission_dialog_config.banner = banner;
-    security_permission_dialog_config.id = id;
+    security_dialog_config.show = true;
+    security_dialog_config.description = description;
+    security_dialog_config.subjects = subjects;
+    security_dialog_config.banner = banner;
+    security_dialog_config.id = id;
+    security_dialog_config.rememberable = true;
   }
 
-  async function send_permission_response(
+  async function send_security_response(
     id: string,
     approved: boolean,
-    remember: boolean,
+    remember: boolean = false,
+    permission: boolean = false,
   ) {
     try {
-      await enkaidu_post_request("permission", { id, approved, remember });
+      if (permission) {
+        await enkaidu_post_request("permission", { id, approved, remember });
+      } else {
+        await enkaidu_post_request("confirmation", { id, approved });
+      }
     } catch (error) {
-      console.error("Failed to send permission response:", error);
+      console.error("Failed to send security response:", error);
     }
   }
 
-  function handle_security_permission(
+  function handle_security_dialog(
     id: string,
     approved: boolean,
-    remember: boolean,
+    remember: boolean = false,
   ) {
-    security_permission_dialog_config.show = false;
-    send_permission_response(id, approved, remember);
+    const permission = security_dialog_config.rememberable === true;
+    security_dialog_config.show = false;
+    send_security_response(id, approved, remember, permission);
   }
 
   export function ask_for_inputs(
@@ -458,23 +333,16 @@
   </div>
 </div>
 
-<SecurityConfirmDialog
-  subjects={security_confirm_dialog_config.subjects}
-  banner={security_confirm_dialog_config.banner}
-  description={security_confirm_dialog_config.description}
-  id={security_confirm_dialog_config.id}
-  show={security_confirm_dialog_config.show}
-  onconfirm={handle_security_confirmation}
+<SecurityDialog
+  subjects={security_dialog_config.subjects}
+  banner={security_dialog_config.banner}
+  description={security_dialog_config.description}
+  id={security_dialog_config.id}
+  show={security_dialog_config.show}
+  rememberable={security_dialog_config.rememberable === true}
+  onconfirm={handle_security_dialog}
 />
 
-<SecurityPermissionDialog
-  subjects={security_permission_dialog_config.subjects}
-  banner={security_permission_dialog_config.banner}
-  description={security_permission_dialog_config.description}
-  id={security_permission_dialog_config.id}
-  show={security_permission_dialog_config.show}
-  onconfirm={handle_security_permission}
-/>
 
 <InputsDialog
   bind:this={inputs_dialog}

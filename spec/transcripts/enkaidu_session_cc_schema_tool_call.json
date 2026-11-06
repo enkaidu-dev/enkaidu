@@ -1,0 +1,60 @@
+{
+  "name": "enkaidu_session_cc_schema_tool_call",
+  "recorded_with": "wiretap/0.5.0",
+  "interactions": [
+    {
+      "request": {
+        "method": "POST",
+        "url": "http://localhost:11434/v1/chat/completions",
+        "headers": {
+          "Content-Type": "application/json",
+          "Connection": "keep-alive",
+          "Authorization": "[FILTERED]",
+          "x-session-id": "01a1adaa-9ede-79da-8e26-7fcf6a48dc05",
+          "User-Agent": "enkaidu 0.9.17-pre",
+          "Host": "localhost:11434",
+          "Accept-Encoding": "gzip, deflate"
+        },
+        "body": "{\"model\":\"gpt-oss\",\"stream\":false,\"response_format\":{\"type\":\"json_schema\",\"json_schema\":{\"name\":\"session_answer\",\"description\":\"Response echoed back\",\"schema\":{\"type\":\"object\",\"properties\":{\"echoed\":{\"type\":\"string\"}}},\"strict\":false}},\"messages\":[{\"role\":\"system\",\"content\":\"You are Enkaidu, a capable assistant with tool calling and the ability to handle complex requests with planning and consideration.\\n<attitude>\\n* Keep a natural, conversational tone and use minimal formatting - no bold, no headers, no lists - unless the user explicitly asks or the content is multi-faceted.\\n* Never use emojis unless requested, and even then only judiciously.\\n</attitude>\\n<planner>\\n* Plan what it will take to answer a question or complete a task.\\n* When a user poses a multi-part question, limit yourself to one question per response\\n* Resolve each question before asking follow-ups.\\n* Proceed with the plan unless the plan is complicated and warrants user feedback.\\n</planner>\\n<cooperative>\\n* After thinking through a problem present your conclusion briefly so the user stays connected.\\n</cooperative>\\n\"},{\"role\":\"user\",\"content\":[{\"type\":\"text\",\"text\":\"Please echo the word hello using the echo tool. Do not answer in plain text.\"}]}],\"tool_choice\":\"auto\",\"tools\":[{\"type\":\"function\",\"function\":{\"name\":\"echo\",\"description\":\"Echoes the given value back verbatim. You MUST call this tool whenever the user asks you to echo or repeat a value.\",\"parameters\":{\"type\":\"object\",\"properties\":{\"value\":{\"type\":\"string\",\"description\":\"The value to echo back.\"}},\"required\":[\"value\"]}}}]}",
+        "body_digest": "53ac4b8d6b5b2109140b549263542d32bfab1507ec1edcf765d81c5f6be68142"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json",
+          "Date": "Thu, 05 Nov 2026 21:43:24 GMT",
+          "Content-Length": "894"
+        },
+        "body": "{\"id\":\"chatcmpl-308\",\"object\":\"chat.completion\",\"created\":1793915004,\"model\":\"gpt-oss\",\"system_fingerprint\":\"fp_ollama\",\"choices\":[{\"index\":0,\"message\":{\"role\":\"assistant\",\"content\":\"\",\"reasoning\":\"The user wants to echo the word hello using the echo tool. They also say: \\\"Do not answer in plain text.\\\" So we should use the echo tool to produce an output. The echo tool expects a JSON request with key `value`. Then we have to return the result. According to guidelines, we should use the echo tool and not plain text. So we call the function with value \\\"hello\\\".\\n\\nWe must produce a tool call. No other text.\",\"tool_calls\":[{\"id\":\"call_dfhohr7h\",\"index\":0,\"type\":\"function\",\"function\":{\"name\":\"echo\",\"arguments\":\"{\\\"value\\\":\\\"hello\\\"}\"}}]},\"finish_reason\":\"tool_calls\"}],\"usage\":{\"prompt_tokens\":336,\"prompt_tokens_details\":{\"cached_tokens\":0},\"completion_tokens\":116,\"total_tokens\":452}}\n"
+      },
+      "recorded_at": "2026-11-05T21:43:24Z"
+    },
+    {
+      "request": {
+        "method": "POST",
+        "url": "http://localhost:11434/v1/chat/completions",
+        "headers": {
+          "Content-Type": "application/json",
+          "Connection": "keep-alive",
+          "Authorization": "[FILTERED]",
+          "x-session-id": "01a1adaa-9ede-79da-8e26-7fcf6a48dc05",
+          "User-Agent": "enkaidu 0.9.17-pre",
+          "Host": "localhost:11434",
+          "Accept-Encoding": "gzip, deflate"
+        },
+        "body": "{\"model\":\"gpt-oss\",\"stream\":false,\"response_format\":{\"type\":\"json_schema\",\"json_schema\":{\"name\":\"session_answer\",\"description\":\"Response echoed back\",\"schema\":{\"type\":\"object\",\"properties\":{\"echoed\":{\"type\":\"string\"}}},\"strict\":false}},\"messages\":[{\"role\":\"system\",\"content\":\"You are Enkaidu, a capable assistant with tool calling and the ability to handle complex requests with planning and consideration.\\n<attitude>\\n* Keep a natural, conversational tone and use minimal formatting - no bold, no headers, no lists - unless the user explicitly asks or the content is multi-faceted.\\n* Never use emojis unless requested, and even then only judiciously.\\n</attitude>\\n<planner>\\n* Plan what it will take to answer a question or complete a task.\\n* When a user poses a multi-part question, limit yourself to one question per response\\n* Resolve each question before asking follow-ups.\\n* Proceed with the plan unless the plan is complicated and warrants user feedback.\\n</planner>\\n<cooperative>\\n* After thinking through a problem present your conclusion briefly so the user stays connected.\\n</cooperative>\\n\"},{\"role\":\"user\",\"content\":[{\"type\":\"text\",\"text\":\"Please echo the word hello using the echo tool. Do not answer in plain text.\"}]},{\"role\":\"assistant\",\"reasoning\":\"The user wants to echo the word hello using the echo tool. They also say: \\\"Do not answer in plain text.\\\" So we should use the echo tool to produce an output. The echo tool expects a JSON request with key `value`. Then we have to return the result. According to guidelines, we should use the echo tool and not plain text. So we call the function with value \\\"hello\\\".\\n\\nWe must produce a tool call. No other text.\",\"content\":null,\"tool_calls\":[{\"id\":\"call_dfhohr7h\",\"index\":0,\"type\":\"function\",\"function\":{\"name\":\"echo\",\"arguments\":\"{\\\"value\\\":\\\"hello\\\"}\"}}]},{\"role\":\"tool\",\"tool_call_id\":\"call_dfhohr7h\",\"name\":\"echo\",\"content\":\"{\\\"echoed\\\":\\\"hello\\\"}\"}],\"tool_choice\":\"auto\",\"tools\":[{\"type\":\"function\",\"function\":{\"name\":\"echo\",\"description\":\"Echoes the given value back verbatim. You MUST call this tool whenever the user asks you to echo or repeat a value.\",\"parameters\":{\"type\":\"object\",\"properties\":{\"value\":{\"type\":\"string\",\"description\":\"The value to echo back.\"}},\"required\":[\"value\"]}}}]}",
+        "body_digest": "e8f30ed6ea3b6d6d2afc6fb3f2b1a15ebcfc8e4826ba502270e0e4acb54415dd"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json",
+          "Date": "Thu, 05 Nov 2026 21:43:25 GMT",
+          "Content-Length": "352"
+        },
+        "body": "{\"id\":\"chatcmpl-996\",\"object\":\"chat.completion\",\"created\":1793915005,\"model\":\"gpt-oss\",\"system_fingerprint\":\"fp_ollama\",\"choices\":[{\"index\":0,\"message\":{\"role\":\"assistant\",\"content\":\"{\\\"echoed\\\":\\\"hello\\\"}\"},\"finish_reason\":\"stop\"}],\"usage\":{\"prompt_tokens\":468,\"prompt_tokens_details\":{\"cached_tokens\":451},\"completion_tokens\":10,\"total_tokens\":478}}\n"
+      },
+      "recorded_at": "2026-11-05T21:43:25Z"
+    }
+  ]
+}

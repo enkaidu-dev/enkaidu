@@ -11,7 +11,6 @@ module Enkaidu::Console
   class Renderer < SessionRenderer
     include StyleApplicator
 
-    property? streaming = true
     property? quiet = false
 
     private getter progress : Progress = Progress.new("Engaging")
@@ -299,7 +298,6 @@ module Enkaidu::Console
         on_gather: ->(event : Termify::Markdown::GatherEvent) {
           case event.phase
           when .started?
-            puts "<#{event.phase}>"
             progress.label = case event.kind
                              in .table?      then "Receiving table"
                              in .code_block? then "Receiving code"
