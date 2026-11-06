@@ -344,8 +344,8 @@ module Enkaidu
         if stdout_path && stderr_path
           # Try and save and return paths on success
           begin
-            File.write(stdout_path, result[:stdout])
-            File.write(stderr_path, result[:stderr])
+            mkdir_and_write_file(stdout_path, result[:stdout])
+            mkdir_and_write_file(stderr_path, result[:stderr])
             return {command: command,
                     output:  {
                       exit_code:   result[:exit_code],
