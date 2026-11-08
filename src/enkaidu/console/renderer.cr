@@ -260,24 +260,17 @@ module Enkaidu::Console
       puts if streaming? unless quiet?
 
       args_json = JSON.parse(args.as_s)
-      trim_more = name.size + 5
 
       prop_reason = args_json.dig?("reason").try(&.as_s?)
       if reason = prop_reason
         print fmt(:tool_call_reason, "• #{reason}")
-        trim_more += reason.size + 2
       else
         print fmt(:tool_call_reason, "• Calling")
-        trim_more += 2
       end
 
       if quiet?
         puts fmt(:tool_call_arg_name, " → #{name}")
       else
-        # trim_length = (LLM_MAX_TOOL_CALL_ARGS_LENGTH - trim_more).clamp(32, LLM_MAX_TOOL_CALL_ARGS_LENGTH)
-        # print fmt(:tool_call_arg_name, "\n  └") if prop_reason
-        # args_minus = args_json.as_h.select { |k, _| k != "reason" }
-        # puts fmt(:tool_call_arg_name, "─ #{name} #{trim_text(args_minus.to_json, trim_length)}")
         puts fmt(:tool_call_arg_name, "\n  └─ #{name}") if prop_reason
         render_args_as_table(args_json, STDOUT)
       end
@@ -289,13 +282,13 @@ module Enkaidu::Console
       max_arg_w = 0
       arg_map = [] of NamedTuple(name: String, value: String)
 
-      args.as_h?.try &.each_key { |name|
+      args.as_h?.try &.each_key do |name|
         next if name == "reason"
         max_arg_w = name.size if name.size > max_arg_w
         val = args[name].to_s
         val = trim_text(val, LLM_MAX_TOOL_CALL_ARGS_LENGTH)
         arg_map << {name: name, value: val}
-      }
+      end
 
       arg_map.each do |arg|
         io.print fmt(:tool_call_arg_name, sprintf("     - %*s: ", max_arg_w, arg[:name]))
