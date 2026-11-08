@@ -129,4 +129,22 @@ Spectator.describe "Enkaidu::Session fork" do
       expect(forked.chat_snapshot).to eq(fresh.chat_snapshot)
     end
   end
+
+  it "fork with sub_agent = true sets sub_agent and accumulates depth" do
+    with_ollama_envs do
+      renderer = EnkaiduWiretapTestRenderer.new
+      options = EnkaiduWiretapTestOptions.new(renderer, "ollama")
+      base = EnkaiduForkProbeSession.new(renderer, options)
+
+      sub = EnkaiduForkProbeSession.new(base, true, true, true, nil, true, true)
+
+      expect(sub.sub_agent?).to be_true
+      expect(sub.parent).to be base
+      expect(sub.sub_agent_depth).to eq(1)
+
+      nested = EnkaiduForkProbeSession.new(sub, true, true, true, nil, true, true)
+
+      expect(nested.sub_agent_depth).to eq(2)
+    end
+  end
 end
