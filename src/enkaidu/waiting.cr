@@ -1,7 +1,7 @@
 require "../llm/connection"
 
 module Enkaidu::Waiting
-  private WAIT_SECONDS = LLM::RATE_CONTROL_DELAY.to_seconds
+  private WAIT_SECONDS = LLM::RATE_CONTROL_DELAY.seconds
 
   QUOTES = [
     # I'll be back.
