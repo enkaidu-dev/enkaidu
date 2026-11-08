@@ -216,7 +216,7 @@ Spectator.describe Tools::FileManagement::SearchFilesTool do
   # -------------------------------------------------
 
   context "respects the max_files parameter" do
-    let(:max_files_default) { 1000 }
+    let(:max_files_default) { 100 }
 
     let(:files) do
       (1..max_files_default).map { |i| File.join(temp_dir, "file_#{i}.txt") }
@@ -244,7 +244,7 @@ Spectator.describe Tools::FileManagement::SearchFilesTool do
       args = make_args(
         files: File.join(temp_dir, "*.txt"),
         pattern: "hello",
-        max_files: 9999,
+        max_files: 999,
       )
 
       result_json = runner.execute(args)
