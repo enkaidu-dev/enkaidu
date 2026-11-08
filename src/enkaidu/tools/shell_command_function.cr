@@ -215,10 +215,6 @@ module Enkaidu
                   DENIED
               end
             end
-          else
-            unless found_restricted.empty? && found_unconfirmed.empty?
-              func.runtime.renderer.warning_with("Skipping shell command user confirmation by your request because Cordon is active.")
-            end
           end
 
           # Now we can execute the command
