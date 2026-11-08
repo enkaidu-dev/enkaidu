@@ -254,7 +254,7 @@ module Enkaidu::Console
       puts fmt(:session_banner, SWITCHED)
     end
 
-    LLM_MAX_TOOL_CALL_ARGS_LENGTH = 90
+    LLM_MAX_TOOL_CALL_ARGS_LENGTH = 80
 
     def llm_tool_call(name, args)
       puts if streaming? unless quiet?
@@ -272,15 +272,35 @@ module Enkaidu::Console
       end
 
       if quiet?
-        puts fmt(:tool_call_detail, " → #{name}")
+        puts fmt(:tool_call_arg_name, " → #{name}")
       else
-        trim_length = (LLM_MAX_TOOL_CALL_ARGS_LENGTH - trim_more).clamp(32, LLM_MAX_TOOL_CALL_ARGS_LENGTH)
-        print fmt(:tool_call_detail, "\n  └") if prop_reason
-        args_minus = args_json.as_h.select { |k, _| k != "reason" }
-        puts fmt(:tool_call_detail, "─ #{name} #{trim_text(args_minus.to_json, trim_length)}")
+        # trim_length = (LLM_MAX_TOOL_CALL_ARGS_LENGTH - trim_more).clamp(32, LLM_MAX_TOOL_CALL_ARGS_LENGTH)
+        # print fmt(:tool_call_arg_name, "\n  └") if prop_reason
+        # args_minus = args_json.as_h.select { |k, _| k != "reason" }
+        # puts fmt(:tool_call_arg_name, "─ #{name} #{trim_text(args_minus.to_json, trim_length)}")
+        puts fmt(:tool_call_arg_name, "\n  └─ #{name}") if prop_reason
+        render_args_as_table(args_json, STDOUT)
       end
 
       puts unless streaming? || quiet?
+    end
+
+    private def render_args_as_table(args, io)
+      max_arg_w = 0
+      arg_map = [] of NamedTuple(name: String, value: String)
+
+      args.as_h?.try &.each_key { |name|
+        next if name == "reason"
+        max_arg_w = name.size if name.size > max_arg_w
+        val = args[name].to_s
+        val = trim_text(val, LLM_MAX_TOOL_CALL_ARGS_LENGTH)
+        arg_map << {name: name, value: val}
+      }
+
+      arg_map.each do |arg|
+        io.print fmt(:tool_call_arg_name, sprintf("     - %*s: ", max_arg_w, arg[:name]))
+        io.puts fmt(:tool_call_arg_value, arg[:value])
+      end
     end
 
     def llm_error(err, message : String? = nil)
