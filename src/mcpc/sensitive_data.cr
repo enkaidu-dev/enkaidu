@@ -17,6 +17,6 @@ class SensitiveData(T)
 
   # Override to hide the value
   def inspect(io)
-    io << "SENSITIVE(label: \"" << label << "\", value: " << T.class.name ")"
+    io << "SENSITIVE(label: \"" << label << "\", value: " << {{ T.stringify }} << ")"
   end
 end
