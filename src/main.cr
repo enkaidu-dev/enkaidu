@@ -1,5 +1,6 @@
 require "termify"
 
+require "./enkaidu/interrupt_handler"
 require "./enkaidu/cli/*"
 require "./enkaidu/console/*"
 require "./enkaidu/wui/main"
@@ -26,8 +27,11 @@ module Enkaidu
 
       Process.on_terminate do |reason|
         case reason
-        when .interrupted?, .session_ended?
-          # Runs at_exit handlers.
+        when .interrupted?
+          unless InterruptHandler.trigger!
+            ::exit
+          end
+        when .session_ended?
           ::exit
         end
       end

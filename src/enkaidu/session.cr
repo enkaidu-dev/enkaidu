@@ -8,6 +8,7 @@ require "../sucre/thread_safe"
 
 require "./waiting"
 require "./about"
+require "./interrupt_handler"
 require "./tools/*"
 require "./recorder"
 require "./session_options"
@@ -360,6 +361,7 @@ module Enkaidu
     end
 
     private macro m_process_and_record_ask_event(event, prev_event)
+      Enkaidu::InterruptHandler.check!
       recorder.if_recording? do |io|
         io.puts "," if ix.positive?
         io.puts {{ event }}.to_json
@@ -505,6 +507,7 @@ module Enkaidu
 
     # Re-query LLM using current session history
     private def re_ask_sync(response_json_schema : LLM::ResponseSchema? = nil)
+      Enkaidu::InterruptHandler.begin_turn
       recorder << "["
       # ask and handle the initial query and its events
       track_and_time("Engaging") do |progress|
@@ -522,10 +525,17 @@ module Enkaidu
           detect_text_ending(nil, prev_event)
         end
         consume_tool_calls_sync(tools, progress, response_json_schema)
+      rescue Enkaidu::InterruptHandler::UserInterruptError
+        renderer.warning_with("[Response interrupted by user]")
+        chat.interrupt_and_cleanup(
+          tool_cancel_message: "Execution cancelled by user.",
+          final_response: "[Response interrupted by user]"
+        )
       rescue ex
         notify_unexpected_connection_error(ex)
       end
     ensure
+      Enkaidu::InterruptHandler.end_turn
       recorder << "]"
     end
 
@@ -543,6 +553,7 @@ module Enkaidu
     def ask_sync(query, attach : LLM::ChatInclusions? = nil,
                  response_json_schema : LLM::ResponseSchema? = nil,
                  render_query = false)
+      Enkaidu::InterruptHandler.begin_turn
       recorder << "["
       track_and_time("Engaging") do |progress|
         tools = [] of LLM::FunctionCall
@@ -566,9 +577,16 @@ module Enkaidu
         end
         consume_tool_calls_sync(tools, progress, response_json_schema)
       end
+    rescue Enkaidu::InterruptHandler::UserInterruptError
+      renderer.warning_with("[Response interrupted by user]")
+      chat.interrupt_and_cleanup(
+        tool_cancel_message: "Execution cancelled by user.",
+        final_response: "[Response interrupted by user]"
+      )
     rescue ex
       notify_unexpected_connection_error(ex)
     ensure
+      Enkaidu::InterruptHandler.end_turn
       recorder << "]"
     end
 
