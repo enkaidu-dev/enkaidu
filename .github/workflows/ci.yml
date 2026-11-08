@@ -13,8 +13,8 @@ jobs:
 
       matrix:
         include:
-          - { os: ubuntu-latest, crystal: "1.20" }
-          - { os: ubuntu-24.04-arm, crystal: "1.21" }
+          - { os: ubuntu-latest, crystal: "1.21" }
+          - { os: ubuntu-24.04-arm, crystal: latest }
           - { os: ubuntu-latest, crystal: latest }
           - { os: macos-latest, crystal: latest }
           - { os: windows-latest, crystal: "1.21" } # Newer Crystal releases failing to install
