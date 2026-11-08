@@ -283,6 +283,20 @@ module LLM
       @usage = @history.last_usage
     end
 
+    # Interrupt the session and roll back history to the start of the current/last turn,
+    # dropping the user prompt and any partial assistant responses or tool calls.
+    def interrupt_and_rollback : Bool
+      @history.rollback_last_turn
+    end
+
+    # Interrupt the session and repair history for the current turn.
+    # Synthesizes missing tool call responses for unfulfilled tool calls to satisfy model server protocol requirements,
+    # and optionally appends a synthetic assistant response.
+    def interrupt_and_cleanup(tool_cancel_message : String = "Execution cancelled by user.",
+                              final_response : String? = nil) : Bool
+      @history.cleanup_interrupted_turn(tool_cancel_message, final_response)
+    end
+
     # Save chat history
     def save(io : IO | JSON::Builder) : Nil
       @history.to_json(io)

@@ -82,6 +82,79 @@ module LLM
       @branch_index = @messages.size
     end
 
+    # Roll back history to the start of the current/last turn, dropping the user prompt
+    # and all subsequent messages in that turn.
+    def rollback_last_turn : Bool
+      ex_user_index = @messages.rindex do |msg|
+        msg.message.is_a? Message::MultiContent
+      end
+      return false if ex_user_index.nil?
+
+      @messages = @messages[0, ex_user_index]
+      true
+    end
+
+    # Clean up an interrupted turn in history by synthesizing missing tool call responses
+    # for any unfulfilled tool calls in the last assistant response, and optionally
+    # appending a final assistant response message if the turn ended on a user prompt or tool call.
+    def cleanup_interrupted_turn(tool_cancel_message : String = "Execution cancelled by user.",
+                                 final_response : String? = nil) : Bool
+      ex_user_index = @messages.rindex do |msg|
+        msg.message.is_a? Message::MultiContent
+      end
+      return false if ex_user_index.nil?
+
+      last_assistant_response, completed_tool_call_ids = scan_turn_messages(ex_user_index)
+      synthesize_missing_tool_calls(last_assistant_response, completed_tool_call_ids, tool_cancel_message)
+      ensure_final_assistant_response(final_response) if final_response
+
+      true
+    end
+
+    private def scan_turn_messages(ex_user_index : Int32)
+      last_assistant_response = nil.as(Message::Response?)
+      completed_ids = Set(String).new
+
+      @messages[ex_user_index..-1].each do |wrap|
+        msg = wrap.message
+        case msg
+        when Message::Response
+          last_assistant_response = msg if msg.tool_calls
+        when Message::ToolCall
+          completed_ids.add(msg.tool_call_id)
+        end
+      end
+
+      {last_assistant_response, completed_ids}
+    end
+
+    private def synthesize_missing_tool_calls(resp : Message::Response?,
+                                              completed_ids : Set(String),
+                                              tool_cancel_message : String)
+      return unless resp && (calls = resp.tool_calls)
+
+      calls.each do |call|
+        id = call.dig?("id").try(&.as_s?) || call.dig?("call_id").try(&.as_s?)
+        name = call.dig?("function", "name").try(&.as_s?) || call.dig?("name").try(&.as_s?) || "unknown_tool"
+        next if !id || completed_ids.includes?(id)
+
+        append_message(Message::ToolCall.new(tool_call_id: id, name: name, content: tool_cancel_message))
+        completed_ids.add(id)
+      end
+    end
+
+    private def ensure_final_assistant_response(final_response : String)
+      last_msg = @messages.last?.try(&.message)
+      case last_msg
+      when Message::MultiContent, Message::ToolCall
+        append_message(Message::Response.new(content: final_response, reasoning: nil))
+      when Message::Response
+        if last_msg.content.nil? || last_msg.content.try(&.empty?)
+          last_msg.content = final_response
+        end
+      end
+    end
+
     def append_message(msg : Message, usage : Usage? = nil)
       @messages << MessageWrap.new(msg, usage)
     end
