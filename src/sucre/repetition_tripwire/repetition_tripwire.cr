@@ -80,8 +80,8 @@ class RepetitionTripwire
   # once tripped (returns immediately).
   def <<(text : String) : self
     return self if @trip
-    text.each_char do |c|
-      push(c)
+    text.each_char do |char|
+      push(char)
       break if @trip
     end
     maybe_window_checks unless @trip
@@ -164,7 +164,7 @@ class RepetitionTripwire
       if matched > 0
         span = matched + p
         if span >= @min_period_span && span >= p * @min_cycles
-          unit = String.build { |s| (size - p...size).each { |j| s << @window[j] } }
+          unit = String.build { |str_io| (size - p...size).each { |j| str_io << @window[j] } }
           @trip = Trip.new(Check::Period, "#{span // p}x repetition of #{unit.inspect}")
           return
         end
@@ -179,7 +179,7 @@ class RepetitionTripwire
     size = @window.size
     return if size < @diversity_window
     distinct = Set(Char).new
-    @window.each { |c| distinct << c }
+    @window.each { |char| distinct << char }
     ratio = distinct.size.to_f / size
     if ratio < @min_diversity
       @trip = Trip.new(Check::Diversity, "#{distinct.size} distinct chars over #{size}")
