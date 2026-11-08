@@ -43,8 +43,8 @@ module Tools::FileManagement
       MAX_MATCHES_PER_FILE = 50
 
       def execute(args : JSON::Any) : String
-        files_pattern = args["files"]?.try(&.as_s?) || "*"
-        max_files = args["max_files"]?.try(&.as_i?) || MAX_FIND_FILE_MATCHES
+        files_pattern = args["files"]?.try(&.as_s?) || return error_response("Missing `files` parameter required.")
+        max_files = (args["max_files"]?.try(&.as_i?) || MAX_FIND_FILE_MATCHES).clamp(10, MAX_FIND_FILE_MATCHES)
 
         unless within_current_directory?(resolve_path(files_pattern))
           return error_response("Looking outside current directory not allowed.")
@@ -138,13 +138,17 @@ module Tools::FileManagement
       end
 
       private def success_response(matches, searched, skipped)
-        {
+        result = {
           matches:        matches,
           files_searched: searched,
           skipped_files:  skipped.size,
           # Cap the sample so a node_modules-scale glob cannot balloon the response
           skipped_sample: skipped.first(10),
         }.to_json
+        if (size = result.size) > MAX_FILESIZE
+          return error_response("Search response too big (#{size} > #{MAX_FILESIZE} bytes), narrow down the search please.")
+        end
+        result
       end
     end
   end
