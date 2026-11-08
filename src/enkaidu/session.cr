@@ -5,6 +5,7 @@ require "uuid"
 require "../llm"
 require "../tools"
 require "../sucre/thread_safe"
+require "../sucre/repetition_tripwire"
 
 require "./waiting"
 require "./about"
@@ -257,6 +258,22 @@ module Enkaidu
       opts.config.session.try(&.allow_global_state?) || false
     end
 
+    # Return based on session override
+    def repetition_tripwire? : Bool
+      case value = opts.config.session.try(&.repetition_tripwire?)
+      when Bool then value
+      else           true
+      end
+    end
+
+    getter text_tripwire = RepetitionTripwire.new
+    getter reasoning_tripwire = RepetitionTripwire.new
+
+    private def reset_tripwires : Nil
+      text_tripwire.reset
+      reasoning_tripwire.reset
+    end
+
     # Load the selected LLM's environment variable values into
     # `ENV`; call this method before initializing an LLM connection
     private def setup_envs_from_config
@@ -366,7 +383,7 @@ module Enkaidu
         io.puts "," if ix.positive?
         io.puts {{ event }}.to_json
       end
-      case type = {{ event }}["type"]
+      case type = {{ event }}[:type]
       when LLM::Event::Done
         detect_text_ending(type, prev_event)
       else
@@ -380,7 +397,7 @@ module Enkaidu
     private def detect_text_ending(curr_event_type, prev_event) : Nil
       return unless streaming?
 
-      prev_type = prev_event.try(&.["type"])
+      prev_type = prev_event.try(&.[:type])
       return unless curr_event_type != prev_type
 
       # When starting to handle a new event, check if the last event is something
@@ -395,7 +412,7 @@ module Enkaidu
 
     # Process the given event and yield tool call if any
     private def process_event(event, prev_event, &) : Nil
-      type = event["type"]
+      type = event[:type]
       return if type.debug_event?
 
       # Handle text/reasoning ending detection first
@@ -403,36 +420,63 @@ module Enkaidu
 
       case type
       when LLM::Event::ToolCallRequested
-        yield LLM::FunctionCall.from_json(event["content"])
+        yield LLM::FunctionCall.from_json(event[:content])
       when LLM::Event::CallingTool
         renderer.llm_tool_call(
-          name: event["content"].dig("name").as_s,
-          args: event["content"].dig("arguments"))
+          name: event[:content].dig("name").as_s,
+          args: event[:content].dig("arguments"))
       when LLM::Event::ReasoningEvent
-        if streaming?
-          renderer.llm_text(event["content"].as_s,
-            reasoning: true, starting: prev_event.try(&.["type"]) != type)
-        else
-          renderer.llm_text_block(event["content"].as_s, reasoning: true)
-        end
+        handle_reasoning_event(event, prev_event)
       when LLM::Event::Text
-        if streaming?
-          renderer.llm_text(event["content"].as_s,
-            reasoning: false, starting: prev_event.try(&.["type"]) != type)
-        else
-          renderer.llm_text_block(event["content"].as_s, reasoning: false)
-        end
+        handle_text_event(event, prev_event)
       when .error_event?
-        case type
-        when LLM::Event::ErrorUnknownToolCall
-          tool_name = event["content"].dig("name").as_s
-          renderer.llm_error(event, message: "The tool `#{tool_name}` is not installed.")
-        else
-          renderer.llm_error(event)
-        end
+        handle_error_event(type, event)
       when .warn_too_many_requests_delay?
         renderer.warning_with(Waiting::QUOTES.sample)
-        # renderer.warning_with("All our AIs are busy helping other humans, please hold.")
+      end
+    end
+
+    private def handle_reasoning_event(event, prev_event) : Nil
+      text = event[:content].as_s
+      if repetition_tripwire? && !text.empty?
+        reasoning_tripwire << text
+        if reasoning_tripwire.tripped?
+          trip_msg = reasoning_tripwire.trip.try(&.message) || "Reasoning loop detected"
+          raise InterruptHandler::UserInterruptError.new("Repetition tripwire tripped: #{trip_msg}")
+        end
+      end
+      if streaming?
+        renderer.llm_text(text,
+          reasoning: true, starting: prev_event.try(&.[:type]) != event[:type])
+      else
+        renderer.llm_text_block(text, reasoning: true)
+      end
+    end
+
+    private def handle_text_event(event, prev_event) : Nil
+      text = event[:content].as_s
+      if repetition_tripwire? && !text.empty?
+        text_tripwire << text
+        if text_tripwire.tripped?
+          trip_msg = text_tripwire.trip.try(&.message) || "Repetition loop detected"
+          raise InterruptHandler::UserInterruptError.new("Repetition tripwire tripped: #{trip_msg}")
+        end
+      end
+      if streaming?
+        renderer.llm_text(text,
+          reasoning: false, starting: prev_event.try(&.[:type]) != event[:type])
+      else
+        renderer.llm_text_block(text, reasoning: false)
+      end
+    end
+
+    private def handle_error_event(type, event) : Nil
+      case type
+      when LLM::Event::ErrorUnknownToolCall
+        tool_name = event[:content].dig("name").as_s
+        renderer.llm_error(event, message: "The tool `#{tool_name}` is not installed.")
+      else
+        renderer.llm_error(event)
       end
     end
 
@@ -459,7 +503,7 @@ module Enkaidu
           # cannot do this concurrently since tool calls can prompt user for input
           ncalls = chat.call_tools_and_setup_ask(calls) do |event|
             m_process_and_record_ask_event(event, prev_event)
-            prev_event = event unless event["type"].debug_event?
+            prev_event = event unless event[:type].debug_event?
           ensure
             detect_text_ending(nil, prev_event)
           end
@@ -508,6 +552,7 @@ module Enkaidu
     # Re-query LLM using current session history
     private def re_ask_sync(response_json_schema : LLM::ResponseSchema? = nil)
       Enkaidu::InterruptHandler.begin_turn
+      reset_tripwires
       recorder << "["
       # ask and handle the initial query and its events
       track_and_time("Engaging") do |progress|
@@ -525,11 +570,11 @@ module Enkaidu
           detect_text_ending(nil, prev_event)
         end
         consume_tool_calls_sync(tools, progress, response_json_schema)
-      rescue Enkaidu::InterruptHandler::UserInterruptError
-        renderer.warning_with("[Response interrupted by user]")
+      rescue ex : Enkaidu::InterruptHandler::UserInterruptError
+        renderer.warning_with("[#{ex.message}]")
         chat.interrupt_and_cleanup(
-          tool_cancel_message: "Execution cancelled by user.",
-          final_response: "[Response interrupted by user]"
+          tool_cancel_message: Enkaidu::InterruptHandler::DEFAULT_CANCEL_MSG,
+          final_response: "[#{ex.message}]"
         )
       rescue ex
         notify_unexpected_connection_error(ex)
@@ -554,6 +599,7 @@ module Enkaidu
                  response_json_schema : LLM::ResponseSchema? = nil,
                  render_query = false)
       Enkaidu::InterruptHandler.begin_turn
+      reset_tripwires
       recorder << "["
       track_and_time("Engaging") do |progress|
         tools = [] of LLM::FunctionCall
@@ -577,11 +623,11 @@ module Enkaidu
         end
         consume_tool_calls_sync(tools, progress, response_json_schema)
       end
-    rescue Enkaidu::InterruptHandler::UserInterruptError
-      renderer.warning_with("[Response interrupted by user]")
+    rescue ex : Enkaidu::InterruptHandler::UserInterruptError
+      renderer.warning_with("[#{ex.message}]")
       chat.interrupt_and_cleanup(
-        tool_cancel_message: "Execution cancelled by user.",
-        final_response: "[Response interrupted by user]"
+        tool_cancel_message: Enkaidu::InterruptHandler::DEFAULT_CANCEL_MSG,
+        final_response: "[#{ex.message}]"
       )
     rescue ex
       notify_unexpected_connection_error(ex)

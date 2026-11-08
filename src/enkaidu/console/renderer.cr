@@ -259,7 +259,12 @@ module Enkaidu::Console
     def llm_tool_call(name, args)
       puts if streaming? unless quiet?
 
-      args_json = JSON.parse(args.as_s)
+      args_json = begin
+        raw = args.as_s? || ""
+        raw.empty? ? JSON::Any.new(nil) : JSON.parse(raw)
+      rescue
+        JSON::Any.new(nil)
+      end
 
       prop_reason = args_json.dig?("reason").try(&.as_s?)
       if reason = prop_reason

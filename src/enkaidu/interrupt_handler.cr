@@ -6,6 +6,9 @@ module Enkaidu
   module InterruptHandler
     class UserInterruptError < Exception; end
 
+    DEFAULT_INTERRUPT_MSG = "Response interrupted by user."
+    DEFAULT_CANCEL_MSG    = "Execution cancelled."
+
     @@active = false
     @@interrupted = Atomic(Bool).new(false)
 
@@ -47,7 +50,7 @@ module Enkaidu
     def self.check! : Nil
       if interrupted?
         @@interrupted.set(false)
-        raise UserInterruptError.new("Response interrupted by user.")
+        raise UserInterruptError.new(DEFAULT_INTERRUPT_MSG)
       end
     end
   end

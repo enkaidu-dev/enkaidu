@@ -145,12 +145,15 @@ module Enkaidu
       # Nil and False mean no exclusion.
       getter_with_presence exclude_past_reasoning, Bool | Int32?
 
+      # Repetition tripwire enabled by default for detecting degenerate model output loops
+      getter_with_presence? repetition_tripwire, true
+
       protected def merge(from : Session)
         # Booleans
         {% for name in [
                          :streaming, :quiet, :readonly,
                          :allow_tool_discovery, :allow_sub_agents, :allow_global_state,
-                         :allow_shell_commands,
+                         :allow_shell_commands, :repetition_tripwire,
                        ] %}
         @{{ name.id }} = from.{{ (name + '?').id }} if from.{{ name.id }}_present?
         {% end %}
