@@ -291,8 +291,27 @@ module Enkaidu::Console
       end
 
       arg_map.each do |arg|
-        io.print fmt(:tool_call_arg_name, sprintf("     - %*s: ", max_arg_w, arg[:name]))
-        io.puts fmt(:tool_call_arg_value, arg[:value])
+        left = sprintf("     - %*s: ", max_arg_w, arg[:name])
+        left_size = left.size
+        empty_lines = 0
+        io.print fmt(:tool_call_arg_name, left)
+        arg[:value].lines.each_with_index do |line, i|
+          if i.zero?
+            io.print fmt(:tool_call_arg_value, line)
+          else
+            if line.strip.blank?
+              empty_lines += 1
+            else
+              if empty_lines.positive?
+                io.print " (+ #{empty_lines} empty lines)"
+              end
+              empty_lines = 0
+              io.puts
+              io.printf "%*s  ", left_size, " ", fmt(:tool_call_arg_value, line)
+            end
+          end
+        end
+        io.puts if empty_lines.zero?
       end
     end
 
