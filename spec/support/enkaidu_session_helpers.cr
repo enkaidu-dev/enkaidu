@@ -1,5 +1,12 @@
 # Minimal Session options and renderer for Wiretap-backed Enkaidu integration
 # specs. Keep this scaffold independent of CLI configuration and side effects.
+
+class EnkaiduWiretapTestProfile < Enkaidu::Env::Profile
+  def initialize
+    super(Path.new("tmp/enkaidu_profile_empty"), EnkaiduWiretapTestRenderer.new, true)
+  end
+end
+
 class EnkaiduWiretapTestOptions < Enkaidu::SessionOptions
   getter config : Enkaidu::Config
   getter provider_type : String?
@@ -27,6 +34,10 @@ class EnkaiduWiretapTestOptions < Enkaidu::SessionOptions
     "test options"
   end
 
+  def profile : Enkaidu::Env::Profile
+    @profile ||= EnkaiduWiretapTestProfile.new
+  end
+
   def error_and_exit_with(message, help)
     raise Enkaidu::UnexpectedError.new(message)
   end
@@ -36,6 +47,8 @@ end
 class EnkaiduWiretapTestRenderer < WebToolTestRenderer
   getter errors = [] of String
   getter tool_calls = [] of String
+  getter info_messages = [] of String
+  getter warnings = [] of String
 
   def error_with(message, help = nil, markdown = false) : Nil
     @errors << message.to_s
@@ -43,6 +56,14 @@ class EnkaiduWiretapTestRenderer < WebToolTestRenderer
 
   def llm_tool_call(name, args) : Nil
     @tool_calls << name.to_s
+  end
+
+  def info_with(message, help = nil, markdown = false) : Nil
+    @info_messages << message.to_s
+  end
+
+  def warning_with(message, help = nil, markdown = false) : Nil
+    @warnings << message.to_s
   end
 end
 
@@ -53,6 +74,80 @@ class EnkaiduWiretapTestSession < Enkaidu::Session
     chat.with_tool(tool)
   end
 end
+
+class EnkaiduUniqueModelTestOptions < Enkaidu::SessionOptions
+  getter config : Enkaidu::Config
+  getter provider_type : String? = "ollama"
+  getter model_name : String? = LLMSpecHelpers::MODEL
+  getter? debug = false
+  getter? stream = false
+  getter? quiet = true
+  getter? webui = false
+  getter? readonly = false
+  getter? trace_mcp = false
+  getter? cordon_confirmed : Bool? = nil
+  getter recorder_file : IO? = nil
+  getter config_for_llm : Enkaidu::Config::LLM? = nil
+
+  def initialize(@renderer : Enkaidu::SessionRenderer, yaml : String)
+    @config = Enkaidu::Config.from_yaml(yaml)
+  end
+
+  def renderer : Enkaidu::SessionRenderer
+    @renderer
+  end
+
+  def help : String
+    "test options"
+  end
+
+  def profile : Enkaidu::Env::Profile
+    @profile ||= EnkaiduWiretapTestProfile.new
+  end
+
+  def error_and_exit_with(message, help)
+    raise Enkaidu::UnexpectedError.new(message)
+  end
+end
+
+class EnkaiduRecorderTestOptions < Enkaidu::SessionOptions
+  getter config : Enkaidu::Config
+  getter provider_type : String? = "ollama"
+  getter model_name : String? = LLMSpecHelpers::MODEL
+  getter? debug = false
+  getter? stream = false
+  getter? quiet = true
+  getter? webui = false
+  getter? readonly = false
+  getter? trace_mcp = false
+  getter? cordon_confirmed : Bool? = nil
+  getter recorder_file : IO?
+  getter config_for_llm : Enkaidu::Config::LLM? = nil
+
+  def initialize(@renderer : Enkaidu::SessionRenderer, recorder_file : IO? = nil)
+    @config = Enkaidu::Config.from_yaml("")
+    @recorder_file = recorder_file
+  end
+
+  def renderer : Enkaidu::SessionRenderer
+    @renderer
+  end
+
+  def help : String
+    "test options"
+  end
+
+  def profile : Enkaidu::Env::Profile
+    @profile ||= EnkaiduWiretapTestProfile.new
+  end
+
+  def error_and_exit_with(message, help)
+    raise Enkaidu::UnexpectedError.new(message)
+  end
+end
+
+# Backward-compatible alias for specs updated from local scaffold.
+alias EnkaiduUniqueModelTestRenderer = EnkaiduWiretapTestRenderer
 
 module EnkaiduSessionWiretapHelpers
   include LLMSpecHelpers
