@@ -46,11 +46,11 @@ module LLM
   def self.connection_provider_label(connection : Connection) : String
     protocol = ":responses" if connection.protocol.responses?
     case connection
-    when LLM::OpenAI::Connection       then "openai#{protocol}"
     when LLM::Ollama::Connection       then "ollama#{protocol}"
     when LLM::AzureFoundry::Connection then "azure_foundry#{protocol}"
     when LLM::AzureOpenAI::Connection  then "azure_openai"
     when GoogleAIStudio::Connection    then "google_ai_studio"
+    when LLM::OpenAI::Connection       then "openai#{protocol}" # keep last since above are subclasses
     else
       raise Error.new("Unknown connection implementation: #{connection.class}")
     end
