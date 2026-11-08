@@ -308,14 +308,18 @@ module Enkaidu::Console
             else
               if empty_lines.positive?
                 io.print " (+ #{empty_lines} empty lines)"
+                empty_lines = 0
               end
-              empty_lines = 0
               io.puts
-              io.printf "%*s  ", left_size, " ", fmt(:tool_call_arg_value, line)
+              io.printf "%*s%s", left_size, " ", fmt(:tool_call_arg_value, line)
             end
           end
         end
-        io.puts if empty_lines.zero?
+        if empty_lines.positive?
+          io.print " (+ #{empty_lines} empty lines)"
+          empty_lines = 0
+        end
+        io.puts
       end
     end
 
