@@ -238,7 +238,7 @@ module Enkaidu
     # Return based on model settings, if any. Nil means
     # default for server.
     def temperature : Float32?
-      @model_config.try(&.settings.try(&.temperature))
+      @model_config.try(&.settings.try(&.temperature).try(&.to_f32))
     end
 
     # Return based on session override
