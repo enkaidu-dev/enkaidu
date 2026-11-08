@@ -7,7 +7,10 @@ module Tools
   module FileHelper
     DELETED_FILES_PATH          = ".deleted_files/"
     DELETED_FILES_RESOLVED_PATH = File.expand_path(DELETED_FILES_PATH)
-    MAX_FIND_FILE_MATCHES       = 1000
+    DEFAULT_SEARCH_FILE_MATCHES =  1_000
+    MAX_SEARCH_FILE_MATCHES     = 10_000
+    DEFAULT_FIND_FILE_MATCHES   =  1_000
+    MAX_FIND_FILE_MATCHES       = 10_000
 
     def resolve_path(path)
       File.expand_path(path)

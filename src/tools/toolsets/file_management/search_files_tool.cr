@@ -26,7 +26,7 @@ module Tools::FileManagement
     param "pattern_is_regex", type: Param::Type::Bool, required: false,
       description: "Optional. If true then `pattern` is used as a regular expression (e.g. `ca[a-z]+t`). Default is false (literal substring matching)."
     param "max_files", type: Param::Type::Num,
-      description: "Optional. Maximum number of files to open and search; does not limit the number of matched lines (default is #{FileHelper::MAX_FIND_FILE_MATCHES})"
+      description: "Optional. Maximum number of files to open and search; does not limit the number of matched lines (default is #{FileHelper::DEFAULT_SEARCH_FILE_MATCHES})"
 
     runner Runner
 
@@ -44,7 +44,11 @@ module Tools::FileManagement
 
       def execute(args : JSON::Any) : String
         files_pattern = args["files"]?.try(&.as_s?) || return error_response("Missing `files` parameter required.")
-        max_files = (args["max_files"]?.try(&.as_i?) || MAX_FIND_FILE_MATCHES).clamp(10, MAX_FIND_FILE_MATCHES)
+        max_files = args["max_files"]?.try(&.as_i?) || DEFAULT_SEARCH_FILE_MATCHES
+
+        if max_files > MAX_SEARCH_FILE_MATCHES
+          return error_response("Maximum files searchable cannot exceed #{MAX_SEARCH_FILE_MATCHES}")
+        end
 
         unless within_current_directory?(resolve_path(files_pattern))
           return error_response("Looking outside current directory not allowed.")
