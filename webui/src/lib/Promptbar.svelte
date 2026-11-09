@@ -14,7 +14,12 @@
   import MacroPicker from "./MacroPicker.svelte";
   import FilePicker from "./FilePicker.svelte";
 
-  let { onask = null, loading = false, closed = false } = $props();
+  let {
+    onask = null,
+    onstop = null,
+    loading = false,
+    closed = false,
+  } = $props();
   let text_area = $state<HTMLTextAreaElement | undefined>(undefined);
   let input_text = $state("");
   let root_el = $state<HTMLDivElement | null>(null);
@@ -590,6 +595,29 @@
     }
   }
 
+  // ---- Stop button -------------------------------------------------
+  // While a request is in flight the bar's right-hand corner shows a
+  // Stop button that fires `onstop` (App sends GET /api/interrupt).  The
+  // server flags the active turn, which notices at its next streamed
+  // event, replies with a warn message, and closes the prompt stream
+  // cleanly — that stream close is what flips `loading` back to false.
+  // `stopping` keeps the button from double-firing and tells the user
+  // the interrupt is already on its way; it can legitimately outlast the
+  // click, because the flag is only observed at the next streamed event
+  // (a long tool run, or a turn blocked on a dialog, holds it until the
+  // turn moves on).
+  let stopping = $state(false);
+
+  $effect(() => {
+    if (!loading) stopping = false;
+  });
+
+  function handle_stop() {
+    if (stopping) return;
+    stopping = true;
+    if (onstop) void onstop();
+  }
+
   export function focus() {
     text_area?.focus();
   }
@@ -685,13 +713,41 @@
       : 'rounded-xl'}"
   >
     {#if loading}
-      <div class="flex-1 flex items-center px-1">
+      <!-- Left: the familiar working dots plus a quiet status word.
+           Right: the Stop button takes the send button's corner — the
+           same anchor, so the hand knows where to reach while Enkaidu
+           works. It fires GET /api/interrupt; the turn replies with a
+           warn message and the stream's clean close re-enables this bar. -->
+      <div class="flex-1 flex items-center gap-3 px-1">
         <div class="flex items-center gap-1.5">
           <span class="waiting-dot" style="--i: 0"></span>
           <span class="waiting-dot" style="--i: 1"></span>
           <span class="waiting-dot" style="--i: 2"></span>
         </div>
+        <span class="text-sm text-base-content/60 select-none">
+          {stopping ? "Stopping…" : "Working"}
+        </span>
       </div>
+      <button
+        type="button"
+        disabled={stopping}
+        onclick={handle_stop}
+        title={stopping
+          ? "Interrupt requested — Enkaidu will stop at its next step"
+          : "Interrupt the current turn"}
+        aria-label="Stop the current turn"
+        class="shrink-0 h-8 px-3.5 rounded-full inline-flex items-center gap-1.5 bg-error/80 hover:bg-error text-error-content text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-default"
+      >
+        <svg
+          viewBox="0 0 24 24"
+          fill="currentColor"
+          class="w-3.5 h-3.5 shrink-0"
+          aria-hidden="true"
+        >
+          <rect x="6" y="6" width="12" height="12" rx="2" />
+        </svg>
+        Stop
+      </button>
     {:else if closed}
       <!-- Backend is shutting down: the input is gone entirely, so no prompt
            can be composed or sent. A one-line, icon-led notice tells the user
@@ -755,15 +811,22 @@
       </button>
     {/if}
   </form>
-  {#if !loading && !closed}
+  {#if !closed}
     <div
-      class="text-center text-xs text-base-content/80 mt-1 group-focus-within:opacity-0 transition-opacity"
+      class="text-center text-xs text-base-content/80 mt-1 {loading
+        ? ''
+        : 'group-focus-within:opacity-0 transition-opacity'}"
     >
-      Enter to send &bull; Shift+Enter for newline &bull; Up / Down for history
-      &bull; &#8984;K / Ctrl+K (or &#8984;R / Ctrl+R) to search history &bull;
-      &#8984;F / Ctrl+F for files
-      {#if macros.length > 0}&bull; ! for macros{/if}
-      &bull; AI can make mistakes: double-check responses.
+      {#if loading}
+        Stop interrupts the current turn &bull; AI can make mistakes:
+        double-check responses.
+      {:else}
+        Enter to send &bull; Shift+Enter for newline &bull; Up / Down for
+        history &bull; &#8984;K / Ctrl+K (or &#8984;R / Ctrl+R) to search history
+        &bull; &#8984;F / Ctrl+F for files
+        {#if macros.length > 0}&bull; ! for macros{/if}
+        &bull; AI can make mistakes: double-check responses.
+      {/if}
     </div>
   {/if}
 </div>

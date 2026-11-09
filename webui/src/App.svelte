@@ -222,6 +222,30 @@ import { run_prompt_session } from "./lib/prompt_flow";
     }
   }
 
+  // The prompt bar's Stop button: ask Enkaidu to interrupt the active
+  // turn (GET /api/interrupt — the web analogue of Ctrl+C, both funnel
+  // into InterruptHandler). The server flags the turn, which notices at
+  // its next streamed event, replies with a warn message, and closes the
+  // prompt stream cleanly. That stream close is what ends
+  // `handling_request` and re-enables the bar, so this request is short
+  // — the in-flight prompt fetch is what blocks on the stream.
+  async function on_prompt_stop() {
+    try {
+      const resp = await enkaidu_get_request("interrupt");
+      if (!resp.ok) {
+        session.add_event({
+          type: "clarion",
+          content: `Interrupt request failed (HTTP ${resp.status}).`,
+        });
+      }
+    } catch (error) {
+      session.add_event({
+        type: "clarion",
+        content: `Could not interrupt Enkaidu: ${error}`,
+      });
+    }
+  }
+
 
 </script>
 
@@ -251,6 +275,7 @@ import { run_prompt_session } from "./lib/prompt_flow";
           <Promptbar
             bind:this={prompt}
             onask={on_prompt_ask}
+            onstop={on_prompt_stop}
             loading={handling_request}
             closed={closed}
           />

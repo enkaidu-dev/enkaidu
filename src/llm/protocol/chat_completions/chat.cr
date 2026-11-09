@@ -93,7 +93,7 @@ module LLM::Protocol::ChatCompletions
           msg.usage = usage if usage
           append_message(msg)
         end
-      rescue ex
+      rescue ex : JSON::ParseException
         LLM.show_error_trace(ex, data_label: "body", data: body)
       end
     end
@@ -206,7 +206,7 @@ module LLM::Protocol::ChatCompletions
                 end
               end
             end
-          rescue ex
+          rescue ex : JSON::ParseException
             LLM.show_error_trace(ex, data_label: "line", data: line)
           end
           # A stream can end with a tool call still in flight — no trailing

@@ -3,6 +3,7 @@ require "json"
 require "baked_file_system"
 require "mime_map"
 
+require "../interrupt_handler"
 require "../../tools/file_helper"
 
 require "../../acpa"
@@ -131,6 +132,11 @@ module Enkaidu
           list.unshift(WUI::Render::SystemInfo.new(runtime))
           list.unshift(WUI::Render::SessionInfo.new(session))
           list.each { |line| resp.puts line.to_json }
+        end
+
+        web_server.get "/api/interrupt" do |_, resp|
+          int = InterruptHandler.trigger!
+          resp.puts({"interrupt_triggered": int}.to_json)
         end
 
         web_server.get "/api/drain" do |_, resp|
