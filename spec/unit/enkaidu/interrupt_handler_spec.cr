@@ -2,11 +2,11 @@ require "../../spec_helper"
 
 Spectator.describe Enkaidu::InterruptHandler do
   before_each do
-    Enkaidu::InterruptHandler.end_turn
+    Enkaidu::InterruptHandler.reset!
   end
 
   after_each do
-    Enkaidu::InterruptHandler.end_turn
+    Enkaidu::InterruptHandler.reset!
   end
 
   describe ".trigger!" do
@@ -42,6 +42,27 @@ Spectator.describe Enkaidu::InterruptHandler do
       expect do
         Enkaidu::InterruptHandler.check!
       end.not_to raise_error
+    end
+  end
+
+  describe "nested turns" do
+    it "maintains active state until outer turn ends" do
+      Enkaidu::InterruptHandler.begin_turn # Outer (depth 1)
+      expect(Enkaidu::InterruptHandler.depth).to eq(1)
+
+      Enkaidu::InterruptHandler.begin_turn # Nested (depth 2)
+      expect(Enkaidu::InterruptHandler.depth).to eq(2)
+      expect(Enkaidu::InterruptHandler.active?).to be_true
+
+      Enkaidu::InterruptHandler.end_turn # Nested finishes (depth 1)
+      expect(Enkaidu::InterruptHandler.depth).to eq(1)
+      expect(Enkaidu::InterruptHandler.active?).to be_true
+
+      expect(Enkaidu::InterruptHandler.trigger!).to be_true
+
+      Enkaidu::InterruptHandler.end_turn # Outer finishes (depth 0)
+      expect(Enkaidu::InterruptHandler.depth).to eq(0)
+      expect(Enkaidu::InterruptHandler.active?).to be_false
     end
   end
 end
