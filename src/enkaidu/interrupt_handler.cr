@@ -2,54 +2,57 @@ require "atomic"
 
 module Enkaidu
   # `InterruptHandler` coordinates signal interrupts (such as Ctrl+C / SIGINT)
-  # between the process signal handler (`Process.on_terminate`) and active session execution.
-  module InterruptHandler
+  # between process/web UI termination requests and active session stack execution.
+  class InterruptHandler
     class UserInterruptError < Exception; end
 
     DEFAULT_INTERRUPT_MSG = "Response interrupted by user."
     DEFAULT_CANCEL_MSG    = "Execution cancelled."
 
-    @@depth = Atomic(Int32).new(0)
-    @@interrupted = Atomic(Bool).new(false)
+    private getter depth_counter = Atomic(Int32).new(0)
+    private getter interrupted_flag = Atomic(Bool).new(false)
+
+    def initialize
+    end
 
     # Signal the start of a turn in session processing.
-    def self.begin_turn : Nil
-      @@interrupted.set(false)
-      @@depth.add(1)
+    def begin_turn : Nil
+      interrupted_flag.set(false)
+      depth_counter.add(1)
     end
 
     # Signal the end of a turn in session processing.
-    def self.end_turn : Nil
-      if @@depth.get > 0
-        @@depth.sub(1)
+    def end_turn : Nil
+      if depth_counter.get > 0
+        depth_counter.sub(1)
       end
-      if @@depth.get == 0
-        @@interrupted.set(false)
+      if depth_counter.get == 0
+        interrupted_flag.set(false)
       end
     end
 
     # Reset interrupt handler state.
-    def self.reset! : Nil
-      @@depth.set(0)
-      @@interrupted.set(false)
+    def reset! : Nil
+      depth_counter.set(0)
+      interrupted_flag.set(false)
     end
 
     # Returns true if a turn is currently in progress.
-    def self.active? : Bool
-      @@depth.get > 0
+    def active? : Bool
+      depth_counter.get > 0
     end
 
     # Returns current nesting depth of active turns.
-    def self.depth : Int32
-      @@depth.get
+    def depth : Int32
+      depth_counter.get
     end
 
-    # Called by `Process.on_terminate` when SIGINT is caught.
+    # Flag an interrupt on this active turn.
     # Returns true if an active turn was flagged for interrupt,
-    # or false if no turn is active (allowing the process to exit).
-    def self.trigger! : Bool
+    # or false if no turn is active.
+    def trigger! : Bool
       if active?
-        @@interrupted.set(true)
+        interrupted_flag.set(true)
         true
       else
         false
@@ -57,14 +60,14 @@ module Enkaidu
     end
 
     # Returns true if an interrupt was requested.
-    def self.interrupted? : Bool
-      @@interrupted.get
+    def interrupted? : Bool
+      interrupted_flag.get
     end
 
     # Checks if an interrupt was requested and raises `UserInterruptError` if so.
-    def self.check! : Nil
+    def check! : Nil
       if interrupted?
-        @@interrupted.set(false)
+        interrupted_flag.set(false)
         raise UserInterruptError.new(DEFAULT_INTERRUPT_MSG)
       end
     end

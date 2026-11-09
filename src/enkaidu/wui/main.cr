@@ -135,7 +135,7 @@ module Enkaidu
         end
 
         web_server.get "/api/interrupt" do |_, resp|
-          int = InterruptHandler.trigger!
+          int = runtime.trigger_interrupt!
           resp.puts({"interrupt_triggered": int}.to_json)
         end
 

@@ -33,6 +33,7 @@ module Enkaidu
     getter recorder : Recorder
     getter renderer : SessionRenderer
 
+    protected getter interrupt_handler : InterruptHandler
     protected getter opts : SessionOptions
     protected getter connection : LLM::Connection
     protected getter chat : LLM::Chat
@@ -102,7 +103,8 @@ module Enkaidu
 
     def initialize(@renderer, @opts,
                    @unique_model_name : String? = nil,
-                   load_session_io : IO? = nil)
+                   load_session_io : IO? = nil,
+                   @interrupt_handler : InterruptHandler = InterruptHandler.new)
       # Attempt to verify the session contents
       verify_loaded_session(load_session_io)
 
@@ -141,7 +143,8 @@ module Enkaidu
     # Create a new session "forked" from a given `Session` to create a duplicate session.
     def initialize(fork_from : Session,
                    keep_tools = true, keep_prompts = true, keep_history = true,
-                   system_prompt_name = nil, exclude_last_turn = false, @sub_agent = false)
+                   system_prompt_name = nil, exclude_last_turn = false, @sub_agent = false,
+                   @interrupt_handler : InterruptHandler = fork_from.interrupt_handler)
       @parent = fork_from
       @recorder = fork_from.recorder
       @opts = fork_from.opts
@@ -378,7 +381,7 @@ module Enkaidu
     end
 
     private macro m_process_and_record_ask_event(event, prev_event)
-      Enkaidu::InterruptHandler.check!
+      interrupt_handler.check!
       recorder.if_recording? do |io|
         io.puts "," if ix.positive?
         io.puts {{ event }}.to_json
@@ -551,7 +554,7 @@ module Enkaidu
 
     # Re-query LLM using current session history
     private def re_ask_sync(response_json_schema : LLM::ResponseSchema? = nil)
-      Enkaidu::InterruptHandler.begin_turn
+      interrupt_handler.begin_turn
       reset_tripwires
       recorder << "["
       # ask and handle the initial query and its events
@@ -570,17 +573,17 @@ module Enkaidu
           detect_text_ending(nil, prev_event)
         end
         consume_tool_calls_sync(tools, progress, response_json_schema)
-      rescue ex : Enkaidu::InterruptHandler::UserInterruptError
+      rescue ex : InterruptHandler::UserInterruptError
         renderer.warning_with("[#{ex.message}]")
         chat.interrupt_and_cleanup(
-          tool_cancel_message: Enkaidu::InterruptHandler::DEFAULT_CANCEL_MSG,
+          tool_cancel_message: InterruptHandler::DEFAULT_CANCEL_MSG,
           final_response: "[#{ex.message}]"
         )
       rescue ex
         notify_unexpected_connection_error(ex)
       end
     ensure
-      Enkaidu::InterruptHandler.end_turn
+      interrupt_handler.end_turn
       recorder << "]"
     end
 
@@ -598,7 +601,7 @@ module Enkaidu
     def ask_sync(query, attach : LLM::ChatInclusions? = nil,
                  response_json_schema : LLM::ResponseSchema? = nil,
                  render_query = false)
-      Enkaidu::InterruptHandler.begin_turn
+      interrupt_handler.begin_turn
       reset_tripwires
       recorder << "["
       track_and_time("Engaging") do |progress|
@@ -623,16 +626,16 @@ module Enkaidu
         end
         consume_tool_calls_sync(tools, progress, response_json_schema)
       end
-    rescue ex : Enkaidu::InterruptHandler::UserInterruptError
+    rescue ex : InterruptHandler::UserInterruptError
       renderer.warning_with("[#{ex.message}]")
       chat.interrupt_and_cleanup(
-        tool_cancel_message: Enkaidu::InterruptHandler::DEFAULT_CANCEL_MSG,
+        tool_cancel_message: InterruptHandler::DEFAULT_CANCEL_MSG,
         final_response: "[#{ex.message}]"
       )
     rescue ex
       notify_unexpected_connection_error(ex)
     ensure
-      Enkaidu::InterruptHandler.end_turn
+      interrupt_handler.end_turn
       recorder << "]"
     end
 

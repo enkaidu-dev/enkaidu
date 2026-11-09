@@ -14,8 +14,10 @@ module Enkaidu
     @session_stack = [] of Session
 
     getter name : String
+    getter interrupt_handler : InterruptHandler
 
     def initialize(@name, session : Session)
+      @interrupt_handler = session.interrupt_handler
       @session_stack.push session
     end
 

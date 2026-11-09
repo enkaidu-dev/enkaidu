@@ -9,6 +9,10 @@ module Enkaidu
 
     getter current : SessionStack
 
+    def trigger_interrupt! : Bool
+      current.interrupt_handler.trigger!
+    end
+
     # Maintain a global key/value state in memory
     getter global_state : KeyValueStore::InMemory
 

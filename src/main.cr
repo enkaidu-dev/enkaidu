@@ -24,17 +24,6 @@ module Enkaidu
         console.reset
         terminal.restore_console
       end
-
-      Process.on_terminate do |reason|
-        case reason
-        when .interrupted?
-          unless InterruptHandler.trigger!
-            ::exit
-          end
-        when .session_ended?
-          ::exit
-        end
-      end
     end
 
     def run
