@@ -272,14 +272,13 @@ module Enkaidu::Console
       else
         print fmt(:tool_call_reason, "• Calling")
       end
-
       if quiet?
         puts fmt(:tool_call_arg_name, " → #{name}")
       else
         if prop_reason
           puts fmt(:tool_call_arg_name, "\n  └─ #{name}")
         else
-          puts fmt(:tool_call_arg_name, name)
+          puts fmt(:tool_call_arg_name, " → #{name}")
         end
         render_args_as_table(args_json, STDOUT)
       end
