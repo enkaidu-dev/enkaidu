@@ -1,4 +1,4 @@
-require "../../spec_helper"
+require "../../../spec_helper"
 
 Spectator.describe RepetitionTripwire do
   subject(tripwire) { described_class.new }
