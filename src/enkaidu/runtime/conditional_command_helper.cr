@@ -17,12 +17,16 @@ module Enkaidu
         - Exit macro if given file exists and contains given string
       - `if global ns=<NAMESPACE> key=<STR> equals=<STR>`
         - Exit macro if global state key has matching value
+      - `if last_prompt_interrupt=<TARGET>`
+        - Exit macro if last prompt interrupt matched target (any, tripwire, user, none)
       - `unless file_exists=<PATH>`
         - Exit macro unless given file exists
       - `unless file=<PATH> contains=<STR>`
         - Exit macro unless given file exists and contains given string
       - `unless global ns=<NAMESPACE> key=<STR> equals=<STR>`
         - Exit macro unless global state key has matching value
+      - `unless last_prompt_interrupt=<TARGET>`
+        - Exit macro unless last prompt interrupt matched target (any, tripwire, user, none)
       HELP1
 
     # Detailed help, in Markdown
@@ -146,6 +150,34 @@ module Enkaidu
       {continue: continue, message: message}
     end
 
+    private def break_x_last_prompt_interrupt(subcon : SubConjunction, session : Session, target : String) : Continuation
+      state = session.last_prompt_interrupt
+      matched = case target.downcase
+                when "any"      then !state.none?
+                when "tripwire" then state.tripwire?
+                when "user"     then state.user?
+                when "none"     then state.none?
+                else
+                  return {continue: Continue::Abort, message: "ERROR: Unknown last_prompt_interrupt target: #{target}"}
+                end
+
+      continue = Continue::Yes
+      message = nil.as(String?)
+      case subcon
+      when .if?
+        if matched
+          continue = Continue::Break
+          message = "Break: Last prompt interrupt matched '#{target}' (#{state})"
+        end
+      when .unless?
+        unless matched
+          continue = Continue::Break
+          message = "Break: Last prompt interrupt did not match '#{target}' (#{state})"
+        end
+      end
+      {continue: continue, message: message}
+    end
+
     private SUBCONS = SubConjunction.names.map(&.downcase)
 
     # Return true to continue with next query, or
@@ -168,6 +200,11 @@ module Enkaidu
           ns: cmd.arg_named("ns").as(String),
           key: cmd.arg_named("key").as(String),
           equals: cmd.arg_named("equals").as(String))
+      when .expect?(NAME, SUBCONS, last_prompt_interrupt: String)
+        subcon = SubConjunction.parse(cmd.arg_at(1).as(String))
+        break_x_last_prompt_interrupt(subcon,
+          session_manager.current.session,
+          target: cmd.arg_named("last_prompt_interrupt").as(String))
       else
         {
           continue: Continue::Abort,

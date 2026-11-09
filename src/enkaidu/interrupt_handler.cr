@@ -6,6 +6,8 @@ module Enkaidu
   class InterruptHandler
     class UserInterruptError < Exception; end
 
+    class TripwireInterruptError < UserInterruptError; end
+
     DEFAULT_INTERRUPT_MSG = "Response interrupted by user."
     DEFAULT_CANCEL_MSG    = "Execution cancelled."
 

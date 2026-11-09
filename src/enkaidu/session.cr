@@ -19,6 +19,12 @@ require "./progress"
 require "./session/*"
 
 module Enkaidu
+  enum PromptInterruptReason
+    None
+    User
+    Tripwire
+  end
+
   class InvalidSessionData < Exception; end
 
   class InvalidSessionQuery < Exception; end
@@ -32,6 +38,7 @@ module Enkaidu
   class Session
     getter recorder : Recorder
     getter renderer : SessionRenderer
+    getter last_prompt_interrupt : PromptInterruptReason = PromptInterruptReason::None
 
     protected getter interrupt_handler : InterruptHandler
     protected getter opts : SessionOptions
@@ -150,6 +157,7 @@ module Enkaidu
       @opts = fork_from.opts
       @renderer = fork_from.renderer
       @connection = fork_from.connection
+      @last_prompt_interrupt = fork_from.last_prompt_interrupt
       @system_prompts = fork_from.system_prompts.dup
 
       override_sys_prompt = if system_prompt_name
@@ -414,7 +422,7 @@ module Enkaidu
     end
 
     # Process the given event and yield tool call if any
-    private def process_event(event, prev_event, &) : Nil
+    protected def process_event(event, prev_event, &) : Nil
       type = event[:type]
       return if type.debug_event?
 
@@ -445,7 +453,7 @@ module Enkaidu
         reasoning_tripwire << text
         if reasoning_tripwire.tripped?
           trip_msg = reasoning_tripwire.trip.try(&.message) || "Reasoning loop detected"
-          raise InterruptHandler::UserInterruptError.new("Repetition tripwire tripped: #{trip_msg}")
+          raise InterruptHandler::TripwireInterruptError.new("Repetition tripwire tripped: #{trip_msg}")
         end
       end
       if streaming?
@@ -462,7 +470,7 @@ module Enkaidu
         text_tripwire << text
         if text_tripwire.tripped?
           trip_msg = text_tripwire.trip.try(&.message) || "Repetition loop detected"
-          raise InterruptHandler::UserInterruptError.new("Repetition tripwire tripped: #{trip_msg}")
+          raise InterruptHandler::TripwireInterruptError.new("Repetition tripwire tripped: #{trip_msg}")
         end
       end
       if streaming?
@@ -539,7 +547,7 @@ module Enkaidu
       end
     end
 
-    private def check_and_show_progress(event, progress)
+    protected def check_and_show_progress(event, progress)
       case event[:type]
       when .receiving_tool_call?
         progress.label = "Receiving #{event[:content]}(~)"
@@ -554,6 +562,7 @@ module Enkaidu
 
     # Re-query LLM using current session history
     private def re_ask_sync(response_json_schema : LLM::ResponseSchema? = nil)
+      @last_prompt_interrupt = PromptInterruptReason::None
       interrupt_handler.begin_turn
       reset_tripwires
       recorder << "["
@@ -573,7 +582,15 @@ module Enkaidu
           detect_text_ending(nil, prev_event)
         end
         consume_tool_calls_sync(tools, progress, response_json_schema)
+      rescue ex : InterruptHandler::TripwireInterruptError
+        @last_prompt_interrupt = PromptInterruptReason::Tripwire
+        renderer.warning_with("[#{ex.message}]")
+        chat.interrupt_and_cleanup(
+          tool_cancel_message: InterruptHandler::DEFAULT_CANCEL_MSG,
+          final_response: "[#{ex.message}]"
+        )
       rescue ex : InterruptHandler::UserInterruptError
+        @last_prompt_interrupt = PromptInterruptReason::User
         renderer.warning_with("[#{ex.message}]")
         chat.interrupt_and_cleanup(
           tool_cancel_message: InterruptHandler::DEFAULT_CANCEL_MSG,
@@ -601,6 +618,7 @@ module Enkaidu
     def ask_sync(query, attach : LLM::ChatInclusions? = nil,
                  response_json_schema : LLM::ResponseSchema? = nil,
                  render_query = false)
+      @last_prompt_interrupt = PromptInterruptReason::None
       interrupt_handler.begin_turn
       reset_tripwires
       recorder << "["
@@ -626,7 +644,15 @@ module Enkaidu
         end
         consume_tool_calls_sync(tools, progress, response_json_schema)
       end
+    rescue ex : InterruptHandler::TripwireInterruptError
+      @last_prompt_interrupt = PromptInterruptReason::Tripwire
+      renderer.warning_with("[#{ex.message}]")
+      chat.interrupt_and_cleanup(
+        tool_cancel_message: InterruptHandler::DEFAULT_CANCEL_MSG,
+        final_response: "[#{ex.message}]"
+      )
     rescue ex : InterruptHandler::UserInterruptError
+      @last_prompt_interrupt = PromptInterruptReason::User
       renderer.warning_with("[#{ex.message}]")
       chat.interrupt_and_cleanup(
         tool_cancel_message: InterruptHandler::DEFAULT_CANCEL_MSG,

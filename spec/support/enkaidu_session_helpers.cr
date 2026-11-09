@@ -1,6 +1,10 @@
 # Minimal Session options and renderer for Wiretap-backed Enkaidu integration
 # specs. Keep this scaffold independent of CLI configuration and side effects.
 
+class Enkaidu::Session
+  setter last_prompt_interrupt
+end
+
 class EnkaiduWiretapTestProfile < Enkaidu::Env::Profile
   def initialize
     super(Path.new("tmp/enkaidu_profile_empty"), EnkaiduWiretapTestRenderer.new, true)
@@ -22,7 +26,7 @@ class EnkaiduWiretapTestOptions < Enkaidu::SessionOptions
   getter recorder_file : IO? = nil
   getter config_for_llm : Enkaidu::Config::LLM? = nil
 
-  def initialize(@renderer : Enkaidu::SessionRenderer, @provider_type : String)
+  def initialize(@renderer : Enkaidu::SessionRenderer, @provider_type : String, @stream : Bool = false)
     @config = Enkaidu::Config.from_yaml("")
   end
 
@@ -158,5 +162,37 @@ module EnkaiduSessionWiretapHelpers
     Wiretap::Transcript.load_or_create(transcript_name, :once).interactions.map do |interaction|
       JSON.parse(interaction.request.body.not_nil!)
     end
+  end
+end
+
+class InterruptMockSession < EnkaiduWiretapTestSession
+  def trigger_user_interrupt!
+    interrupt_handler.trigger!
+  end
+
+  def set_mock_chat(mock_chat : MockChat)
+    @chat = mock_chat
+  end
+end
+
+class MockChat < LLM::Chat
+  property? trigger_user_interrupt = false
+  property? trigger_tripwire_interrupt = false
+  property session : InterruptMockSession?
+
+  def post_session(response_schema : LLM::ResponseSchema? = nil,
+                   exclude_reasoning_in_history = false,
+                   exclude_reasoning_skip = 0,
+                   & : LLM::ChatEvent ->) : Nil
+  end
+
+  def ask(content : String, attach = nil, response_schema = nil, exclude_reasoning_in_history = false, exclude_reasoning_skip = 0, & : LLM::ChatEvent ->) : Nil
+    if trigger_user_interrupt?
+      session.try(&.trigger_user_interrupt!)
+    end
+
+    text_content = trigger_tripwire_interrupt? ? ("a" * 100) : "some text"
+    event = {type: LLM::Event::Text, content: JSON::Any.new(text_content)}
+    yield event
   end
 end
