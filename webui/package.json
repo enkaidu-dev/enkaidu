@@ -23,7 +23,7 @@
     "@vitest/coverage-v8": "^5.0.5",
     "@vitest/ui": "^5.0.5",
     "daisyui": "^5.0.50",
-    "jsdom": "^30.1.3",
+    "jsdom": "^31.0.0",
     "marked": "^18.0.2",
     "msw": "^3.0.3",
     "svelte": "^5.37.3",
