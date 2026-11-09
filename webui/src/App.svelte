@@ -271,6 +271,7 @@ import { run_prompt_session } from "./lib/prompt_flow";
             bind:this={session}
             active_file={open_file}
             on_open_file={toggle_file}
+            running={handling_request}
           />
           <Promptbar
             bind:this={prompt}

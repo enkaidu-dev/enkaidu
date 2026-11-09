@@ -121,7 +121,10 @@ describe("group_entries", () => {
     add_event(entries, pending, { type: "tool_call", subject: "t", content: "{}" });
     add_event(entries, pending, { type: "llm_text", content: "done" });
 
-    const groups = group_entries(entries);
+    // running=true makes the last-entry check the only thing that could
+    // flip active — so its staying false proves the non-groupable last
+    // entry gates it, not the running signal.
+    const groups = group_entries(entries, true);
     expect(groups).toHaveLength(2);
     const g0 = groups[0];
     expect(g0.kind).toBe("group");
@@ -132,12 +135,12 @@ describe("group_entries", () => {
     expect(groups[1].kind).toBe("standalone");
   });
 
-  it("marks trailing group as active when last entry groupable", () => {
+  it("marks trailing group as active when running and last entry groupable", () => {
     const entries: SessionEntry[] = [];
     const pending: string[] = [];
     add_event(entries, pending, { type: "llm_think", content: "t1" });
 
-    const groups = group_entries(entries);
+    const groups = group_entries(entries, true);
     expect(groups).toHaveLength(1);
     const g0 = groups[0];
     expect(g0.kind).toBe("standalone"); // single item stays standalone
@@ -146,8 +149,36 @@ describe("group_entries", () => {
     const pending2: string[] = [];
     add_event(entries2, pending2, { type: "llm_think", content: "a" });
     add_event(entries2, pending2, { type: "tool_call", subject: "x", content: "{}" });
-    const g2 = group_entries(entries2);
+    const g2 = group_entries(entries2, true);
     expect(g2[0].kind).toBe("group");
     if (g2[0].kind === "group") expect(g2[0].active).toBe(true);
+  });
+
+  it("does not pulse when the turn ends on a groupable entry (interrupt case)", () => {
+    // An interrupted turn ends with a warn message — groupable — so the
+    // old "active = last entry is groupable" heuristic left the trailing
+    // group pulsing forever. With `running` gating it, the dot stops the
+    // moment the request flag clears.
+    const entries: SessionEntry[] = [];
+    const pending: string[] = [];
+    add_event(entries, pending, { type: "llm_think", content: "planning" });
+    add_event(entries, pending, { type: "tool_call", subject: "read_file", content: "{}" });
+    add_event(entries, pending, {
+      type: "message_warn",
+      subject: "[Response interrupted by user.]",
+    });
+
+    const active = group_entries(entries, true);
+    expect(active).toHaveLength(1);
+    expect(active[0].kind).toBe("group");
+    if (active[0].kind === "group") expect(active[0].active).toBe(true);
+
+    const done = group_entries(entries, false);
+    expect(done[0].kind).toBe("group");
+    if (done[0].kind === "group") expect(done[0].active).toBe(false);
+  });
+
+  it("returns no groups when empty even while running", () => {
+    expect(group_entries([], true)).toEqual([]);
   });
 });

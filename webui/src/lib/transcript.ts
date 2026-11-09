@@ -131,7 +131,17 @@ export type GroupedEntry =
   | { kind: "standalone"; entry: SessionEntry };
 
 // Consecutive "agent working" entries collapse into an ActivityGroup.
-export function group_entries(entries: SessionEntry[]): GroupedEntry[] {
+//
+// `running` is the true "agent is mid-run" signal (the app's in-flight
+// request flag), and it gates the trailing group's `active` — which drives
+// the pulsing step dot.  Inferring "mid-run" from the last entry's type
+// alone is wrong: a turn that *ends* on a groupable entry (an interrupt's
+// warn message, or a dropped connection that leaves a think block in place)
+// would pulse forever, so the type only matters while `running` is true.
+export function group_entries(
+  entries: SessionEntry[],
+  running: boolean,
+): GroupedEntry[] {
   const result: GroupedEntry[] = [];
   let current: SessionEntry[] = [];
 
@@ -155,7 +165,7 @@ export function group_entries(entries: SessionEntry[]): GroupedEntry[] {
   }
 
   const lastEntry = entries.at(-1);
-  const lastActive = lastEntry ? is_groupable(lastEntry) : false;
+  const lastActive = running && (lastEntry ? is_groupable(lastEntry) : false);
   flush(lastActive);
 
   return result;

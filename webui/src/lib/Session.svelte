@@ -112,16 +112,22 @@
   let {
     active_file = null,
     on_open_file,
+    // True while a prompt request is in flight (the bar's loading flag).
+    // Gates the trailing activity group's pulsing "mid-run" dot, so a
+    // turn that ends on a groupable entry — an interrupt's warn message,
+    // a dropped connection — doesn't leave the dot pulsing forever.
+    running = false,
   }: {
     active_file?: string | null;
     on_open_file?: (path: string) => void;
+    running?: boolean;
   } = $props();
 
   // ---- Activity grouping ---------------------------------------------------
   // Consecutive "agent working" entries (think blocks, tool calls, messages)
   // are collapsed into a single ActivityGroup to keep long runs compact.
   // User queries, assistant text, alerts, and images stay standalone.
-  let grouped = $derived(group_entries(entries));
+  let grouped = $derived(group_entries(entries, running));
 
   let security_dialog_config: Common.SecurityDialogConfig = $state({
     show: false,
