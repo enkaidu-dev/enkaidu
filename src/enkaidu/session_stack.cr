@@ -14,8 +14,10 @@ module Enkaidu
     @session_stack = [] of Session
 
     getter name : String
+    getter interrupt_handler : InterruptHandler
 
     def initialize(@name, session : Session)
+      @interrupt_handler = session.interrupt_handler
       @session_stack.push session
     end
 
@@ -28,13 +30,15 @@ module Enkaidu
     end
 
     def push_session(keep_tools = true, keep_prompts = true, keep_history = true,
-                     system_prompt_name : String? = nil, exclude_last_turn = false) : Nil
+                     system_prompt_name : String? = nil, exclude_last_turn = false,
+                     sub_agent = false) : Nil
       @session_stack.push Session.new(fork_from: session,
         keep_tools: keep_tools,
         keep_prompts: keep_prompts,
         keep_history: keep_history,
         system_prompt_name: system_prompt_name,
-        exclude_last_turn: exclude_last_turn)
+        exclude_last_turn: exclude_last_turn,
+        sub_agent: sub_agent)
     end
 
     def pop_session_with_transformed_response(prompt_prefix : String, new_response : String, replace : Bool = false, &)

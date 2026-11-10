@@ -1,11 +1,25 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { PromptHistory } from "./prompt_history";
+  import {
+    macro_filter_text,
+    macro_picker_state,
+    is_path_token_char,
+    path_token_at_caret,
+    is_path_like,
+    filter_macros,
+    type PromptMacro as Macro,
+  } from "./prompt_tokens";
   import HistorySearch from "./HistorySearch.svelte";
   import MacroPicker from "./MacroPicker.svelte";
   import FilePicker from "./FilePicker.svelte";
 
-  let { onask = null, loading = false, closed = false } = $props();
+  let {
+    onask = null,
+    onstop = null,
+    loading = false,
+    closed = false,
+  } = $props();
   let text_area = $state<HTMLTextAreaElement | undefined>(undefined);
   let input_text = $state("");
   let root_el = $state<HTMLDivElement | null>(null);
@@ -18,10 +32,12 @@
   let history_version = $state(0);
 
   // Load history from server once on mount
-  $effect(() => {
-    history.loadFromServer().then(() => {
+  onMount(() => {
+    const unsubscribe = history.on_change(() => {
       history_version++;
     });
+    void history.loadFromServer();
+    return unsubscribe;
   });
 
   let live_entries = $derived.by(() => {
@@ -49,7 +65,6 @@
     return () => ro.disconnect();
   });
 
-  type Macro = { name: string; description: string; category: string };
   type AllMacros = Macro[];
 
   let host = $state("(host)");
@@ -106,13 +121,7 @@
   // whitespace (args live past it).  Empty filter shows the top macros.
   // Keeping it name-only stops an arg edit from reshuffling the filtered list
   // / jumping the highlighted row.
-  let macro_filter = $derived.by(() => {
-    const t = input_text;
-    if (!t.startsWith("!")) return "";
-    const rest = t.slice(1);
-    const ws = rest.search(/[ \t\n]/);
-    return ws === -1 ? rest : rest.slice(0, ws);
-  });
+  let macro_filter = $derived(macro_filter_text(input_text));
 
   // Decide open/close from the caret's position relative to the name token.
   // Open while the caret is on or within the name; closed once it lands in the
@@ -125,31 +134,21 @@
       macro_dismissed = false;
       return;
     }
-    if (macro_dismissed) {
-      macro_picker_open = false;
-      return;
-    }
     const ta = text_area;
     const caret = ta ? (ta.selectionStart ?? 0) : input_text.length;
-    const rest = input_text.slice(1);
-    const ws = rest.search(/[ \t\n]/);
-    const nameEnd = ws === -1 ? input_text.length : 1 + ws;
-    macro_picker_open = caret <= nameEnd;
+    const state = macro_picker_state(
+      input_text,
+      macros.length,
+      macro_dismissed,
+      caret,
+    );
+    macro_picker_open = state.open;
+    macro_dismissed = state.dismissed;
   }
 
-  let macro_matches = $derived.by(() => {
-    if (!macro_picker_open || macros.length === 0) return [] as Macro[];
-    const q = macro_filter.trim().toLowerCase();
-    if (!q) return macros.slice(0, 20);
-    return macros
-      .filter(
-        (m) =>
-          m.name.toLowerCase().includes(q) ||
-          m.description.toLowerCase().includes(q) ||
-          m.category.toLowerCase().includes(q),
-      )
-      .slice(0, 20);
-  });
+  let macro_matches = $derived(
+    filter_macros(macros, macro_filter, macro_picker_open),
+  );
 
   // Reset to the top of the filtered list whenever the filter text
   // changes so a narrowing query doesn't leave a stale highlight.
@@ -307,7 +306,6 @@
     history.push(text);
     // sync to server asynchronously, fire-and-forget
     history.syncToServer([text]).catch(() => {});
-    history_version++;
   }
 
   // ---- Prompt-history search (Spotlight-style) ----------------------
@@ -366,6 +364,24 @@
   // blur) and cleared by the next typed character — mirrors `macro_dismissed` so
   // a cancel doesn't re-pop the picker on the next caret move.
   let filepick_dismissed = $state(false);
+
+  // While any overlay is open, keep Tab from leaving it: without a real
+  // browser dialog's focus lock, Tab would walk out of the card into the
+  // prompt textarea behind it, and subsequent keystrokes would be
+  // interpreted as prompt commands.  Esc/backdrop/click still dismiss.
+  $effect(() => {
+    const modal_open =
+      hsearch_open || macro_picker_open || filepick_open;
+    if (!modal_open) return;
+    function guard(event: KeyboardEvent) {
+      if (event.key === "Tab") {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+    }
+    window.addEventListener("keydown", guard, true);
+    return () => window.removeEventListener("keydown", guard, true);
+  });
 
   // Open the picker with an explicit anchor + seed.  The `anchor` is the span
   // in the textarea that a *file* pick replaces; the `seed` pre-fills the
@@ -426,60 +442,14 @@
   // Called from auto_grow (typing) and onselect (caret moves); both clear the
   // short-lived `filepick_dismissed` first (auto_grow) / respect it (here), so
   // a cancel (Esc / backdrop / blur) won't re-pop on the next caret move.
-  function is_path_token_char(code: number): boolean {
-    return (
-      (code >= 48 && code <= 57) || // 0-9
-      (code >= 65 && code <= 90) || // A-Z
-      (code >= 97 && code <= 122) || // a-z
-      code === 46 || // .
-      code === 95 || // _
-      code === 45 || // -
-      code === 47 // /
-    );
-  }
-
-  // Is a token "path-like" — contains a `/` or starts with `./` / `/` (a
-  // relative-dot or an absolute path).  A bare filename or an ordinary word
-  // doesn't qualify, so ⌘F in plain text stays a free-form empty picker instead
-  // of seeding junk.
-  function is_path_like(token: string): boolean {
-    return (
-      token.includes("/") || token.startsWith("./") || token.startsWith("/")
-    );
-  }
-
-  // The full path token the caret sits on, scanned in *both* directions from
-  // the caret — back over the segments before it and forward over the segments
-  // after it.  Scanning forward is what makes ⌘F pressed in the *middle* of a
-  // path capture the whole token, so a pick replaces the entire path rather
-  // than only the part before the caret.  The `./` typing trigger is unaffected:
-  // there the caret is at the end of the just-typed text, so the forward scan
-  // finds nothing and the anchor is just the typed token.  Shared by both the
-  // `./` trigger and the ⌘F "use the path under the caret" open.
-  function path_token_at_caret(ta: HTMLTextAreaElement): {
-    start: number;
-    end: number;
-    token: string;
-  } {
-    // Read from the live element (the source of truth), not the input_text
-    // mirror.
-    const value = ta.value;
-    const caret = ta.selectionStart ?? value.length;
-    let start = caret;
-    while (start > 0 && is_path_token_char(value.charCodeAt(start - 1)))
-      start--;
-    let end = caret;
-    while (end < value.length && is_path_token_char(value.charCodeAt(end)))
-      end++;
-    return { start, end, token: value.slice(start, end) };
-  }
 
   function recompute_file_picker() {
     // Only engage on a fresh type; a dismissal and an already-open picker hold.
     if (filepick_open || filepick_dismissed) return;
     const ta = text_area;
     if (!ta) return;
-    const { start, end, token } = path_token_at_caret(ta);
+    const caret = ta.selectionStart ?? ta.value.length;
+    const { start, end, token } = path_token_at_caret(ta.value, caret);
     // Open only on a `./`-prefixed token that the just-typed `/` closed — so a
     // following filename letter doesn't re-fire it and a `!` token never
     // contends with the macro picker.
@@ -568,9 +538,9 @@
       // pick splices over the *entire* token; off a path, start empty and
       // insert at the caret (a zero-width anchor, so the surrounding text is
       // untouched).
-      const { start, end, token } = path_token_at_caret(textarea);
-      const on_path = is_path_like(token);
       const caret = textarea.selectionStart ?? textarea.value.length;
+      const { start, end, token } = path_token_at_caret(textarea.value, caret);
+      const on_path = is_path_like(token);
       open_file_picker_inplace(
         on_path ? start : caret,
         on_path ? end : caret,
@@ -625,6 +595,29 @@
     }
   }
 
+  // ---- Stop button -------------------------------------------------
+  // While a request is in flight the bar's right-hand corner shows a
+  // Stop button that fires `onstop` (App sends GET /api/interrupt).  The
+  // server flags the active turn, which notices at its next streamed
+  // event, replies with a warn message, and closes the prompt stream
+  // cleanly — that stream close is what flips `loading` back to false.
+  // `stopping` keeps the button from double-firing and tells the user
+  // the interrupt is already on its way; it can legitimately outlast the
+  // click, because the flag is only observed at the next streamed event
+  // (a long tool run, or a turn blocked on a dialog, holds it until the
+  // turn moves on).
+  let stopping = $state(false);
+
+  $effect(() => {
+    if (!loading) stopping = false;
+  });
+
+  function handle_stop() {
+    if (stopping) return;
+    stopping = true;
+    if (onstop) void onstop();
+  }
+
   export function focus() {
     text_area?.focus();
   }
@@ -668,7 +661,7 @@
   {#if hsearch_open && !loading && !closed}
     <div
       class="fixed inset-0 z-50 flex items-end justify-center px-4 pb-[calc(var(--promptbar-h)+12px)] bg-base-100/40 backdrop-blur-[2px]"
-      role="presentation"
+      role="dialog" aria-modal="true" tabindex="-1"
       onpointerdown={(e) => {
         if (e.target === e.currentTarget) on_history_select(null);
       }}
@@ -682,7 +675,7 @@
   {#if macro_picker_open && !loading && !closed && !hsearch_open && !filepick_open}
     <div
       class="fixed inset-0 z-50 flex items-end justify-center px-4 pb-[calc(var(--promptbar-h)+12px)] bg-base-100/40 backdrop-blur-[2px]"
-      role="presentation"
+      role="dialog" aria-modal="true" tabindex="-1"
       onpointerdown={(e) => {
         if (e.target === e.currentTarget) {
           close_macro_picker();
@@ -704,7 +697,7 @@
   {#if filepick_open && !loading && !closed}
     <div
       class="fixed inset-0 z-50 flex items-end justify-center px-4 pb-[calc(var(--promptbar-h)+12px)] bg-base-100/40 backdrop-blur-[2px]"
-      role="presentation"
+      role="dialog" aria-modal="true" tabindex="-1"
       onpointerdown={(e) => {
         if (e.target === e.currentTarget) on_file_select(null);
       }}
@@ -720,13 +713,41 @@
       : 'rounded-xl'}"
   >
     {#if loading}
-      <div class="flex-1 flex items-center px-1">
+      <!-- Left: the familiar working dots plus a quiet status word.
+           Right: the Stop button takes the send button's corner — the
+           same anchor, so the hand knows where to reach while Enkaidu
+           works. It fires GET /api/interrupt; the turn replies with a
+           warn message and the stream's clean close re-enables this bar. -->
+      <div class="flex-1 flex items-center gap-3 px-1">
         <div class="flex items-center gap-1.5">
           <span class="waiting-dot" style="--i: 0"></span>
           <span class="waiting-dot" style="--i: 1"></span>
           <span class="waiting-dot" style="--i: 2"></span>
         </div>
+        <span class="text-sm text-base-content/60 select-none">
+          {stopping ? "Stopping…" : "Working"}
+        </span>
       </div>
+      <button
+        type="button"
+        disabled={stopping}
+        onclick={handle_stop}
+        title={stopping
+          ? "Interrupt requested — Enkaidu will stop at its next step"
+          : "Interrupt the current turn"}
+        aria-label="Stop the current turn"
+        class="shrink-0 h-8 px-3.5 rounded-full inline-flex items-center gap-1.5 bg-error/80 hover:bg-error text-error-content text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-default"
+      >
+        <svg
+          viewBox="0 0 24 24"
+          fill="currentColor"
+          class="w-3.5 h-3.5 shrink-0"
+          aria-hidden="true"
+        >
+          <rect x="6" y="6" width="12" height="12" rx="2" />
+        </svg>
+        Stop
+      </button>
     {:else if closed}
       <!-- Backend is shutting down: the input is gone entirely, so no prompt
            can be composed or sent. A one-line, icon-led notice tells the user
@@ -790,15 +811,22 @@
       </button>
     {/if}
   </form>
-  {#if !loading && !closed}
+  {#if !closed}
     <div
-      class="text-center text-xs text-base-content/80 mt-1 group-focus-within:opacity-0 transition-opacity"
+      class="text-center text-xs text-base-content/80 mt-1 {loading
+        ? ''
+        : 'group-focus-within:opacity-0 transition-opacity'}"
     >
-      Enter to send &bull; Shift+Enter for newline &bull; Up / Down for history
-      &bull; &#8984;K / Ctrl+K (or &#8984;R / Ctrl+R) to search history &bull;
-      &#8984;F / Ctrl+F for files
-      {#if macros.length > 0}&bull; ! for macros{/if}
-      &bull; AI can make mistakes: double-check responses.
+      {#if loading}
+        Stop interrupts the current turn &bull; AI can make mistakes:
+        double-check responses.
+      {:else}
+        Enter to send &bull; Shift+Enter for newline &bull; Up / Down for
+        history &bull; &#8984;K / Ctrl+K (or &#8984;R / Ctrl+R) to search history
+        &bull; &#8984;F / Ctrl+F for files
+        {#if macros.length > 0}&bull; ! for macros{/if}
+        &bull; AI can make mistakes: double-check responses.
+      {/if}
     </div>
   {/if}
 </div>

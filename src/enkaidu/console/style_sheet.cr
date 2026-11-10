@@ -41,7 +41,8 @@ module Enkaidu::Console
     SessionOpen
     SessionClose
     ToolCallReason
-    ToolCallDetail
+    ToolCallArgName
+    ToolCallArgValue
     ThinkingProgress
     ThinkingContent
     McpAction
@@ -143,7 +144,8 @@ module Enkaidu::Console
         add :session_open, {fg: :white}
         add :session_close, {fg: :white}
         add :tool_call_reason, {fg: :cyan}
-        add :tool_call_detail, {fg: :light_cyan, format: [:italic]}
+        add :tool_call_arg_name, {fg: :light_cyan, format: [:italic]}
+        add :tool_call_arg_value, {fg: :cyan, format: [:italic]}
         add :thinking_progress, {fg: :dark_gray, format: [:italic]}
         add :thinking_content, {fg: :dark_gray, format: [:italic]}
         add :prompt_question, {fg: :cyan}

@@ -2,10 +2,17 @@ require "http/client"
 require "uri"
 require "sync/exclusive"
 require "./chat"
+require "./protocol_kind"
 
 module LLM
   # Error raised by connection when protocol needs an API key
   class MissingAPIKey < Exception; end
+
+  # Error raised when we get a 429
+  class TooManyRequests < Exception; end
+
+  # Default to 30s, overridable via env var
+  RATE_CONTROL_DELAY = (ENV.fetch("ENKAIDU_RATE_CONTROL_DELAY", nil).try(&.to_i?) || 30).seconds
 
   # `Connection` is an abstract class that defines the basic structure
   # for chat connection implementations.
@@ -25,8 +32,9 @@ module LLM
       @sync ||= connect
     end
 
-    private def attempt_post_and_stream(body, session_id : String? = nil, &)
+    private def attempt_post_and_stream(body, session_id : String? = nil, path : String? = nil, &)
       sync.lock do |client|
+        resolved_path = path || self.path
         h = headers
         if sid = session_id
           h[Connection.http_session_id_key] = sid
@@ -35,10 +43,10 @@ module LLM
           h["User-Agent"] = ua
         end
         if TRACE
-          STDERR.puts ">>> POST #{path}"
+          STDERR.puts ">>> POST #{resolved_path}"
           STDERR.puts ">>> #{h}"
         end
-        client.post(path, headers: h, body: body) do |resp|
+        client.post(resolved_path, headers: h, body: body) do |resp|
           yield resp
           resp # Always return the response at end of streaming handler block
         end
@@ -49,13 +57,19 @@ module LLM
       end
     end
 
-    protected def post_and_stream(body, session_id : String? = nil, &)
+    protected def post_and_stream(body, session_id : String? = nil, path : String? = nil, &)
       STDERR.puts ">>> --- first try" if TRACE
       retry = false
+      rate_control_delays = 0
       begin
-        attempt_post_and_stream(body, session_id) { |resp| yield resp }
-      rescue
+        attempt_post_and_stream(body, session_id, path) { |resp| yield resp }
+      rescue ex
         retry = true
+        if ex.is_a? TooManyRequests
+          rate_control_delays = 1
+          STDERR.puts ">~< Too many requests, sleeping for 30s before retry" if TRACE
+          sleep RATE_CONTROL_DELAY
+        end
       end
       # One retry allowed when an IO error occurs.
       # Usually IO errors cannot be retried away.
@@ -63,10 +77,27 @@ module LLM
       #   keep-alive for connections which can only be overcome
       #   by retrying at least once.
       if retry
-        STDERR.puts ">>> --- the one and only retry".colorize(:red) if TRACE
-        attempt_post_and_stream(body, session_id) { |resp| yield resp }
+        retry = false
+        begin
+          STDERR.puts ">>> --- the one and only retry".colorize(:red) if TRACE
+          attempt_post_and_stream(body, session_id, path) { |resp| yield resp }
+        rescue TooManyRequests
+          rate_control_delays += 1
+          retry = true
+          STDERR.puts ">~< Too many requests, sleeping for 30s before retry" if TRACE
+          sleep RATE_CONTROL_DELAY
+        end
+      end
+
+      # This is a weird second retry IFF `TooManyRequests` occurs on the
+      # the second retry but not the
+      if retry && rate_control_delays == 1
+        STDERR.puts ">>> --- ok, ok, the last one, rate-control-delay retry".colorize(:red) if TRACE
+        attempt_post_and_stream(body, session_id, path) { |resp| yield resp }
       end
     end
+
+    abstract def protocol : ProtocolKind
 
     protected abstract def url : String
 
@@ -74,7 +105,18 @@ module LLM
 
     protected abstract def headers : HTTP::Headers
 
-    abstract def new_chat(&) : Chat
+    # The concrete `Chat` implementation to instantiate for the given protocol.
+    # `protocol` may be passed explicitly (compatibility override, e.g. forcing
+    # ChatCompletions on an OpenAI-compatible backend); `nil` selects the
+    # connection's declared (highest-fidelity) protocol.
+    def new_chat(&) : LLM::Chat
+      chat = case protocol
+             when .responses? then LLM::Protocol::Responses::Chat.new(self)
+             else                  LLM::Protocol::ChatCompletions::Chat.new(self)
+             end
+      with chat yield
+      chat
+    end
 
     # -------
 

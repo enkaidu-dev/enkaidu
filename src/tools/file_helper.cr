@@ -7,7 +7,10 @@ module Tools
   module FileHelper
     DELETED_FILES_PATH          = ".deleted_files/"
     DELETED_FILES_RESOLVED_PATH = File.expand_path(DELETED_FILES_PATH)
-    MAX_FIND_FILE_MATCHES       = 1000
+    DEFAULT_SEARCH_FILE_MATCHES =  1_000
+    MAX_SEARCH_FILE_MATCHES     = 10_000
+    DEFAULT_FIND_FILE_MATCHES   =  1_000
+    MAX_FIND_FILE_MATCHES       = 10_000
 
     def resolve_path(path)
       File.expand_path(path)
@@ -43,6 +46,14 @@ module Tools
       matches
     end
 
+    def mkdir_and_write_file(resolved_path, content)
+      # Ensure directory-sub-tree for file exists
+      parent = Path.new(resolved_path).parent
+      Dir.mkdir_p(parent) unless Dir.exists?(parent)
+      # Create file
+      File.write(resolved_path, content)
+    end
+
     def find_files(glob_pattern : String, max = MAX_FIND_FILE_MATCHES, &)
       count = 0
       Dir.glob(glob_pattern) do |path|
@@ -69,6 +80,28 @@ module Tools
       rescue
         false
       end
+    end
+
+    def confirm_save_path(save_as_file : String?, overwrite : Bool) : String?
+      return unless save_as_file
+
+      full = resolve_path(save_as_file)
+
+      unless within_current_directory?(full)
+        raise ArgumentError.new("Access to the specified path '#{save_as_file}' is not allowed.")
+      end
+
+      if file_exists?(full)
+        if overwrite
+          if path_in_deleted_files_folder?(full)
+            raise ArgumentError.new("Cannot overwrite files in the `#{DELETED_FILES_PATH}` folder.")
+          end
+        else
+          raise ArgumentError.new("The file '#{save_as_file}' already exists.")
+        end
+      end
+
+      full
     end
 
     def valid_directory?(requested_path)

@@ -17,7 +17,7 @@ module Enkaidu
 
     # This defines the runner that is instantiated to
     # execute the function.
-    class Runner < SessionBuiltInFunction::Runner
+    class Runner < SessionBuiltInFunction::Runner(InstallToolsFunction)
       # Implement this method to handle the LLM function call, and return a
       # String with the JSON value.
       def execute(args : JSON::Any) : String

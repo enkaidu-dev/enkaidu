@@ -1,0 +1,32 @@
+{
+  "name": "ollama_responses_ask_non_streaming",
+  "recorded_with": "wiretap/0.5.0",
+  "interactions": [
+    {
+      "request": {
+        "method": "POST",
+        "url": "http://localhost:11434/v1/responses",
+        "headers": {
+          "Content-Type": "application/json",
+          "Connection": "keep-alive",
+          "Authorization": "[FILTERED]",
+          "User-Agent": "enkaidu 0.9.17-pre",
+          "Host": "localhost:11434",
+          "Accept-Encoding": "gzip, deflate"
+        },
+        "body": "{\"model\":\"gpt-oss\",\"store\":false,\"stream\":false,\"reasoning\":{\"summary\":\"auto\"},\"include\":[\"reasoning.encrypted_content\"],\"input\":[{\"type\":\"message\",\"role\":\"user\",\"content\":[{\"type\":\"input_text\",\"text\":\"Say hello, world. Reply in one short sentence.\"}]}],\"tool_choice\":\"auto\",\"tools\":[]}",
+        "body_digest": "b263855370f34f02e7965e486bc08065516e4402f6b7931d0c4c8cf2566f2962"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json",
+          "Date": "Thu, 05 Nov 2026 21:45:48 GMT",
+          "Content-Length": "1404"
+        },
+        "body": "{\"id\":\"resp_549894\",\"object\":\"response\",\"created_at\":1793915148,\"completed_at\":1793915148,\"status\":\"completed\",\"incomplete_details\":null,\"model\":\"gpt-oss\",\"previous_response_id\":null,\"instructions\":null,\"output\":[{\"id\":\"rs_resp_549894\",\"type\":\"reasoning\",\"summary\":[{\"type\":\"summary_text\",\"text\":\"User wants: \\\"Say hello, world. Reply in one short sentence.\\\" They want a one short sentence. So we reply: \\\"Hello, world!\\\" or \\\"Hello, world.\\\" Use short sentence. Ok.\"}],\"encrypted_content\":\"User wants: \\\"Say hello, world. Reply in one short sentence.\\\" They want a one short sentence. So we reply: \\\"Hello, world!\\\" or \\\"Hello, world.\\\" Use short sentence. Ok.\"},{\"id\":\"msg_694640\",\"type\":\"message\",\"status\":\"completed\",\"role\":\"assistant\",\"content\":[{\"type\":\"output_text\",\"text\":\"Hello, world.\",\"annotations\":[],\"logprobs\":[]}]}],\"error\":null,\"tools\":[],\"tool_choice\":\"auto\",\"truncation\":\"disabled\",\"parallel_tool_calls\":true,\"text\":{\"format\":{\"type\":\"text\"}},\"top_p\":1,\"presence_penalty\":0,\"frequency_penalty\":0,\"top_logprobs\":0,\"temperature\":1,\"reasoning\":{\"summary\":\"auto\"},\"usage\":{\"input_tokens\":78,\"output_tokens\":57,\"total_tokens\":135,\"input_tokens_details\":{\"cached_tokens\":0},\"output_tokens_details\":{\"reasoning_tokens\":0}},\"max_output_tokens\":null,\"max_tool_calls\":null,\"store\":false,\"background\":false,\"service_tier\":\"default\",\"metadata\":{},\"safety_identifier\":null,\"prompt_cache_key\":null}\n"
+      },
+      "recorded_at": "2026-11-05T21:45:48Z"
+    }
+  ]
+}

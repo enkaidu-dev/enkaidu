@@ -20,6 +20,8 @@ module Enkaidu
     getter renderer : SessionRenderer
     getter options : SessionOptions
 
+    delegate trigger_interrupt!, to: session_manager
+
     private getter conditional_helper = ConditionalCommandHelper.new
     private getter macro_helper
 
@@ -89,6 +91,20 @@ module Enkaidu
       # I don't like this; but for now I don't have a better way.
       # Revisit one day.
       session_manager.deploy_injected_functions(session)
+      setup_process_termination
+    end
+
+    private def setup_process_termination
+      Process.on_terminate do |reason|
+        case reason
+        when .interrupted?
+          unless trigger_interrupt!
+            ::exit
+          end
+        when .session_ended?
+          ::exit
+        end
+      end
     end
 
     def cordon_policy : Cordon::Policy

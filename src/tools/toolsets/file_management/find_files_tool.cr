@@ -21,7 +21,7 @@ module Tools::FileManagement
     param "path", required: true,
       description: "The base directory inside which this tool looks for files and directories; it is combined with `expression` to form `path/expression`, so do not repeat `path` inside `expression`."
     param "max", type: Param::Type::Num, required: false,
-      description: "Optional. Maximum number of matches to return (default is #{FileHelper::MAX_FIND_FILE_MATCHES})"
+      description: "Optional. Maximum number of matches to return (default is #{FileHelper::DEFAULT_FIND_FILE_MATCHES})"
     param "sort", type: Param::Type::Bool, required: false,
       description: "Optional. Set to false to disable sorting (default is true)"
 
@@ -38,6 +38,10 @@ module Tools::FileManagement
         return error_response("The required `path` must not be empty") if path.empty?
 
         max = args["max"]?.try(&.as_i?) || MAX_FIND_FILE_MATCHES
+        if max > MAX_FIND_FILE_MATCHES
+          return error_response("Maximum files searchable cannot exceed #{MAX_FIND_FILE_MATCHES}")
+        end
+
         sort = args["sort"]?.try(&.as_bool?)
         sort = true if sort.nil?
 
@@ -60,7 +64,11 @@ module Tools::FileManagement
 
       # Create a success response as a JSON string
       private def success_response(matches : Array(String))
-        matches.to_json
+        result = matches.to_json
+        if (size = result.size) > MAX_FILESIZE
+          return error_response("Find files response too big (#{size} > #{MAX_FILESIZE} bytes), narrow down the request please.")
+        end
+        result
       end
 
       # Create an error response as a JSON string

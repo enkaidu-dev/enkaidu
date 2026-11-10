@@ -1,0 +1,28 @@
+require "./message"
+
+module LLM
+  # Represents a tool-call result message in a request to the LLM
+  class Message::ToolCall < Message
+    ROLE = "tool"
+
+    property tool_call_id : String
+    property name : String
+    property content : String
+
+    def initialize(@tool_call_id, @name, @content)
+      @role = "tool"
+    end
+
+    # Emit this message as one or more `ChatEvent` objects
+    def emit(& : ChatEvent ->) : Nil
+      yield({
+        type:    LLM::Event::ToolCallDone,
+        content: JSON.parse({
+          "id"     => tool_call_id,
+          "name"   => name,
+          "output" => content,
+        }.to_json),
+      })
+    end
+  end
+end

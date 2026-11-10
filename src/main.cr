@@ -1,5 +1,6 @@
 require "termify"
 
+require "./enkaidu/interrupt_handler"
 require "./enkaidu/cli/*"
 require "./enkaidu/console/*"
 require "./enkaidu/wui/main"
@@ -22,14 +23,6 @@ module Enkaidu
       at_exit do
         console.reset
         terminal.restore_console
-      end
-
-      Process.on_terminate do |reason|
-        case reason
-        when .interrupted?, .session_ended?
-          # Runs at_exit handlers.
-          ::exit
-        end
       end
     end
 

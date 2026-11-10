@@ -11,6 +11,7 @@ module Enkaidu
     abstract def debug?
     abstract def stream?
     abstract def quiet?
+    abstract def trace_mcp?
     abstract def cordon_confirmed? : TernaryBool
 
     abstract def recorder_file : IO?

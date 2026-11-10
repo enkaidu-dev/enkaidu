@@ -10,12 +10,32 @@ export type PromptHistoryOptions = {
 
 export class PromptHistory {
   entries: PromptHistoryEntry[] = [];
+  private _version: number = 0;
+  private readonly _listeners: Set<() => void> = new Set();
   private _index: number = -1;
   private _previewBuffer: string | null = null;
   private readonly maxSize: number;
 
   constructor(opts: PromptHistoryOptions = {}) {
     this.maxSize = opts.maxSize ?? 100;
+  }
+
+  // Small pub/sub so this plain (non-rune) store can drive Svelte's
+  // reactivity without leaking that policy into callers.
+  on_change(listener: () => void): () => void {
+    this._listeners.add(listener);
+    return () => this._listeners.delete(listener);
+  }
+
+  get version(): number {
+    return this._version;
+  }
+
+  private bump_version(): void {
+    this._version++;
+    // Fire-and-forget (vs dispatch): listeners are synchronous state bumps.
+    // Keeping synchronous avoids a stale snapshot until next tick.
+    [...this._listeners].forEach((listener) => listener());
   }
 
   async loadFromServer(): Promise<void> {
@@ -33,6 +53,7 @@ export class PromptHistory {
       if (this.entries.length > this.maxSize) {
         this.entries = this.entries.slice(-this.maxSize);
       }
+      this.bump_version();
     } catch { }
   }
 
@@ -66,6 +87,7 @@ export class PromptHistory {
     }
     this._index = -1;
     this._previewBuffer = null;
+    this.bump_version();
   }
 
   /** Move to previous entry, returns text. Pass current draft to store preview on first navigation */
@@ -106,5 +128,6 @@ export class PromptHistory {
     this.entries = [];
     this._index = -1;
     this._previewBuffer = null;
+    this.bump_version();
   }
 }

@@ -5,6 +5,9 @@ module Enkaidu
   # user prompts within the Enkaidu application. These are callbacks from the app session
   # so that we can implement different rendering systems.
   abstract class SessionRenderer
+    # Track whether streaming is enabled or not
+    property? streaming = true
+
     # INFO alerting message
     abstract def info_with(message, help = nil, markdown = false)
     # WARN alerting message

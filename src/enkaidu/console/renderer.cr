@@ -11,7 +11,6 @@ module Enkaidu::Console
   class Renderer < SessionRenderer
     include StyleApplicator
 
-    property? streaming = true
     property? quiet = false
 
     private getter progress : Progress = Progress.new("Engaging")
@@ -255,33 +254,78 @@ module Enkaidu::Console
       puts fmt(:session_banner, SWITCHED)
     end
 
-    LLM_MAX_TOOL_CALL_ARGS_LENGTH = 90
+    LLM_MAX_TOOL_CALL_ARGS_LENGTH = 80
 
     def llm_tool_call(name, args)
       puts if streaming? unless quiet?
 
-      args_json = JSON.parse(args.as_s)
-      trim_more = name.size + 5
+      args_json = begin
+        raw = args.as_s? || ""
+        raw.empty? ? JSON::Any.new(nil) : JSON.parse(raw)
+      rescue
+        JSON::Any.new(nil)
+      end
 
       prop_reason = args_json.dig?("reason").try(&.as_s?)
       if reason = prop_reason
         print fmt(:tool_call_reason, "• #{reason}")
-        trim_more += reason.size + 2
       else
         print fmt(:tool_call_reason, "• Calling")
-        trim_more += 2
       end
-
       if quiet?
-        puts fmt(:tool_call_detail, " → #{name}")
+        puts fmt(:tool_call_arg_name, " → #{name}")
       else
-        trim_length = (LLM_MAX_TOOL_CALL_ARGS_LENGTH - trim_more).clamp(32, LLM_MAX_TOOL_CALL_ARGS_LENGTH)
-        print fmt(:tool_call_detail, "\n  └") if prop_reason
-        args_minus = args_json.as_h.select { |k, _| k != "reason" }
-        puts fmt(:tool_call_detail, "─ #{name} #{trim_text(args_minus.to_json, trim_length)}")
+        if prop_reason
+          puts fmt(:tool_call_arg_name, "\n  └─ #{name}")
+        else
+          puts fmt(:tool_call_arg_name, " → #{name}")
+        end
+        render_args_as_table(args_json, STDOUT)
       end
 
       puts unless streaming? || quiet?
+    end
+
+    private def render_args_as_table(args, io)
+      max_arg_w = 0
+      arg_map = [] of NamedTuple(name: String, value: String)
+
+      args.as_h?.try &.each_key do |name|
+        next if name == "reason"
+        max_arg_w = name.size if name.size > max_arg_w
+        val = args[name]
+        val = val.as_s? || val.to_json
+        val = trim_text(val, LLM_MAX_TOOL_CALL_ARGS_LENGTH)
+        arg_map << {name: name, value: val}
+      end
+
+      arg_map.each do |arg|
+        left = sprintf("     - %*s: ", max_arg_w, arg[:name])
+        left_size = left.size
+        empty_lines = 0
+        io.print fmt(:tool_call_arg_name, left)
+        arg[:value].lines.each_with_index do |line, i|
+          if i.zero?
+            io.print fmt(:tool_call_arg_value, line)
+          else
+            if line.strip.blank?
+              empty_lines += 1
+            else
+              if empty_lines.positive?
+                io.print " (+ #{empty_lines} empty lines)"
+                empty_lines = 0
+              end
+              io.puts
+              io.printf "%*s%s", left_size, " ", fmt(:tool_call_arg_value, line)
+            end
+          end
+        end
+        if empty_lines.positive?
+          io.print " (+ #{empty_lines} empty lines)"
+          empty_lines = 0
+        end
+        io.puts
+      end
     end
 
     def llm_error(err, message : String? = nil)
@@ -299,7 +343,6 @@ module Enkaidu::Console
         on_gather: ->(event : Termify::Markdown::GatherEvent) {
           case event.phase
           when .started?
-            puts "<#{event.phase}>"
             progress.label = case event.kind
                              in .table?      then "Receiving table"
                              in .code_block? then "Receiving code"

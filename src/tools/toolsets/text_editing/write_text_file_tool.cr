@@ -47,10 +47,7 @@ module Tools::TextEditing
 
         begin
           # Ensure directory-sub-tree for file exists
-          parent = Path.new(resolved_path).parent
-          Dir.mkdir_p(parent) unless Dir.exists?(parent)
-          # Create file
-          File.write(resolved_path, content)
+          mkdir_and_write_file(resolved_path, content)
           success_response(file_path, file_exists)
         rescue ex
           error_response("An error occurred while creating the file: #{ex.message}")

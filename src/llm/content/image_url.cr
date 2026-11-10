@@ -1,0 +1,18 @@
+require "./content"
+
+module LLM
+  # Represents image `content` within a message to the LLM
+  class Content::ImageUrl < Content
+    property image_url = {} of String => String
+
+    def initialize(url)
+      @type = "image_url"
+      @image_url["url"] = url
+    end
+
+    # Emit this content as one or more `ChatEvent` objects
+    def emit(& : ChatEvent ->) : Nil
+      yield({type: LLM::Event::QueryImageUrl, content: JSON::Any.new(@image_url["url"])})
+    end
+  end
+end
