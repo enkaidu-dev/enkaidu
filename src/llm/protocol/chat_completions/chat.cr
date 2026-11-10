@@ -38,6 +38,11 @@ module LLM::Protocol::ChatCompletions
       STDERR.puts ">>> #{body}" if TRACE
       @conn.post_and_stream(body, session_id) do |resp|
         STDERR.puts "<<< #{resp.headers}" if TRACE
+        if resp.status.too_many_requests?
+          yield warn_too_many_requests_delay(JSON::Any.new("#{resp.status_code} #{resp.status_message}"))
+          raise TooManyRequests.new(@conn.path)
+        end
+
         case resp.content_type
         when "text/event-stream" then handle_text_event_stream(resp) { |msg| yield msg }
         when "application/json"  then handle_app_json(resp) { |msg| yield msg }
