@@ -293,7 +293,8 @@ module Enkaidu::Console
       args.as_h?.try &.each_key do |name|
         next if name == "reason"
         max_arg_w = name.size if name.size > max_arg_w
-        val = args[name].to_s
+        val = args[name]
+        val = val.as_s? || val.to_json
         val = trim_text(val, LLM_MAX_TOOL_CALL_ARGS_LENGTH)
         arg_map << {name: name, value: val}
       end
