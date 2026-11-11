@@ -11,6 +11,7 @@ export type PromptHistoryOptions = {
 export class PromptHistory {
   entries: PromptHistoryEntry[] = [];
   private _version: number = 0;
+  private _idSeq: number = 0;
   private readonly _listeners: Set<() => void> = new Set();
   private _index: number = -1;
   private _previewBuffer: string | null = null;
@@ -18,6 +19,11 @@ export class PromptHistory {
 
   constructor(opts: PromptHistoryOptions = {}) {
     this.maxSize = opts.maxSize ?? 100;
+  }
+
+  private nextId(): string {
+    this._idSeq++;
+    return crypto.randomUUID?.() ?? `${Date.now()}-${this._idSeq}`;
   }
 
   // Small pub/sub so this plain (non-rune) store can drive Svelte's
@@ -43,12 +49,25 @@ export class PromptHistory {
       const res = await fetch("/api/prompt_history", { method: "GET" });
       if (!res.ok) return;
       const data: string[] = await res.json();
-      this.entries = data
-        .map((text) => ({
+      if (!Array.isArray(data)) return;
+      // Preserve any entries pushed locally before the server response arrived,
+      // deduplicating by text so local submissions stay at the most recent end.
+      const localEntries = [...this.entries];
+      const localTexts = new Set(localEntries.map((e) => e.text));
+      const now = Date.now();
+      const loaded: PromptHistoryEntry[] = [];
+      for (const raw of data) {
+        if (typeof raw !== "string") continue;
+        const text = raw.trim();
+        if (!text || localTexts.has(text)) continue;
+        localTexts.add(text);
+        loaded.push({
           text,
-          timestamp: Date.now(),
-          id: crypto.randomUUID?.() ?? String(Date.now()),
-        }));
+          timestamp: now,
+          id: this.nextId(),
+        });
+      }
+      this.entries = [...loaded, ...localEntries];
       // keep maxSize
       if (this.entries.length > this.maxSize) {
         this.entries = this.entries.slice(-this.maxSize);
@@ -79,7 +98,7 @@ export class PromptHistory {
     const entry: PromptHistoryEntry = {
       text: trimmed,
       timestamp: Date.now(),
-      id: crypto.randomUUID?.() ?? String(Date.now()),
+      id: this.nextId(),
     };
     this.entries.push(entry);
     if (this.entries.length > this.maxSize) {

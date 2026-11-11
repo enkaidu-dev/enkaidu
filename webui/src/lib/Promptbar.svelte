@@ -4,8 +4,9 @@
   import {
     macro_filter_text,
     macro_picker_state,
-    is_path_token_char,
+    apply_macro_selection,
     path_token_at_caret,
+    file_picker_trigger_at_caret,
     is_path_like,
     filter_macros,
     type PromptMacro as Macro,
@@ -158,12 +159,13 @@
   });
 
   function on_macro_select(macro: Macro) {
-    // Insert the macro name with a trailing space so the user can
-    // immediately start typing positional or named arguments.  set_value
-    // places the caret just past that trailing space — in the argument
-    // region — so recompute leaves the picker closed; re-finding happens only
-    // if the user steps the caret back into the name.
-    set_value(`!${macro.name} `);
+    // Splice the macro name in place of the leading `!name` token (preserving
+    // any existing arguments) with a trailing space so the user can immediately
+    // type or edit arguments.  set_value places the caret just past that space
+    // — in the argument region — so recompute leaves the picker closed;
+    // re-finding happens only if the user steps the caret back into the name.
+    const { value, caret } = apply_macro_selection(input_text, macro.name);
+    set_value(value, caret);
     text_area?.focus();
   }
 
@@ -365,7 +367,7 @@
   // a cancel doesn't re-pop the picker on the next caret move.
   let filepick_dismissed = $state(false);
 
-  // While any overlay is open, keep Tab from leaving it: without a real
+    //While any overlay is open, keep Tab from leaving it: without a real
   // browser dialog's focus lock, Tab would walk out of the card into the
   // prompt textarea behind it, and subsequent keystrokes would be
   // interpreted as prompt commands.  Esc/backdrop/click still dismiss.
@@ -375,8 +377,10 @@
     if (!modal_open) return;
     function guard(event: KeyboardEvent) {
       if (event.key === "Tab") {
+        // Prevent browser focus traversal out of the active picker, while still
+        // letting the target element's own keydown handler (e.g. Tab-to-complete
+        // in FilePicker or MacroPicker) run.
         event.preventDefault();
-        event.stopPropagation();
       }
     }
     window.addEventListener("keydown", guard, true);
@@ -433,15 +437,16 @@
   // The terminal's `./` + Tab completion, offered as the user types in the
   // prompt bar.  On each keystroke we back up from the caret over the *path
   // token* (a run of filename-safe characters) and open the picker seeded with
-  // that token — but only when (a) the token starts with `./` and (b) the
-  // character just typed was the `/ that closes the prefix (i.e. the token ends
-  // in `/`).  Test (b) is what keeps a following filename letter from re-firing
-  // it: as the user types `./src/mt`, only the two slashes qualify.  A `!`-
-  // prefixed token never starts with `./`, so the two pickers never contend.
+  // the prefix up to the caret — but only when (a) the token starts with `./`
+  // and (b) the character just typed at the caret was a `/` (i.e. the prefix up
+  // to the caret ends in `/`).  Test (b) is what keeps a following filename
+  // letter from re-firing it: as the user types `./src/mt`, only the two
+  // slashes qualify.  A `!`-prefixed token never starts with `./`, so the two
+  // pickers never contend.
   //
-  // Called from auto_grow (typing) and onselect (caret moves); both clear the
-  // short-lived `filepick_dismissed` first (auto_grow) / respect it (here), so
-  // a cancel (Esc / backdrop / blur) won't re-pop on the next caret move.
+  // Called only from auto_grow (typing), not onselect (caret moves), so
+  // navigating across an existing `./dir/` token with arrow keys or the mouse
+  // never steals focus to pop open the modal.
 
   function recompute_file_picker() {
     // Only engage on a fresh type; a dismissal and an already-open picker hold.
@@ -449,12 +454,9 @@
     const ta = text_area;
     if (!ta) return;
     const caret = ta.selectionStart ?? ta.value.length;
-    const { start, end, token } = path_token_at_caret(ta.value, caret);
-    // Open only on a `./`-prefixed token that the just-typed `/` closed — so a
-    // following filename letter doesn't re-fire it and a `!` token never
-    // contends with the macro picker.
-    if (token.startsWith("./") && token.endsWith("/")) {
-      open_file_picker_inplace(start, end, token);
+    const trigger = file_picker_trigger_at_caret(ta.value, caret);
+    if (trigger) {
+      open_file_picker_inplace(trigger.start, trigger.end, trigger.seed);
     }
   }
 
@@ -468,10 +470,11 @@
 
   function handle_key_event(event: KeyboardEvent) {
     if (!text_area) return;
+    if (event.isComposing || event.keyCode === 229) return;
     const textarea = text_area;
 
     // When the macro picker is open, intercept navigation keys before
-    // the general input handling so arrows/enter/esc don't fall
+    // the general input handling so arrows/enter/esc/tab don't fall
     // through to history navigation or form submission.
     if (macro_picker_open) {
       if (event.key === "Escape") {
@@ -497,12 +500,15 @@
         }
         return;
       }
-      if (event.key === "Enter" && !event.shiftKey) {
+      if (
+        (event.key === "Enter" || event.key === "Tab") &&
+        !event.shiftKey
+      ) {
         event.preventDefault();
         const selected = macro_matches[macro_sel];
         if (selected) {
           on_macro_select(selected);
-        } else {
+        } else if (event.key === "Enter") {
           // No match — dismiss so the picker does not re-pop while the user
           // keeps typing (or submits) this line.
           macro_dismissed = true;
@@ -656,11 +662,11 @@
   <!-- Spotlight-style overlay (history search): bottom-anchored 12px
        above the prompt bar (the bar publishes its live height as
        --promptbar-h on <html>, so the card tracks it), growing upward,
-       with the dimmed/blur backdrop covering the rest of the viewport.
-       Clicking the backdrop (not the card) dismisses the draft. -->
+       with a subtle dark tint (no blur) covering the viewport so the
+       underlying text stays crisp. Clicking the backdrop dismisses. -->
   {#if hsearch_open && !loading && !closed}
     <div
-      class="fixed inset-0 z-50 flex items-end justify-center px-4 pb-[calc(var(--promptbar-h)+12px)] bg-base-100/40 backdrop-blur-[2px]"
+      class="fixed inset-0 z-50 flex items-end justify-center px-4 pb-[calc(var(--promptbar-h)+12px)] bg-black/30"
       role="dialog" aria-modal="true" tabindex="-1"
       onpointerdown={(e) => {
         if (e.target === e.currentTarget) on_history_select(null);
@@ -674,7 +680,7 @@
        picker and refocuses the textarea. -->
   {#if macro_picker_open && !loading && !closed && !hsearch_open && !filepick_open}
     <div
-      class="fixed inset-0 z-50 flex items-end justify-center px-4 pb-[calc(var(--promptbar-h)+12px)] bg-base-100/40 backdrop-blur-[2px]"
+      class="fixed inset-0 z-50 flex items-end justify-center px-4 pb-[calc(var(--promptbar-h)+12px)] bg-black/30"
       role="dialog" aria-modal="true" tabindex="-1"
       onpointerdown={(e) => {
         if (e.target === e.currentTarget) {
@@ -696,7 +702,7 @@
        (leaving the draft untouched) and refocuses the textarea. -->
   {#if filepick_open && !loading && !closed}
     <div
-      class="fixed inset-0 z-50 flex items-end justify-center px-4 pb-[calc(var(--promptbar-h)+12px)] bg-base-100/40 backdrop-blur-[2px]"
+      class="fixed inset-0 z-50 flex items-end justify-center px-4 pb-[calc(var(--promptbar-h)+12px)] bg-black/30"
       role="dialog" aria-modal="true" tabindex="-1"
       onpointerdown={(e) => {
         if (e.target === e.currentTarget) on_file_select(null);
@@ -782,7 +788,6 @@
         oninput={auto_grow}
         onselect={() => {
           recompute_macro_picker();
-          recompute_file_picker();
         }}
         onblur={on_textarea_blur}
         rows="1"

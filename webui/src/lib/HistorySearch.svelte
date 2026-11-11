@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { PromptHistoryEntry } from "./prompt_history";
+  import { segments } from "./prompt_tokens";
 
   let {
     entries,
@@ -49,29 +50,12 @@
     items[sel]?.scrollIntoView({ block: "nearest" });
   });
 
-  type Segment = { text: string; hit: boolean };
-
-  function segments(text: string, needle: string): Segment[] {
-    if (!needle) return [{ text, hit: false }];
-    const lower = text.toLowerCase();
-    const out: Segment[] = [];
-    let i = 0;
-    let ix = lower.indexOf(needle);
-    while (ix !== -1) {
-      if (ix > i) out.push({ text: text.slice(i, ix), hit: false });
-      out.push({ text: text.slice(ix, ix + needle.length), hit: true });
-      i = ix + needle.length;
-      ix = lower.indexOf(needle, i);
-    }
-    if (i < text.length) out.push({ text: text.slice(i), hit: false });
-    return out;
-  }
-
   function select(entry: PromptHistoryEntry | null) {
     onselect(entry ? entry.text : null);
   }
 
   function on_key(event: KeyboardEvent) {
+    if (event.isComposing || event.keyCode === 229) return;
     // ⌘K/Ctrl+K and ⌘R/Ctrl+R while the search is open just close it
     // (never trigger the browser's address-bar/reload behavior).
     if (
@@ -115,6 +99,10 @@
      wrapper in Promptbar, so it carries its own full chrome. -->
 <div
   bind:this={panel_root}
+  role="presentation"
+  onmousedown={(e) => {
+    if (e.target !== input) e.preventDefault();
+  }}
   class="w-full max-w-xl rounded-xl border border-base-content/20 bg-base-100 shadow-2xl"
 >
   <div class="flex items-center gap-2.5 px-4 pt-3 pb-1.5 text-sm">
@@ -137,20 +125,17 @@
       bind:value={query}
       onkeydown={on_key}
       onblur={on_blur}
-      class="flex-1 bg-transparent focus:outline-none text-base-content placeholder:text-base-content/30"
+      class="flex-1 bg-transparent focus:outline-none text-base-content placeholder:text-base-content/50"
       placeholder="Search prompt history…"
       aria-label="Search prompt history"
       autocomplete="off"
       spellcheck="false"
     />
     <span
-      class="text-xs text-base-content/40 select-none"
+      class="text-xs text-base-content/65 select-none shrink-0"
       title="Matched / total entries"
     >
       {matches.length} / {entries.length}
-      <span class="hidden sm:inline">
-        · Esc to close · ↑↓ to choose · Enter to select
-      </span>
     </span>
   </div>
   {#if matches.length}
@@ -180,8 +165,15 @@
       {/each}
     </ul>
   {:else}
-    <div class="px-4 pb-2.5 text-sm text-base-content/40">
+    <div class="px-4 pb-2.5 text-sm text-base-content/65">
       No matching prompts
     </div>
   {/if}
+  <div
+    class="flex items-center justify-end gap-3 px-4 py-2 border-t border-base-content/15 text-xs text-base-content/70 select-none"
+  >
+    <span>&uarr;&darr; to navigate</span>
+    <span>Enter to select</span>
+    <span>Esc to close</span>
+  </div>
 </div>

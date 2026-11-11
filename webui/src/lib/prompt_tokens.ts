@@ -26,6 +26,30 @@ export function macro_name_end(input_text: string): number {
   return ws === -1 ? input_text.length : 1 + ws;
 }
 
+// Splice a selected macro name into `input_text`, replacing only the leading
+// `!name` token and preserving any trailing arguments. Returns the new prompt
+// string and the caret position just past the space separating the macro name
+// from its arguments (so the picker stays closed and the user can keep typing).
+export function apply_macro_selection(
+  input_text: string,
+  macro_name: string,
+): { value: string; caret: number } {
+  const prefix = `!${macro_name} `;
+  if (!input_text.startsWith("!")) {
+    return { value: prefix, caret: prefix.length };
+  }
+  const end = macro_name_end(input_text);
+  const rest = input_text.slice(end);
+  // If `rest` already starts with a space or tab, consume that single separator
+  // so we don't double-space before existing arguments; preserve a newline.
+  const trimmed_rest =
+    rest.startsWith(" ") || rest.startsWith("\t") ? rest.slice(1) : rest;
+  return {
+    value: prefix + trimmed_rest,
+    caret: prefix.length,
+  };
+}
+
 export type MacroPickerState = {
   open: boolean;
   dismissed: boolean;
@@ -78,6 +102,44 @@ export function is_path_like(token: string): boolean {
   return (
     token.includes("/") || token.startsWith("./") || token.startsWith("/")
   );
+}
+
+// Decide whether a fresh keystroke at `caret` in `value` should auto-open the
+// `./` file picker. Triggers only when the path token at the caret starts with
+// `./` and the prefix up to the caret ends with `/` (i.e. the user just typed a
+// directory-closing slash), returning the anchor span of the full token and the
+// prefix up to the caret as the seed.
+export function file_picker_trigger_at_caret(
+  value: string,
+  caret: number,
+): { start: number; end: number; seed: string } | null {
+  const { start, end, token } = path_token_at_caret(value, caret);
+  const prefix_to_caret = value.slice(start, caret);
+  if (token.startsWith("./") && prefix_to_caret.endsWith("/")) {
+    return { start, end, seed: prefix_to_caret };
+  }
+  return null;
+}
+
+export type Segment = { text: string; hit: boolean };
+
+// Split `text` into matched / unmatched segments for highlighting a
+// case-insensitive substring `needle` in picker rows.
+export function segments(text: string, needle: string): Segment[] {
+  if (!needle) return [{ text, hit: false }];
+  const lower = text.toLowerCase();
+  const needle_lower = needle.toLowerCase();
+  const out: Segment[] = [];
+  let i = 0;
+  let ix = lower.indexOf(needle_lower);
+  while (ix !== -1) {
+    if (ix > i) out.push({ text: text.slice(i, ix), hit: false });
+    out.push({ text: text.slice(ix, ix + needle_lower.length), hit: true });
+    i = ix + needle_lower.length;
+    ix = lower.indexOf(needle_lower, i);
+  }
+  if (i < text.length) out.push({ text: text.slice(i), hit: false });
+  return out;
 }
 
 export function filter_macros(
