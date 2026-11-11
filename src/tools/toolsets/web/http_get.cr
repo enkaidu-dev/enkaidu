@@ -47,17 +47,21 @@ module Tools::Web
       protected def http_get(url, headers, &)
         count_redirects = 0
         while count_redirects < MAX_REDIRECTS
-          HTTP::Client.get(url, headers) do |response|
+          get_response(url, headers) do |response|
             case response.status_code
             when 301, 307, 308
               count_redirects += 1
               url = response.headers["Location"]
-            when 200
+            else
               return yield response
             end
           end
         end
         raise Exception.new("Too many HTTP redirects; aborting")
+      end
+
+      protected def get_response(url, headers, &)
+        HTTP::Client.get(url, headers) { |response| yield response }
       end
 
       # Create an error response as a JSON string
