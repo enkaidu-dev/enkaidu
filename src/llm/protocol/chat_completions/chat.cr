@@ -68,7 +68,8 @@ module LLM::Protocol::ChatCompletions
       body = resp.body_io.gets_to_end
       begin
         data = JSON.parse(body)
-        if data["error"]?
+        raise_if_rate_limited(data) { |msg| yield msg }
+        if (err = data["error"]?) && !err.raw.nil?
           STDERR.puts "~~~ #{data}" if TRACE
           yield({type: LLM::Event::ErrorServer, content: data})
         else
@@ -100,6 +101,14 @@ module LLM::Protocol::ChatCompletions
         end
       rescue ex : JSON::ParseException
         LLM.show_error_trace(ex, data_label: "body", data: body)
+      end
+    end
+
+    private def raise_if_rate_limited(data : JSON::Any, &) : Nil
+      # Azure AI can report rate control inside a successful HTTP response.
+      if data.dig?("error", "type").try(&.as_s?.try(&.starts_with?("too_many_request")))
+        yield warn_too_many_requests_delay(data)
+        raise TooManyRequests.new(data.to_s)
       end
     end
 
@@ -173,13 +182,15 @@ module LLM::Protocol::ChatCompletions
           recent_tool_call = nil
           stream_io.each_line do |line|
             line = line.strip
-            next if line.empty?
+            next unless line.starts_with?("data:")
+            line = line.lchop("data:").lchop(" ")
 
-            if line.ends_with? "[DONE]"
+            if line == "[DONE]"
               yield({type: LLM::Event::Done, content: JSON::Any.new(nil)})
             else
               STDERR.puts "*** #{line}" if TRACE
-              data = JSON.parse(line.lchop("data: "))
+              data = JSON.parse(line)
+              raise_if_rate_limited(data) { |msg| yield msg }
               if refused = data.dig?("choices", 0, "delta", "refusal")
                 refusal ||= !refused.raw.nil?
               end
