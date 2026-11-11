@@ -84,6 +84,14 @@ module LLM
         rate_control_delays = 1
         STDERR.puts ">~< Too many requests, sleeping for 30s before retry" if TRACE
         sleep RATE_CONTROL_DELAY
+      rescue ex
+        # Handle the internal HTTP error that occurs when server
+        # stops responding but client is keeping alive
+        if ex.message.try(&.includes?("Invalid HTTP"))
+          retry = true
+        else
+          raise ex
+        end
       end
       # One retry allowed when an IO error occurs.
       # Usually IO errors cannot be retried away.
