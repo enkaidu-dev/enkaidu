@@ -69,4 +69,42 @@ Spectator.describe "Responses stream failure safety" do
     expect(events.count { |event| event[:type].done? }).to eq(1)
     expect(save_chat_json(chat)).not_to eq(before)
   end
+
+  it "warns and proceeds with completed calls when [DONE] arrives without response.completed" do
+    chat = ResponsesFailureTestChat.new(LLM::Ollama::Connection.new(LLM::ProtocolKind::Responses))
+    chat.with_tool(TestEchoTool.new)
+    chat.append_message(LLM::Message::MultiContent.new(prompt: "test"))
+    before = save_chat_json(chat)
+    calls = [] of LLM::FunctionCall
+    events = [] of LLM::ChatEvent
+    body = failure_sse(
+      %q|{"type":"response.output_text.delta","delta":"partial"}|,
+      %q|{"type":"response.output_item.added","output_index":0,"item":{"type":"function_call","call_id":"one","name":"echo","arguments":"{\"value\":\"x\"}"}}|,
+      %q|{"type":"response.output_item.done","output_index":0,"item":{"type":"function_call","call_id":"one","name":"echo","arguments":"{\"value\":\"x\"}"}}|,
+      "[DONE]",
+    )
+    chat.consume_test_stream(body) do |event|
+      events << event
+      calls << LLM::FunctionCall.from_json(event[:content]) if event[:type].tool_call_requested?
+    end
+    invoked = 0
+    chat.call_tools_and_setup_ask(calls) { |event| invoked += 1 if event[:type].calling_tool? }
+    expect(invoked).to eq(1)
+    expect(calls.size).to eq(1)
+    expect(events.count { |event| event[:type].error_unexpected? }).to eq(1)
+    expect(events.count { |event| event[:type].done? }).to eq(1)
+    expect(save_chat_json(chat)).not_to eq(before)
+  end
+
+  it "does not proceed when [DONE] arrives with an empty stream" do
+    chat = ResponsesFailureTestChat.new(LLM::Ollama::Connection.new(LLM::ProtocolKind::Responses))
+    chat.append_message(LLM::Message::MultiContent.new(prompt: "test"))
+    before = save_chat_json(chat)
+    events = [] of LLM::ChatEvent
+    body = failure_sse("[DONE]")
+    chat.consume_test_stream(body) { |event| events << event }
+    expect(events.count { |event| event[:type].error_unexpected? }).to eq(1)
+    expect(events.any? { |event| event[:type].done? }).to be_false
+    expect(save_chat_json(chat)).to eq(before)
+  end
 end
