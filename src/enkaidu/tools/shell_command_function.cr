@@ -150,7 +150,8 @@ module Enkaidu
     param "save_as_file_path_prefix", type: Param::Type::Str,
       description: <<-DESCR
         Optionally specify a file path prefix to save the output and error streams.
-        If specified, two files will be written: `{path_prefix}.stdout.txt` and `{path_prefix}.stderr.txt`.
+        If non-blank, two files will be written: `{path_prefix}_stdout.txt` and `{path_prefix}_stderr.txt`.
+        Empty or whitespace-only prefixes are ignored.
         Use the `tmp/` folder for temporary saves.
         DESCR
 
@@ -178,7 +179,7 @@ module Enkaidu
 
         save_stdout_path = nil
         save_stderr_path = nil
-        if save_as_file_prefix = args["save_as_file_path_prefix"]?.try(&.as_s?)
+        if (save_as_file_prefix = args["save_as_file_path_prefix"]?.try(&.as_s?)) && !save_as_file_prefix.strip.empty?
           begin
             overwrite = args["overwrite"]?.try(&.as_bool?) || false
             save_stdout_path = confirm_save_path("#{save_as_file_prefix}_stdout.txt", overwrite)
