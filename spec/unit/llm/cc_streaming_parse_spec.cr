@@ -308,13 +308,14 @@ Spectator.describe "LLM::Protocol::ChatCompletions::Chat streaming parse" do
       expect(events.first["content"]).to eq(payload)
 
       events.clear
-      chat.json_events(%|{"error":{"type":"server_error","message":"too_many_request is not the type"}}|) { |event| events << event }
-      expect(events.map { |event| event["type"] }).to eq([LLM::Event::ErrorServer])
+      expect do
+        chat.json_events(%|{"error":{"type":"server_error","message":"too_many_request is not the type"}}|) { |event| events << event }
+      end.to raise_error(LLM::ServerError)
+      expect(events).to be_empty
 
       events.clear
       chat.json_events(%|{"error":null,"choices":[{"message":{"content":"ok"}}]}|) { |event| events << event }
       expect(events_of(events, LLM::Event::Text).first["content"].as_s).to eq("ok")
-      expect(events_of(events, LLM::Event::ErrorServer).size).to eq(0)
       expect(events_of(events, LLM::Event::WarnTooManyRequestsDelay).size).to eq(0)
     end
   end

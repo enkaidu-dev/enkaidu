@@ -7,10 +7,10 @@ require "./protocol_kind"
 
 module LLM
   # Error raised by connection when protocol needs an API key
-  class MissingAPIKey < Exception; end
+  class MissingAPIKey < Error; end
 
   # Error raised when we get a 429
-  class TooManyRequests < Exception; end
+  class TooManyRequests < Error; end
 
   # Default to 30s, overridable via env var
   RATE_CONTROL_DELAY = (ENV.fetch("ENKAIDU_RATE_CONTROL_DELAY", nil).try(&.to_i?) || 30).seconds

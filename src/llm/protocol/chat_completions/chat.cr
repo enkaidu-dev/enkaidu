@@ -48,7 +48,7 @@ module LLM::Protocol::ChatCompletions
         when "application/json"  then handle_app_json(resp) { |msg| yield msg }
         else
           # we don't know what to do if it's not SSE or JSON
-          yield unexpected_response(resp)
+          raise UnexpectedResponseError.new(unexpected_response_data(resp))
         end
       end
     end
@@ -71,7 +71,7 @@ module LLM::Protocol::ChatCompletions
         raise_if_rate_limited(data) { |msg| yield msg }
         if (err = data["error"]?) && !err.raw.nil?
           STDERR.puts "~~~ #{data}" if TRACE
-          yield({type: LLM::Event::ErrorServer, content: data})
+          raise ServerError.new(data)
         else
           content = nil.as(String?)
           reasoning = nil.as(String?)
@@ -112,11 +112,11 @@ module LLM::Protocol::ChatCompletions
       end
     end
 
-    private def unexpected_response(resp)
-      {type: LLM::Event::ErrorUnexpected, content: JSON::Any.new(Hash{
+    private def unexpected_response_data(resp) : JSON::Any
+      JSON::Any.new(Hash{
         "headers" => JSON.parse(resp.headers.to_h.to_json),
         "body"    => JSON::Any.new(resp.body_io.gets_to_end),
-      })}
+      })
     end
 
     private def prepare_message_from(data : JSON::Any)

@@ -183,15 +183,17 @@ end
 class MockChat < LLM::Chat
   property? trigger_user_interrupt = false
   property? trigger_tripwire_interrupt = false
+  property? trigger_error = false
   property session : InterruptMockSession?
 
   def post_session(response_schema : LLM::ResponseSchema? = nil,
                    exclude_reasoning_in_history = false,
                    exclude_reasoning_skip = 0,
                    & : LLM::ChatEvent ->) : Nil
-  end
+    if trigger_error?
+      raise LLM::ServerError.new(JSON.parse(%({"error":{"message":"server failure"}})))
+    end
 
-  def ask(content : String, attach = nil, response_schema = nil, exclude_reasoning_in_history = false, exclude_reasoning_skip = 0, & : LLM::ChatEvent ->) : Nil
     if trigger_user_interrupt?
       session.try(&.trigger_user_interrupt!)
     end

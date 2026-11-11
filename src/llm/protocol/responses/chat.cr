@@ -67,7 +67,7 @@ module LLM::Protocol::Responses
         else resp_unexp = true
         end
         # We don't know what to do if it's neither SSE nor JSON.
-        yield unexpected_response(resp) if resp_unexp
+        raise UnexpectedResponseError.new(unexpected_response_data(resp)) if resp_unexp
       end
     end
 
@@ -92,25 +92,27 @@ module LLM::Protocol::Responses
           yield warn_too_many_requests_delay(data)
           raise TooManyRequests.new(body) if body.includes?("too_many_request")
 
-          yield({type: LLM::Event::ErrorServer, content: data})
+          raise ServerError.new(data)
         elsif dig_string(data, "object") == "response.error"
-          yield({type: LLM::Event::ErrorServer, content: data})
+          raise ServerError.new(data)
         else
           msg = process_responses_json(data) do |emitted|
             yield emitted
           end
           append_message msg
         end
+      rescue ex : Error
+        raise ex
       rescue ex
         LLM.show_error_trace(ex, data_label: "body", data: body)
       end
     end
 
-    private def unexpected_response(resp)
-      {type: LLM::Event::ErrorUnexpected, content: JSON::Any.new(Hash{
+    private def unexpected_response_data(resp) : JSON::Any
+      JSON::Any.new(Hash{
         "headers" => JSON.parse(resp.headers.to_h.to_json),
         "body"    => JSON::Any.new(resp.body_io.gets_to_end),
-      })}
+      })
     end
 
     private def to_body(response_schema : ResponseSchema? = nil)

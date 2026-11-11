@@ -23,6 +23,7 @@ module Enkaidu
     None
     User
     Tripwire
+    Error
   end
 
   class InvalidSessionData < Exception; end
@@ -544,10 +545,8 @@ module Enkaidu
         handle_reasoning_event(event, prev_event)
       when LLM::Event::Text
         handle_text_event(event, prev_event)
-      when .error_event?
-        handle_error_event(type, event)
-      when .warn_too_many_requests_delay?
-        renderer.warning_with(Waiting::QUOTES.sample)
+      when .warn_event?
+        handle_warn_event(type, event)
       end
     end
 
@@ -585,9 +584,11 @@ module Enkaidu
       end
     end
 
-    private def handle_error_event(type, event) : Nil
+    private def handle_warn_event(type, event) : Nil
       case type
-      when LLM::Event::ErrorUnknownToolCall
+      when LLM::Event::WarnTooManyRequestsDelay
+        renderer.warning_with(Waiting::QUOTES.sample)
+      when LLM::Event::WarnUnknownToolCall
         tool_name = event[:content].dig("name").as_s
         renderer.llm_error(event, message: "The tool `#{tool_name}` is not installed.")
       else
@@ -701,7 +702,12 @@ module Enkaidu
           final_response: "[#{ex.message}]"
         )
       rescue ex
+        @last_prompt_interrupt = PromptInterruptReason::Error
         notify_unexpected_connection_error(ex)
+        chat.interrupt_and_cleanup(
+          tool_cancel_message: InterruptHandler::DEFAULT_CANCEL_MSG,
+          final_response: "[Unexpected error: #{ex.message}]"
+        )
       end
     ensure
       interrupt_handler.end_turn
@@ -763,7 +769,12 @@ module Enkaidu
         final_response: "[#{ex.message}]"
       )
     rescue ex
+      @last_prompt_interrupt = PromptInterruptReason::Error
       notify_unexpected_connection_error(ex)
+      chat.interrupt_and_cleanup(
+        tool_cancel_message: InterruptHandler::DEFAULT_CANCEL_MSG,
+        final_response: "[Unexpected error: #{ex.message}]"
+      )
     ensure
       interrupt_handler.end_turn
       recorder << "]"

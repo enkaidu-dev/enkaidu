@@ -294,7 +294,7 @@ module LLM
     end
 
     private def unknown_tool_call(tool_call : FunctionCall)
-      {type: Event::ErrorUnknownToolCall, content: tool_call.json}
+      {type: Event::WarnUnknownToolCall, content: tool_call.json}
     end
 
     # Resubmit current session as a query to get another answer

@@ -80,13 +80,12 @@ module LLM::Protocol::Responses
                      !state.incomplete_builders? &&
                      (!content.empty? || !reasoning.empty? || !tool_calls.empty?)
       if can_continue
-        yield({type: LLM::Event::ErrorUnexpected, content: JSON::Any.new("Responses stream ended with [DONE] without a response.completed event; continuing with received events")})
+        yield({type: LLM::Event::WarnUnexpected, content: JSON::Any.new("Responses stream ended with [DONE] without a response.completed event; continuing with received events")})
         state.finalize_responses_output(nil)
         true
       else
         reason = state.done_received? ? "with [DONE] before all items completed" : "without a terminal event or [DONE]"
-        yield({type: LLM::Event::ErrorUnexpected, content: JSON::Any.new("Responses stream ended #{reason}")})
-        false
+        raise LLM::UnexpectedResponseError.new(JSON::Any.new("Responses stream ended #{reason}"))
       end
     end
 
@@ -180,7 +179,7 @@ module LLM::Protocol::Responses
         yield({type: LLM::Event::FinishReason, content: JSON::Any.new(finish)})
         state.finished = true
         state.successful = successful
-        yield({type: LLM::Event::ErrorServer, content: data}) unless successful
+        raise LLM::ServerError.new(data) unless successful
       when "response.failed", "error"
         state.finished = true
 
@@ -190,7 +189,7 @@ module LLM::Protocol::Responses
           raise TooManyRequests.new(data.to_s)
         end
 
-        yield({type: LLM::Event::ErrorServer, content: data})
+        raise LLM::ServerError.new(data)
       else
         # Unknown / ignorable event (`response.created`, `content_part.*`,
         # message/text done markers, …) — no canonical counterpart.
