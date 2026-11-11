@@ -37,7 +37,7 @@ module Enkaidu::Slash
         show_thinking_effort(session)
       elsif cmd.expect?(NAME, "set", THINK_EFFORT)
         if effort = LLM::Reasoning.parse?(cmd.arg_at?(2).try(&.to_s) || "")
-          session.chat.with_reasoning(effort)
+          session.reasoning_effort = effort
         end
         show_thinking_effort(session)
       else
@@ -48,8 +48,13 @@ module Enkaidu::Slash
     end
 
     private def show_thinking_effort(session)
-      session.renderer.respond_with(
-        "Thinking effort: #{session.chat.reasoning}")
+      reasoning = session.chat.reasoning
+      wire = session.chat.effective_reasoning_effort
+      if wire && wire != reasoning.to_s.downcase
+        session.renderer.respond_with("Thinking effort: #{reasoning} (#{wire})")
+      else
+        session.renderer.respond_with("Thinking effort: #{reasoning}")
+      end
     end
   end
 end

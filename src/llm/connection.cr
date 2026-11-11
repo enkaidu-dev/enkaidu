@@ -1,3 +1,4 @@
+require "openssl"
 require "http/client"
 require "uri"
 require "sync/exclusive"
@@ -6,10 +7,10 @@ require "./protocol_kind"
 
 module LLM
   # Error raised by connection when protocol needs an API key
-  class MissingAPIKey < Exception; end
+  class MissingAPIKey < Error; end
 
   # Error raised when we get a 429
-  class TooManyRequests < Exception; end
+  class TooManyRequests < Error; end
 
   # Default to 30s, overridable via env var
   RATE_CONTROL_DELAY = (ENV.fetch("ENKAIDU_RATE_CONTROL_DELAY", nil).try(&.to_i?) || 30).seconds
@@ -32,6 +33,20 @@ module LLM
       @sync ||= connect
     end
 
+    private def invalidate_sync
+      sync = @sync
+      @sync = nil
+      return unless sync
+
+      begin
+        sync.lock do |client|
+          client.close
+        end
+      rescue ex
+        STDERR.puts "<<close #{ex.inspect_with_backtrace}" if TRACE
+      end
+    end
+
     private def attempt_post_and_stream(body, session_id : String? = nil, path : String? = nil, &)
       sync.lock do |client|
         resolved_path = path || self.path
@@ -52,25 +67,41 @@ module LLM
         end
       rescue ex
         STDERR.puts "<<x #{ex.inspect_with_backtrace}" if TRACE
-        @sync = nil
+        invalidate_sync
         raise ex
       end
     end
 
+    # Networking IO-related exception types (not always IO::Error) that
+    # should be retried for
+    private def retryable_networking_exception?(ex : Exception)
+      ex.is_a?(IO::Error) ||
+        ex.is_a?(OpenSSL::Error) ||
+        ex.message.try(&.includes?("Invalid HTTP"))
+    end
+
+    # ameba:disable Metrics/CyclomaticComplexity
     protected def post_and_stream(body, session_id : String? = nil, path : String? = nil, &)
       STDERR.puts ">>> --- first try" if TRACE
       retry = false
       rate_control_delays = 0
       begin
         attempt_post_and_stream(body, session_id, path) { |resp| yield resp }
-      rescue ex
+      rescue TooManyRequests
         retry = true
-        if ex.is_a? TooManyRequests
-          rate_control_delays = 1
-          STDERR.puts ">~< Too many requests, sleeping for 30s before retry" if TRACE
-          sleep RATE_CONTROL_DELAY
+        rate_control_delays = 1
+        STDERR.puts ">~< Too many requests, sleeping for 30s before retry" if TRACE
+        sleep RATE_CONTROL_DELAY
+      rescue ex
+        # Handle the internal HTTP error that occurs when server
+        # stops responding but client is keeping alive
+        if retryable_networking_exception?(ex)
+          retry = true
+        else
+          raise ex
         end
       end
+
       # One retry allowed when an IO error occurs.
       # Usually IO errors cannot be retried away.
       # But "some" LLM servers seem to have a very short
@@ -82,8 +113,8 @@ module LLM
           STDERR.puts ">>> --- the one and only retry".colorize(:red) if TRACE
           attempt_post_and_stream(body, session_id, path) { |resp| yield resp }
         rescue TooManyRequests
-          rate_control_delays += 1
           retry = true
+          rate_control_delays += 1
           STDERR.puts ">~< Too many requests, sleeping for 30s before retry" if TRACE
           sleep RATE_CONTROL_DELAY
         end

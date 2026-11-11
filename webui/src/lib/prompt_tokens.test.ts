@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  apply_macro_selection,
+  file_picker_trigger_at_caret,
   filter_macros,
   is_path_like,
   is_path_token_char,
@@ -8,6 +10,7 @@ import {
   macro_name_end,
   macro_picker_state,
   path_token_at_caret,
+  segments,
   type PromptMacro,
 } from "./prompt_tokens";
 
@@ -110,5 +113,47 @@ describe("prompt token helpers", () => {
     expect(
       filter_macros(macros, "HELP", true, 20).map((m) => m.name),
     ).toEqual(["Help", "Other"]);
+  });
+
+  it("splices macro selection while preserving existing arguments", () => {
+    expect(apply_macro_selection("!hel", "help")).toEqual({
+      value: "!help ",
+      caret: 6,
+    });
+    expect(apply_macro_selection("!hel foo bar", "help")).toEqual({
+      value: "!help foo bar",
+      caret: 6,
+    });
+    expect(apply_macro_selection("!hel\nline2", "help")).toEqual({
+      value: "!help \nline2",
+      caret: 6,
+    });
+  });
+
+  it("triggers the ./ file picker only when the prefix up to the caret ends in /", () => {
+    expect(file_picker_trigger_at_caret("check ./", 8)).toEqual({
+      start: 6,
+      end: 8,
+      seed: "./",
+    });
+    expect(file_picker_trigger_at_caret("check ./src/main.cr", 12)).toEqual({
+      start: 6,
+      end: 19,
+      seed: "./src/",
+    });
+    expect(file_picker_trigger_at_caret("check ./src/main.cr", 14)).toBeNull();
+    expect(file_picker_trigger_at_caret("check ./src/", 7)).toBeNull();
+  });
+
+  it("splits text into case-insensitive highlighted segments", () => {
+    expect(segments("HistorySearch", "search")).toEqual([
+      { text: "History", hit: false },
+      { text: "Search", hit: true },
+    ]);
+    expect(segments("foo", "")).toEqual([{ text: "foo", hit: false }]);
+    expect(segments("ababa", "aba")).toEqual([
+      { text: "aba", hit: true },
+      { text: "ba", hit: false },
+    ]);
   });
 });

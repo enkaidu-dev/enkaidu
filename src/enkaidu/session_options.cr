@@ -18,5 +18,9 @@ module Enkaidu
     abstract def renderer : SessionRenderer
 
     abstract def config_for_llm : Config::LLM?
+
+    def config_for_model : Config::LLM::Model?
+      nil
+    end
   end
 end

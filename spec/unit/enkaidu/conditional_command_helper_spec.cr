@@ -52,6 +52,21 @@ Spectator.describe Enkaidu::ConditionalCommandHelper do
       res = helper.handle_conditional_command(session_manager, "?break if last_prompt_interrupt=tripwire")
       expect(res[:continue]).to eq(Enkaidu::ConditionalCommandHelper::Continue::Yes)
 
+      # Mutate state to Error
+      session.last_prompt_interrupt = Enkaidu::PromptInterruptReason::Error
+
+      res = helper.handle_conditional_command(session_manager, "?break if last_prompt_interrupt=error")
+      expect(res[:continue]).to eq(Enkaidu::ConditionalCommandHelper::Continue::Break)
+
+      res = helper.handle_conditional_command(session_manager, "?break if last_prompt_interrupt=any")
+      expect(res[:continue]).to eq(Enkaidu::ConditionalCommandHelper::Continue::Break)
+
+      res = helper.handle_conditional_command(session_manager, "?break if last_prompt_interrupt=user")
+      expect(res[:continue]).to eq(Enkaidu::ConditionalCommandHelper::Continue::Yes)
+
+      res = helper.handle_conditional_command(session_manager, "?break unless last_prompt_interrupt=error")
+      expect(res[:continue]).to eq(Enkaidu::ConditionalCommandHelper::Continue::Yes)
+
       # Invalid target
       res = helper.handle_conditional_command(session_manager, "?break if last_prompt_interrupt=unknown")
       expect(res[:continue]).to eq(Enkaidu::ConditionalCommandHelper::Continue::Abort)

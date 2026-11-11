@@ -23,6 +23,7 @@ module Enkaidu
     None
     User
     Tripwire
+    Error
   end
 
   class InvalidSessionData < Exception; end
@@ -121,6 +122,8 @@ module Enkaidu
       model_name = nil
       if unique_model_name
         if ai = opts.config.find_llm_and_model_by?(unique_model_name)
+          @llm_config = ai[:llm]
+          @model_config = ai[:model]
           provider_type = ai[:llm].provider
           model_name = ai[:model].model
         else
@@ -165,8 +168,12 @@ module Enkaidu
                             end
 
       @unique_model_name = fork_from.unique_model_name
+      @llm_config = fork_from.llm_config
+      @model_config = fork_from.model_config
       @chat = setup_chat(override_system_prompt: override_sys_prompt,
         override_model_name: fork_from.chat.model)
+      # Preserve runtime reasoning effort from parent session (e.g. if changed via `/think set`)
+      chat.with_reasoning(fork_from.chat.reasoning)
       chat.fork(fork_from.chat, exclude_last_turn) if keep_history
 
       if keep_tools
@@ -183,18 +190,112 @@ module Enkaidu
       end
     end
 
-    # Keep track of config's LLM model so we can use settings when needed
-    private getter model_config : Config::LLM::Model?
+    # Keep track of config's LLM and Model so we can use settings when needed
+    protected getter llm_config : Config::LLM?
+    protected getter model_config : Config::LLM::Model?
+
+    private def resolve_llm_and_model_config(actual_model_name : String?) : Nil
+      if uname = @unique_model_name
+        if ai = opts.config.find_llm_and_model_by?(uname)
+          @llm_config = ai[:llm]
+          @model_config = ai[:model]
+          return
+        end
+      end
+
+      if (opt_model = opts.config_for_model) &&
+         (actual_model_name.nil? || opt_model.model == actual_model_name)
+        @llm_config ||= opts.config_for_llm
+        @model_config = opt_model
+        return
+      end
+
+      if m = actual_model_name
+        if ai = opts.config.find_llm_and_model_by_actual?(connection_provider_type, m)
+          @llm_config = ai[:llm]
+          @model_config = ai[:model]
+          return
+        end
+      end
+
+      @llm_config ||= opts.config_for_llm || opts.config.find_llm_by_provider?(connection_provider_type)
+    end
+
+    private def merged_reasoning_map : LLM::ReasoningMap
+      map = LLM::ReasoningMap.new
+      if llm_map = @llm_config.try(&.settings.try(&.think_map))
+        map.merge!(llm_map.to_reasoning_map)
+      end
+      if model_map = @model_config.try(&.settings.try(&.think_map))
+        map.merge!(model_map.to_reasoning_map)
+      end
+      map
+    end
+
+    private def configured_think_effort : LLM::Reasoning
+      model_settings = @model_config.try(&.settings)
+      if model_settings && model_settings.think_present?
+        return model_settings.think || LLM::Reasoning::Default
+      end
+      if llm_think = @llm_config.try(&.settings.try(&.think))
+        return llm_think
+      end
+      LLM::Reasoning::Default
+    end
+
+    private def configured_temperature : (Int32 | Float32)?
+      model_settings = @model_config.try(&.settings)
+      if model_settings && model_settings.temperature_present?
+        return model_settings.temperature
+      end
+      llm_settings = @llm_config.try(&.settings)
+      if llm_settings && llm_settings.temperature_present?
+        return llm_settings.temperature
+      end
+      nil
+    end
+
+    private def configured_temperature_present? : Bool
+      (@model_config.try(&.settings.try(&.temperature_present?)) ||
+        @llm_config.try(&.settings.try(&.temperature_present?))) || false
+    end
+
+    private def configured_exclude_past_reasoning : (Bool | Int32)?
+      session_settings = opts.config.session
+      if session_settings && session_settings.exclude_past_reasoning_present? && !session_settings.exclude_past_reasoning.nil?
+        return session_settings.exclude_past_reasoning
+      end
+      model_settings = @model_config.try(&.settings)
+      if model_settings && model_settings.exclude_past_reasoning_present?
+        return model_settings.exclude_past_reasoning
+      end
+      llm_settings = @llm_config.try(&.settings)
+      if llm_settings && llm_settings.exclude_past_reasoning_present?
+        return llm_settings.exclude_past_reasoning
+      end
+      nil
+    end
+
+    # Apply a reasoning effort to the session's chat, warning if the model's
+    # `think_map` disables the requested level and falls back to a lower one.
+    def reasoning_effort=(effort : LLM::Reasoning) : LLM::Reasoning
+      chat.with_reasoning(effort) do |requested, actual|
+        model_label = chat.model || "current model"
+        renderer.warning_with(
+          "Thinking effort '#{requested.to_s.downcase}' is not supported by #{model_label}; using '#{actual.to_s.downcase}' instead.")
+      end
+    end
 
     # Helper to setup the Chat's initial config
     private def setup_chat(override_system_prompt : String? = nil,
                            override_model_name : String? = nil)
-      connection.new_chat do
-        unless (m = override_model_name || opts.model_name).nil?
-          with_model m
-          renderer.info_with("Using model #{m} over #{connection.protocol} protocol")
+      active_model = override_model_name || opts.model_name
+      resolve_llm_and_model_config(active_model)
 
-          @model_config = opts.config.find_llm_model_by_actual?(connection_provider_type, m)
+      connection.new_chat do
+        unless active_model.nil?
+          with_model active_model
+          renderer.info_with("Using model #{active_model} over #{connection.protocol} protocol")
         end
         with_debug if opts.debug?
         with_streaming if opts.stream?
@@ -202,24 +303,28 @@ module Enkaidu
         with_session_id id
         with_system_message system_prompt(override_system_prompt)
 
-        if model_settings = @model_config.try(&.settings)
-          with_reasoning(model_settings.think)
-          if model_settings.temperature_present?
-            begin
-              with_temperature(model_settings.temperature.try(&.to_f32))
-            rescue ex
-              renderer.warning_with("Unable to set temperature for #{model}: #{ex.message}")
-            end
+        rmap = merged_reasoning_map
+        with_reasoning_map(rmap) unless rmap.empty?
+
+        initial_think = configured_think_effort
+        with_reasoning(initial_think) do |requested, actual|
+          model_label = model || "current model"
+          renderer.warning_with(
+            "Thinking effort '#{requested.to_s.downcase}' is not supported by #{model_label}; using '#{actual.to_s.downcase}' instead.")
+        end
+
+        if configured_temperature_present?
+          begin
+            with_temperature(configured_temperature.try(&.to_f32))
+          rescue ex
+            renderer.warning_with("Unable to set temperature for #{model}: #{ex.message}")
           end
         end
-        # if effort = @model_config.try(&.settings.try(&.think))
-        #   with_reasoning(effort)
-        # end
       end
     end
 
     def exclude_past_reasoning? : Bool
-      case value = opts.config.session.try(&.exclude_past_reasoning) || @model_config.try(&.settings.try(&.exclude_past_reasoning))
+      case value = configured_exclude_past_reasoning
       when Nil  then false
       when Bool then value
       else           !value.negative?
@@ -228,7 +333,7 @@ module Enkaidu
 
     # Return based on session override, or model settings
     def exclude_past_reasoning_from : Int32
-      case value = opts.config.session.try(&.exclude_past_reasoning) || @model_config.try(&.settings.try(&.exclude_past_reasoning))
+      case value = configured_exclude_past_reasoning
       when Nil   then -1
       when Int32 then value.negative? ? -1 : value
       when false then -1
@@ -251,7 +356,7 @@ module Enkaidu
     # Return based on model settings, if any. Nil means
     # default for server.
     def temperature : Float32?
-      @model_config.try(&.settings.try(&.temperature).try(&.to_f32))
+      configured_temperature.try(&.to_f32)
     end
 
     # Return based on session override
@@ -288,7 +393,7 @@ module Enkaidu
     # Load the selected LLM's environment variable values into
     # `ENV`; call this method before initializing an LLM connection
     private def setup_envs_from_config
-      return unless env = opts.config_for_llm.try &.env
+      return unless env = (@llm_config || opts.config_for_llm).try(&.env)
       env.each do |name, value|
         ENV[name] = value
       end
@@ -440,10 +545,8 @@ module Enkaidu
         handle_reasoning_event(event, prev_event)
       when LLM::Event::Text
         handle_text_event(event, prev_event)
-      when .error_event?
-        handle_error_event(type, event)
-      when .warn_too_many_requests_delay?
-        renderer.warning_with(Waiting::QUOTES.sample)
+      when .warn_event?
+        handle_warn_event(type, event)
       end
     end
 
@@ -481,9 +584,11 @@ module Enkaidu
       end
     end
 
-    private def handle_error_event(type, event) : Nil
+    private def handle_warn_event(type, event) : Nil
       case type
-      when LLM::Event::ErrorUnknownToolCall
+      when LLM::Event::WarnTooManyRequestsDelay
+        renderer.warning_with(Waiting::QUOTES.sample)
+      when LLM::Event::WarnUnknownToolCall
         tool_name = event[:content].dig("name").as_s
         renderer.llm_error(event, message: "The tool `#{tool_name}` is not installed.")
       else
@@ -497,8 +602,6 @@ module Enkaidu
       tm_taken = Time.utc - tm_start
       renderer.time_elapsed(tm_taken, prefix)
     end
-
-    private SPAWN_DONE = {type: "<ESSFINI>", content: JSON::Any.new(nil)}
 
     # Perform tool calls and subsequent events repeatedly until
     # no more tool calls remain
@@ -597,7 +700,12 @@ module Enkaidu
           final_response: "[#{ex.message}]"
         )
       rescue ex
+        @last_prompt_interrupt = PromptInterruptReason::Error
         notify_unexpected_connection_error(ex)
+        chat.interrupt_and_cleanup(
+          tool_cancel_message: InterruptHandler::DEFAULT_CANCEL_MSG,
+          final_response: "[Unexpected error: #{ex.message}]"
+        )
       end
     ensure
       interrupt_handler.end_turn
@@ -659,7 +767,12 @@ module Enkaidu
         final_response: "[#{ex.message}]"
       )
     rescue ex
+      @last_prompt_interrupt = PromptInterruptReason::Error
       notify_unexpected_connection_error(ex)
+      chat.interrupt_and_cleanup(
+        tool_cancel_message: InterruptHandler::DEFAULT_CANCEL_MSG,
+        final_response: "[Unexpected error: #{ex.message}]"
+      )
     ensure
       interrupt_handler.end_turn
       recorder << "]"

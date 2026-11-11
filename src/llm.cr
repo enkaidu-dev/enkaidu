@@ -11,8 +11,6 @@ require "./llm/providers/google_ai_studio"
 require "./llm/providers/ollama"
 
 module LLM
-  class Error < Exception; end
-
   # Development use; set to `true` to trace HTTP
   TRACE = false
 

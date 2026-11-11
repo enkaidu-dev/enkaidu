@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { segments } from "./prompt_tokens";
+
   // Spotlight-style file browser for the Promptbar. Opened either by
   // ⌘F/Ctrl+F (a free open, an empty query) or by the user typing a `./` path
   // in the prompt bar (the query is seeded with that token so the picker
@@ -11,11 +13,11 @@
   // a fetch fires only when the directory part changes, never per
   // filtered keystroke.
   //
-  // Enter on a *file* calls onselect with the composed path (the typed
-  // directory prefix + the name, preserving relative/absolute form);
-  // Enter on a *directory* descends into it instead, growing the typed
-  // path — the terminal Tab-muscle-memory of walking `./` paths.  Esc,
-  // ⌘F/Ctrl+F again, a backdrop click, or focus leaving the card all
+  // Enter always accepts and inserts the chosen path (file or directory) —
+  // or if nothing is highlighted in the listing, accepts the typed `query`
+  // as-is.  Tab completes/descends into a highlighted directory (growing the
+  // typed path, like shell Tab completion) or accepts a highlighted file.
+  // Esc, ⌘F/Ctrl+F again, a backdrop click, or focus leaving the card all
   // dismiss via onselect(null) without touching the draft.
   // (Promptbar owns the overlay; this card is display + pointer + its own
   // keyboard/input, and reports results back through `onselect`.)
@@ -37,7 +39,6 @@
   let panel_root = $state<HTMLDivElement | undefined>(undefined);
   let query = $state("");
   let sel = $state(0);
-  let navigated = $state(false);
   let items = $state<(HTMLLIElement | null)[]>([]);
 
   // A directory entry (descendable) or a file entry (the backend's
@@ -79,13 +80,14 @@
   // Fetch only when the *directory* changes; the fragment filters
   // locally. Dropping the stale listing up front keeps the previous
   // folder's rows from flashing in while the new one loads.  The
-  // cleanup clears the debounce timer, so rapid typing issues at most
-  // one fetch per settled directory; fetch_seq guards against a slow
-  // response from an older directory arriving last.
+  // cleanup clears the debounce timer and aborts any in-flight fetch,
+  // so rapid typing issues at most one settled request; fetch_seq also
+  // guards against an older response arriving out of order.
   let fetch_seq = 0;
   $effect(() => {
     const d = dir;
     const id = ++fetch_seq;
+    const controller = new AbortController();
     entries = [];
     error = "";
     listing = true;
@@ -93,7 +95,7 @@
       try {
         const url = new URL("/fs/list", window.location.href);
         url.searchParams.set("path", d === "" ? "." : d);
-        const resp = await fetch(url);
+        const resp = await fetch(url, { signal: controller.signal });
         const data: any = await resp.json().catch(() => null);
         if (id !== fetch_seq) return; // stale — a newer listing won
         if (!resp.ok || data == null || !Array.isArray(data.dirs)) {
@@ -116,12 +118,17 @@
           listed_dir = typeof data.path === "string" ? data.path : d;
         }
       } catch (e) {
-        if (id === fetch_seq) error = String(e);
+        if (id === fetch_seq && !controller.signal.aborted) {
+          error = String(e);
+        }
       } finally {
         if (id === fetch_seq) listing = false;
       }
     }, DEBOUNCE_MS);
-    return () => clearTimeout(t);
+    return () => {
+      clearTimeout(t);
+      controller.abort();
+    };
   });
 
   // Case-insensitive substring over entry names (the server's sorted
@@ -144,7 +151,6 @@
   $effect(() => {
     void frag;
     sel = 0;
-    navigated = false;
   });
 
   // Keep the highlighted row visible while navigating the capped list.
@@ -166,14 +172,21 @@
     return entry.is_dir ? `${dir}${entry.name}/` : `${dir}${entry.name}`;
   }
 
-  function select(entry: FsEntry | null) {
+  // Accept and insert an entry (file or folder) into the promptbar.
+  function accept(entry: FsEntry | null) {
     if (!entry) {
-      onselect(null);
+      if (query.trim() !== "") onselect(query);
+      else onselect(null);
       return;
     }
+    onselect(path_for(entry));
+  }
+
+  // Descend into a directory (growing the typed path so the listing
+  // follows), or accept a file.
+  function complete_or_descend(entry: FsEntry | null) {
+    if (!entry) return;
     if (entry.is_dir) {
-      // Descend: grow the typed path (the fragment becomes empty, so
-      // every entry of the folder is shown and the listing follows).
       query = path_for(entry);
     } else {
       onselect(path_for(entry));
@@ -183,24 +196,9 @@
   // The needle for highlighting the matched portion of each name
   // (case-insensitive substring).  Mirrors HistorySearch/MacroPicker.
   let q = $derived(frag.toLowerCase());
-  type Segment = { text: string; hit: boolean };
-  function segments(text: string, needle: string): Segment[] {
-    if (!needle) return [{ text, hit: false }];
-    const lower = text.toLowerCase();
-    const out: Segment[] = [];
-    let i = 0;
-    let ix = lower.indexOf(needle);
-    while (ix !== -1) {
-      if (ix > i) out.push({ text: text.slice(i, ix), hit: false });
-      out.push({ text: text.slice(ix, ix + needle.length), hit: true });
-      i = ix + needle.length;
-      ix = lower.indexOf(needle, i);
-    }
-    if (i < text.length) out.push({ text: text.slice(i), hit: false });
-    return out;
-  }
 
   function on_key(event: KeyboardEvent) {
+    if (event.isComposing || event.keyCode === 229) return;
     // ⌘F/Ctrl+F while the picker is open just closes it (never trigger
     // the browser's "find" bar).
     if (
@@ -214,24 +212,19 @@
     }
     if (event.key === "Enter") {
       event.preventDefault(); // pick, do NOT submit a prompt
-      if (!navigated) {
-        // Focus is in the query input: take the typed path as-is and close.
-        if (query.trim() !== "") onselect(query);
-        else onselect(null);
-      } else {
-        select(matches[sel] ?? null);
-      }
+      accept(matches[sel] ?? null);
+    } else if (event.key === "Tab" && !event.shiftKey) {
+      event.preventDefault();
+      complete_or_descend(matches[sel] ?? null);
     } else if (event.key === "ArrowDown") {
       event.preventDefault();
       if (matches.length) {
         sel = (sel + 1) % matches.length;
-        navigated = true;
       }
     } else if (event.key === "ArrowUp") {
       event.preventDefault();
       if (matches.length) {
         sel = (sel - 1 + matches.length) % matches.length;
-        navigated = true;
       }
     } else if (event.key === "Escape") {
       event.preventDefault();
@@ -257,6 +250,10 @@
      wrapper in Promptbar, so it carries its own full chrome. -->
 <div
   bind:this={panel_root}
+  role="presentation"
+  onmousedown={(e) => {
+    if (e.target !== input) e.preventDefault();
+  }}
   class="w-full max-w-xl rounded-xl border border-base-content/20 bg-base-100 shadow-2xl"
 >
   <div class="flex items-center gap-2.5 px-4 pt-3 pb-1.5 text-sm">
@@ -280,7 +277,7 @@
       bind:value={query}
       onkeydown={on_key}
       onblur={on_blur}
-      class="flex-1 bg-transparent focus:outline-none font-mono text-[0.85em] text-base-content placeholder:text-base-content/30"
+      class="flex-1 bg-transparent focus:outline-none font-mono text-[0.85em] text-base-content placeholder:text-base-content/50"
       placeholder="Type a path… (e.g. src/main.cr)"
       aria-label="Browse a file path"
       autocomplete="off"
@@ -289,11 +286,10 @@
       spellcheck="false"
     />
     <span
-      class="text-xs text-base-content/40 select-none"
+      class="text-xs text-base-content/65 select-none shrink-0"
       title="matched / entries in this folder"
     >
       {matches.length} / {entries.length}
-      <span class="hidden sm:inline"> · Esc to close</span>
     </span>
   </div>
   {#if error}
@@ -303,19 +299,25 @@
   {:else if matches.length}
     <ul class="px-1.5 pb-1.5 max-h-64 overflow-y-auto" role="listbox">
       {#each matches as entry, i (entry.name + (entry.is_dir ? "/" : ""))}
-        <li bind:this={items[i]}>
+        <li
+          bind:this={items[i]}
+          class="flex items-center gap-1 rounded-lg transition-colors {i === sel
+            ? 'bg-accent/15 text-base-content'
+            : 'text-base-content/75'}"
+        >
           <!-- mousedown preventDefault keeps the input focused (a row
                pick on a directory re-lists and must stay keyboard-driven). -->
           <button
             type="button"
             title={path_for(entry) +
-              (entry.type && !entry.is_dir ? ` (${entry.type})` : "")}
-            onpointerdown={() => select(entry)}
+              (entry.is_dir
+                ? " (click or Tab to open folder)"
+                : entry.type
+                  ? ` (${entry.type})`
+                  : "")}
+            onpointerdown={() => complete_or_descend(entry)}
             onmousedown={(e) => e.preventDefault()}
-            class="w-full text-left px-2.5 py-1.5 rounded-lg flex items-center gap-2 text-sm transition-colors {i ===
-            sel
-              ? 'bg-accent/15 text-base-content'
-              : 'text-base-content/75'}"
+            class="flex-1 min-w-0 text-left px-2.5 py-1.5 rounded-lg flex items-center gap-2 text-sm"
           >
             {#if entry.is_dir}
               <svg
@@ -370,32 +372,44 @@
               >
             {/if}
           </button>
+          {#if entry.is_dir}
+            <button
+              type="button"
+              title="Insert folder {path_for(entry)} (Enter)"
+              onpointerdown={() => accept(entry)}
+              onmousedown={(e) => e.preventDefault()}
+              class="shrink-0 mr-1.5 px-2 py-0.5 rounded text-xs text-base-content/65 hover:text-base-content hover:bg-base-300/70 transition-colors"
+            >
+              Insert
+            </button>
+          {/if}
         </li>
       {/each}
     </ul>
     {#if matches.length < entries.length}
-      <div class="px-4 pb-1.5 text-xs text-base-content/40">
+      <div class="px-4 pb-1.5 text-xs text-base-content/65">
         {entries.length - matches.length} more in this folder — type more of the
         path to narrow
       </div>
     {/if}
   {:else if listing}
-    <div class="px-4 pb-2.5 text-sm text-base-content/40">
+    <div class="px-4 pb-2.5 text-sm text-base-content/65">
       Listing {dir || "."}…
     </div>
   {:else}
-    <div class="px-4 pb-2.5 text-sm text-base-content/40">
+    <div class="px-4 pb-2.5 text-sm text-base-content/65">
       No matching files
     </div>
   {/if}
   <div
-    class="flex items-center gap-3 px-3 py-1.5 border-t border-base-content/10 text-[0.7rem] text-base-content/30"
+    class="flex items-center gap-3 px-4 py-2 border-t border-base-content/15 text-xs text-base-content/70 select-none"
   >
     <span class="font-mono truncate" title={listed_dir || dir || "."}>
       browsing {listed_dir || dir || "."}
     </span>
     <span class="ml-auto shrink-0">&uarr;&darr; to navigate</span>
-    <span class="shrink-0">Enter opens a folder / inserts a file</span>
+    <span class="shrink-0">Tab opens folder</span>
+    <span class="shrink-0">Enter inserts</span>
     <span class="shrink-0">Esc to close</span>
   </div>
 </div>

@@ -35,6 +35,15 @@ class CCStreamingParseTestChat < LLM::Protocol::ChatCompletions::Chat
     {events, msg}
   end
 
+  def stream_events(body : String, &) : Nil
+    prepare_message_from_streamed_data(IO::Memory.new(body)) { |event| yield event }
+  end
+
+  def json_events(body : String, &) : Nil
+    resp = HTTP::Client::Response.new(200, body_io: IO::Memory.new(body))
+    handle_app_json(resp) { |event| yield event }
+  end
+
   # Parse one "data:" payload the way `#process_data` does for a single chunk;
   # `from_stream` selects the delta-vs-message selector exactly as production.
   def parse_chunk(data : JSON::Any, from_stream : Bool = true) : Array(LLM::ChatEvent)
@@ -257,6 +266,57 @@ Spectator.describe "LLM::Protocol::ChatCompletions::Chat streaming parse" do
       expect(req.size).to eq(1)
       expect(req.first["content"]["arguments"].as_s).to eq(%q|{"msg":"hi"}|)
       expect(msg.tool_calls.not_nil!.size).to eq(1)
+    end
+  end
+
+  describe "rate-limit errors and SSE framing" do
+    it "warns then raises for both rate-limit types and data prefixes" do
+      ["too_many_request", "too_many_requests_error"].each do |type|
+        ["data:", "data: "].each do |prefix|
+          chat = build_parse_chat
+          payload = JSON.parse(%|{"error":{"type":"#{type}","message":"slow down"}}|)
+          events = [] of LLM::ChatEvent
+          body = "event: error\n: keepalive\n#{prefix}#{payload.to_json}\n\n" + sse_body([chunk(delta_text("unreachable"))])
+          expect { chat.stream_events(body) { |event| events << event } }.to raise_error(LLM::TooManyRequests)
+          expect(events.map { |event| event["type"] }).to eq([LLM::Event::WarnTooManyRequestsDelay])
+          expect(events.first["content"]).to eq(payload)
+        end
+      end
+    end
+
+    it "skips non-data fields even when they end in DONE and accepts unspaced text and DONE" do
+      body = "event: [DONE]\n: [DONE]\nid: 1\nretry: 1000\ndata:#{chunk(delta_text("hi"))}\n\ndata:[DONE]\n"
+      events, msg = build_parse_chat.parse_streamed(body)
+      expect(msg.content).to eq("hi")
+      expect(events_of(events, LLM::Event::Done).size).to eq(1)
+      expect(events_of(events, LLM::Event::WarnTooManyRequestsDelay).size).to eq(0)
+    end
+
+    it "continues SSE parsing for ordinary and null errors without rate-limit warnings" do
+      body = sse_body([%|{"error":{"type":"server_error"}}|, %|{"error":null}|, chunk(delta_text("ok"))])
+      events, msg = build_parse_chat.parse_streamed(body)
+      expect(msg.content).to eq("ok")
+      expect(events_of(events, LLM::Event::WarnTooManyRequestsDelay).size).to eq(0)
+    end
+
+    it "warns and raises for JSON rate limits but preserves ordinary and null error handling" do
+      chat = build_parse_chat
+      events = [] of LLM::ChatEvent
+      payload = JSON.parse(%|{"error":{"type":"too_many_requests"}}|)
+      expect { chat.json_events(payload.to_json) { |event| events << event } }.to raise_error(LLM::TooManyRequests)
+      expect(events.map { |event| event["type"] }).to eq([LLM::Event::WarnTooManyRequestsDelay])
+      expect(events.first["content"]).to eq(payload)
+
+      events.clear
+      expect do
+        chat.json_events(%|{"error":{"type":"server_error","message":"too_many_request is not the type"}}|) { |event| events << event }
+      end.to raise_error(LLM::ServerError)
+      expect(events).to be_empty
+
+      events.clear
+      chat.json_events(%|{"error":null,"choices":[{"message":{"content":"ok"}}]}|) { |event| events << event }
+      expect(events_of(events, LLM::Event::Text).first["content"].as_s).to eq("ok")
+      expect(events_of(events, LLM::Event::WarnTooManyRequestsDelay).size).to eq(0)
     end
   end
 

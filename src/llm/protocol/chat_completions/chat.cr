@@ -38,12 +38,17 @@ module LLM::Protocol::ChatCompletions
       STDERR.puts ">>> #{body}" if TRACE
       @conn.post_and_stream(body, session_id) do |resp|
         STDERR.puts "<<< #{resp.headers}" if TRACE
+        if resp.status.too_many_requests?
+          yield warn_too_many_requests_delay(JSON::Any.new("#{resp.status_code} #{resp.status_message}"))
+          raise TooManyRequests.new(@conn.path)
+        end
+
         case resp.content_type
         when "text/event-stream" then handle_text_event_stream(resp) { |msg| yield msg }
         when "application/json"  then handle_app_json(resp) { |msg| yield msg }
         else
           # we don't know what to do if it's not SSE or JSON
-          yield unexpected_response(resp)
+          raise UnexpectedResponseError.new(unexpected_response_data(resp))
         end
       end
     end
@@ -63,9 +68,10 @@ module LLM::Protocol::ChatCompletions
       body = resp.body_io.gets_to_end
       begin
         data = JSON.parse(body)
-        if data["error"]?
+        raise_if_rate_limited(data) { |msg| yield msg }
+        if (err = data["error"]?) && !err.raw.nil?
           STDERR.puts "~~~ #{data}" if TRACE
-          yield({type: LLM::Event::ErrorServer, content: data})
+          raise ServerError.new(data)
         else
           content = nil.as(String?)
           reasoning = nil.as(String?)
@@ -98,11 +104,19 @@ module LLM::Protocol::ChatCompletions
       end
     end
 
-    private def unexpected_response(resp)
-      {type: LLM::Event::ErrorUnexpected, content: JSON::Any.new(Hash{
+    private def raise_if_rate_limited(data : JSON::Any, &) : Nil
+      # Azure AI can report rate control inside a successful HTTP response.
+      if data.dig?("error", "type").try(&.as_s?.try(&.starts_with?("too_many_request")))
+        yield warn_too_many_requests_delay(data)
+        raise TooManyRequests.new(data.to_s)
+      end
+    end
+
+    private def unexpected_response_data(resp) : JSON::Any
+      JSON::Any.new(Hash{
         "headers" => JSON.parse(resp.headers.to_h.to_json),
         "body"    => JSON::Any.new(resp.body_io.gets_to_end),
-      })}
+      })
     end
 
     private def prepare_message_from(data : JSON::Any)
@@ -168,13 +182,15 @@ module LLM::Protocol::ChatCompletions
           recent_tool_call = nil
           stream_io.each_line do |line|
             line = line.strip
-            next if line.empty?
+            next unless line.starts_with?("data:")
+            line = line.lchop("data:").lchop(" ")
 
-            if line.ends_with? "[DONE]"
+            if line == "[DONE]"
               yield({type: LLM::Event::Done, content: JSON::Any.new(nil)})
             else
               STDERR.puts "*** #{line}" if TRACE
-              data = JSON.parse(line.lchop("data: "))
+              data = JSON.parse(line)
+              raise_if_rate_limited(data) { |msg| yield msg }
               if refused = data.dig?("choices", 0, "delta", "refusal")
                 refusal ||= !refused.raw.nil?
               end
@@ -318,6 +334,8 @@ module LLM::Protocol::ChatCompletions
           session: @history,
           tools: each_tool,
           reasoning: reasoning,
+          reasoning_effort: effective_reasoning_effort,
+          temperature: temperature,
           response_schema: response_schema)
       end
     end

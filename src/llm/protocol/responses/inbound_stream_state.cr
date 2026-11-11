@@ -10,6 +10,7 @@ module LLM::Protocol::Responses
   class InboundStreamState
     property? finished : Bool = false
     property? successful : Bool = false
+    property? done_received : Bool = false
     property usage : LLM::Usage? = nil
     property reasoning_id : String? = nil
     property encrypted_content : String? = nil
@@ -47,6 +48,10 @@ module LLM::Protocol::Responses
     @builders = [] of FunctionCallBuilder
     @tool_builders = Hash(Int32 | String, FunctionCallBuilder).new
     @retired_keys = Set(Int32 | String).new
+
+    def incomplete_builders? : Bool
+      !@builders.empty?
+    end
 
     def register_builder(data : JSON::Any, builder : FunctionCallBuilder) : Nil
       @builders << builder

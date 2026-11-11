@@ -31,6 +31,7 @@ module Enkaidu
       getter profile : Env::Profile
 
       getter config_for_llm : Config::LLM?
+      getter config_for_model : Config::LLM::Model?
       getter config : Config
       getter console : Console::Renderer
 
@@ -233,6 +234,7 @@ module Enkaidu
         # look up unique model name
         return unless info = (config.try &.find_llm_and_model_by?(unique_model_name: model_name))
         @config_for_llm = info[:llm]
+        @config_for_model = info[:model]
         @provider_type = info[:llm].provider
         @model_name = info[:model].model
       end

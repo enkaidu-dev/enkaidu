@@ -18,7 +18,7 @@ module Enkaidu
       - `if global ns=<NAMESPACE> key=<STR> equals=<STR>`
         - Exit macro if global state key has matching value
       - `if last_prompt_interrupt=<TARGET>`
-        - Exit macro if last prompt interrupt matched target (any, tripwire, user, none)
+        - Exit macro if last prompt interrupt matched target (any, tripwire, user, error, none)
       - `unless file_exists=<PATH>`
         - Exit macro unless given file exists
       - `unless file=<PATH> contains=<STR>`
@@ -26,7 +26,7 @@ module Enkaidu
       - `unless global ns=<NAMESPACE> key=<STR> equals=<STR>`
         - Exit macro unless global state key has matching value
       - `unless last_prompt_interrupt=<TARGET>`
-        - Exit macro unless last prompt interrupt matched target (any, tripwire, user, none)
+        - Exit macro unless last prompt interrupt matched target (any, tripwire, user, error, none)
       HELP1
 
     # Detailed help, in Markdown
@@ -156,6 +156,7 @@ module Enkaidu
                 when "any"      then !state.none?
                 when "tripwire" then state.tripwire?
                 when "user"     then state.user?
+                when "error"    then state.error?
                 when "none"     then state.none?
                 else
                   return {continue: Continue::Abort, message: "ERROR: Unknown last_prompt_interrupt target: #{target}"}

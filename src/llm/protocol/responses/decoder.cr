@@ -39,7 +39,10 @@ module LLM::Protocol::Responses
             next unless line.starts_with?("data:")
 
             payload = line.lchop("data:").lstrip
-            break if payload == "[DONE]"
+            if payload == "[DONE]"
+              state.done_received = true
+              break
+            end
 
             begin
               data = JSON.parse(payload)
@@ -58,12 +61,7 @@ module LLM::Protocol::Responses
         end
       end
 
-      unless state.successful?
-        unless state.finished?
-          yield({type: LLM::Event::ErrorUnexpected, content: JSON::Any.new("Responses stream ended without a successful terminal event")})
-        end
-        return
-      end
+      return unless continue_after_stream?(state, content, reasoning, tool_calls) { |event| yield event }
 
       pending_calls.each { |event| yield event }
       yield({type: LLM::Event::Done, content: JSON::Any.new(nil)})
@@ -72,6 +70,23 @@ module LLM::Protocol::Responses
       msg.responses_output = state.responses_output unless state.responses_output.nil?
       msg.usage = state.usage if state.usage
       msg
+    end
+
+    private def continue_after_stream?(state, content, reasoning, tool_calls, & : LLM::ChatEvent ->) : Bool
+      return true if state.successful?
+      return false if state.finished?
+
+      can_continue = state.done_received? &&
+                     !state.incomplete_builders? &&
+                     (!content.empty? || !reasoning.empty? || !tool_calls.empty?)
+      if can_continue
+        yield({type: LLM::Event::WarnUnexpected, content: JSON::Any.new("Responses stream ended with [DONE] without a response.completed event; continuing with received events")})
+        state.finalize_responses_output(nil)
+        true
+      else
+        reason = state.done_received? ? "with [DONE] before all items completed" : "without a terminal event or [DONE]"
+        raise LLM::UnexpectedResponseError.new(JSON::Any.new("Responses stream ended #{reason}"))
+      end
     end
 
     # Map a single Responses event object to canonical events, mutating the
@@ -164,7 +179,7 @@ module LLM::Protocol::Responses
         yield({type: LLM::Event::FinishReason, content: JSON::Any.new(finish)})
         state.finished = true
         state.successful = successful
-        yield({type: LLM::Event::ErrorServer, content: data}) unless successful
+        raise LLM::ServerError.new(data) unless successful
       when "response.failed", "error"
         state.finished = true
 
@@ -174,7 +189,7 @@ module LLM::Protocol::Responses
           raise TooManyRequests.new(data.to_s)
         end
 
-        yield({type: LLM::Event::ErrorServer, content: data})
+        raise LLM::ServerError.new(data)
       else
         # Unknown / ignorable event (`response.created`, `content_part.*`,
         # message/text done markers, …) — no canonical counterpart.

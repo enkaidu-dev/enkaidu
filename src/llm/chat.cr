@@ -22,7 +22,23 @@ module LLM
     High
     Max
     Default
+
+    # Ordered fallbacks when a requested reasoning level is explicitly disabled
+    # in a model's `reasoning_map`. `Default` is the terminal fallback (omits
+    # the wire parameter so the model uses its own default).
+    def fallback_chain : Array(Reasoning)
+      case self
+      in .max?     then [High, Medium, Low, Default]
+      in .high?    then [Medium, Low, Default]
+      in .medium?  then [Low, Default]
+      in .low?     then [Default]
+      in .none?    then [Default]
+      in .default? then [] of Reasoning
+      end
+    end
   end
+
+  alias ReasoningMap = Hash(Reasoning, String?)
 
   class UnexpectedMCPPrompt < Exception; end
 
@@ -34,6 +50,7 @@ module LLM
     getter? streaming = false
     getter? readonly = false
     getter reasoning = Reasoning::Default
+    getter reasoning_map : ReasoningMap = ReasoningMap.new
     getter temperature : Float32? = nil
     getter session_id : String? = nil
 
@@ -57,8 +74,57 @@ module LLM
       @session_id = sid
     end
 
-    def with_reasoning(effort : Reasoning)
-      @reasoning = effort
+    def with_reasoning_map(map : ReasoningMap) : Reasoning
+      @reasoning_map = map.dup
+      with_reasoning(@reasoning)
+    end
+
+    def with_reasoning_map(map : ReasoningMap, & : Reasoning, Reasoning ->) : Reasoning
+      @reasoning_map = map.dup
+      with_reasoning(@reasoning) { |requested, actual| yield requested, actual }
+    end
+
+    def with_reasoning(effort : Reasoning) : Reasoning
+      @reasoning = resolve_supported_reasoning(effort)
+    end
+
+    def with_reasoning(effort : Reasoning, & : Reasoning, Reasoning ->) : Reasoning
+      actual = resolve_supported_reasoning(effort)
+      yield effort, actual if actual != effort
+      @reasoning = actual
+    end
+
+    # Returns true unless `effort` is explicitly disabled (mapped to nil or blank)
+    # in `reasoning_map`. `Default` is always supported.
+    def reasoning_level_supported?(effort : Reasoning) : Bool
+      return true if effort.default?
+      return true unless @reasoning_map.has_key?(effort)
+
+      !@reasoning_map[effort].try(&.presence).nil?
+    end
+
+    # Resolves the wire string to send to the model for the current `reasoning`,
+    # or `nil` when the wire field should be omitted (`Default`).
+    def effective_reasoning_effort : String?
+      effective_reasoning_effort_for(@reasoning)
+    end
+
+    # Resolves the wire string for a specific `Reasoning` level, applying
+    # `reasoning_map` overrides when present.
+    def effective_reasoning_effort_for(effort : Reasoning) : String?
+      return if effort.default?
+
+      if @reasoning_map.has_key?(effort)
+        @reasoning_map[effort].try(&.presence)
+      else
+        effort.to_s.downcase
+      end
+    end
+
+    private def resolve_supported_reasoning(effort : Reasoning) : Reasoning
+      return effort if reasoning_level_supported?(effort)
+
+      effort.fallback_chain.find { |candidate| reasoning_level_supported?(candidate) } || Reasoning::Default
     end
 
     def with_streaming
@@ -228,7 +294,7 @@ module LLM
     end
 
     private def unknown_tool_call(tool_call : FunctionCall)
-      {type: Event::ErrorUnknownToolCall, content: tool_call.json}
+      {type: Event::WarnUnknownToolCall, content: tool_call.json}
     end
 
     # Resubmit current session as a query to get another answer

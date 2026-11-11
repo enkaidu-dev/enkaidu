@@ -41,4 +41,29 @@ describe("PromptHistory", () => {
     expect(history.next()).toBe("draft");
     expect(history.next()).toBeNull();
   });
+
+  it("merges server history without clobbering entries pushed before load completes", async () => {
+    const history = new PromptHistory({ maxSize: 10 });
+    history.push("local-first");
+
+    const origFetch = globalThis.fetch;
+    globalThis.fetch = (async () => ({
+      ok: true,
+      json: async () => ["server-1", "local-first", "server-2"],
+    })) as unknown as typeof fetch;
+
+    try {
+      await history.loadFromServer();
+    } finally {
+      globalThis.fetch = origFetch;
+    }
+
+    expect(history.entries.map((e) => e.text)).toEqual([
+      "server-1",
+      "server-2",
+      "local-first",
+    ]);
+    const ids = new Set(history.entries.map((e) => e.id));
+    expect(ids.size).toBe(3);
+  });
 });

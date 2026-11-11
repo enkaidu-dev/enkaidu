@@ -274,8 +274,13 @@ module Enkaidu
         web_server.unknown_get do |req, resp|
           path = req.path == "/" ? "/index.html" : req.path
           if file = FileStorage.get(path)
-            resp.content_type = MimeMap.from_filename(path) || "unknown"
-            IO.copy(file, resp)
+            begin
+              resp.content_type = MimeMap.from_filename(path) || "unknown"
+              resp.headers["Cache-Control"] = "no-cache"
+              IO.copy(file, resp)
+            ensure
+              file.close
+            end
           else
             raise ArgumentError.new("Unknown request: #{req.method} #{path}")
           end

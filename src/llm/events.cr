@@ -1,6 +1,32 @@
 require "json"
 
 module LLM
+  class Error < Exception; end
+
+  class ServerError < Error
+    getter data : JSON::Any?
+
+    def initialize(message : String? = nil, @data : JSON::Any? = nil)
+      super(message || @data.try(&.to_json))
+    end
+
+    def initialize(@data : JSON::Any)
+      super(@data.to_json)
+    end
+  end
+
+  class UnexpectedResponseError < Error
+    getter data : JSON::Any?
+
+    def initialize(message : String? = nil, @data : JSON::Any? = nil)
+      super(message || @data.try(&.to_json))
+    end
+
+    def initialize(@data : JSON::Any)
+      super(@data.to_json)
+    end
+  end
+
   # Canonical event names emitted by protocol decoders and consumed by the app
   # layer. Per P4 the app only ever sees these canonical names; protocol-specific
   # wire event names never leak across the module boundary.
@@ -22,16 +48,15 @@ module LLM
     Usage
     Done
     WarnTooManyRequestsDelay
-    ErrorServer
-    ErrorUnexpected
-    ErrorUnknownToolCall
+    WarnUnexpected
+    WarnUnknownToolCall
 
     def debug_event?
       self == DebugRequest || self == DebugData
     end
 
-    def error_event?
-      self == ErrorServer || self == ErrorUnexpected || self == ErrorUnknownToolCall
+    def warn_event?
+      self == WarnTooManyRequestsDelay || self == WarnUnexpected || self == WarnUnknownToolCall
     end
   end
 

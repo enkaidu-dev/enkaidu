@@ -53,6 +53,7 @@ class EnkaiduWiretapTestRenderer < WebToolTestRenderer
   getter tool_calls = [] of String
   getter info_messages = [] of String
   getter warnings = [] of String
+  getter responses = [] of String
 
   def error_with(message, help = nil, markdown = false) : Nil
     @errors << message.to_s
@@ -68,6 +69,10 @@ class EnkaiduWiretapTestRenderer < WebToolTestRenderer
 
   def warning_with(message, help = nil, markdown = false) : Nil
     @warnings << message.to_s
+  end
+
+  def respond_with(message, help = nil, markdown = false) : Nil
+    @responses << message.to_s
   end
 end
 
@@ -178,15 +183,17 @@ end
 class MockChat < LLM::Chat
   property? trigger_user_interrupt = false
   property? trigger_tripwire_interrupt = false
+  property? trigger_error = false
   property session : InterruptMockSession?
 
   def post_session(response_schema : LLM::ResponseSchema? = nil,
                    exclude_reasoning_in_history = false,
                    exclude_reasoning_skip = 0,
                    & : LLM::ChatEvent ->) : Nil
-  end
+    if trigger_error?
+      raise LLM::ServerError.new(JSON.parse(%({"error":{"message":"server failure"}})))
+    end
 
-  def ask(content : String, attach = nil, response_schema = nil, exclude_reasoning_in_history = false, exclude_reasoning_skip = 0, & : LLM::ChatEvent ->) : Nil
     if trigger_user_interrupt?
       session.try(&.trigger_user_interrupt!)
     end

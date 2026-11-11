@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { segments } from "./prompt_tokens";
+
   type Macro = { name: string; description: string; category: string };
 
   let {
@@ -24,26 +26,6 @@
   // (case-insensitive substring).  Computed once per render so each
   // `segments` call reuses it.
   let q = $derived(filter.trim().toLowerCase());
-
-  // Split a text value into matched / unmatched segments for
-  // highlighting the filter substring in the macro name.
-  // Mirrors HistorySearch's `segments` helper.
-  type Segment = { text: string; hit: boolean };
-  function segments(text: string, needle: string): Segment[] {
-    if (!needle) return [{ text, hit: false }];
-    const lower = text.toLowerCase();
-    const out: Segment[] = [];
-    let i = 0;
-    let ix = lower.indexOf(needle);
-    while (ix !== -1) {
-      if (ix > i) out.push({ text: text.slice(i, ix), hit: false });
-      out.push({ text: text.slice(ix, ix + needle.length), hit: true });
-      i = ix + needle.length;
-      ix = lower.indexOf(needle, i);
-    }
-    if (i < text.length) out.push({ text: text.slice(i), hit: false });
-    return out;
-  }
 </script>
 
 <!--
@@ -56,12 +38,15 @@
     Keyboard navigation (arrow keys, Enter, Escape) is handled by
      the parent Promptbar via the textarea's keydown handler.
      Click-to-select uses onpointerdown so it lands before the
-     overlay's backdrop-blur dismiss fires.
+     overlay's backdrop-blur dismiss fires; onmousedown preventDefault
+     keeps focus in the promptbar textarea when clicking the card or scrollbar.
      -->
 <div
+  onmousedown={(e) => e.preventDefault()}
   class="w-full max-w-2xl rounded-xl border border-base-content/20 bg-base-100
     shadow-2xl"
   role="listbox"
+  tabindex="-1"
 >
   {#if matches.length}
     <ul class="px-1.5 py-1.5 max-h-52 overflow-y-auto">
@@ -91,15 +76,15 @@
                 {/each}
               </code>
               <span
-                class="text-xs text-base-content/55 truncate"
+                class="text-xs text-base-content/70 truncate"
                 title={macro.description}>{macro.description}</span
               >
             </div>
             {#if macro.category}
               <div class="mt-0.5">
                 <span
-                  class="text-[0.62rem] uppercase tracking-wider
-             text-base-content/40 bg-base-300/60 rounded px-1.5
+                  class="text-[0.65rem] uppercase tracking-wider
+             text-base-content/60 bg-base-300/70 rounded px-1.5
              py-0.5 font-medium">{macro.category}</span
                 >
               </div>
@@ -109,14 +94,14 @@
       {/each}
     </ul>
   {:else}
-    <div class="px-4 py-3 text-sm text-base-content/40">No matching macros</div>
+    <div class="px-4 py-3 text-sm text-base-content/65">No matching macros</div>
   {/if}
   <div
-    class="flex items-center gap-3 px-3 py-1.5 border-t
-        border-base-content/10 text-[0.7rem] text-base-content/30"
+    class="flex items-center justify-end gap-3 px-4 py-2 border-t
+        border-base-content/15 text-xs text-base-content/70 select-none"
   >
     <span>&uarr;&darr; to navigate</span>
-    <span>Enter to select</span>
+    <span>Tab / Enter to select</span>
     <span>Esc to close</span>
   </div>
 </div>

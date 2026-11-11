@@ -21,11 +21,11 @@ actions:
     description: Build the Svelte-based web UI
     alias: bwui
   build-release:
-    command: ops build-webui && SHARDS_BIN_PATH=bin/release shards --production build $APP --release
+    command: ops build-webui && SHARDS_BIN_PATH=bin/release shards --production build $BUILD_FLAGS $APP --release
     description: Build for release
     alias: br
   build-debug:
-    command: SHARDS_BIN_PATH=bin/debug shards build $APP --debug
+    command: SHARDS_BIN_PATH=bin/debug shards build $BUILD_FLAGS $APP --debug
     description: Build for development (debugging)
     aliases: [build, bd]
   install:
@@ -36,7 +36,7 @@ actions:
 
       VERSION=$(grep -E '^version:' shard.yml | awk '{print $2}')
       if [ -e "$INSTALL_DIR" ]; then
-        ops build-release && cp bin/release/$APP "$INSTALL_DIR/$APP-${VERSION}"
+        ops build-release && cp bin/release/$APP "$INSTALL_DIR/$APP-${VERSION}" && ops build-release
       else
         echo 1>&2 "ops: The directory '$INSTALL_DIR' does not exist."
       fi
@@ -49,9 +49,11 @@ actions:
       VERSION=$(grep -E '^version:' shard.yml | awk '{print $2}')
       if [ -e "$INSTALL_DIR" ]; then
         ops bwui
-        ops bd -Dbake_webui_dist
+        ops build-debug -Dbake_webui_dist
         cp bin/debug/$APP "$INSTALL_DIR/$APP-dbg-${VERSION}"
         cp bin/debug/$APP.dwarf "$INSTALL_DIR/$APP-dbg-${VERSION}.dwarf"
+        # Build debug binary without baked webUI for direct use
+        ops build-debug
       else
         echo 1>&2 "ops: The directory '$INSTALL_DIR' does not exist."
       fi
@@ -91,3 +93,4 @@ options:
     APP: enkaidu
     CONFIG: yaml
     INSTALL_DIR: "$HOME/bin"
+    BUILD_FLAGS: -Dsocket_connect_fix_quiet
