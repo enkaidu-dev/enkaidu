@@ -603,8 +603,6 @@ module Enkaidu
       renderer.time_elapsed(tm_taken, prefix)
     end
 
-    private SPAWN_DONE = {type: "<ESSFINI>", content: JSON::Any.new(nil)}
-
     # Perform tool calls and subsequent events repeatedly until
     # no more tool calls remain
     private def consume_tool_calls_sync(tools : Array(LLM::FunctionCall), progress,
