@@ -185,14 +185,42 @@ module Enkaidu
 
     # Represents a Language Model configuration within the Enkaidu application.
     class LLM < ConfigSerializable
+      # Maps Enkaidu's canonical reasoning effort levels to model-specific wire
+      # names, or `nil` (`~` in YAML) to mark a level as unsupported so Enkaidu
+      # falls back to the next lower supported level.
+      class ThinkMap < ConfigSerializable
+        getter_with_presence none, String?
+        getter_with_presence low, String?
+        getter_with_presence medium, String?
+        getter_with_presence high, String?
+        getter_with_presence max, String?
+
+        def after_initialize
+          super
+        end
+
+        def to_reasoning_map : ::LLM::ReasoningMap
+          map = ::LLM::ReasoningMap.new
+          map[::LLM::Reasoning::None] = @none if none_present?
+          map[::LLM::Reasoning::Low] = @low if low_present?
+          map[::LLM::Reasoning::Medium] = @medium if medium_present?
+          map[::LLM::Reasoning::High] = @high if high_present?
+          map[::LLM::Reasoning::Max] = @max if max_present?
+          map
+        end
+      end
+
+      # Settings for a provider (inherited by its models) or an individual model.
+      class Settings < ConfigSerializable
+        getter_with_presence exclude_past_reasoning, Bool | Int32?
+        getter_with_presence think, ::LLM::Reasoning?
+        getter_with_presence think_map, ThinkMap?
+        getter_with_presence temperature, Int32 | Float32?
+      end
+
       # Represents a Model within an LLM.
       class Model < ConfigSerializable
-        # Represents settings for a model
-        class Settings < ConfigSerializable
-          getter_with_presence exclude_past_reasoning, Bool | Int32?
-          getter think : ::LLM::Reasoning = ::LLM::Reasoning::Default
-          getter_with_presence temperature, Int32 | Float32?
-        end
+        alias Settings = LLM::Settings
 
         getter name : String
         getter model : String
@@ -200,6 +228,7 @@ module Enkaidu
       end
 
       getter provider : String
+      getter settings : Settings?
       getter models : Array(Model)?
       # Use this to populate environment variables for the specific
       # provider and they will be passed through
@@ -338,17 +367,28 @@ module Enkaidu
     # Use the actual model name (not the name we give it in our config) and provider type
     # to find the LLM::Model object
     def find_llm_model_by_actual?(provider_type : String, actual_model_name : String) : Config::LLM::Model?
+      find_llm_and_model_by_actual?(provider_type, actual_model_name).try(&.[:model])
+    end
+
+    # Use the actual model name and provider type to find the enclosing LLM and LLM::Model
+    def find_llm_and_model_by_actual?(provider_type : String, actual_model_name : String)
       llms.try &.each do |_, llm|
         if llm.provider == provider_type
           llm.models.try &.each do |model|
             if model.model == actual_model_name
-              return model
+              return {llm: llm, model: model}
             end
           end
-          # no more
-          break
         end
       end
+    end
+
+    # Find the first LLM entry matching the given provider type
+    def find_llm_by_provider?(provider_type : String) : Config::LLM?
+      llms.try &.each do |_, llm|
+        return llm if llm.provider == provider_type
+      end
+      nil
     end
 
     # Look for a model by its unique name and, if one exists, return its

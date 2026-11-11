@@ -334,6 +334,8 @@ module LLM::Protocol::ChatCompletions
           session: @history,
           tools: each_tool,
           reasoning: reasoning,
+          reasoning_effort: effective_reasoning_effort,
+          temperature: temperature,
           response_schema: response_schema)
       end
     end

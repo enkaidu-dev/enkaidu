@@ -53,6 +53,7 @@ class EnkaiduWiretapTestRenderer < WebToolTestRenderer
   getter tool_calls = [] of String
   getter info_messages = [] of String
   getter warnings = [] of String
+  getter responses = [] of String
 
   def error_with(message, help = nil, markdown = false) : Nil
     @errors << message.to_s
@@ -68,6 +69,10 @@ class EnkaiduWiretapTestRenderer < WebToolTestRenderer
 
   def warning_with(message, help = nil, markdown = false) : Nil
     @warnings << message.to_s
+  end
+
+  def respond_with(message, help = nil, markdown = false) : Nil
+    @responses << message.to_s
   end
 end
 

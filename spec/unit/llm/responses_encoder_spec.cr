@@ -286,5 +286,25 @@ Spectator.describe LLM::Protocol::Responses::Chat do
       expect(reasoning.dig("encrypted_content").as_s).to eq("encrypted_blob")
       expect(reasoning.dig("summary", 0, "text").as_s).to eq("thinking")
     end
+
+    it "uses custom wire effort names from reasoning_map and preserves None semantics" do
+      chat = build_responses_encoder_chat
+      chat.with_reasoning_map(LLM::ReasoningMap{
+        LLM::Reasoning::None => "minimal",
+        LLM::Reasoning::Max  => "xhigh",
+      })
+
+      chat.with_reasoning(LLM::Reasoning::Max)
+      body = chat.request_body
+      expect(body.dig("reasoning", "effort").as_s).to eq("xhigh")
+      expect(body.dig("reasoning", "summary").as_s).to eq("auto")
+      expect(body["include"].as_a.map(&.as_s)).to contain("reasoning.encrypted_content")
+
+      chat.with_reasoning(LLM::Reasoning::None)
+      body_none = chat.request_body
+      expect(body_none.dig("reasoning", "effort").as_s).to eq("minimal")
+      expect(body_none.dig?("reasoning", "summary")).to be_nil
+      expect(body_none["include"]?).to be_nil
+    end
   end
 end

@@ -41,7 +41,9 @@ module LLM::Protocol::ChatCompletions
 
     private def chat_to_json(json : JSON::Builder, model,
                              system_message, stream, session, tools,
-                             reasoning : Reasoning, temperature : Float32? = nil, response_schema : ResponseSchema? = nil)
+                             reasoning : Reasoning,
+                             reasoning_effort : String? = (reasoning.default? ? nil : reasoning.to_s.downcase),
+                             temperature : Float32? = nil, response_schema : ResponseSchema? = nil)
       json.object do
         json.field "model", model if model
         json.field "stream", stream
@@ -53,8 +55,8 @@ module LLM::Protocol::ChatCompletions
             end
           end
         end
-        unless reasoning.default?
-          json.field "reasoning_effort", reasoning.to_s.downcase
+        if reasoning_effort
+          json.field "reasoning_effort", reasoning_effort
         end
         unless temperature.nil?
           json.field "temperature", temperature

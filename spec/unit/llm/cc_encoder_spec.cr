@@ -105,4 +105,55 @@ Spectator.describe LLM::Protocol::ChatCompletions::Chat do
       expect(last_conversation_json(fresh)).to eq(last_conversation_json(chat))
     end
   end
+
+  describe "reasoning_map and fallback encoding" do
+    it "encodes all built-in reasoning effort levels when no reasoning_map is configured" do
+      chat = build_encoder_chat
+      expect(chat.reasoning).to eq(LLM::Reasoning::Default)
+      expect(chat.request_body["reasoning_effort"]?).to be_nil
+
+      {
+        LLM::Reasoning::None   => "none",
+        LLM::Reasoning::Low    => "low",
+        LLM::Reasoning::Medium => "medium",
+        LLM::Reasoning::High   => "high",
+        LLM::Reasoning::Max    => "max",
+      }.each do |level, expected_wire|
+        chat.with_reasoning(level)
+        expect(chat.request_body["reasoning_effort"].as_s).to eq(expected_wire)
+      end
+
+      chat.with_reasoning(LLM::Reasoning::Default)
+      expect(chat.request_body["reasoning_effort"]?).to be_nil
+    end
+
+    it "uses custom wire effort names and falls back to lower supported levels" do
+      chat = build_encoder_chat
+      chat.with_reasoning_map(LLM::ReasoningMap{
+        LLM::Reasoning::None => "minimal",
+        LLM::Reasoning::High => "xhigh",
+        LLM::Reasoning::Max  => nil,
+      })
+
+      chat.with_reasoning(LLM::Reasoning::None)
+      expect(chat.request_body["reasoning_effort"].as_s).to eq("minimal")
+
+      # Max is unsupported (mapped to nil), so it falls back to High ("xhigh")
+      fallback_pair = nil.as(Tuple(LLM::Reasoning, LLM::Reasoning)?)
+      chat.with_reasoning(LLM::Reasoning::Max) do |req, actual|
+        fallback_pair = {req, actual}
+      end
+      expect(fallback_pair).to eq({LLM::Reasoning::Max, LLM::Reasoning::High})
+      expect(chat.reasoning).to eq(LLM::Reasoning::High)
+      expect(chat.request_body["reasoning_effort"].as_s).to eq("xhigh")
+
+      # Unmapped levels still use their lowercase enum name
+      chat.with_reasoning(LLM::Reasoning::Medium)
+      expect(chat.request_body["reasoning_effort"].as_s).to eq("medium")
+
+      # Default omits reasoning_effort
+      chat.with_reasoning(LLM::Reasoning::Default)
+      expect(chat.request_body["reasoning_effort"]?).to be_nil
+    end
+  end
 end

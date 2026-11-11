@@ -117,6 +117,7 @@ module LLM::Protocol::Responses
       JSON.build do |json|
         responses_to_json(json, model, system_message,
           streaming?, @history, each_tool, reasoning,
+          reasoning_effort: effective_reasoning_effort,
           temperature: temperature,
           response_schema: response_schema)
       end

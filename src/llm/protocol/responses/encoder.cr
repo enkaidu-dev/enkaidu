@@ -15,6 +15,7 @@ module LLM::Protocol::Responses
                                     system_message, stream,
                                     session, tools,
                                     reasoning,
+                                    reasoning_effort : String? = (reasoning.default? ? nil : reasoning.to_s.downcase),
                                     temperature : Float32? = nil,
                                     response_schema : LLM::ResponseSchema? = nil) : Nil
       json.object do
@@ -32,13 +33,13 @@ module LLM::Protocol::Responses
         when LLM::Reasoning::None
           json.field "reasoning" do
             json.object do
-              json.field "effort", "none"
+              json.field "effort", reasoning_effort || "none"
             end
           end
         else
           json.field "reasoning" do
             json.object do
-              json.field "effort", reasoning.to_s.downcase unless reasoning.default?
+              json.field "effort", reasoning_effort if reasoning_effort
               json.field "summary", "auto"
             end
           end
