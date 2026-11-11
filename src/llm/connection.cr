@@ -1,3 +1,4 @@
+require "openssl"
 require "http/client"
 require "uri"
 require "sync/exclusive"
@@ -71,14 +72,21 @@ module LLM
       end
     end
 
+    # Networking IO-related exception types (not always IO::Error) that
+    # should be retried for
+    private def retryable_networking_exception?(ex : Exception)
+      ex.is_a?(IO::Error) ||
+        ex.is_a?(OpenSSL::Error) ||
+        ex.message.try(&.includes?("Invalid HTTP"))
+    end
+
+    # ameba:disable Metrics/CyclomaticComplexity
     protected def post_and_stream(body, session_id : String? = nil, path : String? = nil, &)
       STDERR.puts ">>> --- first try" if TRACE
       retry = false
       rate_control_delays = 0
       begin
         attempt_post_and_stream(body, session_id, path) { |resp| yield resp }
-      rescue IO::Error
-        retry = true
       rescue TooManyRequests
         retry = true
         rate_control_delays = 1
@@ -87,12 +95,13 @@ module LLM
       rescue ex
         # Handle the internal HTTP error that occurs when server
         # stops responding but client is keeping alive
-        if ex.message.try(&.includes?("Invalid HTTP"))
+        if retryable_networking_exception?(ex)
           retry = true
         else
           raise ex
         end
       end
+
       # One retry allowed when an IO error occurs.
       # Usually IO errors cannot be retried away.
       # But "some" LLM servers seem to have a very short
