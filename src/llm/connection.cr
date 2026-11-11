@@ -32,6 +32,20 @@ module LLM
       @sync ||= connect
     end
 
+    private def invalidate_sync
+      sync = @sync
+      @sync = nil
+      return unless sync
+
+      begin
+        sync.lock do |client|
+          client.close
+        end
+      rescue ex
+        STDERR.puts "<<close #{ex.inspect_with_backtrace}" if TRACE
+      end
+    end
+
     private def attempt_post_and_stream(body, session_id : String? = nil, path : String? = nil, &)
       sync.lock do |client|
         resolved_path = path || self.path
@@ -52,7 +66,7 @@ module LLM
         end
       rescue ex
         STDERR.puts "<<x #{ex.inspect_with_backtrace}" if TRACE
-        @sync = nil
+        invalidate_sync
         raise ex
       end
     end
@@ -63,13 +77,13 @@ module LLM
       rate_control_delays = 0
       begin
         attempt_post_and_stream(body, session_id, path) { |resp| yield resp }
-      rescue ex
+      rescue IO::Error
         retry = true
-        if ex.is_a? TooManyRequests
-          rate_control_delays = 1
-          STDERR.puts ">~< Too many requests, sleeping for 30s before retry" if TRACE
-          sleep RATE_CONTROL_DELAY
-        end
+      rescue TooManyRequests
+        retry = true
+        rate_control_delays = 1
+        STDERR.puts ">~< Too many requests, sleeping for 30s before retry" if TRACE
+        sleep RATE_CONTROL_DELAY
       end
       # One retry allowed when an IO error occurs.
       # Usually IO errors cannot be retried away.
@@ -82,8 +96,8 @@ module LLM
           STDERR.puts ">>> --- the one and only retry".colorize(:red) if TRACE
           attempt_post_and_stream(body, session_id, path) { |resp| yield resp }
         rescue TooManyRequests
-          rate_control_delays += 1
           retry = true
+          rate_control_delays += 1
           STDERR.puts ">~< Too many requests, sleeping for 30s before retry" if TRACE
           sleep RATE_CONTROL_DELAY
         end
