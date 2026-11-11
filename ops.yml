@@ -36,7 +36,7 @@ actions:
 
       VERSION=$(grep -E '^version:' shard.yml | awk '{print $2}')
       if [ -e "$INSTALL_DIR" ]; then
-        ops build-release && cp bin/release/$APP "$INSTALL_DIR/$APP-${VERSION}"
+        ops build-release && cp bin/release/$APP "$INSTALL_DIR/$APP-${VERSION}" && ops build-release
       else
         echo 1>&2 "ops: The directory '$INSTALL_DIR' does not exist."
       fi
@@ -52,6 +52,8 @@ actions:
         ops build-debug -Dbake_webui_dist
         cp bin/debug/$APP "$INSTALL_DIR/$APP-dbg-${VERSION}"
         cp bin/debug/$APP.dwarf "$INSTALL_DIR/$APP-dbg-${VERSION}.dwarf"
+        # Build debug binary without baked webUI for direct use
+        ops build-debug
       else
         echo 1>&2 "ops: The directory '$INSTALL_DIR' does not exist."
       fi
