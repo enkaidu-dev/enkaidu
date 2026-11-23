@@ -7,21 +7,25 @@ module Enkaidu
       def auto_load
         return unless config = opts.config
 
+        # Idempotent; migrates deprecated `auto_load` settings into `session`
+        # and renders a deprecation warning if the section is present
+        config.migrate_auto_load_to_session(renderer)
+
         auto_load_essentials(config)
         auto_load_system_prompts(config)
         check_and_set_system_prompt(config)
       end
 
       private def auto_load_essentials(config)
-        if auto_load = config.auto_load
+        if session = config.session
           if mcp_servers = config.mcp_servers
-            if (mcp_server_names = auto_load.mcp_servers) && mcp_server_names.present?
+            if (mcp_server_names = session.mcp_servers) && mcp_server_names.present?
               renderer.info_with("Auto-loading MCP servers: #{mcp_server_names.join(", ")}")
               load_mcp_servers(mcp_servers, mcp_server_names)
             end
           end
 
-          if (toolsets = auto_load.toolsets) && toolsets.present?
+          if (toolsets = session.toolsets) && toolsets.present?
             renderer.info_with("Auto-loading toolsets: #{toolsets.join(", ")}")
             load_toolsets(toolsets)
           end
@@ -43,8 +47,8 @@ module Enkaidu
       end
 
       private def check_and_set_system_prompt(config)
-        if autoload = config.auto_load
-          if name = autoload.system_prompt_name
+        if session = config.session
+          if name = session.system_prompt_name
             if sys_prompt = render_system_prompt(name)
               @chat.with_system_message(system_prompt(sys_prompt))
             else
