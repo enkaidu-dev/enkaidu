@@ -13,14 +13,16 @@ jobs:
 
       matrix:
         include:
-          # - { os: ubuntu-latest, crystal: "1.22" }
-          - { os: ubuntu-24.04-arm, crystal: "1.22.2" }
-          - { os: ubuntu-latest, crystal: "1.22.2" }
+          - { os: ubuntu-slim, crystal: "1.22" }
+          - { os: ubuntu-latest, crystal: "1.22" }
+          - { os: ubuntu-24.04-arm, crystal: latest }
           - { os: macos-latest, crystal: latest }
           - { os: windows-latest, crystal: "1.21" } # Newer Crystal releases failing to install
 
     runs-on: ${{ matrix.os }}
-
+    defaults:
+      run:
+        shell: bash
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -40,6 +42,7 @@ jobs:
         with:
           path: |
             lib
+            webui/node_modules
             bin/ameba*
           key: ${{ runner.os }}-shards-${{ hashFiles('**/shard.lock') }}
 
@@ -67,7 +70,7 @@ jobs:
       # ---- Lint and format check on `ubuntu-latest`
       - name: Build ameba  (Linux)
         if: ${{ matrix.os == 'ubuntu-latest' }}
-        run: cp lib/ameba/bin/ameba.cr bin && crystal build -Dpreview_mt -o bin/ameba bin/ameba.cr
+        run: crystal build -Dpreview_mt -o bin/ameba lib/ameba/bin/ameba.cr
 
       - name: Build Debug (Linux)
         if: ${{ matrix.os == 'ubuntu-latest' }}
