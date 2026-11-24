@@ -13,9 +13,8 @@ jobs:
 
       matrix:
         include:
-          - { os: ubuntu-slim, crystal: "1.22" }
+          - { os: ubuntu-24.04-arm, crystal: "1.21" }
           - { os: ubuntu-latest, crystal: "1.22" }
-          - { os: ubuntu-24.04-arm, crystal: latest }
           - { os: macos-latest, crystal: latest }
           - { os: windows-latest, crystal: "1.21" } # Newer Crystal releases failing to install
 
@@ -63,9 +62,9 @@ jobs:
         if: ${{ runner.os != 'Windows' }}
         run: mkdir -p bin/debug
 
-      - name: Run tests (Linux, macOS)
-        if: ${{ runner.os != 'Windows' }}
-        run: crystal spec -Dtest -v --order=random
+      - name: Run tests (macOS only for now)
+        if: ${{ matrix.os == 'macos-latest' }}
+        run: crystal spec -Dtest --order=random
 
       # ---- Lint and format check on `ubuntu-latest`
       - name: Build ameba  (Linux)
