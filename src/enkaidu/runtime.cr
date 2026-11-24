@@ -122,9 +122,9 @@ module Enkaidu
         if cordon_policy.allow_network_present?
           policy.allow_network = cordon_policy.allow_network?
         end
-        cordon_policy.allow_env.each do |name, value|
-          policy.env[name] = value
-        end
+        # cordon_policy.allow_env.each do |name, value|
+        #   policy.env[name] = value
+        # end
       end
 
       # Pull in system preset
@@ -136,21 +136,23 @@ module Enkaidu
           policy = policy.merge(Cordon::Preset::Brew.for_current_platform)
         end
 
+        # Order matters
+        # 1. Keep Crystal deps first
+        if using_crystal = ws.using_crystal
+          if cr_policy = cordon_cr_policy(using_crystal, using_brew)
+            policy = policy.merge(cr_policy)
+          end
+        end
+        # 2. Then Ruby
         if using_ruby = ws.using_ruby
           if ruby_policy = cordon_ruby_policy(using_ruby, using_brew)
             policy = policy.merge(ruby_policy)
           end
         end
-
+        # 3. Keep this last
         if using_python = ws.using_python
           if py_policy = cordon_python_policy(using_python, using_brew)
             policy = policy.merge(py_policy)
-          end
-        end
-
-        if using_crystal = ws.using_crystal
-          if cr_policy = cordon_cr_policy(using_crystal, using_brew)
-            policy = policy.merge(cr_policy)
           end
         end
       end
@@ -181,9 +183,10 @@ module Enkaidu
     private def cordon_ruby_policy(using_ruby, using_brew)
       case using_ruby
       when true
-        Cordon::Preset::Ruby.for_current_platform(with_brew: using_brew)
       when Config::Cordon::Workspace::UsingRuby
-        Cordon::Preset::Ruby.for_executable(using_ruby.ruby_path)
+        Cordon::Preset::Ruby.for_executable(using_ruby.ruby_path,
+          gem_home: ENV["GEM_HOME"]?,
+          gem_path: ENV["GEM_PATH"]?)
       end
     end
 
