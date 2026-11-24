@@ -65,7 +65,7 @@ jobs:
 
       - name: Run tests (Linux, macOS)
         if: ${{ runner.os != 'Windows' }}
-        run: crystal spec -Dtest
+        run: crystal spec -Dtest -v --order=random
 
       # ---- Lint and format check on `ubuntu-latest`
       - name: Build ameba  (Linux)
