@@ -122,6 +122,9 @@ module Enkaidu
         if cordon_policy.allow_network_present?
           policy.allow_network = cordon_policy.allow_network?
         end
+        cordon_policy.allow_env.each do |name, value|
+          policy.env[name] = value
+        end
       end
 
       # Pull in system preset

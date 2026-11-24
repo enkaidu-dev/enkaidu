@@ -45,6 +45,8 @@ module Enkaidu
         getter read_only_paths = [] of String
         # Add read-write access to specific paths
         getter read_write_paths = [] of String
+        # Allow these env variables through into the Cordon
+        getter allow_env = {} of String => String
 
         def initialize; end
       end
