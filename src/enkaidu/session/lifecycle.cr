@@ -9,8 +9,8 @@ module Enkaidu
       end
 
       # Squish session history without affecting any other configuration.
-      def squish_history
-        @chat.squish
+      def squish_history(exclude_past_turns = 0)
+        @chat.squish(exclude_past_turns)
       end
 
       # Save session to a JSONL file,  where each line in order is as follows:

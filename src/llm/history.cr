@@ -35,30 +35,63 @@ module LLM
       @messages = [] of MessageWrap
     end
 
+    def size
+      @messages.size
+    end
+
     # Returns a `History` where for each turn the new history keeps the user input and the last response,
     # dropping everything in-between.
     # MAYBE? Consider yielding the turn to give the caller option to do some processing and
     # return an alternative response.
-    def squish_turns
-      squistory = self.class.new
+    def squish_turns(skip_turns = 0) : self?
+      # Count the turns and only proceed if any should be squished
+      total_turns = 0
       prev_response = nil
       each_message(reverse: false) do |msg|
         case msg
         when Message::MultiContent
-          # Keep the last response from previous turn
-          squistory.append_message(prev_response) if prev_response
-          # Keep the request for the next turn
-          squistory.append_message(msg)
+          if prev_response
+            total_turns += 1
+            prev_response = nil
+          end
         when Message::Response
-          # Hold on to the response until we find end of turn
           prev_response = msg
-        else
-          # Anything else is tool call responses which we don't want
-          # But that also means the last response asked for tool calls
-          prev_response = prev_response.dup_without_tool_calls if prev_response
         end
       end
-      STDERR.puts "~~ #squish_history: #{@messages.size} -> #{squistory.@messages.size} messages"
+      total_turns += 1 if prev_response
+
+      squish_turns = total_turns - skip_turns
+      return unless squish_turns.positive?
+
+      squistory = self.class.new
+      prev_response = nil
+      turns = 0
+      each_message(reverse: false) do |msg|
+        if turns < squish_turns
+          # Squish only the requested initial turns
+          case msg
+          when Message::MultiContent
+            # Keep the last response from previous turn
+            if prev_response
+              squistory.append_message(prev_response)
+              prev_response = nil
+              turns += 1
+            end
+            # Keep the request for the next turn
+            squistory.append_message(msg)
+          when Message::Response
+            # Hold on to the response until we find end of turn
+            prev_response = msg
+          else
+            # Anything else is tool call responses which we don't want
+            # But that also means the last response asked for tool calls
+            prev_response = prev_response.dup_without_tool_calls if prev_response
+          end
+        else
+          # Preserve the rest entirely
+          squistory.append_message(msg)
+        end
+      end
       squistory
     end
 
