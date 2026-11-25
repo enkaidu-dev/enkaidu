@@ -59,10 +59,10 @@ module LLM
         end
       end
       total_turns += 1 if prev_response
-
       squish_turns = total_turns - skip_turns
       return unless squish_turns.positive?
 
+      # Squish the turns up to the number requested
       squistory = self.class.new
       prev_response = nil
       turns = 0
@@ -92,6 +92,7 @@ module LLM
           squistory.append_message(msg)
         end
       end
+      squistory.append_message(prev_response) if prev_response
       squistory
     end
 
