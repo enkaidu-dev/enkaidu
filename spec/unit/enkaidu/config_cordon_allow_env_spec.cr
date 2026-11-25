@@ -15,15 +15,15 @@ Spectator.describe "Enkaidu::Config cordon allow_env" do
       expect(config.cordon.not_nil!.policy.not_nil!.allow_env).to eq({"BOO" => "HOO", "FOO" => "BAR"})
     end
 
-    it "parses env var passthrough pattern as a literal string" do
+    it "parses and substitutes env var passthrough " do
       config = Enkaidu::Config.from_yaml(<<-YAML)
         cordon:
           policy:
             allow_env:
-              EJSON_KEYDIR: $EJSON_KEYDIR
+              MY_PWD: $PWD
       YAML
 
-      expect(config.cordon.not_nil!.policy.not_nil!.allow_env).to eq({"EJSON_KEYDIR" => "$EJSON_KEYDIR"})
+      expect(config.cordon.not_nil!.policy.not_nil!.allow_env).to eq({"MY_PWD" => Dir.current})
     end
 
     it "defaults to an empty hash when allow_env is absent" do
