@@ -58,7 +58,7 @@ Spectator.describe "Enkaidu::Session auto_load" do
 
       expect(renderer.info_messages).to contain("Auto-loading toolsets: DateAndTime")
       # `tool_loaded?` returns the tool or `nil`, not a Bool
-      expect(session.tool_loaded?("get_current_datetime")).to_not be_nil
+      expect(session.tool_loaded?("date")).to_not be_nil
     end
   end
 

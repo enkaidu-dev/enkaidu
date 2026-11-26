@@ -6,7 +6,7 @@ module Tools::AudioEditing
   # The `ReadAudioFileTool` class defines a tool for reading an audio file and returning it as a base64 audio attachment.
   # It ensures the operation is performed securely within the allowed directory, avoiding access to unauthorized paths.
   class ReadAudioFileTool < BuiltInFunction
-    name "read_audio_file"
+    name "read_audio"
     side_effects SideEffects::FileRead
 
     # Provide a description for the tool

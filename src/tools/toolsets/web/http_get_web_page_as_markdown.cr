@@ -9,7 +9,7 @@ require "../../../sucre/html_to_markdown"
 module Tools::Web
   # The `HttpGetWebAsMarkdownTool` class defines a tool for making HTTP GET requests to retrieve web pages as Markdown.
   class HttpGetWebAsMarkdownTool < HttpGet
-    name "http_get_web_page_as_markdown"
+    name "fetch_markdown"
     side_effects SideEffects::NetRead
 
     description <<-DESC

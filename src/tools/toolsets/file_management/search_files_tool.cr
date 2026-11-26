@@ -7,7 +7,7 @@ module Tools::FileManagement
   # in all files found using a glob pattern. It ensures the operation is performed securely within the
   # allowed directory, avoiding access to unauthorized paths.
   class SearchFilesTool < BuiltInFunction
-    name "search_files"
+    name "search"
     side_effects SideEffects::FileRead | SideEffects::DirRead
 
     description "Searches the files selected by `files` (a path or glob, e.g. '**/*.cr') for lines containing `pattern`, like grep, " \

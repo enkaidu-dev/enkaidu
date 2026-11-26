@@ -6,7 +6,7 @@ module Tools::ImageEditing
   # The `ReadImageFileTool` class defines a tool for reading an image file and returning it as a data URL.
   # It ensures the operation is performed securely within the allowed directory, avoiding access to unauthorized paths.
   class ReadImageFileTool < BuiltInFunction
-    name "read_image_file"
+    name "read_image"
     side_effects SideEffects::FileRead
 
     # Provide a description for the tool

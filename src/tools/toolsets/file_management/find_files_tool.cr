@@ -7,7 +7,7 @@ module Tools::FileManagement
   # It ensures the operation is performed securely within the allowed directory,
   # avoiding access to unauthorized paths.
   class FindFilesTool < BuiltInFunction
-    name "find_files"
+    name "find"
     side_effects SideEffects::FileRead | SideEffects::DirRead
 
     # Provide a description for the tool

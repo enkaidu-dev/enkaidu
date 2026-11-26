@@ -7,7 +7,7 @@ module Tools::TextLineEditing
   # a specific line in a text file. It ensures the operation is performed securely within the
   # allowed directory, avoiding access to unauthorized paths.
   class ReplaceLinesInTextFileTool < BuiltInFunction
-    name "str_replace_lines_in_text_file"
+    name "replace_lines"
     side_effects SideEffects::FileRead | SideEffects::FileWrite
 
     description "Replace a range of lines in a text file within the current directory with given text."

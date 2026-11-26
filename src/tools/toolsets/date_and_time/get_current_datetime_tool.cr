@@ -4,7 +4,7 @@ require "../../built_in_function"
 module Tools::DateAndTime
   # The `GetCurrentDatetimeTool` class defines a tool for fetching the current date and time.
   class GetCurrentDatetimeTool < BuiltInFunction
-    name "get_current_datetime"
+    name "date"
 
     side_effects SideEffects::None
 

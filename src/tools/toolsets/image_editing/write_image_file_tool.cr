@@ -7,7 +7,7 @@ module Tools::ImageEditing
   # The `WriteImageFileTool` class defines a tool for creating image files from base64 encoded data within
   # the current directory.
   class WriteImageFileTool < BuiltInFunction
-    name "write_image_file"
+    name "write_image"
     side_effects SideEffects::FileWrite
 
     description "Write an image file within the current directory with the given base64-encoded image data URL. " \

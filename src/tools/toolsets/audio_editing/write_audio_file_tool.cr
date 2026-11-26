@@ -7,7 +7,7 @@ module Tools::AudioEditing
   # The `WriteAudioFileTool` class defines a tool for creating / over-writing audio files from base64 encoded data, within the current
   # directory.
   class WriteAudioFileTool < BuiltInFunction
-    name "create_audio_file"
+    name "write_audio"
     side_effects SideEffects::FileWrite
 
     description "Write audio file within the current directory with the given base64-encoded audio data. " \

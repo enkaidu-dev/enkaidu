@@ -8,7 +8,7 @@ module Tools::FileManagement
   # ".deleted_files/" folder, where it preserves the files location path and
   # prepends a timestamp prepended to the filename.
   class DeleteFileTool < BuiltInFunction
-    name "delete_file"
+    name "rm"
     side_effects SideEffects::FileRead | SideEffects::FileWrite | SideEffects::FileDelete
 
     description "Deletes a file within the current directory by moving it to the `#{FileHelper::DELETED_FILES_PATH}` folder " \

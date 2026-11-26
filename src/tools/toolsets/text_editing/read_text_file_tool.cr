@@ -7,7 +7,7 @@ module Tools::TextEditing
   # from a file. It ensures the operation is performed securely within the
   # allowed directory, avoiding access to unauthorized paths.
   class ReadTextFileTool < BuiltInFunction
-    name "read_text_file"
+    name "read_text"
     side_effects SideEffects::FileRead
 
     # Provide a description for the tool

@@ -6,7 +6,7 @@ module Tools::FileManagement
   # The `RenameFileTool` class defines a tool to rename and/or move a file in the current directory.
   # It ensures the operation is performed securely within the allowed directory, avoiding access to unauthorized paths.
   class RenameFileTool < BuiltInFunction
-    name "rename_or_move_file"
+    name "mv"
     side_effects SideEffects::FileRead | SideEffects::FileMove | SideEffects::DirRead | SideEffects::DirMove
 
     description "Rename a file or directory, or move it to another sub-folder, but you may not move it outside this directory." \

@@ -7,7 +7,7 @@ module Tools::FileManagement
   # It ensures that the directory is created within the current working
   # directory and does not allow creation of paths that escape the root.
   class CreateDirectoryTool < BuiltInFunction
-    name "create_directory"
+    name "mkdir"
     side_effects SideEffects::DirRead | SideEffects::DirWrite
 
     description "Creates a new directory at the specified relative path within the current directory."

@@ -378,7 +378,19 @@ module Enkaidu
 
     # Return tool settings if any
     def tool_settings_by_name(tool_name : String) : ::LLM::Function::Settings?
-      tool_settings.try &.[tool_name]?
+      ts = tool_settings
+      return if ts.nil?
+      return ts[tool_name]? if ts.has_key?(tool_name)
+      # Fallback: the queried name may be a current name whose config key is
+      # still the deprecated predecessor. Only fall back when the queried name
+      # is itself deprecated (so a current name never masquerades as its
+      # predecessor, e.g. "find" must not resolve to "find_files").
+      if Tools::Compatibility.deprecated?(tool_name)
+        old_name = Tools::Compatibility.old_name_for?(tool_name)
+        if old_name
+          ts[old_name]?
+        end
+      end
     end
 
     # Merge in a profile configuration, using settings from the profile

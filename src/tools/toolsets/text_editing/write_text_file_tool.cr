@@ -6,7 +6,7 @@ module Tools::TextEditing
   # The `WriteTextFileTool` class defines a tool for a creating or overwriting a file, ensuring the operation is performed within
   # the current directory.
   class WriteTextFileTool < BuiltInFunction
-    name "write_text_file"
+    name "write_text"
     side_effects SideEffects::FileRead | SideEffects::FileWrite
 
     description "Write a text file within the current directory with the given content. " \

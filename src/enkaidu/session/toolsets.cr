@@ -64,11 +64,24 @@ module Enkaidu
         tool
       end
 
+      private def resolve_deprecated_tool_names(tool_names : Enumerable(String))
+        if Tools::Compatibility.any_deprecated?(tool_names)
+          unless Tools::Compatibility.warned?
+            Tools::Compatibility.mark_warned!
+            renderer.warning_with("Tool names have been renamed, but old names are still supported. Use /toolset compat to see the mapping.")
+          end
+          tool_names = Tools::Compatibility.resolve(tool_names)
+        end
+        tool_names
+      end
+
       def load_toolset_by(name, select_tools : Enumerable(String)? = nil, auto = false) : Nil
         toolset = Tools[name]?
         if toolset.nil?
           renderer.warning_with("No built-in toolset found under the name: #{name}.")
         else
+          # Resolve deprecated tool names
+          select_tools = resolve_deprecated_tool_names(select_tools) if select_tools
           # Load selected tools or all tools in toolset
           selection = select_tools || toolset.tool_names # select all tool names
           # Filter out tool names in selection that are alreadyloaded
@@ -100,6 +113,8 @@ module Enkaidu
       # This is for use by the tool for installing tools, and it searches across
       # all toolsets.
       def load_tools_across_toolsets(tool_names : Enumerable(String))
+        # Resolve deprecated tool names
+        tool_names = resolve_deprecated_tool_names(tool_names)
         loaded = [] of NamedTuple(toolset: String, tool: String)
         Tools.each_toolset do |toolset|
           toolset.each_tool_class(readonly: readonly?) do |name, tool_class|

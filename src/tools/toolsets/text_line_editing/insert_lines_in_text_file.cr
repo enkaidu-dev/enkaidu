@@ -7,7 +7,7 @@ module Tools::TextLineEditing
   # a specific line in a text file. It ensures the operation is performed securely within the
   # allowed directory, avoiding access to unauthorized paths.
   class InsertLinesInTextFileTool < BuiltInFunction
-    name "str_insert_in_text_file"
+    name "insert_lines"
     side_effects SideEffects::FileRead | SideEffects::FileWrite
 
     description "Insert text at a specific location in a text file within the current directory."

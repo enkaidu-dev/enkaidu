@@ -8,7 +8,7 @@ require "./http_get"
 module Tools::Web
   # The `HttpGetWebPageTool` class defines a tool for making HTTP GET requests to retrieve text content.
   class HttpGetWebPageTool < HttpGet
-    name "http_get_web_page"
+    name "fetch_html"
     side_effects SideEffects::NetRead
 
     description <<-DESC
