@@ -32,7 +32,7 @@ Spectator.describe Tools::FileManagement::DeleteFileTool do
     end
 
     it "moves the file into the .deleted_files folder preserving the structure" do
-      result = parse_run_result(runner.execute(make_args(file_path: file_path)))
+      result = parse_run_result(runner.execute(make_args(path: file_path)))
 
       expect(result[:success]).to be_true
       expect(result[:error_msg]).to be_nil
@@ -59,7 +59,7 @@ Spectator.describe Tools::FileManagement::DeleteFileTool do
     after { File.delete?(root_file) }
 
     it "moves the file directly into the .deleted_files folder" do
-      result = parse_run_result(runner.execute(make_args(file_path: root_file)))
+      result = parse_run_result(runner.execute(make_args(path: root_file)))
 
       expect(result[:success]).to be_true
 
@@ -88,7 +88,7 @@ Spectator.describe Tools::FileManagement::DeleteFileTool do
     end
 
     it "returns an error and leaves the file in place" do
-      result = parse_run_result(runner.execute(make_args(file_path: deleted_file)))
+      result = parse_run_result(runner.execute(make_args(path: deleted_file)))
 
       expect(result[:success]).to be_false
       expect(result[:error_msg]).to match(/Cannot delete files from the/)
@@ -105,13 +105,13 @@ Spectator.describe Tools::FileManagement::DeleteFileTool do
       result = parse_run_result(runner.execute(make_args))
 
       expect(result[:success]).to be_false
-      expect(result[:error_msg]).to match(/The required file_path was not specified/)
+      expect(result[:error_msg]).to match(/The required path was not specified/)
     end
   end
 
   context "fails when the file does not exist" do
     it "returns an error" do
-      result = parse_run_result(runner.execute(make_args(file_path: File.join(temp_dir, "ghost.txt"))))
+      result = parse_run_result(runner.execute(make_args(path: File.join(temp_dir, "ghost.txt"))))
 
       expect(result[:success]).to be_false
       expect(result[:error_msg]).to match(/does not exist or is not a file/)
@@ -124,7 +124,7 @@ Spectator.describe Tools::FileManagement::DeleteFileTool do
     before { Dir.mkdir_p(sub_dir) }
 
     it "returns an error" do
-      result = parse_run_result(runner.execute(make_args(file_path: sub_dir)))
+      result = parse_run_result(runner.execute(make_args(path: sub_dir)))
 
       expect(result[:success]).to be_false
       expect(result[:error_msg]).to match(/does not exist or is not a file/)
@@ -135,7 +135,7 @@ Spectator.describe Tools::FileManagement::DeleteFileTool do
     let(:outside_path) { File.tempname("_outside.txt") }
 
     it "returns an error" do
-      result = parse_run_result(runner.execute(make_args(file_path: outside_path)))
+      result = parse_run_result(runner.execute(make_args(path: outside_path)))
 
       expect(result[:success]).to be_false
       expect(result[:error_msg]).to match(/is not allowed/)

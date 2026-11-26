@@ -22,7 +22,7 @@ Spectator.describe Tools::AudioEditing::WriteAudioFileTool do
     let(:file_path) { File.join(temp_dir, "out.wav") }
 
     it "succeeds and decodes the data to the file" do
-      result = parse_run_result(runner.execute(make_args(file_path: file_path, audio_data: wav_data)))
+      result = parse_run_result(runner.execute(make_args(path: file_path, data: wav_data)))
 
       expect(result[:success]).to be_true
       expect(result[:data].as_h["message"]).to match(/written successfully/)
@@ -34,7 +34,7 @@ Spectator.describe Tools::AudioEditing::WriteAudioFileTool do
     let(:file_path) { File.join(temp_dir, "out.mp3") }
 
     it "succeeds and decodes the data to the file" do
-      result = parse_run_result(runner.execute(make_args(file_path: file_path, audio_data: Base64.strict_encode(mp3_bytes))))
+      result = parse_run_result(runner.execute(make_args(path: file_path, data: Base64.strict_encode(mp3_bytes))))
 
       expect(result[:success]).to be_true
       expect(result[:data].as_h["message"]).to match(/written successfully/)
@@ -46,7 +46,7 @@ Spectator.describe Tools::AudioEditing::WriteAudioFileTool do
     let(:nested_path) { File.join(temp_dir, "a", "b", "out.wav") }
 
     it "creates directories and writes the file" do
-      result = parse_run_result(runner.execute(make_args(file_path: nested_path, audio_data: wav_data)))
+      result = parse_run_result(runner.execute(make_args(path: nested_path, data: wav_data)))
 
       expect(result[:success]).to be_true
       expect(read_bytes(nested_path).to_a).to eq(wav_bytes.bytes.to_a)
@@ -59,7 +59,7 @@ Spectator.describe Tools::AudioEditing::WriteAudioFileTool do
     before { File.write(file_path, "stale bytes") }
 
     it "succeeds and replaces the old content" do
-      result = parse_run_result(runner.execute(make_args(file_path: file_path, audio_data: wav_data, overwrite: true)))
+      result = parse_run_result(runner.execute(make_args(path: file_path, data: wav_data, overwrite: true)))
 
       expect(result[:success]).to be_true
       expect(read_bytes(file_path).to_a).to eq(wav_bytes.bytes.to_a)
@@ -70,23 +70,23 @@ Spectator.describe Tools::AudioEditing::WriteAudioFileTool do
   # Error handling scenarios
   # -------------------------------------------------
 
-  context "fails when file_path is not provided" do
+  context "fails when path is not provided" do
     it "returns an error" do
-      result = parse_run_result(runner.execute(make_args(audio_data: wav_data)))
+      result = parse_run_result(runner.execute(make_args(data: wav_data)))
 
       expect(result[:success]).to be_false
-      expect(result[:error_msg]).to match(/The required file_path was not specified/)
+      expect(result[:error_msg]).to match(/The required path was not specified/)
     end
   end
 
-  context "fails when audio_data is not provided" do
+  context "fails when data is not provided" do
     let(:file_path) { File.join(temp_dir, "no_data.wav") }
 
     it "returns an error" do
-      result = parse_run_result(runner.execute(make_args(file_path: file_path)))
+      result = parse_run_result(runner.execute(make_args(path: file_path)))
 
       expect(result[:success]).to be_false
-      expect(result[:error_msg]).to match(/The required audio_data was not specified/)
+      expect(result[:error_msg]).to match(/The required data was not specified/)
     end
   end
 
@@ -96,7 +96,7 @@ Spectator.describe Tools::AudioEditing::WriteAudioFileTool do
     before { File.write(file_path, "I am here") }
 
     it "returns an error without modifying the file when overwrite is false" do
-      result = parse_run_result(runner.execute(make_args(file_path: file_path, audio_data: wav_data, overwrite: false)))
+      result = parse_run_result(runner.execute(make_args(path: file_path, data: wav_data, overwrite: false)))
 
       expect(result[:success]).to be_false
       expect(result[:error_msg]).to match(/already exists/)
@@ -104,7 +104,7 @@ Spectator.describe Tools::AudioEditing::WriteAudioFileTool do
     end
 
     it "returns an error without modifying the file when overwrite is omitted" do
-      result = parse_run_result(runner.execute(make_args(file_path: file_path, audio_data: wav_data)))
+      result = parse_run_result(runner.execute(make_args(path: file_path, data: wav_data)))
 
       expect(result[:success]).to be_false
       expect(result[:error_msg]).to match(/already exists/)
@@ -115,7 +115,7 @@ Spectator.describe Tools::AudioEditing::WriteAudioFileTool do
     let(:file_path) { File.join(temp_dir, "bogus.wav") }
 
     it "returns an error" do
-      result = parse_run_result(runner.execute(make_args(file_path: file_path, audio_data: Base64.strict_encode("not audio"))))
+      result = parse_run_result(runner.execute(make_args(path: file_path, data: Base64.strict_encode("not audio"))))
 
       expect(result[:success]).to be_false
       expect(result[:error_msg]).to match(/Unknown audio format/)
@@ -126,7 +126,7 @@ Spectator.describe Tools::AudioEditing::WriteAudioFileTool do
     let(:file_path) { File.join(temp_dir, "bad_b64.wav") }
 
     it "returns an error" do
-      result = parse_run_result(runner.execute(make_args(file_path: file_path, audio_data: wav_data + "!!!!")))
+      result = parse_run_result(runner.execute(make_args(path: file_path, data: wav_data + "!!!!")))
 
       expect(result[:success]).to be_false
       expect(result[:error_msg]).to match(/An error occurred while creating/)
@@ -137,7 +137,7 @@ Spectator.describe Tools::AudioEditing::WriteAudioFileTool do
     let(:outside_path) { File.tempname("_outside.wav") }
 
     it "returns an error" do
-      result = parse_run_result(runner.execute(make_args(file_path: outside_path, audio_data: wav_data)))
+      result = parse_run_result(runner.execute(make_args(path: outside_path, data: wav_data)))
 
       expect(result[:success]).to be_false
       expect(result[:error_msg]).to match(/is not allowed/)

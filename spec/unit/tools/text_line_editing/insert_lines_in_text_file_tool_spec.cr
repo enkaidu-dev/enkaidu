@@ -27,9 +27,9 @@ Spectator.describe Tools::TextLineEditing::InsertLinesInTextFileTool do
 
     it "succeeds and updates the file correctly" do
       args = {
-        "file_path"   => file_path,
-        "insert_line" => 0,
-        "insert_text" => insert_text,
+        "path"   => file_path,
+        "line"   => 0,
+        "text"   => insert_text,
       }
 
       result_json = runner.execute(JSON.parse(args.to_json))
@@ -54,9 +54,9 @@ Spectator.describe Tools::TextLineEditing::InsertLinesInTextFileTool do
 
     it "succeeds and places the new text after line 1" do
       args = {
-        "file_path"   => file_path,
-        "insert_line" => 1,
-        "insert_text" => insert_text,
+        "path"   => file_path,
+        "line"   => 1,
+        "text"   => insert_text,
       }
 
       result_json = runner.execute(JSON.parse(args.to_json))
@@ -79,9 +79,9 @@ Spectator.describe Tools::TextLineEditing::InsertLinesInTextFileTool do
 
     it "succeeds and appends the text at the end" do
       args = {
-        "file_path"   => file_path,
-        "insert_line" => -1,
-        "insert_text" => insert_text,
+        "path"   => file_path,
+        "line"   => -1,
+        "text"   => insert_text,
       }
 
       result_json = runner.execute(JSON.parse(args.to_json))
@@ -98,22 +98,22 @@ Spectator.describe Tools::TextLineEditing::InsertLinesInTextFileTool do
   # Error handling scenarios
   # -------------------------------------------------
 
-  context "fails when file_path is not provided" do
+  context "fails when path is not provided" do
     it "returns an error" do
       args = {
-        "insert_line" => 0,
-        "insert_text" => "anything", # file_path missing
+        "line" => 0,
+        "text" => "anything", # path missing
       }
 
       result_json = runner.execute(JSON.parse(args.to_json))
       result = JSON.parse(result_json).as_h
 
       expect(result).to have_key("error")
-      expect(result["error"]).to match(/The required `file_path` was not specified/)
+      expect(result["error"]).to match(/The required `path` was not specified/)
     end
   end
 
-  context "fails when insert_line is not provided" do
+  context "fails when line is not provided" do
     let(:file_path) { File.join(temp_dir, "exist.txt") }
     let(:original_content) { "content" }
     before do
@@ -123,19 +123,19 @@ Spectator.describe Tools::TextLineEditing::InsertLinesInTextFileTool do
 
     it "returns an error" do
       args = {
-        "file_path"   => file_path,
-        "insert_text" => "new text", # insert_line missing
+        "path" => file_path,
+        "text" => "new text", # line missing
       }
 
       result_json = runner.execute(JSON.parse(args.to_json))
       result = JSON.parse(result_json).as_h
 
       expect(result).to have_key("error")
-      expect(result["error"]).to match(/The required `insert_line` was not specified/)
+      expect(result["error"]).to match(/The required `line` was not specified/)
     end
   end
 
-  context "fails when insert_text is not provided" do
+  context "fails when text is not provided" do
     let(:file_path) { File.join(temp_dir, "exist.txt") }
     let(:original_content) { "content" }
     before do
@@ -145,25 +145,25 @@ Spectator.describe Tools::TextLineEditing::InsertLinesInTextFileTool do
 
     it "returns an error" do
       args = {
-        "file_path"   => file_path,
-        "insert_line" => 0,
-        # insert_text missing
+        "path" => file_path,
+        "line" => 0,
+        # text missing
       }
 
       result_json = runner.execute(JSON.parse(args.to_json))
       result = JSON.parse(result_json).as_h
 
       expect(result).to have_key("error")
-      expect(result["error"]).to match(/The required `insert_text` was not specified/)
+      expect(result["error"]).to match(/The required `text` was not specified/)
     end
   end
 
   context "fails when the target file does not exist" do
     it "returns an error" do
       args = {
-        "file_path"   => "nonexistent.txt",
-        "insert_line" => 0,
-        "insert_text" => "anything",
+        "path"   => "nonexistent.txt",
+        "line"   => 0,
+        "text"   => "anything",
       }
 
       result_json = runner.execute(JSON.parse(args.to_json))
@@ -179,9 +179,9 @@ Spectator.describe Tools::TextLineEditing::InsertLinesInTextFileTool do
 
     it "returns an error" do
       args = {
-        "file_path"   => outside_path,
-        "insert_line" => 0,
-        "insert_text" => "test",
+        "path"   => outside_path,
+        "line"   => 0,
+        "text"   => "test",
       }
 
       result_json = runner.execute(JSON.parse(args.to_json))
@@ -192,7 +192,7 @@ Spectator.describe Tools::TextLineEditing::InsertLinesInTextFileTool do
     end
   end
 
-  context "fails when the file_path points to a non-file (e.g., a directory)" do
+  context "fails when the path points to a non-file (e.g., a directory)" do
     let(:dir_path) { File.join(temp_dir, "subdir") }
 
     before { Dir.mkdir_p(dir_path) }
@@ -200,9 +200,9 @@ Spectator.describe Tools::TextLineEditing::InsertLinesInTextFileTool do
 
     it "returns an error" do
       args = {
-        "file_path"   => dir_path,
-        "insert_line" => 0,
-        "insert_text" => "test",
+        "path"   => dir_path,
+        "line"   => 0,
+        "text"   => "test",
       }
 
       result_json = runner.execute(JSON.parse(args.to_json))
@@ -213,7 +213,7 @@ Spectator.describe Tools::TextLineEditing::InsertLinesInTextFileTool do
     end
   end
 
-  context "fails when insert_line is not an integer" do
+  context "fails when line is not an integer" do
     let(:file_path) { File.join(temp_dir, "exist.txt") }
     let(:original_content) { "content" }
     before do
@@ -223,16 +223,16 @@ Spectator.describe Tools::TextLineEditing::InsertLinesInTextFileTool do
 
     it "returns an error" do
       args = {
-        "file_path"   => file_path,
-        "insert_line" => "invalid",
-        "insert_text" => "new",
+        "path"   => file_path,
+        "line"   => "invalid",
+        "text"   => "new",
       }
 
       result_json = runner.execute(JSON.parse(args.to_json))
       result = JSON.parse(result_json).as_h
 
       expect(result).to have_key("error")
-      expect(result["error"]).to match(/The required `insert_line` was not specified/)
+      expect(result["error"]).to match(/The required `line` was not specified/)
     end
   end
 end

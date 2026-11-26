@@ -34,7 +34,7 @@ Spectator.describe Tools::AudioEditing::ReadAudioFileTool do
     before { File.write(file_path, wav_bytes) }
 
     it "returns a reply with a wav audio attachment" do
-      reply = expect_reply(runner.execute(make_args(file_path: file_path)))
+      reply = expect_reply(runner.execute(make_args(path: file_path)))
 
       expect(reply.content).to contain(file_path)
 
@@ -55,7 +55,7 @@ Spectator.describe Tools::AudioEditing::ReadAudioFileTool do
     before { File.write(file_path, mp3_bytes) }
 
     it "returns a reply with an mp3 audio attachment" do
-      reply = expect_reply(runner.execute(make_args(file_path: file_path)))
+      reply = expect_reply(runner.execute(make_args(path: file_path)))
 
       expect(reply.content).to contain(file_path)
 
@@ -90,16 +90,16 @@ Spectator.describe Tools::AudioEditing::ReadAudioFileTool do
   # Error handling scenarios
   # -------------------------------------------------
 
-  context "fails when file_path is not provided" do
+  context "fails when path is not provided" do
     it "returns an error" do
       expect_error(runner.execute(make_args),
-                   /The required file_path was not specified/)
+                   /The required `path` was not specified/)
     end
   end
 
   context "fails when the file does not exist" do
     it "returns an error" do
-      expect_error(runner.execute(make_args(file_path: File.join(temp_dir, "ghost.wav"))),
+      expect_error(runner.execute(make_args(path: File.join(temp_dir, "ghost.wav"))),
                    /does not exist/)
     end
   end
@@ -110,7 +110,7 @@ Spectator.describe Tools::AudioEditing::ReadAudioFileTool do
     before { Dir.mkdir_p(sub_dir) }
 
     it "returns an error" do
-      expect_error(runner.execute(make_args(file_path: sub_dir)),
+      expect_error(runner.execute(make_args(path: sub_dir)),
                    /does not exist/)
     end
   end
@@ -121,7 +121,7 @@ Spectator.describe Tools::AudioEditing::ReadAudioFileTool do
     before { File.write(file_path, "not audio at all") }
 
     it "returns an error" do
-      expect_error(runner.execute(make_args(file_path: file_path)),
+      expect_error(runner.execute(make_args(path: file_path)),
                    /not an allowed audio format/)
     end
   end
@@ -130,7 +130,7 @@ Spectator.describe Tools::AudioEditing::ReadAudioFileTool do
     let(:outside_path) { File.tempname("_outside.wav") }
 
     it "returns an error" do
-      expect_error(runner.execute(make_args(file_path: outside_path)),
+      expect_error(runner.execute(make_args(path: outside_path)),
                    /is not allowed/)
     end
   end

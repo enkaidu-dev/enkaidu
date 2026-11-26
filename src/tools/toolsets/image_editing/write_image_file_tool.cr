@@ -13,17 +13,14 @@ module Tools::ImageEditing
     description "Write an image file within the current directory with the given base64-encoded image data URL. " \
                 "Create entire path to the file if needed. DOES NOT overwrite existing file unless requested."
 
-    param "file_path", type: Param::Type::Str, required: true,
+    param "path", type: Param::Type::Str, required: true,
       description: "The relative path where the file will be written."
-    param "image_data", type: Param::Type::Str, required: true,
+    param "data_url", type: Param::Type::Str, required: true,
       description: "The base64 encoded image data in the format of a data URL " \
                    "('data:<content_type>;base64,<data>'). Supported content types are: " \
                    "#{ImageHelper::ALLOWED_IMAGE_CONTENT_TYPES.join(',')}"
     param "overwrite", type: Param::Type::Bool, required: false,
       description: "Optional. Set to true to overwrite existing file; default is false."
-
-    param "file_path", type: Param::Type::Str, required: true,
-      description: "The relative path where the image file will be created."
 
     runner Runner
 
@@ -32,10 +29,10 @@ module Tools::ImageEditing
       include ImageHelper
 
       def execute(args : JSON::Any) : String
-        file_path = args["file_path"]?.try(&.as_s?) ||
-                    return error_response("The required file_path was not specified")
-        data_url = args["image_data"]?.try(&.as_s?) ||
-                   return error_response("The required image_data was not specified")
+        file_path = args["path"]?.try(&.as_s?) ||
+                    return error_response("The required path was not specified")
+        data_url = args["data_url"]?.try(&.as_s?) ||
+                   return error_response("The required data_url was not specified")
         overwrite = args["overwrite"]?.try(&.as_bool?) || false
 
         resolved_path = resolve_path(file_path)

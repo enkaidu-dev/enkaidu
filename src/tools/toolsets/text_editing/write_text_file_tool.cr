@@ -12,7 +12,7 @@ module Tools::TextEditing
     description "Write a text file within the current directory with the given content. " \
                 "Create entire path to the file if needed. DOES NOT overwrite existing file unless requested."
 
-    param "file_path", type: Param::Type::Str, required: true,
+    param "path", type: Param::Type::Str, required: true,
       description: "The relative path where the text file will be created."
     param "content", type: Param::Type::Str, required: true,
       description: "The content to write into the text file."
@@ -26,7 +26,7 @@ module Tools::TextEditing
       include FileHelper
 
       def execute(args : JSON::Any) : String
-        file_path = args["file_path"]?.try(&.as_s?) || return error_response("The required file_path was not specified")
+        file_path = args["path"]?.try(&.as_s?) || return error_response("The required path was not specified")
         content = args["content"]?.try(&.as_s?) || return error_response("The required content was not specified")
         overwrite = args["overwrite"]?.try(&.as_bool?) || false
 

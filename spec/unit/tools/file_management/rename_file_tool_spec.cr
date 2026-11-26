@@ -50,8 +50,8 @@ Spectator.describe Tools::FileManagement::RenameFileTool do
     it "returns success with the old and new names" do
       Dir.cd(temp_dir) do
         args = {
-          "source_path" => "old_name.txt",
-          "target_path" => "new_name.txt",
+          "source" => "old_name.txt",
+          "target" => "new_name.txt",
         }
 
         result_json = runner.execute(JSON.parse(args.to_json))
@@ -81,8 +81,8 @@ Spectator.describe Tools::FileManagement::RenameFileTool do
     it "moves the file and returns success" do
       Dir.cd(temp_dir) do
         args = {
-          "source_path" => "file.txt",
-          "target_path" => "subdir/file.txt",
+          "source" => "file.txt",
+          "target" => "subdir/file.txt",
         }
 
         result_json = runner.execute(JSON.parse(args.to_json))
@@ -107,8 +107,8 @@ Spectator.describe Tools::FileManagement::RenameFileTool do
     it "renames the file successfully" do
       Dir.cd(temp_dir) do
         args = {
-          "source_path" => "old file name.txt",
-          "target_path" => "new file name.txt",
+          "source" => "old file name.txt",
+          "target" => "new file name.txt",
         }
 
         result_json = runner.execute(JSON.parse(args.to_json))
@@ -131,8 +131,8 @@ Spectator.describe Tools::FileManagement::RenameFileTool do
     it "renames the file with special chars successfully" do
       Dir.cd(temp_dir) do
         args = {
-          "source_path" => "test-file_2024.txt",
-          "target_path" => "new-test_v1.txt",
+          "source" => "test-file_2024.txt",
+          "target" => "new-test_v1.txt",
         }
 
         result_json = runner.execute(JSON.parse(args.to_json))
@@ -151,8 +151,8 @@ Spectator.describe Tools::FileManagement::RenameFileTool do
   context "blocks renaming paths resolved outside the current directory" do
     it "returns an error when source_path escapes current dir" do
       args = {
-        "source_path" => "../outside_dir/file.txt",
-        "target_path" => "some_name.txt",
+        "source" => "../outside_dir/file.txt",
+        "target" => "some_name.txt",
       }
 
       result_json = runner.execute(JSON.parse(args.to_json))
@@ -183,8 +183,8 @@ Spectator.describe Tools::FileManagement::RenameFileTool do
     it "returns an error when trying to rename a file in .deleted_files" do
       Dir.cd(temp_dir) do
         args = {
-          "source_path" => ".deleted_files/temp_file.txt",
-          "target_path" => "renamed.txt",
+          "source" => ".deleted_files/temp_file.txt",
+          "target" => "renamed.txt",
         }
 
         result_json = runner.execute(JSON.parse(args.to_json))
@@ -204,7 +204,7 @@ Spectator.describe Tools::FileManagement::RenameFileTool do
   context "fails when source_path is not provided" do
     it "returns an error" do
       args = {
-        "target_path" => "some_name.txt",
+        "target" => "some_name.txt",
       }
 
       result_json = runner.execute(JSON.parse(args.to_json))
@@ -212,14 +212,14 @@ Spectator.describe Tools::FileManagement::RenameFileTool do
 
       expect(result[:success]).to be_false
       expect(result[:error_msg]).not_to be_nil
-      expect(result[:error_msg]).to match(/source_path/)
+      expect(result[:error_msg]).to match(/source/)
     end
   end
 
   context "fails when target_path is not provided" do
     it "returns an error" do
       args = {
-        "source_path" => "some_name.txt",
+        "source" => "some_name.txt",
       }
 
       result_json = runner.execute(JSON.parse(args.to_json))
@@ -227,7 +227,7 @@ Spectator.describe Tools::FileManagement::RenameFileTool do
 
       expect(result[:success]).to be_false
       expect(result[:error_msg]).not_to be_nil
-      expect(result[:error_msg]).to match(/target_path/)
+      expect(result[:error_msg]).to match(/target/)
     end
   end
 
@@ -239,8 +239,8 @@ Spectator.describe Tools::FileManagement::RenameFileTool do
     it "returns an error for a non-existent source path" do
       Dir.cd(temp_dir) do
         args = {
-          "source_path" => "nonexistent_file.txt",
-          "target_path" => "new_file.txt",
+          "source" => "nonexistent_file.txt",
+          "target" => "new_file.txt",
         }
 
         result_json = runner.execute(JSON.parse(args.to_json))
@@ -269,8 +269,8 @@ Spectator.describe Tools::FileManagement::RenameFileTool do
     it "returns an error when target path already exists" do
       Dir.cd(temp_dir) do
         args = {
-          "source_path" => "source.txt",
-          "target_path" => "target.txt",
+          "source" => "source.txt",
+          "target" => "target.txt",
         }
 
         result_json = runner.execute(JSON.parse(args.to_json))

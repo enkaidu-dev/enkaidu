@@ -35,7 +35,7 @@ Spectator.describe Tools::TextEditing::WriteTextFileTool do
 
     it "succeeds and writes the content correctly" do
       args = {
-        "file_path" => file_path,
+        "path" => file_path,
         "content"   => content,
       }
 
@@ -54,7 +54,7 @@ Spectator.describe Tools::TextEditing::WriteTextFileTool do
 
     it "creates directories and writes the file" do
       args = {
-        "file_path" => nested_path,
+        "path" => nested_path,
         "content"   => content,
       }
 
@@ -75,7 +75,7 @@ Spectator.describe Tools::TextEditing::WriteTextFileTool do
 
     it "succeeds and replaces the old content" do
       args = {
-        "file_path" => file_path,
+        "path" => file_path,
         "content"   => new_content,
         "overwrite" => true,
       }
@@ -93,18 +93,18 @@ Spectator.describe Tools::TextEditing::WriteTextFileTool do
   # Error handling scenarios
   # -------------------------------------------------
 
-  context "fails when file_path is not provided" do
+  context "fails when path is not provided" do
     it "returns an error" do
       args = {
         "content" => "some content",
-        # file_path missing
+        # path missing
       }
 
       result_json = runner.execute(JSON.parse(args.to_json))
       result = JSON.parse(result_json).as_h
 
       expect(result).to have_key("error")
-      expect(result["error"]).to match(/The required file_path was not specified/)
+      expect(result["error"]).to match(/The required path was not specified/)
     end
   end
 
@@ -113,7 +113,7 @@ Spectator.describe Tools::TextEditing::WriteTextFileTool do
 
     it "returns an error" do
       args = {
-        "file_path" => file_path,
+        "path" => file_path,
         # content missing
       }
 
@@ -133,7 +133,7 @@ Spectator.describe Tools::TextEditing::WriteTextFileTool do
 
     it "returns an error without modifying the file" do
       args = {
-        "file_path" => file_path,
+        "path" => file_path,
         "content"   => "new content",
         "overwrite" => false,
       }
@@ -155,7 +155,7 @@ Spectator.describe Tools::TextEditing::WriteTextFileTool do
 
     it "returns an error without overwrite param" do
       args = {
-        "file_path" => file_path,
+        "path" => file_path,
         "content"   => "new content",
         # overwrite not provided, defaults to false
       }
@@ -173,7 +173,7 @@ Spectator.describe Tools::TextEditing::WriteTextFileTool do
 
     it "returns an error" do
       args = {
-        "file_path" => outside_path,
+        "path" => outside_path,
         "content"   => "test",
       }
 
@@ -198,7 +198,7 @@ Spectator.describe Tools::TextEditing::WriteTextFileTool do
 
     it "returns an error even with overwrite=true" do
       args = {
-        "file_path" => ".deleted_files/old_file.txt",
+        "path" => ".deleted_files/old_file.txt",
         "content"   => "new content",
         "overwrite" => true,
       }
@@ -219,7 +219,7 @@ Spectator.describe Tools::TextEditing::WriteTextFileTool do
 
     it "returns an error because you cannot write to a directory" do
       args = {
-        "file_path" => dir_path,
+        "path" => dir_path,
         "content"   => "some content",
       }
 
@@ -236,7 +236,7 @@ Spectator.describe Tools::TextEditing::WriteTextFileTool do
 
     it "returns an error for write failures" do
       args = {
-        "file_path" => restricted_path,
+        "path" => restricted_path,
         "content"   => "content",
       }
 

@@ -26,9 +26,9 @@ Spectator.describe Tools::TextLineEditing::ReplaceLinesInTextFileTool do
 
     it "succeeds and reports replacement of one line" do
       args = {
-        "file_path"  => file_path,
+        "path"  => file_path,
         "line_range" => [2, 2],
-        "new_str"    => "new line",
+        "text"    => "new line",
       }
       result_json = runner.execute(JSON.parse(args.to_json))
       result = JSON.parse(result_json).as_h
@@ -49,9 +49,9 @@ Spectator.describe Tools::TextLineEditing::ReplaceLinesInTextFileTool do
 
     it "replaces lines 2 to 3 with new content" do
       args = {
-        "file_path"  => file_path,
+        "path"  => file_path,
         "line_range" => [2, 3],
-        "new_str"    => "replaced line A\nreplaced line B",
+        "text"    => "replaced line A\nreplaced line B",
       }
       result_json = runner.execute(JSON.parse(args.to_json))
       result = JSON.parse(result_json).as_h
@@ -71,9 +71,9 @@ Spectator.describe Tools::TextLineEditing::ReplaceLinesInTextFileTool do
 
     it "replaces all lines with new content" do
       args = {
-        "file_path"  => file_path,
+        "path"  => file_path,
         "line_range" => [1, -1],
-        "new_str"    => "NEW ENTIRE FILE",
+        "text"    => "NEW ENTIRE FILE",
       }
       result_json = runner.execute(JSON.parse(args.to_json))
       result = JSON.parse(result_json).as_h
@@ -93,9 +93,9 @@ Spectator.describe Tools::TextLineEditing::ReplaceLinesInTextFileTool do
   context "fails when the target file does not exist" do
     it "returns an error" do
       args = {
-        "file_path"  => "nonexistent.txt",
+        "path"  => "nonexistent.txt",
         "line_range" => [1, 1],
-        "new_str"    => "anything",
+        "text"    => "anything",
       }
       result_json = runner.execute(JSON.parse(args.to_json))
       result = JSON.parse(result_json).as_h
@@ -111,9 +111,9 @@ Spectator.describe Tools::TextLineEditing::ReplaceLinesInTextFileTool do
 
     it "returns an error" do
       args = {
-        "file_path"  => file_path,
+        "path"  => file_path,
         "line_range" => [3, 2], # start > end
-        "new_str"    => "new",
+        "text"    => "new",
       }
       result_json = runner.execute(JSON.parse(args.to_json))
       result = JSON.parse(result_json).as_h
@@ -129,9 +129,9 @@ Spectator.describe Tools::TextLineEditing::ReplaceLinesInTextFileTool do
 
     it "returns an error" do
       args = {
-        "file_path"  => file_path,
+        "path"  => file_path,
         "line_range" => ["a", "b"], # not integers
-        "new_str"    => "new",
+        "text"    => "new",
       }
       result_json = runner.execute(JSON.parse(args.to_json))
       result = JSON.parse(result_json).as_h
@@ -146,9 +146,9 @@ Spectator.describe Tools::TextLineEditing::ReplaceLinesInTextFileTool do
 
     it "returns an error" do
       args = {
-        "file_path"  => file_path,
+        "path"  => file_path,
         "line_range" => [1, 1],
-        "new_str"    => "new",
+        "text"    => "new",
       }
       result_json = runner.execute(JSON.parse(args.to_json))
       result = JSON.parse(result_json).as_h
@@ -158,15 +158,15 @@ Spectator.describe Tools::TextLineEditing::ReplaceLinesInTextFileTool do
     end
   end
 
-  context "fails when `new_str` is not provided" do
+  context "fails when `text` is not provided" do
     let(:content) { "line1\nline2" }
     before { File.write(file_path, content) }
 
     it "returns an error" do
       args = {
-        "file_path"  => file_path,
+        "path"  => file_path,
         "line_range" => [1, 2],
-        "new_str"    => nil,
+        "text"    => nil,
       }
       result_json = runner.execute(JSON.parse(args.to_json))
       result = JSON.parse(result_json).as_h

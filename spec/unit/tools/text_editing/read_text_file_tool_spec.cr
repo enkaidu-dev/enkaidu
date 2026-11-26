@@ -19,8 +19,8 @@ Spectator.describe Tools::TextEditing::ReadTextFileTool do
 
     it "returns the file content as a string" do
       args = {
-        "file_path"            => file_path,
-        "include_line_numbers" => false,
+        "path"            => file_path,
+        "line_numbers" => false,
         "line_range"           => [1, -1],
       }
       result_json = runner.execute(JSON.parse(args.to_json))
@@ -37,8 +37,8 @@ Spectator.describe Tools::TextEditing::ReadTextFileTool do
 
     it "includes line numbers in output when requested" do
       args = {
-        "file_path"            => file_path,
-        "include_line_numbers" => true,
+        "path"            => file_path,
+        "line_numbers" => true,
         "line_range"           => [1, -1],
       }
       result_json = runner.execute(JSON.parse(args.to_json))
@@ -59,8 +59,8 @@ Spectator.describe Tools::TextEditing::ReadTextFileTool do
 
     it "returns only the specified lines" do
       args = {
-        "file_path"            => file_path,
-        "include_line_numbers" => false,
+        "path"            => file_path,
+        "line_numbers" => false,
         "line_range"           => [2, 3],
       }
       result_json = runner.execute(JSON.parse(args.to_json))
@@ -77,8 +77,8 @@ Spectator.describe Tools::TextEditing::ReadTextFileTool do
 
     it "includes line numbers for the specified range" do
       args = {
-        "file_path"            => file_path,
-        "include_line_numbers" => true,
+        "path"            => file_path,
+        "line_numbers" => true,
         "line_range"           => [2, 4],
       }
       result_json = runner.execute(JSON.parse(args.to_json))
@@ -97,22 +97,22 @@ Spectator.describe Tools::TextEditing::ReadTextFileTool do
   context "fails when file_path is not provided" do
     it "returns an error" do
       args = {
-        "include_line_numbers" => false,
+        "line_numbers" => false,
         "line_range"           => [1, -1],
       }
       result_json = runner.execute(JSON.parse(args.to_json))
       result = JSON.parse(result_json).as_h
 
       expect(result["error"]).not_to be_nil
-      expect(result["error"].as_s).to match(/The required `file_path` was not specified/)
+      expect(result["error"].as_s).to match(/The required `path` was not specified/)
     end
   end
 
   context "fails when the specified file does not exist" do
     it "returns an error" do
       args = {
-        "file_path"            => "nonexistent.txt",
-        "include_line_numbers" => false,
+        "path"            => "nonexistent.txt",
+        "line_numbers" => false,
         "line_range"           => [1, -1],
       }
       result_json = runner.execute(JSON.parse(args.to_json))
@@ -128,8 +128,8 @@ Spectator.describe Tools::TextEditing::ReadTextFileTool do
 
     it "returns an error" do
       args = {
-        "file_path"            => outside_path,
-        "include_line_numbers" => false,
+        "path"            => outside_path,
+        "line_numbers" => false,
         "line_range"           => [1, -1],
       }
       result_json = runner.execute(JSON.parse(args.to_json))
@@ -146,8 +146,8 @@ Spectator.describe Tools::TextEditing::ReadTextFileTool do
 
     it "returns an error" do
       args = {
-        "file_path"            => file_path,
-        "include_line_numbers" => false,
+        "path"            => file_path,
+        "line_numbers" => false,
         "line_range"           => "invalid", # not an array
       }
       result_json = runner.execute(JSON.parse(args.to_json))
@@ -164,8 +164,8 @@ Spectator.describe Tools::TextEditing::ReadTextFileTool do
 
     it "returns an error" do
       args = {
-        "file_path"            => file_path,
-        "include_line_numbers" => false,
+        "path"            => file_path,
+        "line_numbers" => false,
         "line_range"           => [1, "two"],
       }
       result_json = runner.execute(JSON.parse(args.to_json))

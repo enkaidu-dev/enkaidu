@@ -17,13 +17,13 @@ module Tools::FileManagement
                 "binary files and files over #{Runner::MAX_FILE_SIZE_FOR_SEARCH // (1024 * 1024)} MiB are not searched and are counted in " \
                 "`skipped_files` (up to 10 names in `skipped_sample`). " \
                 "An empty `matches` array means nothing matched — broaden the glob (use '**' for subdirectories) before re-trying. " \
-                "If `pattern_is_regex` is true, `pattern` is treated as a regular expression (e.g. 'TODO\\s+.*'); otherwise it is a literal substring."
+                "If `is_regex` is true, `pattern` is treated as a regular expression (e.g. 'TODO\\s+.*'); otherwise it is a literal substring."
 
     param "files", required: true,
       description: "A single file path, or a glob pattern expression selecting which files to search, e.g. `*.cr` for the current directory or `**/*.cr` for all subdirectories. A single * is not recursive; use ** to recurse."
     param "pattern", type: Param::Type::Str, required: true,
-      description: "The text to search for in each file, literal by default, or a regular expression when `pattern_is_regex` is true."
-    param "pattern_is_regex", type: Param::Type::Bool, required: false,
+      description: "The text to search for in each file, literal by default, or a regular expression when `is_regex` is true."
+    param "is_regex", type: Param::Type::Bool, required: false,
       description: "Optional. If true then `pattern` is used as a regular expression (e.g. `ca[a-z]+t`). Default is false (literal substring matching)."
     param "max_files", type: Param::Type::Num,
       description: "Optional. Maximum number of files to open and search; does not limit the number of matched lines (default is #{FileHelper::DEFAULT_SEARCH_FILE_MATCHES})"
@@ -63,8 +63,8 @@ module Tools::FileManagement
 
         return error_response("The required search pattern was empty") if search_pattern.strip.empty?
 
-        # Read the declared `pattern_is_regex` param; `search_regex` is kept as a legacy alias for older callers/specs.
-        regex = args["pattern_is_regex"]?.try &.as_bool? || false
+        # Read the declared `is_regex` param.
+        regex = args["is_regex"]?.try &.as_bool? || false
 
         begin
           pattern = regex ? Regex.new(search_pattern) : search_pattern

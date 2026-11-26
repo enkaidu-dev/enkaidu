@@ -15,9 +15,9 @@ module Tools::TextEditing
                 "Read the entire file or a specific range of lines."
 
     # Define the acceptable parameter using the `param` method
-    param "file_path", type: Param::Type::Str, required: true,
+    param "path", type: Param::Type::Str, required: true,
       description: "The path to the text file to read."
-    param "include_line_numbers", type: Param::Type::Bool, required: false,
+    param "line_numbers", type: Param::Type::Bool, required: false,
       description: "Optional. Set to true to include line numbers, like `cat -n`. Defaults to false."
     param "line_range", type: Param::Type::Arr, required: false,
       description: "Optional. An array of two integers specifying the start and end line numbers to view." \
@@ -32,10 +32,10 @@ module Tools::TextEditing
 
       # ameba:disable Metrics/CyclomaticComplexity: Clear without splitting up
       def execute(args : JSON::Any) : String
-        file_path = args["file_path"]?.try(&.as_s?).try(&.strip) ||
-                    return error_response("The required `file_path` was not specified")
+        file_path = args["path"]?.try(&.as_s?).try(&.strip) ||
+                    return error_response("The required `path` was not specified")
 
-        line_numbers = args["include_line_numbers"]?.try &.as_bool? || false
+        line_numbers = args["line_numbers"]?.try &.as_bool? || false
         line_range = if range = args["line_range"]?
                        if (arr = range.as_a?) && arr.size == 2 && (line_start = arr[0]?.try(&.as_i?)) && (line_end = arr[1]?.try(&.as_i?))
                          [line_start, line_end]
@@ -46,7 +46,7 @@ module Tools::TextEditing
                        [1, -1] # entire file
                      end
 
-        return error_response("The required `file_path` must not be empty") if file_path.empty?
+        return error_response("The required `path` must not be empty") if file_path.empty?
 
         resolved_path = resolve_path(file_path)
 

@@ -27,7 +27,7 @@ module Tools::Web
       description: "Optional user agent header; default is Firefox for macOS.",
       required: false
 
-    param "save_as_file", type: Param::Type::Str,
+    param "save_path", type: Param::Type::Str,
       description: <<-DESCR
         Optionally specify a file to save entire web page as Markdown.
         If this is a temporary file save it in `tmp/` folder.
@@ -48,7 +48,7 @@ module Tools::Web
       def execute(args : JSON::Any) : String
         url = args["url"]?.try(&.as_s?) || return error_response("The required URL was not specified")
         user_agent = args["user_agent"]?.try(&.as_s?) || USER_AGENT
-        save_as_file = args["save_as_file"]?.try(&.as_s?)
+        save_as_file = args["save_path"]?.try(&.as_s?)
 
         save_path = begin
           overwrite = args["overwrite"]?.try(&.as_bool?) || false

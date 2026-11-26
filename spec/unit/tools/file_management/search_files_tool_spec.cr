@@ -127,7 +127,7 @@ Spectator.describe Tools::FileManagement::SearchFilesTool do
   # Regex search scenario
   # -------------------------------------------------
 
-  context "searches using regex when pattern_is_regex is true" do
+  context "searches using regex when is_regex is true" do
     let(:file_a) { File.join(temp_dir, "file_a.txt") }
 
     before do
@@ -138,7 +138,7 @@ Spectator.describe Tools::FileManagement::SearchFilesTool do
       args = make_args(
         files: File.join(temp_dir, "*.txt"),
         pattern: "cat\\d+",
-        pattern_is_regex: true,
+        is_regex: true,
       )
 
       result_json = runner.execute(args)
@@ -154,7 +154,7 @@ Spectator.describe Tools::FileManagement::SearchFilesTool do
     end
   end
 
-  context "does regex matching when pattern_is_regex is false" do
+  context "does regex matching when is_regex is false" do
     let(:file_a) { File.join(temp_dir, "file_a.txt") }
 
     before do
@@ -165,7 +165,7 @@ Spectator.describe Tools::FileManagement::SearchFilesTool do
       args = make_args(
         files: File.join(temp_dir, "*.txt"),
         pattern: "cat\\d+",
-        pattern_is_regex: false,
+        is_regex: false,
       )
 
       result_json = runner.execute(args)
@@ -279,7 +279,7 @@ Spectator.describe Tools::FileManagement::SearchFilesTool do
       expect(result[:data].as_h["matches"].as_a.size.to_i).to eq(1)
     end
 
-    it "defaults pattern_is_regex to false when not provided" do
+    it "defaults is_regex to false when not provided" do
       args = make_args(
         files: File.join(temp_dir, "*.txt"),
         pattern: "def",

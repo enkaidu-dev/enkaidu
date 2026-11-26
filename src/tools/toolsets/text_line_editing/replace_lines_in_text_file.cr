@@ -12,12 +12,12 @@ module Tools::TextLineEditing
 
     description "Replace a range of lines in a text file within the current directory with given text."
 
-    param "file_path", type: Param::Type::Str,
+    param "path", type: Param::Type::Str,
       description: "The relative path to the text file to modify.", required: true
     param "line_range", type: Param::Type::Arr, required: true,
       description: "An array of two integers specifying the start and end line numbers." \
                    "Line numbers are 1-indexed, and -1 for the end line means read to the end of the file."
-    param "new_str", type: Param::Type::Num,
+    param "text", type: Param::Type::Str,
       description: "The new text to insert in place of the replaced lines.", required: true
 
     runner Runner
@@ -27,10 +27,10 @@ module Tools::TextLineEditing
       include FileHelper
 
       def execute(args : JSON::Any) : String
-        file_path = args["file_path"]?.try &.as_s? ||
-                    return error_response("The required `file_path` was not specified")
-        new_str = args["new_str"]?.try &.as_s? ||
-                  return error_response("The required `new_str` was not specified")
+        file_path = args["path"]?.try &.as_s? ||
+                    return error_response("The required `path` was not specified")
+        new_str = args["text"]?.try &.as_s? ||
+                  return error_response("The required `text` was not specified")
         resolved_path = resolve_path(file_path)
 
         return error_response("The specified path '#{file_path}' is not allowed.") unless within_current_directory?(resolved_path)

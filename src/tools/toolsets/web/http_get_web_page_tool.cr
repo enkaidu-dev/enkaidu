@@ -32,7 +32,7 @@ module Tools::Web
         server for specific format. Default is none.
         DESCR
 
-    param "preserve_source", type: Param::Type::Bool,
+    param "raw", type: Param::Type::Bool,
       description: "Optional flag to ask to preserve the content from the server without any attempts to condense the text; default is false."
 
     # Replace `runner` macro to create with self
@@ -45,7 +45,7 @@ module Tools::Web
       def execute(args : JSON::Any) : String
         url = args["url"]?.try(&.as_s?) || return error_response("The required URL was not specified")
         user_agent = args["user_agent"]?.try(&.as_s?) || USER_AGENT
-        preserve_source = args["preserve_source"]? || false
+        preserve_source = args["raw"]? || false
         accept = args["accept"]?.try(&.as_s?) || nil
 
         headers = HTTP::Headers{

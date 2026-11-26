@@ -12,7 +12,7 @@ module Tools::FileManagement
 
     description "Creates a new directory at the specified relative path within the current directory."
 
-    param "directory_path", type: Param::Type::Str, required: true,
+    param "path", type: Param::Type::Str, required: true,
       description: "The relative path of the directory to create."
 
     runner Runner
@@ -22,7 +22,7 @@ module Tools::FileManagement
       include FileHelper
 
       def execute(args : JSON::Any) : String
-        dir_path = args["directory_path"]?.try(&.as_s?) || return error_response("The required directory_path was not specified")
+        dir_path = args["path"]?.try(&.as_s?) || return error_response("The required path was not specified")
         resolved_path = resolve_path(dir_path)
 
         # Ensure the path stays within the current working directory

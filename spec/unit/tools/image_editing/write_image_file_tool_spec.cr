@@ -23,7 +23,7 @@ Spectator.describe Tools::ImageEditing::WriteImageFileTool do
     let(:file_path) { File.join(temp_dir, "out.png") }
 
     it "succeeds and decodes the data to the file" do
-      result = parse_run_result(runner.execute(make_args(file_path: file_path, image_data: png_data_url)))
+      result = parse_run_result(runner.execute(make_args(path: file_path, data_url: png_data_url)))
 
       expect(result[:success]).to be_true
       expect(result[:data].as_h["message"]).to match(/written successfully/)
@@ -35,7 +35,7 @@ Spectator.describe Tools::ImageEditing::WriteImageFileTool do
     let(:file_path) { File.join(temp_dir, "out.jpg") }
 
     it "succeeds and decodes the data to the file" do
-      result = parse_run_result(runner.execute(make_args(file_path: file_path, image_data: jpeg_data_url)))
+      result = parse_run_result(runner.execute(make_args(path: file_path, data_url: jpeg_data_url)))
 
       expect(result[:success]).to be_true
       expect(result[:data].as_h["message"]).to match(/written successfully/)
@@ -47,7 +47,7 @@ Spectator.describe Tools::ImageEditing::WriteImageFileTool do
     let(:nested_path) { File.join(temp_dir, "a", "b", "out.png") }
 
     it "creates directories and writes the file" do
-      result = parse_run_result(runner.execute(make_args(file_path: nested_path, image_data: png_data_url)))
+      result = parse_run_result(runner.execute(make_args(path: nested_path, data_url: png_data_url)))
 
       expect(result[:success]).to be_true
       expect(read_bytes(nested_path).to_a).to eq(png_bytes.bytes.to_a)
@@ -60,7 +60,7 @@ Spectator.describe Tools::ImageEditing::WriteImageFileTool do
     before { File.write(file_path, "stale bytes") }
 
     it "succeeds and replaces the old content" do
-      result = parse_run_result(runner.execute(make_args(file_path: file_path, image_data: png_data_url, overwrite: true)))
+      result = parse_run_result(runner.execute(make_args(path: file_path, data_url: png_data_url, overwrite: true)))
 
       expect(result[:success]).to be_true
       expect(read_bytes(file_path).to_a).to eq(png_bytes.bytes.to_a)
@@ -73,10 +73,10 @@ Spectator.describe Tools::ImageEditing::WriteImageFileTool do
 
   context "fails when file_path is not provided" do
     it "returns an error" do
-      result = parse_run_result(runner.execute(make_args(image_data: png_data_url)))
+      result = parse_run_result(runner.execute(make_args(data_url: png_data_url)))
 
       expect(result[:success]).to be_false
-      expect(result[:error_msg]).to match(/The required file_path was not specified/)
+      expect(result[:error_msg]).to match(/The required path was not specified/)
     end
   end
 
@@ -84,10 +84,10 @@ Spectator.describe Tools::ImageEditing::WriteImageFileTool do
     let(:file_path) { File.join(temp_dir, "no_data.png") }
 
     it "returns an error" do
-      result = parse_run_result(runner.execute(make_args(file_path: file_path)))
+      result = parse_run_result(runner.execute(make_args(path: file_path)))
 
       expect(result[:success]).to be_false
-      expect(result[:error_msg]).to match(/The required image_data was not specified/)
+      expect(result[:error_msg]).to match(/The required data_url was not specified/)
     end
   end
 
@@ -97,7 +97,7 @@ Spectator.describe Tools::ImageEditing::WriteImageFileTool do
     before { File.write(file_path, "I am here") }
 
     it "returns an error without modifying the file when overwrite is false" do
-      result = parse_run_result(runner.execute(make_args(file_path: file_path, image_data: png_data_url, overwrite: false)))
+      result = parse_run_result(runner.execute(make_args(path: file_path, data_url: png_data_url, overwrite: false)))
 
       expect(result[:success]).to be_false
       expect(result[:error_msg]).to match(/already exists/)
@@ -105,7 +105,7 @@ Spectator.describe Tools::ImageEditing::WriteImageFileTool do
     end
 
     it "returns an error without modifying the file when overwrite is omitted" do
-      result = parse_run_result(runner.execute(make_args(file_path: file_path, image_data: png_data_url)))
+      result = parse_run_result(runner.execute(make_args(path: file_path, data_url: png_data_url)))
 
       expect(result[:success]).to be_false
       expect(result[:error_msg]).to match(/already exists/)
@@ -117,7 +117,7 @@ Spectator.describe Tools::ImageEditing::WriteImageFileTool do
 
     it "returns an error" do
       # Declares jpeg but carries png data.
-      result = parse_run_result(runner.execute(make_args(file_path: file_path, image_data: "data:image/jpeg;base64,#{Base64.strict_encode(png_bytes)}")))
+      result = parse_run_result(runner.execute(make_args(path: file_path, data_url: "data:image/jpeg;base64,#{Base64.strict_encode(png_bytes)}")))
 
       expect(result[:success]).to be_false
       expect(result[:error_msg]).to match(/Unsupported or mismatched image format/)
@@ -129,7 +129,7 @@ Spectator.describe Tools::ImageEditing::WriteImageFileTool do
 
     it "returns an error" do
       # A gif data URL; the declared type is not supported.
-      result = parse_run_result(runner.execute(make_args(file_path: file_path, image_data: "data:image/gif;base64,QUJD")))
+      result = parse_run_result(runner.execute(make_args(path: file_path, data_url: "data:image/gif;base64,QUJD")))
 
       expect(result[:success]).to be_false
       expect(result[:error_msg]).to match(/Unsupported or mismatched image format/)
@@ -140,7 +140,7 @@ Spectator.describe Tools::ImageEditing::WriteImageFileTool do
     let(:file_path) { File.join(temp_dir, "bad_url.png") }
 
     it "returns an error" do
-      result = parse_run_result(runner.execute(make_args(file_path: file_path, image_data: "not a data url")))
+      result = parse_run_result(runner.execute(make_args(path: file_path, data_url: "not a data url")))
 
       expect(result[:success]).to be_false
       expect(result[:error_msg]).to match(/not a valid data URL/)
@@ -151,7 +151,7 @@ Spectator.describe Tools::ImageEditing::WriteImageFileTool do
     let(:file_path) { File.join(temp_dir, "bad_b64.png") }
 
     it "returns an error" do
-      result = parse_run_result(runner.execute(make_args(file_path: file_path, image_data: png_data_url + "!!!!")))
+      result = parse_run_result(runner.execute(make_args(path: file_path, data_url: png_data_url + "!!!!")))
 
       expect(result[:success]).to be_false
       expect(result[:error_msg]).to match(/An error occurred while writing the image file/)
@@ -162,7 +162,7 @@ Spectator.describe Tools::ImageEditing::WriteImageFileTool do
     let(:outside_path) { File.tempname("_outside.png") }
 
     it "returns an error" do
-      result = parse_run_result(runner.execute(make_args(file_path: outside_path, image_data: png_data_url)))
+      result = parse_run_result(runner.execute(make_args(path: outside_path, data_url: png_data_url)))
 
       expect(result[:success]).to be_false
       expect(result[:error_msg]).to match(/is not allowed/)

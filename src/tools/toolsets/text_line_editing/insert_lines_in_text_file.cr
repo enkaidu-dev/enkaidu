@@ -12,11 +12,11 @@ module Tools::TextLineEditing
 
     description "Insert text at a specific location in a text file within the current directory."
 
-    param "file_path", type: Param::Type::Str,
+    param "path", type: Param::Type::Str,
       description: "The relative path to the text file to modify.", required: true
-    param "insert_line", type: Param::Type::Num,
+    param "line", type: Param::Type::Num,
       description: "The line number after which to insert the text (0 for beginning of file, -1 to append at the end)", required: true
-    param "insert_text", type: Param::Type::Num,
+    param "text", type: Param::Type::Str,
       description: "The text to insert.", required: true
 
     runner Runner
@@ -26,12 +26,12 @@ module Tools::TextLineEditing
       include FileHelper
 
       def execute(args : JSON::Any) : String
-        file_path = args["file_path"]?.try &.as_s? ||
-                    return error_response("The required `file_path` was not specified")
-        insert_line = args["insert_line"]?.try &.as_i? ||
-                      return error_response("The required `insert_line` was not specified")
-        insert_text = args["insert_text"]?.try &.as_s? ||
-                      return error_response("The required `insert_text` was not specified")
+        file_path = args["path"]?.try &.as_s? ||
+                    return error_response("The required `path` was not specified")
+        insert_line = args["line"]?.try &.as_i? ||
+                      return error_response("The required `line` was not specified")
+        insert_text = args["text"]?.try &.as_s? ||
+                      return error_response("The required `text` was not specified")
 
         resolved_path = resolve_path(file_path)
 

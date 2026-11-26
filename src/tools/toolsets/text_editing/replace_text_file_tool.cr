@@ -13,7 +13,7 @@ module Tools::TextEditing
     description "Replaces a specified string in a text file within the current directory with a new string." \
                 "This is used for making precise edits."
 
-    param "file_path", type: Param::Type::Str, required: true,
+    param "path", type: Param::Type::Str, required: true,
       description: "The relative path to the text file to modify."
     param "old_str", type: Param::Type::Str, required: true,
       description: "The exact text to find and replace. Must match byte-for-byte. " \
@@ -49,8 +49,8 @@ module Tools::TextEditing
       # - Returns a JSON-encoded success response with the file path, replacement count,
       #   and an array of change hunks
       def execute(args : JSON::Any) : String
-        file_path = args["file_path"]?.try &.as_s? ||
-                    return error_response("The required `file_path` was not specified")
+        file_path = args["path"]?.try &.as_s? ||
+                    return error_response("The required `path` was not specified")
         search_text = args["old_str"]?.try &.as_s? ||
                       return error_response("The required `old_str` was not specified")
         replacement_text = args["new_str"]?.try &.as_s? ||

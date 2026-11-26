@@ -25,7 +25,7 @@ Spectator.describe Tools::TextEditing::ReplaceTextInTextFileTool do
 
     it "returns one replacement and a single hunk" do
       result_json = runner.execute(JSON.parse({
-        "file_path" => file_path,
+        "path" => file_path,
         "old_str"   => "old",
         "new_str"   => "new",
       }.to_json))
@@ -37,7 +37,7 @@ Spectator.describe Tools::TextEditing::ReplaceTextInTextFileTool do
 
     it "writes the correct content to the file" do
       runner.execute(JSON.parse({
-        "file_path" => file_path,
+        "path" => file_path,
         "old_str"   => "old",
         "new_str"   => "new",
       }.to_json))
@@ -47,7 +47,7 @@ Spectator.describe Tools::TextEditing::ReplaceTextInTextFileTool do
 
     it "includes the correct before and after in the hunk" do
       result_json = runner.execute(JSON.parse({
-        "file_path" => file_path,
+        "path" => file_path,
         "old_str"   => "old",
         "new_str"   => "new",
       }.to_json))
@@ -61,7 +61,7 @@ Spectator.describe Tools::TextEditing::ReplaceTextInTextFileTool do
 
     it "returns the file_path in the response" do
       result_json = runner.execute(JSON.parse({
-        "file_path" => file_path,
+        "path" => file_path,
         "old_str"   => "old",
         "new_str"   => "new",
       }.to_json))
@@ -77,7 +77,7 @@ Spectator.describe Tools::TextEditing::ReplaceTextInTextFileTool do
 
     it "replaces only the second occurrence when occurrence is 2" do
       result_json = runner.execute(JSON.parse({
-        "file_path"  => file_path,
+        "path"       => file_path,
         "old_str"    => "old",
         "new_str"    => "new",
         "occurrence" => 2,
@@ -90,7 +90,7 @@ Spectator.describe Tools::TextEditing::ReplaceTextInTextFileTool do
 
     it "leaves the first and third occurrences intact" do
       runner.execute(JSON.parse({
-        "file_path"  => file_path,
+        "path"       => file_path,
         "old_str"    => "old",
         "new_str"    => "new",
         "occurrence" => 2,
@@ -104,7 +104,7 @@ Spectator.describe Tools::TextEditing::ReplaceTextInTextFileTool do
 
     it "reports the correct line in the hunk for the targeted occurrence" do
       result_json = runner.execute(JSON.parse({
-        "file_path"  => file_path,
+        "path"       => file_path,
         "old_str"    => "old",
         "new_str"    => "new",
         "occurrence" => 3,
@@ -123,7 +123,7 @@ Spectator.describe Tools::TextEditing::ReplaceTextInTextFileTool do
 
     it "returns an error mentioning the expected and actual count" do
       result_json = runner.execute(JSON.parse({
-        "file_path"  => file_path,
+        "path"       => file_path,
         "old_str"    => "old",
         "new_str"    => "new",
         "occurrence" => 5,
@@ -137,7 +137,7 @@ Spectator.describe Tools::TextEditing::ReplaceTextInTextFileTool do
 
     it "does not modify the file" do
       runner.execute(JSON.parse({
-        "file_path"  => file_path,
+        "path"       => file_path,
         "old_str"    => "old",
         "new_str"    => "new",
         "occurrence" => 5,
@@ -153,7 +153,7 @@ Spectator.describe Tools::TextEditing::ReplaceTextInTextFileTool do
 
     it "returns the correct replacement count" do
       result_json = runner.execute(JSON.parse({
-        "file_path" => file_path,
+        "path" => file_path,
         "old_str"   => "old",
         "new_str"   => "new",
         "occurrence" => -1,
@@ -165,7 +165,7 @@ Spectator.describe Tools::TextEditing::ReplaceTextInTextFileTool do
 
     it "writes all replacements to the file" do
       runner.execute(JSON.parse({
-        "file_path" => file_path,
+        "path" => file_path,
         "old_str"   => "old",
         "new_str"   => "new",
         "occurrence" => -1,
@@ -176,7 +176,7 @@ Spectator.describe Tools::TextEditing::ReplaceTextInTextFileTool do
 
     it "merges close hunks into a single change entry" do
       result_json = runner.execute(JSON.parse({
-        "file_path" => file_path,
+        "path" => file_path,
         "old_str"   => "old",
         "new_str"   => "new",
         "occurrence" => -1,
@@ -189,7 +189,7 @@ Spectator.describe Tools::TextEditing::ReplaceTextInTextFileTool do
 
     it "the merged hunk before contains all original matches" do
       result_json = runner.execute(JSON.parse({
-        "file_path" => file_path,
+        "path" => file_path,
         "old_str"   => "old",
         "new_str"   => "new",
         "occurrence" => -1,
@@ -204,7 +204,7 @@ Spectator.describe Tools::TextEditing::ReplaceTextInTextFileTool do
 
     it "the merged hunk after has all replacements applied" do
       result_json = runner.execute(JSON.parse({
-        "file_path" => file_path,
+        "path" => file_path,
         "old_str"   => "old",
         "new_str"   => "new",
         "occurrence" => -1,
@@ -233,7 +233,7 @@ Spectator.describe Tools::TextEditing::ReplaceTextInTextFileTool do
 
     it "returns separate change entries for each distant match" do
       result_json = runner.execute(JSON.parse({
-        "file_path" => file_path,
+        "path" => file_path,
         "old_str"   => "target",
         "new_str"   => "replaced",
         "occurrence" => -1,
@@ -246,7 +246,7 @@ Spectator.describe Tools::TextEditing::ReplaceTextInTextFileTool do
 
     it "reports correct line ranges for each hunk" do
       result_json = runner.execute(JSON.parse({
-        "file_path" => file_path,
+        "path" => file_path,
         "old_str"   => "target",
         "new_str"   => "replaced",
         "occurrence" => -1,
@@ -261,7 +261,7 @@ Spectator.describe Tools::TextEditing::ReplaceTextInTextFileTool do
 
     it "each hunk only shows its own region" do
       result_json = runner.execute(JSON.parse({
-        "file_path" => file_path,
+        "path" => file_path,
         "old_str"   => "target",
         "new_str"   => "replaced",
         "occurrence" => -1,
@@ -282,7 +282,7 @@ Spectator.describe Tools::TextEditing::ReplaceTextInTextFileTool do
 
     it "combines matches separated by only one line into a single hunk" do
       result_json = runner.execute(JSON.parse({
-        "file_path" => file_path,
+        "path" => file_path,
         "old_str"   => "match_",
         "new_str"   => "replaced_",
         "occurrence" => -1,
@@ -301,7 +301,7 @@ Spectator.describe Tools::TextEditing::ReplaceTextInTextFileTool do
 
     it "handles a match on the first line without going below line 1" do
       result_json = runner.execute(JSON.parse({
-        "file_path" => file_path,
+        "path" => file_path,
         "old_str"   => "alpha",
         "new_str"   => "ALPHA",
       }.to_json))
@@ -313,7 +313,7 @@ Spectator.describe Tools::TextEditing::ReplaceTextInTextFileTool do
 
     it "handles a match on the last line without exceeding total lines" do
       result_json = runner.execute(JSON.parse({
-        "file_path" => file_path,
+        "path" => file_path,
         "old_str"   => "gamma",
         "new_str"   => "GAMMA",
       }.to_json))
@@ -325,7 +325,7 @@ Spectator.describe Tools::TextEditing::ReplaceTextInTextFileTool do
 
     it "the hunk for the first line includes all available context below" do
       result_json = runner.execute(JSON.parse({
-        "file_path" => file_path,
+        "path" => file_path,
         "old_str"   => "alpha",
         "new_str"   => "ALPHA",
       }.to_json))
@@ -343,7 +343,7 @@ Spectator.describe Tools::TextEditing::ReplaceTextInTextFileTool do
 
     it "replaces a multi-line block correctly" do
       result_json = runner.execute(JSON.parse({
-        "file_path" => file_path,
+        "path" => file_path,
         "old_str"   => "old_a\nold_b\nold_c",
         "new_str"   => "new_block",
       }.to_json))
@@ -354,7 +354,7 @@ Spectator.describe Tools::TextEditing::ReplaceTextInTextFileTool do
 
     it "writes the correct file content" do
       runner.execute(JSON.parse({
-        "file_path" => file_path,
+        "path" => file_path,
         "old_str"   => "old_a\nold_b\nold_c",
         "new_str"   => "new_block",
       }.to_json))
@@ -364,7 +364,7 @@ Spectator.describe Tools::TextEditing::ReplaceTextInTextFileTool do
 
     it "spans the correct line range in the hunk" do
       result_json = runner.execute(JSON.parse({
-        "file_path" => file_path,
+        "path" => file_path,
         "old_str"   => "old_a\nold_b\nold_c",
         "new_str"   => "new_block",
       }.to_json))
@@ -383,7 +383,7 @@ Spectator.describe Tools::TextEditing::ReplaceTextInTextFileTool do
 
     it "replaces one line with multiple lines" do
       result_json = runner.execute(JSON.parse({
-        "file_path" => file_path,
+        "path" => file_path,
         "old_str"   => "single line",
         "new_str"   => "first replacement\nsecond replacement\nthird replacement",
       }.to_json))
@@ -395,7 +395,7 @@ Spectator.describe Tools::TextEditing::ReplaceTextInTextFileTool do
 
     it "the before hunk shows the original single line" do
       result_json = runner.execute(JSON.parse({
-        "file_path" => file_path,
+        "path" => file_path,
         "old_str"   => "single line",
         "new_str"   => "first replacement\nsecond replacement\nthird replacement",
       }.to_json))
@@ -407,7 +407,7 @@ Spectator.describe Tools::TextEditing::ReplaceTextInTextFileTool do
 
     it "the after hunk shows the expanded lines" do
       result_json = runner.execute(JSON.parse({
-        "file_path" => file_path,
+        "path" => file_path,
         "old_str"   => "single line",
         "new_str"   => "first replacement\nsecond replacement\nthird replacement",
       }.to_json))
@@ -426,7 +426,7 @@ Spectator.describe Tools::TextEditing::ReplaceTextInTextFileTool do
 
     it "replaces correctly" do
       result_json = runner.execute(JSON.parse({
-        "file_path" => file_path,
+        "path" => file_path,
         "old_str"   => "old",
         "new_str"   => "new",
       }.to_json))
@@ -438,7 +438,7 @@ Spectator.describe Tools::TextEditing::ReplaceTextInTextFileTool do
 
     it "the hunk covers only line 1" do
       result_json = runner.execute(JSON.parse({
-        "file_path" => file_path,
+        "path" => file_path,
         "old_str"   => "old",
         "new_str"   => "new",
       }.to_json))
@@ -456,7 +456,7 @@ Spectator.describe Tools::TextEditing::ReplaceTextInTextFileTool do
   context "fails when the target file does not exist" do
     it "returns an error" do
       result_json = runner.execute(JSON.parse({
-        "file_path" => "nonexistent.txt",
+        "path" => "nonexistent.txt",
         "old_str"   => "any",
         "new_str"   => "thing",
       }.to_json))
@@ -473,7 +473,7 @@ Spectator.describe Tools::TextEditing::ReplaceTextInTextFileTool do
 
     it "returns an error mentioning the missing string" do
       result_json = runner.execute(JSON.parse({
-        "file_path" => file_path,
+        "path" => file_path,
         "old_str"   => "missing",
         "new_str"   => "something",
       }.to_json))
@@ -485,7 +485,7 @@ Spectator.describe Tools::TextEditing::ReplaceTextInTextFileTool do
 
     it "does not modify the file" do
       runner.execute(JSON.parse({
-        "file_path" => file_path,
+        "path" => file_path,
         "old_str"   => "missing",
         "new_str"   => "something",
       }.to_json))
@@ -498,19 +498,19 @@ Spectator.describe Tools::TextEditing::ReplaceTextInTextFileTool do
     let(:content) { "some content" }
     before { File.write(file_path, content) }
 
-    it "returns an error when file_path is missing" do
+    it "returns an error when path is missing" do
       result_json = runner.execute(JSON.parse({
         "old_str" => "some",
         "new_str" => "other",
       }.to_json))
       result = JSON.parse(result_json).as_h
 
-      expect(result["error"].as_s).to contain "`file_path`"
+      expect(result["error"].as_s).to contain "`path`"
     end
 
     it "returns an error when old_str is missing" do
       result_json = runner.execute(JSON.parse({
-        "file_path" => file_path,
+        "path" => file_path,
         "new_str"   => "other",
       }.to_json))
       result = JSON.parse(result_json).as_h
@@ -520,7 +520,7 @@ Spectator.describe Tools::TextEditing::ReplaceTextInTextFileTool do
 
     it "returns an error when new_str is missing" do
       result_json = runner.execute(JSON.parse({
-        "file_path" => file_path,
+        "path" => file_path,
         "old_str"   => "some",
       }.to_json))
       result = JSON.parse(result_json).as_h
@@ -534,7 +534,7 @@ Spectator.describe Tools::TextEditing::ReplaceTextInTextFileTool do
 
     it "returns an error" do
       result_json = runner.execute(JSON.parse({
-        "file_path" => file_path,
+        "path" => file_path,
         "old_str"   => "test",
         "new_str"   => "changed",
       }.to_json))
@@ -554,7 +554,7 @@ Spectator.describe Tools::TextEditing::ReplaceTextInTextFileTool do
 
     it "deletes the matched text" do
       runner.execute(JSON.parse({
-        "file_path" => file_path,
+        "path" => file_path,
         "old_str"   => "\nremove me",
         "new_str"   => "",
       }.to_json))
@@ -564,7 +564,7 @@ Spectator.describe Tools::TextEditing::ReplaceTextInTextFileTool do
 
     it "reports the hunk for the deletion" do
       result_json = runner.execute(JSON.parse({
-        "file_path" => file_path,
+        "path" => file_path,
         "old_str"   => "\nremove me",
         "new_str"   => "",
       }.to_json))
@@ -582,7 +582,7 @@ Spectator.describe Tools::TextEditing::ReplaceTextInTextFileTool do
 
     it "replaces Unicode text correctly" do
       result_json = runner.execute(JSON.parse({
-        "file_path" => file_path,
+        "path" => file_path,
         "old_str"   => "→",
         "new_str"   => "⇒",
       }.to_json))
@@ -599,7 +599,7 @@ Spectator.describe Tools::TextEditing::ReplaceTextInTextFileTool do
 
     it "matches with exact indentation (spaces)" do
       result_json = runner.execute(JSON.parse({
-        "file_path" => file_path,
+        "path" => file_path,
         "old_str"   => "  indented line",
         "new_str"   => "  changed line",
       }.to_json))
@@ -611,7 +611,7 @@ Spectator.describe Tools::TextEditing::ReplaceTextInTextFileTool do
 
     it "does not match when tabs are used instead of spaces" do
       result_json = runner.execute(JSON.parse({
-        "file_path" => file_path,
+        "path" => file_path,
         "old_str"   => "\tindented line",
         "new_str"   => "changed line",
       }.to_json))
@@ -629,7 +629,7 @@ Spectator.describe Tools::TextEditing::ReplaceTextInTextFileTool do
     it "still matches substrings (exact byte matching, not word boundaries)" do
       # The tool does byte-for-byte matching, so "cat" matches in all three words
       result_json = runner.execute(JSON.parse({
-        "file_path" => file_path,
+        "path" => file_path,
         "old_str"   => "cat",
         "new_str"   => "dog",
         "occurrence" => -1,
@@ -646,7 +646,7 @@ Spectator.describe Tools::TextEditing::ReplaceTextInTextFileTool do
 
     it "replaces on the last line correctly" do
       result_json = runner.execute(JSON.parse({
-        "file_path" => file_path,
+        "path" => file_path,
         "old_str"   => "no newline",
         "new_str"   => "has newline",
       }.to_json))

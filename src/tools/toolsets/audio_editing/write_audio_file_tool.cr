@@ -13,9 +13,9 @@ module Tools::AudioEditing
     description "Write audio file within the current directory with the given base64-encoded audio data. " \
                 "Create entire path to the file if needed. DOES NOT overwrite existing file unless requested."
 
-    param "file_path", type: Param::Type::Str, required: true,
+    param "path", type: Param::Type::Str, required: true,
       description: "The relative path where the file will be written."
-    param "audio_data", type: Param::Type::Str, required: true,
+    param "data", type: Param::Type::Str, required: true,
       description: "The base64 encoded audio data. Supported audio formats are: " \
                    "#{AudioHelper::ALLOWED_AUDIO_FORMATS.join(',')}"
     param "overwrite", type: Param::Type::Bool, required: false,
@@ -28,10 +28,10 @@ module Tools::AudioEditing
       include AudioHelper
 
       def execute(args : JSON::Any) : String
-        file_path = args["file_path"]?.try(&.as_s?) ||
-                    return error_response("The required file_path was not specified")
-        audio_data = args["audio_data"]?.try(&.as_s?) ||
-                     return error_response("The required audio_data was not specified")
+        file_path = args["path"]?.try(&.as_s?) ||
+                    return error_response("The required path was not specified")
+        audio_data = args["data"]?.try(&.as_s?) ||
+                     return error_response("The required data was not specified")
         overwrite = args["overwrite"]?.try(&.as_bool?) || false
 
         resolved_path = resolve_path(file_path)
@@ -55,7 +55,7 @@ module Tools::AudioEditing
 
           success_response(file_path)
         rescue ex
-          error_response("An error occurred while creating the image file: #{ex.message}")
+          error_response("An error occurred while creating the audio file: #{ex.message}")
         end
       end
 

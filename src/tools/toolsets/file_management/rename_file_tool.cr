@@ -12,9 +12,9 @@ module Tools::FileManagement
     description "Rename a file or directory, or move it to another sub-folder, but you may not move it outside this directory." \
                 "like the `mv` command but restricted to the current folder."
 
-    param "source_path", type: Param::Type::Str, required: true,
+    param "source", type: Param::Type::Str, required: true,
       description: "The current path of the file or directory to be renamed."
-    param "target_path", type: Param::Type::Str, required: true,
+    param "target", type: Param::Type::Str, required: true,
       description: "The new name / path for the file or directory."
 
     runner Runner
@@ -24,8 +24,8 @@ module Tools::FileManagement
       include FileHelper
 
       def execute(args : JSON::Any) : String
-        current_path = args["source_path"]?.try(&.as_s?) || return error_response("The required `source_path` was not specified")
-        new_name = args["target_path"]?.try(&.as_s?) || return error_response("The required `target_path` was not specified")
+        current_path = args["source"]?.try(&.as_s?) || return error_response("The required `source` was not specified")
+        new_name = args["target"]?.try(&.as_s?) || return error_response("The required `target` was not specified")
 
         resolved_current_path = resolve_path(current_path)
         resolved_new_path = resolve_path(File.join(File.dirname(resolved_current_path), new_name))

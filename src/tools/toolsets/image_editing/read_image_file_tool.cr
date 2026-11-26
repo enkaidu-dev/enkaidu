@@ -14,7 +14,7 @@ module Tools::ImageEditing
                 "Supports the following image formats: #{ImageHelper::ALLOWED_IMAGE_FORMATS.join(',')}. "
 
     # Define the acceptable parameter using the `param` method
-    param "file_path", type: Param::Type::Str, required: true,
+    param "path", type: Param::Type::Str, required: true,
       description: "The relative path to the image file to read."
 
     runner Runner
@@ -24,7 +24,7 @@ module Tools::ImageEditing
       include ImageHelper
 
       def execute(args : JSON::Any) : LLM::Function::Reply | String
-        file_path = args["file_path"]?.try(&.as_s?) || return error_response("The required file_path was not specified")
+        file_path = args["path"]?.try(&.as_s?) || return error_response("The required path was not specified")
 
         resolved_path = resolve_path(file_path)
 
