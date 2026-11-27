@@ -4,6 +4,8 @@ require "../runtime"
 module Enkaidu
   # All built-in tools subclass `BuiltInFunction`
   abstract class SessionBuiltInFunction < LLM::LocalFunction
+    include Tools::ParamNames
+
     # Use the runtime to access Enkaidu session management
     protected getter runtime : Runtime
 
@@ -14,7 +16,7 @@ module Enkaidu
 
       # All built-in tools ask for a reason for the tool call so that Enkaidu can
       # show a friendly reason
-      param "reason", required: true, type: Param::Type::Str,
+      param PARAM_REASON, required: true, type: Param::Type::Str,
         description: Tools::BuiltInFunction::REASON_DESCRIPTION
     end
 

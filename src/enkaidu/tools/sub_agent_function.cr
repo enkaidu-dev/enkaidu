@@ -4,6 +4,10 @@ require "./session_built_in_function"
 module Enkaidu
   # Defines a tool / function to make a single query to Enkaidu
   class SubAgentPromptFunction < SessionBuiltInFunction
+    PARAM_PROMPT                  = "prompt"
+    PARAM_INCLUDE_SESSION_CONTEXT = "include_session_context"
+    SETTING_MAX_AGENT_DEPTH       = "max_agent_depth"
+
     name "spawn_agent"
 
     # By itself, has no sideffects
@@ -19,9 +23,9 @@ module Enkaidu
       - benefits from a clean slate to avoid context pollution or confusion
       DESC
 
-    param "prompt", type: Param::Type::Str, required: true,
+    param PARAM_PROMPT, type: Param::Type::Str, required: true,
       description: "The full instruction for the sub-agent."
-    param "include_session_context", type: Param::Type::Bool, required: false,
+    param PARAM_INCLUDE_SESSION_CONTEXT, type: Param::Type::Bool, required: false,
       description: <<-PDESC
         Set to true only when the sub-agent can benefit from awareness of the current session.
         PDESC
@@ -29,7 +33,7 @@ module Enkaidu
     runner Runner
 
     protected def max_agent_depth
-      @max_agent_depth ||= case value = settings.try(&.["max_agent_depth"]?)
+      @max_agent_depth ||= case value = settings.try(&.[SETTING_MAX_AGENT_DEPTH]?)
                            when Number, String then Int32.new(value).clamp(0, 5)
                            else                     2
                            end
@@ -41,8 +45,8 @@ module Enkaidu
       # Implement this method to handle the LLM function call, and return a
       # String with the JSON value.
       def execute(args : JSON::Any) : String
-        keep_history = args["include_session_context"]?.try(&.as_bool?) || false
-        prompt = args["prompt"]?.try(&.as_s?) || return error_response("Required `prompt` was not specified")
+        keep_history = args[PARAM_INCLUDE_SESSION_CONTEXT]?.try(&.as_bool?) || false
+        prompt = args[PARAM_PROMPT]?.try(&.as_s?) || return error_response("Required `prompt` was not specified")
         prompt = prompt.strip
         session_manager = func.runtime.session_manager
 

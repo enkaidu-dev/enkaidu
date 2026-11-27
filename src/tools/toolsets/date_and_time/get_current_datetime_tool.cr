@@ -12,6 +12,12 @@ module Tools::DateAndTime
 
     runner Runner
 
+    RESPONSE_DATE     = "date"
+    RESPONSE_TIME     = "time"
+    RESPONSE_TZ       = "tz"
+    RESPONSE_LOCAL    = "local"
+    RESPONSE_ISO_8601 = "iso_8601"
+
     class Runner < LLM::Function::Runner
       def execute(args : JSON::Any) : String
         local = Time.local
@@ -22,12 +28,12 @@ module Tools::DateAndTime
       # Create a success response as a JSON string
       def success_response(local : Time)
         {
-          local: {
-            date: local.to_s("%Y-%m-%d"),
-            time: local.to_s("%H:%M:%S %:z"),
-            tz:   local.to_s("%Z"),
+          RESPONSE_LOCAL    => {
+            RESPONSE_DATE   => local.to_s("%Y-%m-%d"),
+            RESPONSE_TIME   => local.to_s("%H:%M:%S %:z"),
+            RESPONSE_TZ     => local.to_s("%Z"),
           },
-          iso_8601: local.to_rfc3339,
+          RESPONSE_ISO_8601 => local.to_rfc3339,
         }.to_json
       end
     end

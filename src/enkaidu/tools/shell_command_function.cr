@@ -10,6 +10,24 @@ module Enkaidu
     MAX_STDOUT = 16*1024
     MAX_STDERR = 16*1024
 
+    PARAM_COMMAND                  = "command"
+    PARAM_SAVE_AS_FILE_PATH_PREFIX = "save_as_file_path_prefix"
+
+    RESPONSE_COMMAND     = "command"
+    RESPONSE_OUTPUT      = "output"
+    RESPONSE_EXIT_CODE   = "exit_code"
+    RESPONSE_STDOUT      = "stdout"
+    RESPONSE_STDERR      = "stderr"
+    RESPONSE_STDOUT_FILE = "stdout_file"
+    RESPONSE_STDERR_FILE = "stderr_file"
+
+    SETTING_ALLOWED_COMMANDS         = "allowed_commands"
+    SETTING_APPROVED_COMMANDS        = "approved_commands"
+    SETTING_RESTRICTED_TERMS         = "restricted_terms"
+    SETTING_NETWORK_ALLOWED_COMMANDS = "network_allowed_commands"
+    SETTING_SKIP_CONFIRM             = "skip_confirm_with_cordon"
+    SETTING_EXECUTE_THROUGH_SHELL    = "execute_through_shell"
+
     # The `PermissionError` class is raised when user permission is required and denied for executing a command.
     class PermissionError < Exception; end
 
@@ -56,26 +74,26 @@ module Enkaidu
     # Approved commands are includes in the allowed commands list.
     def allowed_commands : Array(String)
       @allowed_cmds ||= approved_commands |
-                        extract_setting("allowed_commands", "ENKAIDU_ALLOWED_EXECUTABLES")
+                        extract_setting(SETTING_ALLOWED_COMMANDS, "ENKAIDU_ALLOWED_EXECUTABLES")
     end
 
     # Approved commands can be specified via tool settings in the config file, or
     # via `ENKAIDU_APPROVED_EXECUTABLES` environment variable, with config taking priority.
     def approved_commands : Array(String)
-      @approved_cmds ||= extract_setting("approved_commands", "ENKAIDU_APPROVED_EXECUTABLES")
+      @approved_cmds ||= extract_setting(SETTING_APPROVED_COMMANDS, "ENKAIDU_APPROVED_EXECUTABLES")
     end
 
     # Additional restricted terms can be specified via tool settings in the config file.
     # Commands are checked if they are present ANYWHERE within.
     def restricted_terms : Array(String)
       @restricted_terms ||= ALWAYS_RESTRICTED |
-                            extract_setting("restricted_terms", "ENKAIDU_RESTRICTED_TERMS")
+                            extract_setting(SETTING_RESTRICTED_TERMS, "ENKAIDU_RESTRICTED_TERMS")
     end
 
     # Subset of allowed / approved commands that have network access via
     # cordon
     def network_allowed_commands : Array(String)
-      @network_access_cmds ||= extract_setting("network_allowed_commands", "ENKAIDU_NETWORK_ALLOWED_COMMANDS")
+      @network_access_cmds ||= extract_setting(SETTING_NETWORK_ALLOWED_COMMANDS, "ENKAIDU_NETWORK_ALLOWED_COMMANDS")
     end
 
     # Returns CordonHow for how commands should run cordoned off
@@ -113,12 +131,12 @@ module Enkaidu
 
     # Returns true if "skip_confirm_with_cordon" is true.
     def skip_confirm_with_cordon? : Bool
-      settings.try(&.["skip_confirm_with_cordon"]?) == true
+      settings.try(&.[SETTING_SKIP_CONFIRM]?) == true
     end
 
     # Returns true if "execute_through_shell" is true.
     def execute_through_shell? : Bool
-      settings.try(&.["execute_through_shell"]?) == true
+      settings.try(&.[SETTING_EXECUTE_THROUGH_SHELL]?) == true
     end
 
     name TOOL_NAME
@@ -150,10 +168,10 @@ module Enkaidu
       DESC
 
     # Define the acceptable parameter using the `param` method
-    param "command", type: Param::Type::Str, required: true,
+    param PARAM_COMMAND, type: Param::Type::Str, required: true,
       description: "The shell command to execute."
 
-    param "save_as_file_path_prefix", type: Param::Type::Str,
+    param PARAM_SAVE_AS_FILE_PATH_PREFIX, type: Param::Type::Str,
       description: <<-DESCR
         Optionally specify a file path prefix to save the output and error streams.
         If non-blank, two files will be written: `{path_prefix}_stdout.txt` and `{path_prefix}_stderr.txt`.
@@ -161,7 +179,7 @@ module Enkaidu
         Use the `tmp/` folder for temporary saves.
         DESCR
 
-    param "overwrite", type: Param::Type::Bool, required: false,
+    param PARAM_OVERWRITE, type: Param::Type::Bool, required: false,
       description: "Optional. Set to true to overwrite existing files when saving output as files. Default is false."
 
     # Replace `runner` macro to create with self
@@ -179,15 +197,15 @@ module Enkaidu
 
       # ameba:disable Metrics/CyclomaticComplexity: Clear without splitting up
       def execute(args : JSON::Any) : String
-        command = args["command"]?.try(&.as_s?) || return error_response("The required 'command' was not specified.")
+        command = args[PARAM_COMMAND]?.try(&.as_s?) || return error_response("The required 'command' was not specified.")
         command = command.strip
         return error_response("The required 'command' was empty.") if command.empty?
 
         save_stdout_path = nil
         save_stderr_path = nil
-        if (save_as_file_prefix = args["save_as_file_path_prefix"]?.try(&.as_s?)) && !save_as_file_prefix.strip.empty?
+        if (save_as_file_prefix = args[PARAM_SAVE_AS_FILE_PATH_PREFIX]?.try(&.as_s?)) && !save_as_file_prefix.strip.empty?
           begin
-            overwrite = args["overwrite"]?.try(&.as_bool?) || false
+            overwrite = args[PARAM_OVERWRITE]?.try(&.as_bool?) || false
             save_stdout_path = confirm_save_path("#{save_as_file_prefix}_stdout.txt", overwrite)
             save_stderr_path = confirm_save_path("#{save_as_file_prefix}_stderr.txt", overwrite)
           rescue ex
@@ -349,11 +367,11 @@ module Enkaidu
           begin
             mkdir_and_write_file(stdout_path, result[:stdout])
             mkdir_and_write_file(stderr_path, result[:stderr])
-            return {command: command,
-                    output:  {
-                      exit_code:   result[:exit_code],
-                      stdout_file: stdout_path,
-                      stderr_file: stderr_path,
+            return {RESPONSE_COMMAND => command,
+                    RESPONSE_OUTPUT  => {
+                      RESPONSE_EXIT_CODE   => result[:exit_code],
+                      RESPONSE_STDOUT_FILE => stdout_path,
+                      RESPONSE_STDERR_FILE => stderr_path,
                     },
             }.to_json
           rescue ex
@@ -370,25 +388,25 @@ module Enkaidu
         trunc_sout = sout.size < result[:stdout].size
         trunc_serr = serr.size < result[:stderr].size
         {
-          command: command,
-          output:  {
-            exit_code: result[:exit_code],
-            stdout:    {
+          RESPONSE_COMMAND => command,
+          RESPONSE_OUTPUT  => {
+            RESPONSE_EXIT_CODE => result[:exit_code],
+            RESPONSE_STDOUT    => {
               content:   sout,
               truncated: trunc_sout,
             },
-            stderr: {
+            RESPONSE_STDERR => {
               content:   serr,
               truncated: trunc_serr,
             },
           },
-          message: save_as_error ? "Unable to save as files, sorry: #{save_as_error}" : "OK",
+          RESPONSE_MESSAGE => save_as_error ? "Unable to save as files, sorry: #{save_as_error}" : "OK",
         }.to_json
       end
 
       # Create an error response as a JSON string
       private def error_response(message)
-        {error: message}.to_json
+        {RESPONSE_ERROR => message}.to_json
       end
     end
   end

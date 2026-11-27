@@ -9,6 +9,13 @@ require "../../../sucre/html_to_markdown"
 module Tools::Web
   # The `HttpGetWebAsMarkdownTool` class defines a tool for making HTTP GET requests to retrieve web pages as Markdown.
   class HttpGetWebAsMarkdownTool < HttpGet
+    PARAM_URL             = "url"
+    PARAM_USER_AGENT      = "user_agent"
+    PARAM_SAVE_PATH       = "save_path"
+    RESPONSE_URL          = "url"
+    RESPONSE_MARKDOWN     = "markdown"
+    RESPONSE_SAVED_AS_FILE = "saved_as_file"
+
     name "fetch_markdown"
     side_effects SideEffects::NetRead
 
@@ -19,21 +26,21 @@ module Tools::Web
       #{MAX_CONTENT_SIZE} bytes, it truncates the content and includes a `truncated: true` property.
       DESC
 
-    param "url", type: Param::Type::Str,
+    param PARAM_URL, type: Param::Type::Str,
       description: "The URL to GET the web page from.",
       required: true
 
-    param "user_agent", type: Param::Type::Str,
+    param PARAM_USER_AGENT, type: Param::Type::Str,
       description: "Optional user agent header; default is Firefox for macOS.",
       required: false
 
-    param "save_path", type: Param::Type::Str,
+    param PARAM_SAVE_PATH, type: Param::Type::Str,
       description: <<-DESCR
         Optionally specify a file to save entire web page as Markdown.
         If this is a temporary file save it in `tmp/` folder.
         DESCR
 
-    param "overwrite", type: Param::Type::Bool, required: false,
+    param PARAM_OVERWRITE, type: Param::Type::Bool, required: false,
       description: "Optional. Set to true to overwrite existing file, applicable if saving as a file. Default is false."
 
     # Replace `runner` macro to create with self
@@ -46,12 +53,12 @@ module Tools::Web
       include FileHelper
 
       def execute(args : JSON::Any) : String
-        url = args["url"]?.try(&.as_s?) || return error_response("The required URL was not specified")
-        user_agent = args["user_agent"]?.try(&.as_s?) || USER_AGENT
-        save_as_file = args["save_path"]?.try(&.as_s?)
+        url = args[PARAM_URL]?.try(&.as_s?) || return error_response("The required URL was not specified")
+        user_agent = args[PARAM_USER_AGENT]?.try(&.as_s?) || USER_AGENT
+        save_as_file = args[PARAM_SAVE_PATH]?.try(&.as_s?)
 
         save_path = begin
-          overwrite = args["overwrite"]?.try(&.as_bool?) || false
+          overwrite = args[PARAM_OVERWRITE]?.try(&.as_bool?) || false
           confirm_save_path(save_as_file, overwrite)
         rescue ex
           return error_response(ex.to_s)
@@ -204,17 +211,17 @@ module Tools::Web
       # Create a successful response with markdown content
       def success_markdown(url, content, truncated)
         {
-          url:       url,
-          truncated: truncated,
-          markdown:  content,
+          RESPONSE_URL                        => url,
+          RESPONSE_TRUNCATED => truncated,
+          RESPONSE_MARKDOWN                   => content,
         }.to_json
       end
 
       # Create a successful response with referencence to saved markdown content
       def success_saved_markdown(url, path)
         {
-          url:           url,
-          saved_as_file: path,
+          RESPONSE_URL           => url,
+          RESPONSE_SAVED_AS_FILE => path,
         }.to_json
       end
     end

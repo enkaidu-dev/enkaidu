@@ -4,6 +4,11 @@ require "./session_built_in_function"
 module Enkaidu
   # Defines a tool / function to make a single query to Enkaidu
   class GlobalStateGetFunction < SessionBuiltInFunction
+    PARAM_NAMESPACE   = "namespace"
+    PARAM_KEYS        = "keys"
+    RESPONSE_REVISION   = "revision"
+    RESPONSE_KEY_VALUES = "key_values"
+
     name "get_global_state"
 
     # By itself, has no sideffects
@@ -14,9 +19,9 @@ module Enkaidu
       A monotonically increasing revision counter per namespace is updated for every change to a key in that namespace.
       DESC
 
-    param "namespace", type: Param::Type::Str, required: true,
+    param PARAM_NAMESPACE, type: Param::Type::Str, required: true,
       description: "A namespace is a container of key/value pairs"
-    param "keys", type: Param::Type::Arr, required: true,
+    param PARAM_KEYS, type: Param::Type::Arr, required: true,
       description: "An array of one or more keys for which to retrieve the values. Unknown keys will return a `null` value."
 
     runner Runner
@@ -27,8 +32,8 @@ module Enkaidu
       # Implement this method to handle the LLM function call, and return a
       # String with the JSON value.
       def execute(args : JSON::Any) : String
-        namespace = args["namespace"]?.try(&.as_s?) || return error_response("Required `namespace` was not specified")
-        json_keys = args["keys"]?.try(&.as_a?) || return error_response("Required `keys` was not specified")
+        namespace = args[PARAM_NAMESPACE]?.try(&.as_s?) || return error_response("Required `namespace` was not specified")
+        json_keys = args[PARAM_KEYS]?.try(&.as_a?) || return error_response("Required `keys` was not specified")
 
         keys = convert_json_array(json_keys)
 
@@ -46,9 +51,9 @@ module Enkaidu
       private def success_response(namespace, revision, key_values)
         {
           namespace => {
-            "revision" => revision,
+            RESPONSE_REVISION => revision,
           },
-          "key_values" => key_values,
+          RESPONSE_KEY_VALUES => key_values,
         }.to_json
       end
 

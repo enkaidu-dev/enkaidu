@@ -12,12 +12,15 @@ module Tools::TextLineEditing
 
     description "Replace a range of lines in a text file within the current directory with given text."
 
-    param "path", type: Param::Type::Str,
+    PARAM_LINE_RANGE = "line_range"
+    PARAM_TEXT       = "text"
+
+    param PARAM_PATH, type: Param::Type::Str,
       description: "The relative path to the text file to modify.", required: true
-    param "line_range", type: Param::Type::Arr, required: true,
+    param PARAM_LINE_RANGE, type: Param::Type::Arr, required: true,
       description: "An array of two integers specifying the start and end line numbers." \
                    "Line numbers are 1-indexed, and -1 for the end line means read to the end of the file."
-    param "text", type: Param::Type::Str,
+    param PARAM_TEXT, type: Param::Type::Str,
       description: "The new text to insert in place of the replaced lines.", required: true
 
     runner Runner
@@ -27,9 +30,9 @@ module Tools::TextLineEditing
       include FileHelper
 
       def execute(args : JSON::Any) : String
-        file_path = args["path"]?.try &.as_s? ||
+        file_path = args[PARAM_PATH]?.try &.as_s? ||
                     return error_response("The required `path` was not specified")
-        new_str = args["text"]?.try &.as_s? ||
+        new_str = args[PARAM_TEXT]?.try &.as_s? ||
                   return error_response("The required `text` was not specified")
         resolved_path = resolve_path(file_path)
 
@@ -38,7 +41,7 @@ module Tools::TextLineEditing
         return error_response("Cannot edit files in the `#{DELETED_FILES_PATH}` folder.") if path_in_deleted_files_folder?(resolved_path)
 
         begin
-          line_range = parse_line_range(args["line_range"]?)
+          line_range = parse_line_range(args[PARAM_LINE_RANGE]?)
 
           if new_content = replace_lines(resolved_path, line_range, new_str)
             File.write(resolved_path, new_content)
@@ -98,11 +101,13 @@ module Tools::TextLineEditing
       end
 
       private def error_response(message)
-        {"error" => message}.to_json
+        {RESPONSE_ERROR => message}.to_json
       end
 
       private def success_response(file_path, message)
-        {file_path: file_path, status: "Success", message: message}.to_json
+        {RESPONSE_FILE_PATH => file_path,
+         RESPONSE_STATUS    => "Success",
+         RESPONSE_MESSAGE   => message}.to_json
       end
     end
   end

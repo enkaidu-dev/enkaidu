@@ -15,7 +15,7 @@ module Tools::FileManagement
                 "with a ms-resolution timestamp prepended to the filename. This allows for file recovery if deletion " \
                 "was accidental. The directory structure is preserved in the `#{FileHelper::DELETED_FILES_PATH}` folder."
 
-    param "path", type: Param::Type::Str, required: true,
+    param PARAM_PATH, type: Param::Type::Str, required: true,
       description: "The path of the file to be deleted."
 
     runner Runner
@@ -25,7 +25,7 @@ module Tools::FileManagement
       include FileHelper
 
       def execute(args : JSON::Any) : String
-        file_path = args["path"]?.try(&.as_s?) || return error_response("The required path was not specified")
+        file_path = args[PARAM_PATH]?.try(&.as_s?) || return error_response("The required path was not specified")
 
         resolved_file_path = resolve_path(file_path)
 
@@ -75,11 +75,11 @@ module Tools::FileManagement
       end
 
       private def success_response(old_path, new_path)
-        {message: "File deleted successfully, by renaming '#{old_path}' to '#{new_path}'."}.to_json
+        {RESPONSE_MESSAGE => "File deleted successfully, by renaming '#{old_path}' to '#{new_path}'."}.to_json
       end
 
       private def error_response(message)
-        {error: message}.to_json
+        {RESPONSE_ERROR => message}.to_json
       end
     end
   end

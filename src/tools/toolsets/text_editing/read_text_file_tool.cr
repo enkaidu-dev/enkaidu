@@ -7,6 +7,9 @@ module Tools::TextEditing
   # from a file. It ensures the operation is performed securely within the
   # allowed directory, avoiding access to unauthorized paths.
   class ReadTextFileTool < BuiltInFunction
+    PARAM_LINE_NUMBERS = "line_numbers"
+    PARAM_LINE_RANGE   = "line_range"
+
     name "read_text"
     side_effects SideEffects::FileRead
 
@@ -15,11 +18,11 @@ module Tools::TextEditing
                 "Read the entire file or a specific range of lines."
 
     # Define the acceptable parameter using the `param` method
-    param "path", type: Param::Type::Str, required: true,
+    param PARAM_PATH, type: Param::Type::Str, required: true,
       description: "The path to the text file to read."
-    param "line_numbers", type: Param::Type::Bool, required: false,
+    param PARAM_LINE_NUMBERS, type: Param::Type::Bool, required: false,
       description: "Optional. Set to true to include line numbers, like `cat -n`. Defaults to false."
-    param "line_range", type: Param::Type::Arr, required: false,
+    param PARAM_LINE_RANGE, type: Param::Type::Arr, required: false,
       description: "Optional. An array of two integers specifying the start and end line numbers to view." \
                    "Line numbers are 1-indexed, and -1 for the end line means read to the end of the file." \
                    "Defaults to [1, -1] for entire file."
@@ -32,11 +35,11 @@ module Tools::TextEditing
 
       # ameba:disable Metrics/CyclomaticComplexity: Clear without splitting up
       def execute(args : JSON::Any) : String
-        file_path = args["path"]?.try(&.as_s?).try(&.strip) ||
+        file_path = args[PARAM_PATH]?.try(&.as_s?).try(&.strip) ||
                     return error_response("The required `path` was not specified")
 
-        line_numbers = args["line_numbers"]?.try &.as_bool? || false
-        line_range = if range = args["line_range"]?
+        line_numbers = args[PARAM_LINE_NUMBERS]?.try &.as_bool? || false
+        line_range = if range = args[PARAM_LINE_RANGE]?
                        if (arr = range.as_a?) && arr.size == 2 && (line_start = arr[0]?.try(&.as_i?)) && (line_end = arr[1]?.try(&.as_i?))
                          [line_start, line_end]
                        else
@@ -87,14 +90,14 @@ module Tools::TextEditing
       # Create a success response as a JSON string
       def success_response(file_path, content)
         {
-          file_path: file_path,
-          content:   content,
+          RESPONSE_FILE_PATH => file_path,
+          RESPONSE_CONTENT   => content,
         }.to_json
       end
 
       # Create an error response as a JSON string
       private def error_response(message)
-        {error: message}.to_json
+        {RESPONSE_ERROR => message}.to_json
       end
     end
   end

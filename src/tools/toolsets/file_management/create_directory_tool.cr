@@ -7,12 +7,15 @@ module Tools::FileManagement
   # It ensures that the directory is created within the current working
   # directory and does not allow creation of paths that escape the root.
   class CreateDirectoryTool < BuiltInFunction
+    RESPONSE_DIRECTORY_PATH = "directory_path"
+    RESPONSE_STATUS         = "status"
+
     name "mkdir"
     side_effects SideEffects::DirRead | SideEffects::DirWrite
 
     description "Creates a new directory at the specified relative path within the current directory."
 
-    param "path", type: Param::Type::Str, required: true,
+    param PARAM_PATH, type: Param::Type::Str, required: true,
       description: "The relative path of the directory to create."
 
     runner Runner
@@ -22,7 +25,7 @@ module Tools::FileManagement
       include FileHelper
 
       def execute(args : JSON::Any) : String
-        dir_path = args["path"]?.try(&.as_s?) || return error_response("The required path was not specified")
+        dir_path = args[PARAM_PATH]?.try(&.as_s?) || return error_response("The required path was not specified")
         resolved_path = resolve_path(dir_path)
 
         # Ensure the path stays within the current working directory
@@ -39,11 +42,12 @@ module Tools::FileManagement
       end
 
       private def error_response(message)
-        {"error" => message}.to_json
+        {RESPONSE_ERROR => message}.to_json
       end
 
       private def success_response(directory_path)
-        {directory_path: directory_path, status: "created"}.to_json
+        {CreateDirectoryTool::RESPONSE_DIRECTORY_PATH => directory_path,
+         CreateDirectoryTool::RESPONSE_STATUS => "created"}.to_json
       end
     end
   end

@@ -6,15 +6,18 @@ module Tools::FileManagement
   # The `RenameFileTool` class defines a tool to rename and/or move a file in the current directory.
   # It ensures the operation is performed securely within the allowed directory, avoiding access to unauthorized paths.
   class RenameFileTool < BuiltInFunction
+    PARAM_SOURCE = "source"
+    PARAM_TARGET = "target"
+
     name "mv"
     side_effects SideEffects::FileRead | SideEffects::FileMove | SideEffects::DirRead | SideEffects::DirMove
 
     description "Rename a file or directory, or move it to another sub-folder, but you may not move it outside this directory." \
                 "like the `mv` command but restricted to the current folder."
 
-    param "source", type: Param::Type::Str, required: true,
+    param PARAM_SOURCE, type: Param::Type::Str, required: true,
       description: "The current path of the file or directory to be renamed."
-    param "target", type: Param::Type::Str, required: true,
+    param PARAM_TARGET, type: Param::Type::Str, required: true,
       description: "The new name / path for the file or directory."
 
     runner Runner
@@ -24,8 +27,8 @@ module Tools::FileManagement
       include FileHelper
 
       def execute(args : JSON::Any) : String
-        current_path = args["source"]?.try(&.as_s?) || return error_response("The required `source` was not specified")
-        new_name = args["target"]?.try(&.as_s?) || return error_response("The required `target` was not specified")
+        current_path = args[PARAM_SOURCE]?.try(&.as_s?) || return error_response("The required `source` was not specified")
+        new_name = args[PARAM_TARGET]?.try(&.as_s?) || return error_response("The required `target` was not specified")
 
         resolved_current_path = resolve_path(current_path)
         resolved_new_path = resolve_path(File.join(File.dirname(resolved_current_path), new_name))
@@ -52,11 +55,11 @@ module Tools::FileManagement
       end
 
       private def success_response(old_name, new_name)
-        {message: "File '#{old_name}' renamed to '#{new_name}' successfully."}.to_json
+        {RESPONSE_MESSAGE => "File '#{old_name}' renamed to '#{new_name}' successfully."}.to_json
       end
 
       private def error_response(message)
-        {error: message}.to_json
+        {RESPONSE_ERROR => message}.to_json
       end
     end
   end

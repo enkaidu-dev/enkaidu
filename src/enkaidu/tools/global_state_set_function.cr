@@ -4,6 +4,12 @@ require "./session_built_in_function"
 module Enkaidu
   # Defines a tool / function to make a single query to Enkaidu
   class GlobalStateSetFunction < SessionBuiltInFunction
+    PARAM_NAMESPACE      = "namespace"
+    PARAM_KEYS           = "keys"
+    PARAM_VALUES         = "values"
+    RESPONSE_REVISION    = "revision"
+    RESPONSE_KEYS_UPDATED = "keys_updated"
+
     name "set_global_state"
 
     # By itself, has no sideffects
@@ -14,11 +20,11 @@ module Enkaidu
       A monotonically increasing revision counter per namespace is updated for every change to a key in that namespace.
       DESC
 
-    param "namespace", type: Param::Type::Str, required: true,
+    param PARAM_NAMESPACE, type: Param::Type::Str, required: true,
       description: "A namespace is a container of key/value pairs"
-    param "keys", type: Param::Type::Arr, required: true,
+    param PARAM_KEYS, type: Param::Type::Arr, required: true,
       description: "An array of one or more keys with corresponding value entries in the `values` parameter"
-    param "values", type: Param::Type::Arr, required: true,
+    param PARAM_VALUES, type: Param::Type::Arr, required: true,
       description: "An array of one or more values corresponding to entries in 'keys' parameter "
 
     runner Runner
@@ -29,9 +35,9 @@ module Enkaidu
       # Implement this method to handle the LLM function call, and return a
       # String with the JSON value.
       def execute(args : JSON::Any) : String
-        namespace = args["namespace"]?.try(&.as_s?) || return error_response("Required `namespace` was not specified")
-        json_keys = args["keys"]?.try(&.as_a?) || return error_response("Required `keys` was not specified")
-        json_values = args["values"]?.try(&.as_a?) || return error_response("Required `values` was not specified")
+        namespace = args[PARAM_NAMESPACE]?.try(&.as_s?) || return error_response("Required `namespace` was not specified")
+        json_keys = args[PARAM_KEYS]?.try(&.as_a?) || return error_response("Required `keys` was not specified")
+        json_values = args[PARAM_VALUES]?.try(&.as_a?) || return error_response("Required `values` was not specified")
 
         keys = convert_json_array(json_keys)
         values = convert_json_array(json_values)
@@ -52,9 +58,9 @@ module Enkaidu
       private def success_response(namespace, revision, count)
         {
           namespace => {
-            "revision" => revision,
+            RESPONSE_REVISION => revision,
           },
-          "keys_updated" => count,
+          RESPONSE_KEYS_UPDATED => count,
         }.to_json
       end
 

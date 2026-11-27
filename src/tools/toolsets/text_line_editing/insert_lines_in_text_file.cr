@@ -12,11 +12,15 @@ module Tools::TextLineEditing
 
     description "Insert text at a specific location in a text file within the current directory."
 
-    param "path", type: Param::Type::Str,
+    PARAM_LINE             = "line"
+    PARAM_TEXT             = "text"
+    RESPONSE_NEW_CONTENT   = "new_content"
+
+    param PARAM_PATH, type: Param::Type::Str,
       description: "The relative path to the text file to modify.", required: true
-    param "line", type: Param::Type::Num,
+    param PARAM_LINE, type: Param::Type::Num,
       description: "The line number after which to insert the text (0 for beginning of file, -1 to append at the end)", required: true
-    param "text", type: Param::Type::Str,
+    param PARAM_TEXT, type: Param::Type::Str,
       description: "The text to insert.", required: true
 
     runner Runner
@@ -26,11 +30,11 @@ module Tools::TextLineEditing
       include FileHelper
 
       def execute(args : JSON::Any) : String
-        file_path = args["path"]?.try &.as_s? ||
+        file_path = args[PARAM_PATH]?.try &.as_s? ||
                     return error_response("The required `path` was not specified")
-        insert_line = args["line"]?.try &.as_i? ||
+        insert_line = args[PARAM_LINE]?.try &.as_i? ||
                       return error_response("The required `line` was not specified")
-        insert_text = args["text"]?.try &.as_s? ||
+        insert_text = args[PARAM_TEXT]?.try &.as_s? ||
                       return error_response("The required `text` was not specified")
 
         resolved_path = resolve_path(file_path)
@@ -70,11 +74,11 @@ module Tools::TextLineEditing
       end
 
       private def error_response(message)
-        {"error" => message}.to_json
+        {RESPONSE_ERROR => message}.to_json
       end
 
       private def success_response(file_path, content)
-        {file_path: file_path, new_content: content}.to_json
+        {RESPONSE_FILE_PATH => file_path, RESPONSE_NEW_CONTENT => content}.to_json
       end
     end
   end

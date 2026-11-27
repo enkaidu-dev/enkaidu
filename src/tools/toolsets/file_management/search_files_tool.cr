@@ -34,6 +34,18 @@ module Tools::FileManagement
     class Runner < LLM::Function::Runner
       include FileHelper
 
+      PARAM_FILES = "files"
+      PARAM_PATTERN = "pattern"
+      PARAM_IS_REGEX = "is_regex"
+      PARAM_MAX_FILES = "max_files"
+      RESPONSE_MATCHES = "matches"
+      RESPONSE_FILES_SEARCHED = "files_searched"
+      RESPONSE_SKIPPED_FILES = "skipped_files"
+      RESPONSE_SKIPPED_SAMPLE = "skipped_sample"
+      RESPONSE_FILE = "file"
+      RESPONSE_LINE = "line"
+      RESPONSE_NUM = "num"
+
       # Files larger than this are skipped: reading them line-by-line risks huge
       # in-memory allocations on "lines" (binary blobs between newlines) and their
       # matches would be useless to an LLM anyway.
@@ -43,8 +55,8 @@ module Tools::FileManagement
       MAX_MATCHES_PER_FILE = 50
 
       def execute(args : JSON::Any) : String
-        files_pattern = args["files"]?.try(&.as_s?) || return error_response("Missing `files` parameter required.")
-        max_files = args["max_files"]?.try(&.as_i?) || DEFAULT_SEARCH_FILE_MATCHES
+        files_pattern = args[PARAM_FILES]?.try(&.as_s?) || return error_response("Missing `files` parameter required.")
+        max_files = args[PARAM_MAX_FILES]?.try(&.as_i?) || DEFAULT_SEARCH_FILE_MATCHES
 
         if max_files > MAX_SEARCH_FILE_MATCHES
           return error_response("Maximum files searchable cannot exceed #{MAX_SEARCH_FILE_MATCHES}")
@@ -58,13 +70,13 @@ module Tools::FileManagement
           return error_response("Reverse path navigation (via `..`) not allowed.")
         end
 
-        search_pattern = args["pattern"]?.try &.as_s? ||
+        search_pattern = args[PARAM_PATTERN]?.try &.as_s? ||
                          return error_response("The required search pattern was not specified")
 
         return error_response("The required search pattern was empty") if search_pattern.strip.empty?
 
         # Read the declared `is_regex` param.
-        regex = args["is_regex"]?.try &.as_bool? || false
+        regex = args[PARAM_IS_REGEX]?.try &.as_bool? || false
 
         begin
           pattern = regex ? Regex.new(search_pattern) : search_pattern
@@ -138,16 +150,16 @@ module Tools::FileManagement
       end
 
       private def error_response(message)
-        {"error" => message}.to_json
+        {RESPONSE_ERROR => message}.to_json
       end
 
       private def success_response(matches, searched, skipped)
         result = {
-          matches:        matches,
-          files_searched: searched,
-          skipped_files:  skipped.size,
+          RESPONSE_MATCHES => matches,
+          RESPONSE_FILES_SEARCHED => searched,
+          RESPONSE_SKIPPED_FILES => skipped.size,
           # Cap the sample so a node_modules-scale glob cannot balloon the response
-          skipped_sample: skipped.first(10),
+          RESPONSE_SKIPPED_SAMPLE => skipped.first(10),
         }.to_json
         if (size = result.size) > MAX_FILESIZE
           return error_response("Search response too big (#{size} > #{MAX_FILESIZE} bytes), narrow down the search please.")
