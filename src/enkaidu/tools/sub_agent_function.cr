@@ -41,7 +41,7 @@ module Enkaidu
       # Implement this method to handle the LLM function call, and return a
       # String with the JSON value.
       def execute(args : JSON::Any) : String
-        keep_history = args["include_caller_history"]?.try(&.as_bool?) || false
+        keep_history = args["include_session_context"]?.try(&.as_bool?) || false
         prompt = args["prompt"]?.try(&.as_s?) || return error_response("Required `prompt` was not specified")
         prompt = prompt.strip
         session_manager = func.runtime.session_manager
