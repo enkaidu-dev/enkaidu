@@ -4,10 +4,10 @@ require "./session_built_in_function"
 module Enkaidu
   # Defines a tool / function to make a single query to Enkaidu
   class GlobalStateSetFunction < SessionBuiltInFunction
-    PARAM_NAMESPACE      = "namespace"
-    PARAM_KEYS           = "keys"
-    PARAM_VALUES         = "values"
-    RESPONSE_REVISION    = "revision"
+    PARAM_NAMESPACE       = "namespace"
+    PARAM_KEYS            = "keys"
+    PARAM_VALUES          = "values"
+    RESPONSE_REVISION     = "revision"
     RESPONSE_KEYS_UPDATED = "keys_updated"
 
     name "set_global_state"

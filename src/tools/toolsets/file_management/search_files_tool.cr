@@ -34,17 +34,17 @@ module Tools::FileManagement
     class Runner < LLM::Function::Runner
       include FileHelper
 
-      PARAM_FILES = "files"
-      PARAM_PATTERN = "pattern"
-      PARAM_IS_REGEX = "is_regex"
-      PARAM_MAX_FILES = "max_files"
-      RESPONSE_MATCHES = "matches"
+      PARAM_FILES             = "files"
+      PARAM_PATTERN           = "pattern"
+      PARAM_IS_REGEX          = "is_regex"
+      PARAM_MAX_FILES         = "max_files"
+      RESPONSE_MATCHES        = "matches"
       RESPONSE_FILES_SEARCHED = "files_searched"
-      RESPONSE_SKIPPED_FILES = "skipped_files"
+      RESPONSE_SKIPPED_FILES  = "skipped_files"
       RESPONSE_SKIPPED_SAMPLE = "skipped_sample"
-      RESPONSE_FILE = "file"
-      RESPONSE_LINE = "line"
-      RESPONSE_NUM = "num"
+      RESPONSE_FILE           = "file"
+      RESPONSE_LINE           = "line"
+      RESPONSE_NUM            = "num"
 
       # Files larger than this are skipped: reading them line-by-line risks huge
       # in-memory allocations on "lines" (binary blobs between newlines) and their
@@ -155,9 +155,9 @@ module Tools::FileManagement
 
       private def success_response(matches, searched, skipped)
         result = {
-          RESPONSE_MATCHES => matches,
+          RESPONSE_MATCHES        => matches,
           RESPONSE_FILES_SEARCHED => searched,
-          RESPONSE_SKIPPED_FILES => skipped.size,
+          RESPONSE_SKIPPED_FILES  => skipped.size,
           # Cap the sample so a node_modules-scale glob cannot balloon the response
           RESPONSE_SKIPPED_SAMPLE => skipped.first(10),
         }.to_json

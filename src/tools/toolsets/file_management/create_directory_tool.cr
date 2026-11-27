@@ -47,7 +47,7 @@ module Tools::FileManagement
 
       private def success_response(directory_path)
         {CreateDirectoryTool::RESPONSE_DIRECTORY_PATH => directory_path,
-         CreateDirectoryTool::RESPONSE_STATUS => "created"}.to_json
+         CreateDirectoryTool::RESPONSE_STATUS         => "created"}.to_json
       end
     end
   end

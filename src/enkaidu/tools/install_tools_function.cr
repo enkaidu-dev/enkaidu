@@ -34,14 +34,14 @@ module Enkaidu
           if loaded.size.zero?
             error_response("None of the tools were installed.")
           elsif not_loaded.size > 0
-            {RESPONSE_STATUS => "Partial",
-             RESPONSE_INSTALLED => loaded,
+            {RESPONSE_STATUS        => "Partial",
+             RESPONSE_INSTALLED     => loaded,
              RESPONSE_NOT_INSTALLED => not_loaded,
-             RESPONSE_MESSAGE => "Some tools were installed, some were not."}.to_json
+             RESPONSE_MESSAGE       => "Some tools were installed, some were not."}.to_json
           else
-            {RESPONSE_STATUS => "Complete",
+            {RESPONSE_STATUS    => "Complete",
              RESPONSE_INSTALLED => loaded,
-             RESPONSE_MESSAGE => "All the tools were installed"}.to_json
+             RESPONSE_MESSAGE   => "All the tools were installed"}.to_json
           end
         else
           error_response("Declined: The user did NOT approve the use of one or more of these tools?")

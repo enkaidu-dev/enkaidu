@@ -12,9 +12,9 @@ module Tools::TextLineEditing
 
     description "Insert text at a specific location in a text file within the current directory."
 
-    PARAM_LINE             = "line"
-    PARAM_TEXT             = "text"
-    RESPONSE_NEW_CONTENT   = "new_content"
+    PARAM_LINE           = "line"
+    PARAM_TEXT           = "text"
+    RESPONSE_NEW_CONTENT = "new_content"
 
     param PARAM_PATH, type: Param::Type::Str,
       description: "The relative path to the text file to modify.", required: true

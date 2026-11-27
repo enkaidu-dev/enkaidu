@@ -28,10 +28,10 @@ module Tools::DateAndTime
       # Create a success response as a JSON string
       def success_response(local : Time)
         {
-          RESPONSE_LOCAL    => {
-            RESPONSE_DATE   => local.to_s("%Y-%m-%d"),
-            RESPONSE_TIME   => local.to_s("%H:%M:%S %:z"),
-            RESPONSE_TZ     => local.to_s("%Z"),
+          RESPONSE_LOCAL => {
+            RESPONSE_DATE => local.to_s("%Y-%m-%d"),
+            RESPONSE_TIME => local.to_s("%H:%M:%S %:z"),
+            RESPONSE_TZ   => local.to_s("%Z"),
           },
           RESPONSE_ISO_8601 => local.to_rfc3339,
         }.to_json
