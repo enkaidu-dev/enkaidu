@@ -15,14 +15,14 @@ module Enkaidu
     side_effects SideEffects::None
 
     description <<-DESC
-      Get the values for one or more keys within a namespace in the global state available across sessions and turns.
-      A monotonically increasing revision counter per namespace is updated for every change to a key in that namespace.
+      Get values for one or more keys in a namespace of the global state.
+      Returns the key-value pairs and a monotonically increasing revision counter for the namespace.
       DESC
 
     param PARAM_NAMESPACE, type: Param::Type::Str, required: true,
-      description: "A namespace is a container of key/value pairs"
+      description: "The name of the namespace to read from."
     param PARAM_KEYS, type: Param::Type::Arr, required: true,
-      description: "An array of one or more keys for which to retrieve the values. Unknown keys will return a `null` value."
+      description: "An array of key names to retrieve. Unknown keys return `null`."
 
     runner Runner
 

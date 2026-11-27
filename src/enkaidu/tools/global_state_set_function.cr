@@ -12,20 +12,17 @@ module Enkaidu
 
     name "set_global_state"
 
-    # By itself, has no sideffects
+    # By itself, has no side effects
     side_effects SideEffects::None
 
-    description <<-DESC
-      Set (or update) the value for one or more keys within a namespace in the global state available across sessions and turns.
-      A monotonically increasing revision counter per namespace is updated for every change to a key in that namespace.
-      DESC
+    description "Set or update one or more key/value pairs in a named global state namespace, persisted across sessions and turns."
 
     param PARAM_NAMESPACE, type: Param::Type::Str, required: true,
-      description: "A namespace is a container of key/value pairs"
+      description: "The namespace to set key/value pairs in."
     param PARAM_KEYS, type: Param::Type::Arr, required: true,
-      description: "An array of one or more keys with corresponding value entries in the `values` parameter"
+      description: "Array of keys to set, positionally paired with `values`."
     param PARAM_VALUES, type: Param::Type::Arr, required: true,
-      description: "An array of one or more values corresponding to entries in 'keys' parameter "
+      description: "Array of values, positionally paired with `keys`. Length must equal `keys`."
 
     runner Runner
 

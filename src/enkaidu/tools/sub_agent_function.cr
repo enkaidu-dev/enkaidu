@@ -4,31 +4,25 @@ require "./session_built_in_function"
 module Enkaidu
   # Defines a tool / function to make a single query to Enkaidu
   class SubAgentPromptFunction < SessionBuiltInFunction
-    PARAM_PROMPT                  = "prompt"
-    PARAM_INCLUDE_SESSION_CONTEXT = "include_session_context"
-    SETTING_MAX_AGENT_DEPTH       = "max_agent_depth"
+    PARAM_PROMPT            = "prompt"
+    PARAM_SESSION_CONTEXT   = "session_context"
+    SETTING_MAX_AGENT_DEPTH = "max_agent_depth"
 
     name "spawn_agent"
 
-    # By itself, has no sideffects
+    # By itself, has no sideeffects
     side_effects SideEffects::None
 
     description <<-DESC
-      Submit a prompt to the LLM to process in a separate context window, and receive the result as `[query, response]`.
-      Call the tool with a clean context (default), or include current session context so the sub-agent can use that information to process the prompt.
-
-      **Use this tool whenever the task:**
-      - would consume significant tokens (large codebases, long or many documents, multi-step research)
-      - is self-contained and doesn't need the current session's history
-      - benefits from a clean slate to avoid context pollution or confusion
+      Submit a prompt to the LLM to process in a separate context window, and receive the result as [query, response].
+      Call the tool with a clean context (default), or include current session context so the sub-agent can use that information.
+      Use this tool when the task would consume significant tokens, is self-contained, or benefits from a clean slate to avoid context pollution.
       DESC
 
     param PARAM_PROMPT, type: Param::Type::Str, required: true,
       description: "The full instruction for the sub-agent."
-    param PARAM_INCLUDE_SESSION_CONTEXT, type: Param::Type::Bool, required: false,
-      description: <<-PDESC
-        Set to true only when the sub-agent can benefit from awareness of the current session.
-        PDESC
+    param PARAM_SESSION_CONTEXT, type: Param::Type::Bool, required: false,
+      description: "Optional. Set to true to include the current session context in the sub-agent's context. Default is false."
 
     runner Runner
 
@@ -45,7 +39,7 @@ module Enkaidu
       # Implement this method to handle the LLM function call, and return a
       # String with the JSON value.
       def execute(args : JSON::Any) : String
-        keep_history = args[PARAM_INCLUDE_SESSION_CONTEXT]?.try(&.as_bool?) || false
+        keep_history = args[PARAM_SESSION_CONTEXT]?.try(&.as_bool?) || false
         prompt = args[PARAM_PROMPT]?.try(&.as_s?) || return error_response("Required `prompt` was not specified")
         prompt = prompt.strip
         session_manager = func.runtime.session_manager

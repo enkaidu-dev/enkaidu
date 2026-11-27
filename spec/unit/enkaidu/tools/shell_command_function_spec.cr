@@ -32,8 +32,8 @@ Spectator.describe Enkaidu::ShellCommandFunction do
       runner = ShellCommandTestRunner.new(ShellCommandTestFunction.new(Enkaidu::Runtime.new(options, renderer)))
 
       [nil, "", "  \t\n"].each do |prefix|
-        args = {"command" => "test-command", "save_as_file_path_prefix" => prefix}
-        args.delete("save_as_file_path_prefix") if prefix.nil?
+        args = {"command" => "test-command", "save_path" => prefix}
+        args.delete("save_path") if prefix.nil?
         result = JSON.parse(runner.execute(JSON.parse(args.to_json)))
         expect(result["output"]["stdout"]["content"].as_s).to eq("out")
         expect(result["output"]["stderr"]["content"].as_s).to eq("err")
@@ -51,7 +51,7 @@ Spectator.describe Enkaidu::ShellCommandFunction do
       stdout_path = "#{prefix}_stdout.txt"
       stderr_path = "#{prefix}_stderr.txt"
       begin
-        args = {"command" => "test-command", "save_as_file_path_prefix" => prefix, "overwrite" => true}
+        args = {"command" => "test-command", "save_path" => prefix, "overwrite" => true}
         result = JSON.parse(runner.execute(JSON.parse(args.to_json)))
         expect(result["output"]["stdout_file"].as_s).to eq(File.expand_path(stdout_path))
         expect(result["output"]["stderr_file"].as_s).to eq(File.expand_path(stderr_path))

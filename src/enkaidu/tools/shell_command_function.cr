@@ -10,8 +10,8 @@ module Enkaidu
     MAX_STDOUT = 16*1024
     MAX_STDERR = 16*1024
 
-    PARAM_COMMAND                  = "command"
-    PARAM_SAVE_AS_FILE_PATH_PREFIX = "save_as_file_path_prefix"
+    PARAM_COMMAND   = "command"
+    PARAM_SAVE_PATH = "save_path"
 
     RESPONSE_COMMAND     = "command"
     RESPONSE_OUTPUT      = "output"
@@ -147,8 +147,8 @@ module Enkaidu
     COMMON_DESCRIPTION = "Executes one of the allowed shell commands from within the " \
                          "current project's directory and returns the shell command's output." \
                          "Commands with restricted terms always require approval. " \
-                         "If `stdout` and `stderr` exceed #{MAX_STDOUT} and #{MAX_STDERR} bytes respectively," \
-                         "the output is truncated and a flag indicates `true`."
+                         "Large outputs are truncated (#{MAX_STDOUT} bytes per stream); " \
+                         "a `truncated` flag indicates this."
     # Provide a description for the tool
     static_description <<-DESC
       #{COMMON_DESCRIPTION}
@@ -171,16 +171,14 @@ module Enkaidu
     param PARAM_COMMAND, type: Param::Type::Str, required: true,
       description: "The shell command to execute."
 
-    param PARAM_SAVE_AS_FILE_PATH_PREFIX, type: Param::Type::Str,
+    param PARAM_SAVE_PATH, type: Param::Type::Str,
       description: <<-DESCR
-        Optionally specify a file path prefix to save the output and error streams.
-        If non-blank, two files will be written: `{path_prefix}_stdout.txt` and `{path_prefix}_stderr.txt`.
-        Empty or whitespace-only prefixes are ignored.
-        Use the `tmp/` folder for temporary saves.
+        Optional. A file path prefix for saving stdout and stderr to separate files
+        (`{prefix}_stdout.txt`, `{prefix}_stderr.txt`). Use `tmp/` for temporary saves.
         DESCR
 
     param PARAM_OVERWRITE, type: Param::Type::Bool, required: false,
-      description: "Optional. Set to true to overwrite existing files when saving output as files. Default is false."
+      description: "Optional. Set to true to overwrite existing output files. Default is false."
 
     # Replace `runner` macro to create with self
     def new_runner : Runner
@@ -203,11 +201,11 @@ module Enkaidu
 
         save_stdout_path = nil
         save_stderr_path = nil
-        if (save_as_file_prefix = args[PARAM_SAVE_AS_FILE_PATH_PREFIX]?.try(&.as_s?)) && !save_as_file_prefix.strip.empty?
+        if (save_path = args[PARAM_SAVE_PATH]?.try(&.as_s?)) && !save_path.strip.empty?
           begin
             overwrite = args[PARAM_OVERWRITE]?.try(&.as_bool?) || false
-            save_stdout_path = confirm_save_path("#{save_as_file_prefix}_stdout.txt", overwrite)
-            save_stderr_path = confirm_save_path("#{save_as_file_prefix}_stderr.txt", overwrite)
+            save_stdout_path = confirm_save_path("#{save_path}_stdout.txt", overwrite)
+            save_stderr_path = confirm_save_path("#{save_path}_stderr.txt", overwrite)
           rescue ex
             return error_response(ex.to_s)
           end
