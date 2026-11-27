@@ -6,6 +6,7 @@ require "../../tools/file_helper"
 module Enkaidu
   # This is the Enkaidu shell command function with session-levelc configuration.
   class ShellCommandFunction < SessionBuiltInFunction
+    TOOL_NAME  = "shell_command"
     MAX_STDOUT = 16*1024
     MAX_STDERR = 16*1024
 
@@ -95,13 +96,18 @@ module Enkaidu
       end
     end
 
-    # Retrieve a setting if present, or env variable if present, or default if specified
-    private def extract_setting(name, env_fallback, default : String? = nil)
+    # Retrieve a setting if present, or env variable if present
+    private def extract_setting(name, env_fallback : String? = nil)
       case value = (settings.try &.[name]?)
       when Array(String) then value
       when String        then [value]
       else
-        ENV.fetch(env_fallback, default).try(&.split(" ")) || [] of String
+        if env_fallback && (from_env = ENV[env_fallback]?.try(&.split(" ")))
+          runtime.renderer.warning_with("Env var `#{env_fallback}` for #{TOOL_NAME} is deprecated. Use tool settings property `#{name}` instead.")
+          from_env
+        else
+          [] of String
+        end
       end
     end
 
@@ -115,7 +121,7 @@ module Enkaidu
       settings.try(&.["execute_through_shell"]?) == true
     end
 
-    name "shell_command"
+    name TOOL_NAME
 
     # Don't know what the chell command does, so assume anything is possible
     side_effects SideEffects::CommandExec
