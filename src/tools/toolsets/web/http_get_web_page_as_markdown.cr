@@ -9,11 +9,9 @@ require "../../../sucre/html_to_markdown"
 module Tools::Web
   # The `HttpGetWebAsMarkdownTool` class defines a tool for making HTTP GET requests to retrieve web pages as Markdown.
   class HttpGetWebAsMarkdownTool < HttpGet
-    PARAM_URL             = "url"
-    PARAM_USER_AGENT      = "user_agent"
-    PARAM_SAVE_PATH       = "save_path"
-    RESPONSE_URL          = "url"
-    RESPONSE_MARKDOWN     = "markdown"
+    PARAM_SAVE_PATH        = "save_path"
+    RESPONSE_URL           = "url"
+    RESPONSE_MARKDOWN      = "markdown"
     RESPONSE_SAVED_AS_FILE = "saved_as_file"
 
     name "fetch_markdown"
@@ -211,9 +209,9 @@ module Tools::Web
       # Create a successful response with markdown content
       def success_markdown(url, content, truncated)
         {
-          RESPONSE_URL                        => url,
+          RESPONSE_URL       => url,
           RESPONSE_TRUNCATED => truncated,
-          RESPONSE_MARKDOWN                   => content,
+          RESPONSE_MARKDOWN  => content,
         }.to_json
       end
 

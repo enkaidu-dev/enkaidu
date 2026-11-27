@@ -8,8 +8,6 @@ require "./http_get"
 module Tools::Web
   # The `HttpGetWebPageTool` class defines a tool for making HTTP GET requests to retrieve text content.
   class HttpGetWebPageTool < HttpGet
-    PARAM_URL             = "url"
-    PARAM_USER_AGENT      = "user_agent"
     PARAM_ACCEPT          = "accept"
     PARAM_RAW             = "raw"
     RESPONSE_CONTENT_TYPE = "content_type"
