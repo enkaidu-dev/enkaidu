@@ -62,8 +62,17 @@ jobs:
         if: ${{ runner.os != 'Windows' }}
         run: mkdir -p bin/debug
 
-      - name: Run tests (macOS & Linux)
-        if: ${{ runner.os != 'Windows' }}
+      - name: Run tests (Linux)
+        if: ${{ runner.os == 'Linux' }}
+        # Split into separate runs to avoid OOM; first fail will exit
+        run: |
+          crystal spec -Dtest --order=random spec/app spec/unit/sucre &&
+          crystal spec -Dtest --order=random spec/unit/tools &&
+          crystal spec -Dtest --order=random spec/unit/llm &&
+          crystal spec -Dtest --order=random spec/unit/enkaidu
+
+      - name: Run tests (macOS)
+        if: ${{ runner.os == 'macOS' }}
         run: crystal spec -Dtest --order=random
 
       # ---- Lint and format check on `ubuntu-latest`
