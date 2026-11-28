@@ -43,7 +43,7 @@ jobs:
             lib
             webui/node_modules
             bin/ameba*
-          key: ${{ runner.os }}-shards-${{ hashFiles('**/shard.lock') }}
+          key: ${{ matrix.os }}-shards-${{ hashFiles('**/shard.lock') }}
 
       - name: Prepare and build webui
         run: |
@@ -62,8 +62,8 @@ jobs:
         if: ${{ runner.os != 'Windows' }}
         run: mkdir -p bin/debug
 
-      - name: Run tests (macOS only for now)
-        if: ${{ matrix.os == 'macos-latest' }}
+      - name: Run tests (macOS & Linux)
+        if: ${{ runner.os != 'Windows' }}
         run: crystal spec -Dtest --order=random
 
       # ---- Lint and format check on `ubuntu-latest`
