@@ -3,6 +3,15 @@ require "../../../sucre/host_policy"
 
 module Tools::Web
   abstract class HttpGet < BuiltInFunction
+    # Shared param names used by child tools
+    PARAM_URL        = "url"
+    PARAM_USER_AGENT = "user_agent"
+
+    # Setting keys
+    SETTING_ALLOWED_HOSTS       = "allowed_hosts"
+    SETTING_DENIED_HOSTS        = "denied_hosts"
+    SETTING_ALLOW_PRIVATE_HOSTS = "allow_private_hosts"
+
     @host_policy : HostPolicy?
 
     # Retrieve a setting if present, or nil
@@ -15,9 +24,9 @@ module Tools::Web
 
     def host_policy : HostPolicy
       @host_policy ||= HostPolicy.new do |config|
-        config.allowed_hosts = extract_setting("allowed_hosts") || [] of String
-        config.allow_private_hosts = settings.try &.["allow_private_hosts"]? == true
-        config.denied_hosts = extract_setting("denied_hosts") || [] of String
+        config.allowed_hosts = extract_setting(SETTING_ALLOWED_HOSTS) || [] of String
+        config.allow_private_hosts = settings.try &.[SETTING_ALLOW_PRIVATE_HOSTS]? == true
+        config.denied_hosts = extract_setting(SETTING_DENIED_HOSTS) || [] of String
       end
     end
 

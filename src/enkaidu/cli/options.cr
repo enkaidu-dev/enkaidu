@@ -69,6 +69,9 @@ module Enkaidu
         end
 
         @config = load_config || empty_config
+        # Migrate deprecated `auto_load` settings into `session` (renders a
+        # deprecation warning if the section is present)
+        config.migrate_auto_load_to_session(console)
         @profile = Env::Profile.new(safe_current_dir_for_config, console, quiet?)
         if profile_config = profile.config
           if Enkaidu.enforce_system_config?

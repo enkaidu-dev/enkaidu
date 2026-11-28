@@ -43,4 +43,63 @@ Spectator.describe "Enkaidu::Session auto_load" do
       expect(session.find_prompt?("helper")).to_not be_nil
     end
   end
+
+  it "auto_load loads toolsets from session config" do
+    with_ollama_envs do
+      renderer = EnkaiduWiretapTestRenderer.new
+      yaml = <<-YAML
+      session:
+        toolsets: ["DateAndTime"]
+      YAML
+      options = EnkaiduUniqueModelTestOptions.new(renderer, yaml)
+      session = EnkaiduWiretapTestSession.new(renderer, options)
+
+      session.auto_load
+
+      expect(renderer.info_messages).to contain("Auto-loading toolsets: DateAndTime")
+      # `tool_loaded?` returns the tool or `nil`, not a Bool
+      expect(session.tool_loaded?("date")).to_not be_nil
+    end
+  end
+
+  it "auto_load sets the system prompt from session config" do
+    with_ollama_envs do
+      renderer = EnkaiduWiretapTestRenderer.new
+      yaml = <<-YAML
+      system_prompts:
+        greeting:
+          template: "Hello"
+      session:
+        system_prompt_name: "greeting"
+      YAML
+      options = EnkaiduUniqueModelTestOptions.new(renderer, yaml)
+      session = EnkaiduWiretapTestSession.new(renderer, options)
+
+      session.auto_load
+
+      expect(session.system_message).to_not be_nil
+      expect(session.system_message).to contain("Hello")
+    end
+  end
+
+  it "auto_load migrates deprecated auto_load settings and applies them" do
+    with_ollama_envs do
+      renderer = EnkaiduWiretapTestRenderer.new
+      yaml = <<-YAML
+      system_prompts:
+        greeting:
+          template: "Hello"
+      auto_load:
+        system_prompt_name: "greeting"
+      YAML
+      options = EnkaiduUniqueModelTestOptions.new(renderer, yaml)
+      session = EnkaiduWiretapTestSession.new(renderer, options)
+
+      session.auto_load
+
+      expect(renderer.warnings).to contain("The `auto_load` section is deprecated; use `session` instead.")
+      expect(session.system_message).to_not be_nil
+      expect(session.system_message).to contain("Hello")
+    end
+  end
 end

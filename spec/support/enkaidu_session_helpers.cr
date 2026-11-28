@@ -82,6 +82,10 @@ class EnkaiduWiretapTestSession < Enkaidu::Session
   def install_tool(tool : LLM::Function) : Nil
     chat.with_tool(tool)
   end
+
+  def system_message : String?
+    chat.system_message
+  end
 end
 
 class EnkaiduUniqueModelTestOptions < Enkaidu::SessionOptions
@@ -100,6 +104,8 @@ class EnkaiduUniqueModelTestOptions < Enkaidu::SessionOptions
 
   def initialize(@renderer : Enkaidu::SessionRenderer, yaml : String)
     @config = Enkaidu::Config.from_yaml(yaml)
+    # Mirror production: migrate deprecated `auto_load` into `session`
+    @config.migrate_auto_load_to_session(@renderer)
   end
 
   def renderer : Enkaidu::SessionRenderer

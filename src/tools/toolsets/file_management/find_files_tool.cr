@@ -7,7 +7,11 @@ module Tools::FileManagement
   # It ensures the operation is performed securely within the allowed directory,
   # avoiding access to unauthorized paths.
   class FindFilesTool < BuiltInFunction
-    name "find_files"
+    PARAM_EXPRESSION = "expression"
+    PARAM_MAX        = "max"
+    PARAM_SORT       = "sort"
+
+    name "find"
     side_effects SideEffects::FileRead | SideEffects::DirRead
 
     # Provide a description for the tool
@@ -16,13 +20,13 @@ module Tools::FileManagement
                 "Example: to list all Crystal files under src, use path=\"src\" and expression=\"**/*.cr\"."
 
     # Define the acceptable parameter using the `param` method
-    param "expression", required: true,
+    param PARAM_EXPRESSION, required: true,
       description: "The glob pattern expression with which to find matching files and directories, relative to `path`, e.g. \"*.cr\" or \"tools/**/*.cr\". A single * is not recursive; use ** to recurse."
-    param "path", required: true,
+    param PARAM_PATH, required: true,
       description: "The base directory inside which this tool looks for files and directories; it is combined with `expression` to form `path/expression`, so do not repeat `path` inside `expression`."
-    param "max", type: Param::Type::Num, required: false,
+    param PARAM_MAX, type: Param::Type::Num, required: false,
       description: "Optional. Maximum number of matches to return (default is #{FileHelper::DEFAULT_FIND_FILE_MATCHES})"
-    param "sort", type: Param::Type::Bool, required: false,
+    param PARAM_SORT, type: Param::Type::Bool, required: false,
       description: "Optional. Set to false to disable sorting (default is true)"
 
     runner Runner
@@ -32,17 +36,17 @@ module Tools::FileManagement
       include FileHelper
 
       def execute(args : JSON::Any) : String
-        pattern = args["expression"]?.try(&.as_s?) || return error_response("The required glob `expression` was not specified")
-        path = args["path"]?.try(&.as_s?).try(&.strip) || return error_response("The required starting directory `path` was not specified")
+        pattern = args[PARAM_EXPRESSION]?.try(&.as_s?) || return error_response("The required glob `expression` was not specified")
+        path = args[PARAM_PATH]?.try(&.as_s?).try(&.strip) || return error_response("The required starting directory `path` was not specified")
 
         return error_response("The required `path` must not be empty") if path.empty?
 
-        max = args["max"]?.try(&.as_i?) || MAX_FIND_FILE_MATCHES
+        max = args[PARAM_MAX]?.try(&.as_i?) || MAX_FIND_FILE_MATCHES
         if max > MAX_FIND_FILE_MATCHES
           return error_response("Maximum files searchable cannot exceed #{MAX_FIND_FILE_MATCHES}")
         end
 
-        sort = args["sort"]?.try(&.as_bool?)
+        sort = args[PARAM_SORT]?.try(&.as_bool?)
         sort = true if sort.nil?
 
         find_pattern = "#{path}/#{pattern}"
@@ -73,7 +77,7 @@ module Tools::FileManagement
 
       # Create an error response as a JSON string
       private def error_response(message)
-        {error: message}.to_json
+        {RESPONSE_ERROR => message}.to_json
       end
     end
   end

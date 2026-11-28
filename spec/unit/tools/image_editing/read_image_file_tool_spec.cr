@@ -35,7 +35,7 @@ Spectator.describe Tools::ImageEditing::ReadImageFileTool do
     before { File.write(file_path, png_bytes) }
 
     it "returns a reply with a png data URL attachment" do
-      reply = expect_reply(runner.execute(make_args(file_path: file_path)))
+      reply = expect_reply(runner.execute(make_args(path: file_path)))
 
       expect(reply.content).to contain(file_path)
 
@@ -55,7 +55,7 @@ Spectator.describe Tools::ImageEditing::ReadImageFileTool do
     before { File.write(file_path, jpeg_bytes) }
 
     it "returns a reply with a jpeg data URL attachment" do
-      reply = expect_reply(runner.execute(make_args(file_path: file_path)))
+      reply = expect_reply(runner.execute(make_args(path: file_path)))
 
       expect(reply.content).to contain(file_path)
 
@@ -93,13 +93,13 @@ Spectator.describe Tools::ImageEditing::ReadImageFileTool do
   context "fails when file_path is not provided" do
     it "returns an error" do
       expect_error(runner.execute(make_args),
-                   /The required file_path was not specified/)
+                   /The required path was not specified/)
     end
   end
 
   context "fails when the file does not exist" do
     it "returns an error" do
-      expect_error(runner.execute(make_args(file_path: File.join(temp_dir, "ghost.png"))),
+      expect_error(runner.execute(make_args(path: File.join(temp_dir, "ghost.png"))),
                    /does not exist/)
     end
   end
@@ -110,7 +110,7 @@ Spectator.describe Tools::ImageEditing::ReadImageFileTool do
     before { Dir.mkdir_p(sub_dir) }
 
     it "returns an error" do
-      expect_error(runner.execute(make_args(file_path: sub_dir)),
+      expect_error(runner.execute(make_args(path: sub_dir)),
                    /does not exist/)
     end
   end
@@ -121,7 +121,7 @@ Spectator.describe Tools::ImageEditing::ReadImageFileTool do
     before { File.write(file_path, "not an image at all") }
 
     it "returns an error" do
-      expect_error(runner.execute(make_args(file_path: file_path)),
+      expect_error(runner.execute(make_args(path: file_path)),
                    /is not an image file/)
     end
   end
@@ -130,7 +130,7 @@ Spectator.describe Tools::ImageEditing::ReadImageFileTool do
     let(:outside_path) { File.tempname("_outside.png") }
 
     it "returns an error" do
-      expect_error(runner.execute(make_args(file_path: outside_path)),
+      expect_error(runner.execute(make_args(path: outside_path)),
                    /is not allowed/)
     end
   end

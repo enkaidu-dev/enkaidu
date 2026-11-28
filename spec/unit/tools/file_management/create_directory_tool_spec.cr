@@ -45,7 +45,7 @@ Spectator.describe Tools::FileManagement::CreateDirectoryTool do
     it "returns success with the directory path" do
       Dir.cd(temp_dir) do
         args = {
-              "directory_path" => "new_directory",
+              "path" => "new_directory",
             }
 
         result_json = runner.execute(JSON.parse(args.to_json))
@@ -67,7 +67,7 @@ Spectator.describe Tools::FileManagement::CreateDirectoryTool do
     it "creates all intermediate directories and the final directory" do
       Dir.cd(temp_dir) do
         args = {
-              "directory_path" => "level1/level2/level3",
+              "path" => "level1/level2/level3",
             }
 
         result_json = runner.execute(JSON.parse(args.to_json))
@@ -88,7 +88,7 @@ Spectator.describe Tools::FileManagement::CreateDirectoryTool do
     it "creates the full path successfully" do
       Dir.cd(temp_dir) do
         args = {
-              "directory_path" => "subdir/another",
+              "path" => "subdir/another",
             }
 
         result_json = runner.execute(JSON.parse(args.to_json))
@@ -107,7 +107,7 @@ Spectator.describe Tools::FileManagement::CreateDirectoryTool do
   context "blocks paths resolved outside the current directory" do
     it "returns an error when path contains ../ going outside temp_dir" do
       args = {
-            "directory_path" => "../outside_dir",
+            "path" => "../outside_dir",
           }
 
       # No Dir.cd - test runs from project root
@@ -127,7 +127,7 @@ Spectator.describe Tools::FileManagement::CreateDirectoryTool do
 
     it "returns an error when pattern contains../../" do
       args = {
-            "directory_path" => "safe/../../etc/testdir",
+            "path" => "safe/../../etc/testdir",
           }
 
       result_json = runner.execute(JSON.parse(args.to_json))
@@ -152,14 +152,14 @@ Spectator.describe Tools::FileManagement::CreateDirectoryTool do
 
       expect(result[:success]).to be_false
       expect(result[:error_msg]).not_to be_nil
-      expect(result[:error_msg]).to match(/directory_path/)
+      expect(result[:error_msg]).to match(/path/)
     end
   end
 
   context "fails when directory_path is nil" do
     it "returns an error" do
       args = {
-            "directory_path" => nil,
+            "path" => nil,
           }
 
       result_json = runner.execute(JSON.parse(args.to_json))
@@ -178,7 +178,7 @@ Spectator.describe Tools::FileManagement::CreateDirectoryTool do
     it "creates directory in current directory" do
       Dir.cd(temp_dir) do
         args = {
-              "directory_path" => "",
+              "path" => "",
             }
 
         result_json = runner.execute(JSON.parse(args.to_json))
@@ -198,7 +198,7 @@ Spectator.describe Tools::FileManagement::CreateDirectoryTool do
     it "succeeds even if directory already exists" do
       Dir.cd(temp_dir) do
         args = {
-              "directory_path" => "existing_dir",
+              "path" => "existing_dir",
             }
 
         result_json = runner.execute(JSON.parse(args.to_json))
@@ -217,7 +217,7 @@ Spectator.describe Tools::FileManagement::CreateDirectoryTool do
     it "creates the remaining subdirectory successfully" do
       Dir.cd(temp_dir) do
         args = {
-              "directory_path" => "partial/sub",
+              "path" => "partial/sub",
             }
 
         result_json = runner.execute(JSON.parse(args.to_json))
@@ -235,7 +235,7 @@ Spectator.describe Tools::FileManagement::CreateDirectoryTool do
     it "creates the directory with spaces in the name" do
       Dir.cd(temp_dir) do
         args = {
-              "directory_path" => "my new directory",
+              "path" => "my new directory",
             }
 
         result_json = runner.execute(JSON.parse(args.to_json))
@@ -253,7 +253,7 @@ Spectator.describe Tools::FileManagement::CreateDirectoryTool do
     it "creates the directory with special characters" do
       Dir.cd(temp_dir) do
         args = {
-              "directory_path" => "test-dir_2024",
+              "path" => "test-dir_2024",
             }
 
         result_json = runner.execute(JSON.parse(args.to_json))

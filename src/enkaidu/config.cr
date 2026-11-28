@@ -33,12 +33,6 @@ module Enkaidu
       getter_with_presence mcp_servers, Array(String)?
       getter_with_presence toolsets, Array(String | NamedTuple(name: String, select: Array(String)))?
       getter_with_presence system_prompt_name, String?
-
-      protected def merge(from : AutoLoad)
-        @mcp_servers = from.mcp_servers unless mcp_servers_present?
-        @toolsets = from.toolsets unless toolsets_present?
-        @system_prompt_name = from.system_prompt_name unless system_prompt_name_present?
-      end
     end
 
     alias ToolSettings = Hash(String, LLM::Function::Settings)
@@ -51,6 +45,8 @@ module Enkaidu
         getter read_only_paths = [] of String
         # Add read-write access to specific paths
         getter read_write_paths = [] of String
+        # Allow these env variables through into the Cordon
+        getter allow_env = {} of String => String
 
         def initialize; end
       end
@@ -148,6 +144,14 @@ module Enkaidu
       # Repetition tripwire enabled by default for detecting degenerate model output loops
       getter_with_presence? repetition_tripwire, true
 
+      # Auto-load settings (successors of the deprecated root-level `auto_load`
+      # section); see `ProfileConfig#migrate_auto_load_to_session`
+      getter_with_presence mcp_servers, Array(String)?
+      getter_with_presence toolsets, Array(String | NamedTuple(name: String, select: Array(String)))?
+      getter_with_presence system_prompt_name, String?
+
+      def initialize; end
+
       protected def merge(from : Session)
         # Booleans
         {% for name in [
@@ -158,14 +162,80 @@ module Enkaidu
         @{{ name.id }} = from.{{ (name + '?').id }} if from.{{ name.id }}_present?
         {% end %}
         # Non-booleans
-        {% for name in [:provider_type, :model, :exclude_past_reasoning, :input_history_file] %}
+        {% for name in [
+                         :provider_type, :model, :exclude_past_reasoning, :input_history_file,
+                         :mcp_servers, :toolsets, :system_prompt_name,
+                       ] %}
         @{{ name.id }} = from.{{ name.id }} if from.{{ name.id }}_present?
         {% end %}
+      end
+
+      # Migrate deprecated root-level `auto_load` property values into this
+      # session. Existing session values take priority; a warning is rendered
+      # via `renderer` for each auto_load value that is ignored.
+      def migrate_from_auto_load(auto_load : AutoLoad, renderer)
+        if val = auto_load.mcp_servers
+          if mcp_servers_present?
+            renderer.warning_with("The `auto_load.mcp_servers` setting will be ignored because `session.mcp_servers` is set.")
+          else
+            @mcp_servers = val
+            @mcp_servers_present = true
+          end
+        end
+
+        if val = auto_load.toolsets
+          if toolsets_present?
+            renderer.warning_with("The `auto_load.toolsets` setting will be ignored because `session.toolsets` is set.")
+          else
+            @toolsets = val
+            @toolsets_present = true
+          end
+        end
+
+        if val = auto_load.system_prompt_name
+          if system_prompt_name_present?
+            renderer.warning_with("The `auto_load.system_prompt_name` setting will be ignored because `session.system_prompt_name` is set.")
+          else
+            @system_prompt_name = val
+            @system_prompt_name_present = true
+          end
+        end
+        self
       end
     end
 
     # Can be set to `nil` to disable inherited auto_load
     getter_with_presence auto_load, AutoLoad?
+
+    # Tracks whether the deprecated `auto_load` section has been migrated into
+    # `session` so that `#migrate_auto_load_to_session` is idempotent.
+    @[YAML::Field(ignore: true)]
+    @[JSON::Field(ignore: true)]
+    getter? auto_load_migrated = false
+
+    # Migrate deprecated root-level `auto_load` settings into `session`.
+    # `session` settings take priority; a deprecation warning is rendered via
+    # `renderer` when `auto_load` is present, plus per-property warnings when
+    # an auto_load value is ignored in favor of a session value.
+    def migrate_auto_load_to_session(renderer)
+      return unless auto_load_present?
+      return if auto_load_migrated?
+      @auto_load_migrated = true
+
+      renderer.warning_with("The `auto_load` section is deprecated; use `session` instead.",
+        markdown: true, help: <<-HELP)
+          > The configuration properties `mcp_servers`, `toolsets`, and `system_prompt_name`
+          > are available in the `session` section. When specified there, the now deprecated
+          > `auto_load` section, if present in the config file, will be ignored.
+          HELP
+
+      return unless (autoload = auto_load) &&
+                    (autoload.mcp_servers_present? || autoload.toolsets_present? || autoload.system_prompt_name_present?)
+
+      session = @session ||= Session.new
+      session.migrate_from_auto_load(autoload, renderer)
+      self
+    end
 
     getter cordon : Cordon?
     getter tool_settings : ToolSettings?
@@ -308,14 +378,35 @@ module Enkaidu
 
     # Return tool settings if any
     def tool_settings_by_name(tool_name : String) : ::LLM::Function::Settings?
-      tool_settings.try &.[tool_name]?
+      ts = tool_settings
+      return if ts.nil?
+      return ts[tool_name]? if ts.has_key?(tool_name)
+      # Fallback: the queried name may be a current name whose config key is
+      # still the deprecated predecessor. Only fall back when the queried name
+      # is itself deprecated (so a current name never masquerades as its
+      # predecessor, e.g. "find" must not resolve to "find_files").
+      if Tools::Compatibility.deprecated?(tool_name)
+        old_name = Tools::Compatibility.old_name_for?(tool_name)
+        if old_name
+          ts[old_name]?
+        end
+      end
     end
 
     # Merge in a profile configuration, using settings from the profile
     # configuration when none have been specific in the app configuration
     def merge_profile_config(profile_config : ProfileConfig, renderer)
-      if profile_auto_load = profile_config.auto_load
-        merge_profile_autoload_config(profile_auto_load, renderer)
+      # Idempotent; a no-op if the app config has no `auto_load` section
+      migrate_auto_load_to_session(renderer)
+
+      if profile_config.auto_load
+        if auto_load_present? && auto_load.nil?
+          # App config explicitly disabled inherited auto_load; preserve the
+          # legacy disable semantics for the profile's auto_load values
+          renderer.warning_with("Using `auto_load: nil` from app config, IGNORING `auto_load` in profile config.")
+        else
+          profile_config.migrate_auto_load_to_session(renderer)
+        end
       end
 
       if profile_tool_settings = profile_config.tool_settings
@@ -347,20 +438,6 @@ module Enkaidu
       else
         # no override, so use from profile
         @tool_settings = profile_tool_settings
-      end
-    end
-
-    # Merge auto_load config from profile
-    private def merge_profile_autoload_config(profile_auto_load : ProfileConfig::AutoLoad, renderer)
-      if my_auto_load = auto_load
-        # not nil
-        my_auto_load.merge(profile_auto_load)
-      elsif auto_load_present?
-        # nil set explicitly in app config
-        renderer.warning_with("Using `auto_load: nil` from app config, IGNORING `auto_load` in profile config.")
-      else
-        # no override, so use from profile
-        @auto_load = profile_auto_load
       end
     end
 

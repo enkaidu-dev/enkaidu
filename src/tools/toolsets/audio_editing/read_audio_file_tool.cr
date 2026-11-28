@@ -6,7 +6,7 @@ module Tools::AudioEditing
   # The `ReadAudioFileTool` class defines a tool for reading an audio file and returning it as a base64 audio attachment.
   # It ensures the operation is performed securely within the allowed directory, avoiding access to unauthorized paths.
   class ReadAudioFileTool < BuiltInFunction
-    name "read_audio_file"
+    name "read_audio"
     side_effects SideEffects::FileRead
 
     # Provide a description for the tool
@@ -14,7 +14,7 @@ module Tools::AudioEditing
                 "Supports the following audio formats: #{AudioHelper::ALLOWED_AUDIO_FORMATS.join(',')}. "
 
     # Define the acceptable parameter using the `param` method
-    param "file_path", type: Param::Type::Str, required: true,
+    param PARAM_PATH, type: Param::Type::Str, required: true,
       description: "The relative path to the audio file to read."
 
     runner Runner
@@ -24,7 +24,7 @@ module Tools::AudioEditing
       include AudioHelper
 
       def execute(args : JSON::Any) : LLM::Function::Reply | String
-        file_path = args["file_path"]?.try(&.as_s?) || return error_response("The required file_path was not specified")
+        file_path = args[PARAM_PATH]?.try(&.as_s?) || return error_response("The required `path` was not specified")
 
         resolved_path = resolve_path(file_path)
 
@@ -54,7 +54,7 @@ module Tools::AudioEditing
 
       # Create an error response as a JSON string
       private def error_response(message)
-        {error: message}.to_json
+        {RESPONSE_ERROR => message}.to_json
       end
     end
   end

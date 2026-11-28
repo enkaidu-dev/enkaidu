@@ -8,7 +8,12 @@ require "./http_get"
 module Tools::Web
   # The `HttpGetWebPageTool` class defines a tool for making HTTP GET requests to retrieve text content.
   class HttpGetWebPageTool < HttpGet
-    name "http_get_web_page"
+    PARAM_ACCEPT          = "accept"
+    PARAM_RAW             = "raw"
+    RESPONSE_CONTENT_TYPE = "content_type"
+    RESPONSE_BODY         = "body"
+
+    name "fetch_html"
     side_effects SideEffects::NetRead
 
     description <<-DESC
@@ -18,21 +23,21 @@ module Tools::Web
       from HTML content. Content size of response must be less than #{MAX_CONTENT_SIZE//1024}K.
       DESC
 
-    param "url", type: Param::Type::Str,
+    param PARAM_URL, type: Param::Type::Str,
       description: "The URL to GET the web page from.",
       required: true
 
-    param "user_agent", type: Param::Type::Str,
+    param PARAM_USER_AGENT, type: Param::Type::Str,
       description: "Optional user agent header; default is Firefox for macOS.",
       required: false
 
-    param "accept", type: Param::Type::Str,
+    param PARAM_ACCEPT, type: Param::Type::Str,
       description: <<-DESCR
         Optionally specify an acceptable content type (e.g. `text/markdown`) to ask the
         server for specific format. Default is none.
         DESCR
 
-    param "preserve_source", type: Param::Type::Bool,
+    param PARAM_RAW, type: Param::Type::Bool,
       description: "Optional flag to ask to preserve the content from the server without any attempts to condense the text; default is false."
 
     # Replace `runner` macro to create with self
@@ -43,10 +48,10 @@ module Tools::Web
     # The Runner class executes the function
     class Runner < HttpGet::BaseRunner
       def execute(args : JSON::Any) : String
-        url = args["url"]?.try(&.as_s?) || return error_response("The required URL was not specified")
-        user_agent = args["user_agent"]?.try(&.as_s?) || USER_AGENT
-        preserve_source = args["preserve_source"]? || false
-        accept = args["accept"]?.try(&.as_s?) || nil
+        url = args[PARAM_URL]?.try(&.as_s?) || return error_response("The required URL was not specified")
+        user_agent = args[PARAM_USER_AGENT]?.try(&.as_s?) || USER_AGENT
+        preserve_source = args[PARAM_RAW]? || false
+        accept = args[PARAM_ACCEPT]?.try(&.as_s?) || nil
 
         headers = HTTP::Headers{
           "User-Agent" => user_agent,
@@ -119,8 +124,8 @@ module Tools::Web
           end
         end
         {
-          content_type: content_type,
-          body:         reduced_content || content,
+          RESPONSE_CONTENT_TYPE => content_type,
+          RESPONSE_BODY         => reduced_content || content,
         }.to_json
       end
 

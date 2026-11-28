@@ -7,23 +7,22 @@ module Tools::ImageEditing
   # The `WriteImageFileTool` class defines a tool for creating image files from base64 encoded data within
   # the current directory.
   class WriteImageFileTool < BuiltInFunction
-    name "write_image_file"
+    PARAM_DATA_URL = "data_url"
+
+    name "write_image"
     side_effects SideEffects::FileWrite
 
     description "Write an image file within the current directory with the given base64-encoded image data URL. " \
                 "Create entire path to the file if needed. DOES NOT overwrite existing file unless requested."
 
-    param "file_path", type: Param::Type::Str, required: true,
+    param PARAM_PATH, type: Param::Type::Str, required: true,
       description: "The relative path where the file will be written."
-    param "image_data", type: Param::Type::Str, required: true,
+    param PARAM_DATA_URL, type: Param::Type::Str, required: true,
       description: "The base64 encoded image data in the format of a data URL " \
                    "('data:<content_type>;base64,<data>'). Supported content types are: " \
                    "#{ImageHelper::ALLOWED_IMAGE_CONTENT_TYPES.join(',')}"
-    param "overwrite", type: Param::Type::Bool, required: false,
+    param PARAM_OVERWRITE, type: Param::Type::Bool, required: false,
       description: "Optional. Set to true to overwrite existing file; default is false."
-
-    param "file_path", type: Param::Type::Str, required: true,
-      description: "The relative path where the image file will be created."
 
     runner Runner
 
@@ -32,11 +31,11 @@ module Tools::ImageEditing
       include ImageHelper
 
       def execute(args : JSON::Any) : String
-        file_path = args["file_path"]?.try(&.as_s?) ||
-                    return error_response("The required file_path was not specified")
-        data_url = args["image_data"]?.try(&.as_s?) ||
-                   return error_response("The required image_data was not specified")
-        overwrite = args["overwrite"]?.try(&.as_bool?) || false
+        file_path = args[PARAM_PATH]?.try(&.as_s?) ||
+                    return error_response("The required path was not specified")
+        data_url = args[PARAM_DATA_URL]?.try(&.as_s?) ||
+                   return error_response("The required data_url was not specified")
+        overwrite = args[PARAM_OVERWRITE]?.try(&.as_bool?) || false
 
         resolved_path = resolve_path(file_path)
 
@@ -72,11 +71,11 @@ module Tools::ImageEditing
       end
 
       private def success_response(file_path)
-        {message: "Image file '#{file_path}' written successfully."}.to_json
+        {RESPONSE_MESSAGE => "Image file '#{file_path}' written successfully."}.to_json
       end
 
       private def error_response(message)
-        {error: message}.to_json
+        {RESPONSE_ERROR => message}.to_json
       end
     end
   end

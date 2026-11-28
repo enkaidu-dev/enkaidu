@@ -6,17 +6,19 @@ module Tools::TextEditing
   # The `WriteTextFileTool` class defines a tool for a creating or overwriting a file, ensuring the operation is performed within
   # the current directory.
   class WriteTextFileTool < BuiltInFunction
-    name "write_text_file"
+    name "write_text"
     side_effects SideEffects::FileRead | SideEffects::FileWrite
 
     description "Write a text file within the current directory with the given content. " \
                 "Create entire path to the file if needed. DOES NOT overwrite existing file unless requested."
 
-    param "file_path", type: Param::Type::Str, required: true,
+    PARAM_CONTENT = "content"
+
+    param PARAM_PATH, type: Param::Type::Str, required: true,
       description: "The relative path where the text file will be created."
-    param "content", type: Param::Type::Str, required: true,
+    param PARAM_CONTENT, type: Param::Type::Str, required: true,
       description: "The content to write into the text file."
-    param "overwrite", type: Param::Type::Bool, required: false,
+    param PARAM_OVERWRITE, type: Param::Type::Bool, required: false,
       description: "Optional. Set to true to overwrite existing file; default is false."
 
     runner Runner
@@ -26,9 +28,9 @@ module Tools::TextEditing
       include FileHelper
 
       def execute(args : JSON::Any) : String
-        file_path = args["file_path"]?.try(&.as_s?) || return error_response("The required file_path was not specified")
-        content = args["content"]?.try(&.as_s?) || return error_response("The required content was not specified")
-        overwrite = args["overwrite"]?.try(&.as_bool?) || false
+        file_path = args[PARAM_PATH]?.try(&.as_s?) || return error_response("The required path was not specified")
+        content = args[PARAM_CONTENT]?.try(&.as_s?) || return error_response("The required content was not specified")
+        overwrite = args[PARAM_OVERWRITE]?.try(&.as_bool?) || false
 
         resolved_path = resolve_path(file_path)
         file_exists = file_exists?(resolved_path)
@@ -55,11 +57,11 @@ module Tools::TextEditing
       end
 
       private def success_response(file_path, overwritten)
-        {message: "File '#{file_path}' #{overwritten ? "over-written" : "created"} successfully."}.to_json
+        {RESPONSE_MESSAGE => "File '#{file_path}' #{overwritten ? "over-written" : "created"} successfully."}.to_json
       end
 
       private def error_response(message)
-        {error: message}.to_json
+        {RESPONSE_ERROR => message}.to_json
       end
     end
   end

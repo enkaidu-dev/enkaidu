@@ -13,14 +13,15 @@ jobs:
 
       matrix:
         include:
-          # - { os: ubuntu-latest, crystal: "1.21" }
           - { os: ubuntu-24.04-arm, crystal: "1.21" }
-          - { os: ubuntu-latest, crystal: latest }
+          - { os: ubuntu-latest, crystal: "1.22" }
           - { os: macos-latest, crystal: latest }
           - { os: windows-latest, crystal: "1.21" } # Newer Crystal releases failing to install
 
     runs-on: ${{ matrix.os }}
-
+    defaults:
+      run:
+        shell: bash
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -40,8 +41,9 @@ jobs:
         with:
           path: |
             lib
+            webui/node_modules
             bin/ameba*
-          key: ${{ runner.os }}-shards-${{ hashFiles('**/shard.lock') }}
+          key: ${{ matrix.os }}-shards-${{ hashFiles('**/shard.lock') }}
 
       - name: Prepare and build webui
         run: |
@@ -60,14 +62,25 @@ jobs:
         if: ${{ runner.os != 'Windows' }}
         run: mkdir -p bin/debug
 
-      - name: Run tests (Linux, macOS)
-        if: ${{ runner.os != 'Windows' }}
-        run: crystal spec -Dtest
+      - name: Run tests (Linux)
+        if: ${{ runner.os == 'Linux' }}
+        # Split into separate runs to avoid OOM; first fail will exit
+        run: |
+          crystal spec -Dtest --order=random spec/app spec/unit/sucre
+          crystal spec -Dtest --order=random spec/unit/tools
+          crystal spec -Dtest --order=random spec/unit/llm
+          crystal spec -Dtest --order=random spec/unit/enkaidu/config* spec/unit/enkaidu/conditional* spec/unit/enkaidu/interrupt* spec/unit/enkaidu/tools
+          crystal spec -Dtest --order=random spec/unit/enkaidu/session_[a-f]*
+          crystal spec -Dtest --order=random spec/unit/enkaidu/session_[g-z]*
+
+      - name: Run tests (macOS)
+        if: ${{ runner.os == 'macOS' }}
+        run: crystal spec -Dtest --order=random
 
       # ---- Lint and format check on `ubuntu-latest`
       - name: Build ameba  (Linux)
         if: ${{ matrix.os == 'ubuntu-latest' }}
-        run: cp lib/ameba/bin/ameba.cr bin && crystal build -Dpreview_mt -o bin/ameba bin/ameba.cr
+        run: crystal build -Dpreview_mt -o bin/ameba lib/ameba/bin/ameba.cr
 
       - name: Build Debug (Linux)
         if: ${{ matrix.os == 'ubuntu-latest' }}

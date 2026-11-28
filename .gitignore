@@ -15,6 +15,9 @@ CLAUDE.md
 .deleted_files/
 .spectator-failures
 
+# Ignore when I sometimes symlink in website
+website
+
 # Ignore temp files created by test suite
 spec/tmp*
 

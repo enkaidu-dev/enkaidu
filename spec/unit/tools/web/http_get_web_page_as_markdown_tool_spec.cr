@@ -183,7 +183,7 @@ Spectator.describe Tools::Web::HttpGetWebAsMarkdownTool do
       result = parse_run_result(run_runner(runner, {
         "url"          => "https://example.com",
         "reason"       => "Testing outside path.",
-        "save_as_file" => File.expand_path("/tmp/enkaidu_http_web_test_outside.md"),
+        "save_path" => File.expand_path("/tmp/enkaidu_http_web_test_outside.md"),
       }))
 
       expect(result[:success]).to be_false
@@ -202,7 +202,7 @@ Spectator.describe Tools::Web::HttpGetWebAsMarkdownTool do
       result = parse_run_result(run_runner(runner, {
         "url"          => "https://example.com",
         "reason"       => "Testing save conflict.",
-        "save_as_file" => "spec/tmp_http_web_test/existing.md",
+        "save_path" => "spec/tmp_http_web_test/existing.md",
       }))
 
       expect(result[:success]).to be_false
@@ -223,7 +223,7 @@ Spectator.describe Tools::Web::HttpGetWebAsMarkdownTool do
       result = parse_run_result(run_runner(runner, {
         "url"          => "http://127.0.0.1:1/x",
         "reason"       => "Testing overwrite.",
-        "save_as_file" => "spec/tmp_http_web_test/existing.md",
+        "save_path" => "spec/tmp_http_web_test/existing.md",
         "overwrite"    => true,
       }))
 
@@ -246,7 +246,7 @@ Spectator.describe Tools::Web::HttpGetWebAsMarkdownTool do
       result = parse_run_result(run_runner(runner, {
         "url"          => "https://example.com",
         "reason"       => "Testing deleted-files protection.",
-        "save_as_file" => save_path,
+        "save_path" => save_path,
         "overwrite"    => true,
       }))
 

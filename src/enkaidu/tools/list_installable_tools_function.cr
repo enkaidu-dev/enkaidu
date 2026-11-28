@@ -3,12 +3,14 @@ require "./session_built_in_function"
 
 module Enkaidu
   class ListInstallableTools < SessionBuiltInFunction
+    RESPONSE_INSTALLABLE_TOOLS = "installable_tools"
+    RESPONSE_INSTRUCTION       = "instruction"
+
     name "list_installable_tools"
     side_effects SideEffects::None
 
     description <<-DESC
-      Obtain a list of available tools that you can install. Use the list to determine the tools that will help with
-      your task. IMPORTANT: YOU MUST install a tool from this list BEFORE you can call it.
+      Returns a list of installable tools. A tool must be installed before it can be called.
       DESC
 
     runner Runner
@@ -22,10 +24,10 @@ module Enkaidu
         # List tools
         JSON.build do |json|
           json.object do
-            json.field "installable_tools" do
+            json.field RESPONSE_INSTALLABLE_TOOLS do
               func.runtime.session.tools_catalog_builder(json)
             end
-            json.field "instruction", "IMPORTANT: YOU MUST install a tool from this list BEFORE you can call it."
+            json.field RESPONSE_INSTRUCTION, "IMPORTANT: YOU MUST install a tool from this list BEFORE you can call it."
           end
         end
       rescue ex

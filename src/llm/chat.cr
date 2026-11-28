@@ -376,9 +376,14 @@ module LLM
 
     # Squish the session by keeping the initial request and final response for
     # each turn, dropping everything in between.
-    def squish
-      @history = @history.squish_turns
-      @usage = nil
+    def squish(skip_recent_turns = 0) : Int32
+      before = @history.size
+      if squistory = @history.squish_turns(skip_recent_turns)
+        @history = squistory
+        @usage = nil
+      end
+      after = @history.size
+      before - after
     end
 
     # Yield the latest `num_responses` messages from chat history

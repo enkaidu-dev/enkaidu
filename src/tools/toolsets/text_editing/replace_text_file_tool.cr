@@ -7,21 +7,27 @@ module Tools::TextEditing
   # text in text-based files. It ensures the operation is performed securely within the
   # allowed directory, avoiding access to unauthorized paths.
   class ReplaceTextInTextFileTool < BuiltInFunction
-    name "str_replace_in_text_file"
+    name "replace_text"
     side_effects SideEffects::FileRead | SideEffects::FileWrite
 
     description "Replaces a specified string in a text file within the current directory with a new string." \
                 "This is used for making precise edits."
 
-    param "file_path", type: Param::Type::Str, required: true,
+    PARAM_OLD_STR         = "old_str"
+    PARAM_NEW_STR         = "new_str"
+    PARAM_OCCURRENCE      = "occurrence"
+    RESPONSE_REPLACEMENTS = "replacements"
+    RESPONSE_CHANGES      = "changes"
+
+    param PARAM_PATH, type: Param::Type::Str, required: true,
       description: "The relative path to the text file to modify."
-    param "old_str", type: Param::Type::Str, required: true,
+    param PARAM_OLD_STR, type: Param::Type::Str, required: true,
       description: "The exact text to find and replace. Must match byte-for-byte. " \
                    "Include enough surrounding lines to make the match unique. " \
                    "Tip: if a previous read_text_file call included line numbers, do not include them here."
-    param "new_str", type: Param::Type::Str, required: true,
+    param PARAM_NEW_STR, type: Param::Type::Str, required: true,
       description: "The new text to insert in place of the old text."
-    param "occurrence", type: Param::Type::Num, required: false,
+    param PARAM_OCCURRENCE, type: Param::Type::Num, required: false,
       description: "Which occurrence of old_str to replace (1-based). " \
                    "Use -1 to replace all occurrences. Defaults to 1 (first occurrence)."
 
@@ -49,13 +55,13 @@ module Tools::TextEditing
       # - Returns a JSON-encoded success response with the file path, replacement count,
       #   and an array of change hunks
       def execute(args : JSON::Any) : String
-        file_path = args["file_path"]?.try &.as_s? ||
-                    return error_response("The required `file_path` was not specified")
-        search_text = args["old_str"]?.try &.as_s? ||
+        file_path = args[PARAM_PATH]?.try &.as_s? ||
+                    return error_response("The required `path` was not specified")
+        search_text = args[PARAM_OLD_STR]?.try &.as_s? ||
                       return error_response("The required `old_str` was not specified")
-        replacement_text = args["new_str"]?.try &.as_s? ||
+        replacement_text = args[PARAM_NEW_STR]?.try &.as_s? ||
                            return error_response("The required `new_str` was not specified")
-        occurrence = args["occurrence"]?.try &.as_i? || 1
+        occurrence = args[PARAM_OCCURRENCE]?.try &.as_i? || 1
 
         resolved_path = resolve_path(file_path)
 
@@ -219,11 +225,11 @@ module Tools::TextEditing
       end
 
       private def error_response(message)
-        {"error" => message}.to_json
+        {RESPONSE_ERROR => message}.to_json
       end
 
       private def success_response(file_path, changes, replacements : Int32)
-        {file_path: file_path, replacements: replacements, changes: changes}.to_json
+        {RESPONSE_FILE_PATH => file_path, RESPONSE_REPLACEMENTS => replacements, RESPONSE_CHANGES => changes}.to_json
       end
     end
   end

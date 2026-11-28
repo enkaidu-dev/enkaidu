@@ -54,10 +54,11 @@ module Enkaidu::Slash
 
       **Experimental**
 
-      - `x-squish`
+      - `x-squish [exclude_past_turns=N]`
         - "Squish" the current session history by keeping the initial request and final response
           for each turn and dropping everything in between.
         - In effect drops all tool calling and intermediate responses for every turn.
+        - Except for past N turns if specified
       HELP1
 
     def name : String
@@ -76,11 +77,11 @@ module Enkaidu::Slash
 
     def handle(session_manager : SessionManager, cmd : CommandParser)
       case cmd
-      when .expect?(NAME, ["ls", "id", "usage"])                then handle_bare_commands(session_manager, cmd)
-      when .expect?(NAME, ["goto", "save"], String)             then handle_one_string_commands(session_manager, cmd)
-      when .expect?(NAME, "load", String, tail: String?)        then handle_session_load(session_manager, cmd)
-      when .expect?(NAME, "reset", system_prompt_name: String?) then handle_session_reset(session_manager, cmd)
-      when .expect?(NAME, "x-squish")                           then handle_session_x_squish(session_manager)
+      when .expect?(NAME, ["ls", "id", "usage"])                   then handle_bare_commands(session_manager, cmd)
+      when .expect?(NAME, ["goto", "save"], String)                then handle_one_string_commands(session_manager, cmd)
+      when .expect?(NAME, "load", String, tail: String?)           then handle_session_load(session_manager, cmd)
+      when .expect?(NAME, "reset", system_prompt_name: String?)    then handle_session_reset(session_manager, cmd)
+      when .expect?(NAME, "x-squish", exclude_past_turns: String?) then handle_session_x_squish(session_manager, cmd)
       else
         handle_compound_commands(session_manager, cmd)
       end
@@ -125,11 +126,18 @@ module Enkaidu::Slash
       end
     end
 
-    private def handle_session_x_squish(session_manager)
+    private def handle_session_x_squish(session_manager, cmd)
+      exclude_past_turns = cmd.arg_named?("exclude_past_turns").try(&.as(String).to_i32?) || 0
+
       session = session_manager.current.session
       session.renderer.warning_with("Session squishing is an experimental operation.")
-      session.squish_history
-      session.renderer.respond_with("Session squished.")
+      count = session.squish_history(exclude_past_turns)
+
+      session.renderer.respond_with(if count.positive?
+        "Session squished #{count} messages."
+      else
+        "Session not squished"
+      end)
     end
 
     private def handle_session_pop_and_transform(session_stack, cmd)

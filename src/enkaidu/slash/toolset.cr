@@ -15,6 +15,8 @@ module Enkaidu::Slash
       - `load <TOOLSET_NAME> select=LIST_TOOL_NAMES`
         - Load the selected tools from the named toolset
         - E.g. `/toolset load FileManagement select=[list_files rename_file]`
+      - `compat`
+        - Show the mapping table of deprecated tool names to their current names
       - `unload <TOOLSET_NAME>`
         - Unload all the tools from the named toolset
       HELP1
@@ -40,6 +42,9 @@ module Enkaidu::Slash
           selection = cmd.arg_named?("select").try(&.as(Array(String)))
           session.load_toolset_by(name.as(String), select_tools: selection)
         end
+      elsif cmd.expect?(NAME, "compat")
+        session.renderer.respond_with("Deprecated tool name mappings, old names are still supported.",
+          Tools::Compatibility.deprecation_table, markdown: true)
       elsif cmd.expect?(NAME, "unload", String)
         if name = cmd.arg_at?(2)
           session.unload_toolset_by(name)

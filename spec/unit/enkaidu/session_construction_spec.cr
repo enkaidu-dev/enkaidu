@@ -1,82 +1,11 @@
 require "../../spec_helper"
 require "../../support/enkaidu_session_helpers"
 
-class EnkaiduUniqueModelTestRenderer < WebToolTestRenderer
-  getter info_messages = [] of String
-  getter warnings = [] of String
-
-  def info_with(message, help = nil, markdown = false) : Nil
-    @info_messages << message.to_s
-  end
-
-  def warning_with(message, help = nil, markdown = false) : Nil
-    @warnings << message.to_s
-  end
-end
-
-class EnkaiduUniqueModelTestOptions < Enkaidu::SessionOptions
-  getter config : Enkaidu::Config
-  getter provider_type : String? = "ollama"
-  getter model_name : String? = LLMSpecHelpers::MODEL
-  getter? debug = false
-  getter? stream = false
-  getter? quiet = true
-  getter? webui = false
-  getter? readonly = false
-  getter? trace_mcp = false
-  getter? cordon_confirmed : Bool? = nil
-  getter recorder_file : IO? = nil
-  getter config_for_llm : Enkaidu::Config::LLM? = nil
-
-  def initialize(@renderer : Enkaidu::SessionRenderer, yaml : String)
-    @config = Enkaidu::Config.from_yaml(yaml)
-  end
-
-  def renderer : Enkaidu::SessionRenderer
-    @renderer
-  end
-
-  def help : String
-    "test options"
-  end
-
-  def error_and_exit_with(message, help)
-    raise Enkaidu::UnexpectedError.new(message)
-  end
-end
-
-class EnkaiduRecorderTestOptions < Enkaidu::SessionOptions
-  getter config : Enkaidu::Config
-  getter provider_type : String? = "ollama"
-  getter model_name : String? = LLMSpecHelpers::MODEL
-  getter? debug = false
-  getter? stream = false
-  getter? quiet = true
-  getter? webui = false
-  getter? readonly = false
-  getter? trace_mcp = false
-  getter? cordon_confirmed : Bool? = nil
-  getter recorder_file : IO?
-  getter config_for_llm : Enkaidu::Config::LLM? = nil
-
-  def initialize(@renderer : Enkaidu::SessionRenderer, recorder_file : IO? = nil)
-    @config = Enkaidu::Config.from_yaml("")
-    @recorder_file = recorder_file
-  end
-
-  def renderer : Enkaidu::SessionRenderer
-    @renderer
-  end
-
-  def help : String
-    "test options"
-  end
-
-  def error_and_exit_with(message, help)
-    raise Enkaidu::UnexpectedError.new(message)
-  end
-end
-
+# Note: `EnkaiduUniqueModelTestRenderer`, `EnkaiduUniqueModelTestOptions` and
+# `EnkaiduRecorderTestOptions` come from the shared test helpers
+# (spec/support/enkaidu_session_helpers.cr); this spec previously defined
+# local copies of them, which shadowed the shared versions in a
+# compile-order-dependent way.
 Spectator.describe "Enkaidu::Session construction" do
   include EnkaiduSessionWiretapHelpers
 
