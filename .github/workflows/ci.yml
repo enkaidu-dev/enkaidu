@@ -66,10 +66,12 @@ jobs:
         if: ${{ runner.os == 'Linux' }}
         # Split into separate runs to avoid OOM; first fail will exit
         run: |
-          crystal spec -Dtest --order=random spec/app spec/unit/sucre &&
-          crystal spec -Dtest --order=random spec/unit/tools &&
-          crystal spec -Dtest --order=random spec/unit/llm &&
-          crystal spec -Dtest --order=random spec/unit/enkaidu
+          crystal spec -Dtest --order=random spec/app spec/unit/sucre
+          crystal spec -Dtest --order=random spec/unit/tools
+          crystal spec -Dtest --order=random spec/unit/llm
+          crystal spec -Dtest --order=random spec/unit/enkaidu/config* spec/unit/enkaidu/conditional* spec/unit/enkaidu/interrupt* spec/unit/enkaidu/tools
+          crystal spec -Dtest --order=random spec/unit/enkaidu/session_[a-f]*
+          crystal spec -Dtest --order=random spec/unit/enkaidu/session_[g-z]*
 
       - name: Run tests (macOS)
         if: ${{ runner.os == 'macOS' }}
